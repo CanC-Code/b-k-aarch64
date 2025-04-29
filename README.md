@@ -1,3 +1,14 @@
+#This is totally being done blindly, currently no changes yet, but hopefully the goal is to create a linux executable, for aarch64, which can be run with portmaster on handheld devices.
+
+btw, everything will be done via Grok assistance.
+
+this is supposed to be simpler then compiling for android directly. hopefully if successful maybe future adaptations can be done.
+
+thanks for dropping by, and having a look!! I'll try to keep notes
+
+
+__________________________________________________________________
+
 # Banjo-Kazooie (100.0000%)
 
 <img src="./progress/progress_total.svg">
