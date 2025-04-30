@@ -14,19 +14,58 @@
     <h2>Contents</h2>
     <ul id="file-list"></ul>
     <script>
-        fetch('https://api.github.com/repos/CanC-Code/b-k-arch64/contents')
-            .then(response => response.json())
-            .then(data => {
-                const fileList = document.getElementById('file-list');
-                data.forEach(item => {
-                    const li = document.createElement('li');
-                    const link = document.createElement('a');
-                    link.href = item.html_url;
-                    link.textContent = item.name + (item.type === 'dir' ? '/' : '');
-                    li.appendChild(link);
-                    fileList.appendChild(li);
-                });
+        // Function to display files and folders
+        function displayFiles(data) {
+            const fileList = document.getElementById('file-list');
+            fileList.innerHTML = ''; // Clear existing list
+            data.forEach(item => {
+                const li = document.createElement('li');
+                const link = document.createElement('a');
+                link.href = item.html_url;
+                link.textContent = item.name + (item.type === 'dir' ? '/' : '');
+                li.appendChild(link);
+                fileList.appendChild(li);
             });
+        }
+
+        // Check localStorage for cached data
+        const cachedData = localStorage.getItem('b-k-arch64-repo');
+        const cachedSha = localStorage.getItem('b-k-arch64-sha');
+
+        if (cachedData && cachedSha) {
+            // Use cached data if available
+            displayFiles(JSON.parse(cachedData));
+            // Verify if repository has changed by checking the latest commit SHA
+            fetch('https://api.github.com/repos/CanC-Code/b-k-arch64/commits/main')
+                .then(response => response.json())
+                .then(commit => {
+                    if (commit.sha !== cachedSha) {
+                        // Repository has changed; fetch new contents
+                        fetch('https://api.github.com/repos/CanC-Code/b-k-arch64/contents')
+                            .then(response => response.json())
+                            .then(data => {
+                                displayFiles(data);
+                                // Cache new data and SHA
+                                localStorage.setItem('b-k-arch64-repo', JSON.stringify(data));
+                                localStorage.setItem('b-k-arch64-sha', commit.sha);
+                            });
+                    }
+                });
+        } else {
+            // No cached data; fetch contents
+            fetch('https://api.github.com/repos/CanC-Code/b-k-arch64/contents')
+                .then(response => response.json())
+                .then(data => {
+                    displayFiles(data);
+                    // Fetch latest commit SHA and cache both
+                    fetch('https://api.github.com/repos/CanC-Code/b-k-arch64/commits/main')
+                        .then(response => response.json())
+                        .then(commit => {
+                            localStorage.setItem('b-k-arch64-repo', JSON.stringify(data));
+                            localStorage.setItem('b-k-arch64-sha', commit.sha);
+                        });
+                });
+        }
     </script>
 </body>
 </html>
