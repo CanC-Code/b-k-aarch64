@@ -11,6 +11,10 @@ the first stage i am working at is adapting the splat to work with version 1.1.
 
 __________________________________________________________________
 
+we will target, baserom.us.v11.z64: ded6ee166e740ad1bc810fd678a84b48e245ab80, which is supposed according to the original document.
+
+
+
 # Banjo-Kazooie (100.0000%)
 
 <img src="./progress/progress_total.svg">
