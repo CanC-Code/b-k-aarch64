@@ -6,6 +6,8 @@ this is supposed to be simpler then compiling for android directly. hopefully if
 
 thanks for dropping by, and having a look!! I'll try to keep notes
 
+the first stage i am working at is adapting the splat to work with version 1.1.
+
 
 __________________________________________________________________
 
