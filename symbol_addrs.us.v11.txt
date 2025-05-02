@@ -1,0 +1,13 @@
+code_0 = 0x8023DA20;
+pimanager = 0x8023E8F0;
+anctrl = 0x80286F90;
+code_1550 = 0x80288520;
+ttc_func = 0x80388AC0;
+mm_func = 0x803888B0;
+cc_func_80387DA0 = 0x80387DA0;
+bgs_func_8038F1E0 = 0x8038F1E0;
+SM_resetSpawnableActors = 0x80386810;
+mmm_func_8038A1D0 = 0x8038A1D0;
+gv_func_8038E1B0 = 0x8038E1B0;
+mm_func_803888B0 = 0x803888B0;
+ttc_func_80388AC0 = 0x80388AC0;
