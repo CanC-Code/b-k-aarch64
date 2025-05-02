@@ -8,6 +8,9 @@ thanks for dropping by, and having a look!! I'll try to keep notes
 
 the first stage i am working at is adapting the splat to work with version 1.1.
 
+-----------
+newest changes: we have adapted the 1.0 yaml, for the 1.1 base version, and have added 2 files directly based off of the 1.0 files as well, undefined_syms.us.v11.txt, and symbol_addrs.us.v11.txt.
+-----------
 
 __________________________________________________________________
 
