@@ -15,4 +15,4 @@
 	url = https://github.com/MittenzHugg/bk_asset_tool.git
 [submodule "tools/bk_rom_compressor"]
 	path = tools/bk_rom_compressor
-	url = https://github.com/MittenzHugg/bk_rom_compressor.git
+	url = https://github.com/CanC-Code/bk_rom_compressor.git
