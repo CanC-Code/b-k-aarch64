@@ -1,18 +1,15 @@
-// File: src/core1/ultra_native/libm_vals.cpp
-// Converted from asm/core1/ultra/libm_vals.s for Android N64 port
+// File: libm_vals.cpp
+// Purpose: Android-native replacement for libm_vals.s
 
 #include <cstdint>
+#include <cstddef>
+#include <cstring>
+#include <array>
+#include <type_traits>
 
-namespace ultra_native {
+extern "C" {
 
-// Quiet NaN float with bit pattern 0x7F810000
-constexpr uint32_t __libm_qnan_bits = 0x7F810000;
+// Ensure 32-bit aligned float
+alignas(4) const uint32_t __libm_qnan_f = 0x7F810000;
 
-// Optionally provide as a float for direct use
-inline float libm_qnan_f() {
-    float value;
-    std::memcpy(&value, &__libm_qnan_bits, sizeof(value));
-    return value;
 }
-
-} // namespace ultra_native
