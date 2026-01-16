@@ -1,21 +1,20 @@
-// File: src/core1/ultra_native/parameters.cpp
-// Converted from asm/core1/ultra/parameters.s for Android N64 port
-
+// File: asm/core1/ultra/android_parameters.cpp
 #include <cstdint>
 
-namespace ultra_native {
+extern "C" {
 
-constexpr uintptr_t leoBootID      = 0x800001a0;
-constexpr uintptr_t osTvType       = 0x80000300;
-constexpr uintptr_t osRomType      = 0x80000304;
-constexpr uintptr_t osRomBase      = 0x80000308;
-constexpr uintptr_t osResetType    = 0x8000030c;
-constexpr uintptr_t osCicId        = 0x80000310;
-constexpr uintptr_t osVersion      = 0x80000314;
-constexpr uintptr_t osMemSize      = 0x80000318;
-constexpr uintptr_t osAppNMIBuffer = 0x8000031c;
+// Use volatile to prevent compiler optimizing out accesses
+volatile uint32_t* const leoBootID       = reinterpret_cast<volatile uint32_t*>(0x800001a0);
+volatile uint32_t* const osTvType        = reinterpret_cast<volatile uint32_t*>(0x80000300);
+volatile uint32_t* const osRomType       = reinterpret_cast<volatile uint32_t*>(0x80000304);
+volatile uint32_t* const osRomBase       = reinterpret_cast<volatile uint32_t*>(0x80000308);
+volatile uint32_t* const osResetType     = reinterpret_cast<volatile uint32_t*>(0x8000030c);
+volatile uint32_t* const osCicId         = reinterpret_cast<volatile uint32_t*>(0x80000310);
+volatile uint32_t* const osVersion       = reinterpret_cast<volatile uint32_t*>(0x80000314);
+volatile uint32_t* const osMemSize       = reinterpret_cast<volatile uint32_t*>(0x80000318);
+volatile uint32_t* const osAppNMIBuffer  = reinterpret_cast<volatile uint32_t*>(0x8000031c);
 
-// Padding for alignment
-alignas(4) uint8_t padding[0x60] = {};
+// Pad to match original .space 0x60
+alignas(0x60) uint8_t __parameters_pad[0x60] = {0};
 
-} // namespace ultra_native
+} // extern "C"
