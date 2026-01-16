@@ -1,12 +1,15 @@
+// File: app/build.gradle
 plugins {
     id 'com.android.application'
+    id 'org.jetbrains.kotlin.android' // Optional, if you use Kotlin
 }
 
 android {
+    namespace 'com.canc.bkaarch64'  // Change to your package
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.bkawrapper"
+        applicationId "com.canc.bkaarch64" // Change to your package
         minSdk 24
         targetSdk 34
         versionCode 1
@@ -19,29 +22,42 @@ android {
         }
 
         ndk {
-            abiFilters "arm64-v8a"
+            abiFilters 'arm64-v8a' // Adjust if you want other ABIs
         }
     }
 
     buildTypes {
+        debug {
+            debuggable true
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
     externalNativeBuild {
         cmake {
             path "src/main/cpp/CMakeLists.txt"
+            version "3.24.1"
         }
     }
 
-    sourceSets {
-        main {
-            java.srcDirs = ['src/main/java']
-            cpp.srcDirs = ['src/main/cpp']
-            res.srcDirs = ['src/main/res']
-            manifest.srcFile 'src/main/AndroidManifest.xml'
-        }
-    }
+    // No sourceSets.main.cpp references
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.10.0'
+    // Add any other dependencies your project needs
 }
