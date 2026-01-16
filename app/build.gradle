@@ -1,58 +1,57 @@
 // File: app/build.gradle
 plugins {
     id 'com.android.application'
-    id 'org.jetbrains.kotlin.android' // no version here
+    id 'org.jetbrains.kotlin.android' version '1.9.0' apply false
 }
 
 android {
+    namespace 'com.bkawrapper'
     compileSdk 34
 
     defaultConfig {
         applicationId "com.bkawrapper"
-        minSdk 24
+        minSdk 26
         targetSdk 34
         versionCode 1
         versionName "1.0"
 
         ndk {
-            abiFilters 'arm64-v8a'
+            abiFilters "arm64-v8a", "armeabi-v7a"
         }
 
         externalNativeBuild {
             cmake {
-                cppFlags "-std=c++17 -O2"
+                cppFlags "-std=c++17"
             }
         }
     }
 
     buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
         debug {
             minifyEnabled false
+            shrinkResources false
+        }
+        release {
+            minifyEnabled false
+            shrinkResources false
         }
     }
 
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = '17'
+    buildFeatures {
+        viewBinding true
     }
 
     externalNativeBuild {
         cmake {
             path "src/main/cpp/CMakeLists.txt"
+            version "3.24.1"
         }
     }
-
-    namespace 'com.bkawrapper'
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    implementation "androidx.appcompat:appcompat:1.7.0"
+    implementation "androidx.core:core-ktx:1.12.0"
+    implementation "com.google.android.material:material:1.9.0"
+    implementation "androidx.activity:activity-ktx:1.9.0"
 }
