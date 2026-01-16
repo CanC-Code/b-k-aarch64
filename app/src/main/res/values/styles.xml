@@ -1,8 +1,8 @@
-<!-- File: app/src/main/res/values/styles.xml -->
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
-        <item name="colorPrimary">@color/purple_500</item>
-        <item name="colorPrimaryDark">@color/purple_700</item>
-        <item name="colorAccent">@color/teal_200</item>
+    <style name="Theme.BKAWrap" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">#1E88E5</item>
+        <item name="colorPrimaryDark">#1565C0</item>
+        <item name="colorAccent">#FFC107</item>
     </style>
 </resources>
