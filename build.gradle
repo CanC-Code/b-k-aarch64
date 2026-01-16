@@ -1,26 +1,10 @@
 buildscript {
-    ext.kotlin_version = "1.8.22"
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    ext {
+        kotlin_version = "1.8.22"
+        agp_version = "8.2.2"
     }
 }
 
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
-
-    configurations.all {
-        resolutionStrategy {
-            // Force Kotlin stdlib versions to match
-            force "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-            force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-            force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-        }
-    }
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
 }
