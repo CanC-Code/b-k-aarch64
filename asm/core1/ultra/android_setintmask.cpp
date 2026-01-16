@@ -1,24 +1,21 @@
-// File: android_setintmask.cpp
-// Purpose: Native replacement for MIPS osSetIntMask assembly, adapted for Android
+// File: asm/core1/ultra/android_setintmask.cpp
 #include <cstdint>
-#include <array>
 
-// ---------- Definitions ----------
-constexpr uint16_t CLR_SP = 0x0001;
-constexpr uint16_t SET_SP = 0x0002;
-constexpr uint16_t CLR_SI = 0x0004;
-constexpr uint16_t SET_SI = 0x0008;
-constexpr uint16_t CLR_AI = 0x0010;
-constexpr uint16_t SET_AI = 0x0020;
-constexpr uint16_t CLR_VI = 0x0040;
-constexpr uint16_t SET_VI = 0x0080;
-constexpr uint16_t CLR_PI = 0x0100;
-constexpr uint16_t SET_PI = 0x0200;
-constexpr uint16_t CLR_DP = 0x0400;
-constexpr uint16_t SET_DP = 0x0800;
+#define CLR_SP 0x0001
+#define SET_SP 0x0002
+#define CLR_SI 0x0004
+#define SET_SI 0x0008
+#define CLR_AI 0x0010
+#define SET_AI 0x0020
+#define CLR_VI 0x0040
+#define SET_VI 0x0080
+#define CLR_PI 0x0100
+#define SET_PI 0x0200
+#define CLR_DP 0x0400
+#define SET_DP 0x0800
 
-// ---------- LUT for MI_INTR -> MI_INTR_MASK ----------
-alignas(4) static const std::array<uint16_t, 64> osRcpImTable = {
+// LUT exactly matching the original setintmask.s
+constexpr uint16_t __osRcpImTable[64] = {
     CLR_SP | CLR_SI | CLR_AI | CLR_VI | CLR_PI | CLR_DP,
     SET_SP | CLR_SI | CLR_AI | CLR_VI | CLR_PI | CLR_DP,
     CLR_SP | SET_SI | CLR_AI | CLR_VI | CLR_PI | CLR_DP,
@@ -82,21 +79,45 @@ alignas(4) static const std::array<uint16_t, 64> osRcpImTable = {
     CLR_SP | CLR_SI | SET_AI | SET_VI | SET_PI | SET_DP,
     SET_SP | CLR_SI | SET_AI | SET_VI | SET_PI | SET_DP,
     CLR_SP | SET_SI | SET_AI | SET_VI | SET_PI | SET_DP,
-    SET_SP | SET_SI | SET_AI | SET_VI | SET_PI | SET_DP,
+    SET_SP | SET_SI | SET_AI | SET_VI | SET_PI | SET_DP
 };
 
-// ---------- Global Mask ----------
-static uint16_t globalIntMask = 0;
+extern "C" uint32_t __OSGlobalIntMask;
+extern "C" volatile uint32_t* const MI_INTR_MASK_REG; // define properly in your environment
 
-// ---------- Replacement Function ----------
-uint16_t osSetIntMask(uint16_t mask) {
-    // Apply mask using LUT
-    uint16_t tableIndex = mask & 0x3F; // only 6 bits for MI_INTR_MASK
-    uint16_t imMask = osRcpImTable[tableIndex];
+extern "C" void osSetIntMask(uint32_t mask) {
+    uint32_t t4 = 0; // temporary CPU register simulation
+    uint32_t t0, t1, t2, v0;
 
-    // Combine with current mask
-    uint16_t previous = globalIntMask;
-    globalIntMask = (previous & 0xFF00) | (imMask & 0x00FF);
+    // simulate MIPS mfc0 instruction
+    t4 = 0; // read status register if needed
 
-    return previous;
+    v0 = t4 & 0xff01;
+    t0 = __OSGlobalIntMask;
+    t0 ^= 0xFFFFFFFF;
+    t0 &= 0xff00;
+    v0 |= t0;
+
+    t2 = *MI_INTR_MASK_REG;
+    if (t2 != 0) {
+        t1 = (__OSGlobalIntMask >> 16) ^ 0xFFFFFFFF;
+        t1 &= 0x3f;
+        t2 |= t1;
+    }
+    v0 |= (t2 << 16);
+
+    t0 = mask & 0x3f;
+    t0 &= __OSGlobalIntMask;
+    t0 >>= 15;
+    t2 = __osRcpImTable[t0];
+    *MI_INTR_MASK_REG = t2;
+
+    t0 = mask & 0xff01;
+    t1 = __OSGlobalIntMask & 0xff00;
+    t0 &= t1;
+    t4 &= 0xffff00ff;
+    t4 |= t0;
+
+    // simulate mtc0
+    __OSGlobalIntMask = t4;
 }
