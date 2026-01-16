@@ -63,7 +63,7 @@ jobs:
             -fill "#FFD700" \
             -font DejaVu-Sans-Bold \
             -pointsize 160 \
-            -annotate +0+0 "BKA Banjo Kazooie\nAArch64" \
+            -annotate +0+0 "B.K.A" \
             "$BASE_ICON"
 
           convert "$BASE_ICON" \
