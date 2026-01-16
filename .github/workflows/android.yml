@@ -58,6 +58,10 @@ jobs:
           BASE_ICON=/tmp/ic_launcher.png
           ROUND_ICON=/tmp/ic_launcher_round.png
 
+          # Remove any pre-existing static icons
+          rm -f $ICON_DIR/mipmap-*/ic_launcher*.png
+
+          # Generate base square icon
           convert -size 1024x1024 xc:"#4B0082" \
             -gravity center \
             -fill "#FFD700" \
@@ -66,11 +70,13 @@ jobs:
             -annotate +0+0 "B.K.A" \
             "$BASE_ICON"
 
+          # Generate round icon with alpha circle
           convert "$BASE_ICON" \
             \( -size 1024x1024 xc:none -fill white -draw "circle 512,512 512,0" \) \
             -compose copyopacity -composite \
             "$ROUND_ICON"
 
+          # Ensure mipmap directories exist
           mkdir -p \
             $ICON_DIR/mipmap-mdpi \
             $ICON_DIR/mipmap-hdpi \
@@ -78,9 +84,11 @@ jobs:
             $ICON_DIR/mipmap-xxhdpi \
             $ICON_DIR/mipmap-xxxhdpi
 
+          # Resize icons for all densities
           for SIZE in 48 72 96 144 192; do
-            convert "$BASE_ICON" -resize ${SIZE}x${SIZE} $ICON_DIR/mipmap-$(echo $SIZE | awk '{print ($1==48?"mdpi":($1==72?"hdpi":($1==96?"xhdpi":($1==144?"xxhdpi":"xxxhdpi"))))}')/ic_launcher.png
-            convert "$ROUND_ICON" -resize ${SIZE}x${SIZE} $ICON_DIR/mipmap-$(echo $SIZE | awk '{print ($1==48?"mdpi":($1==72?"hdpi":($1==96?"xhdpi":($1==144?"xxhdpi":"xxxhdpi"))))}')/ic_launcher_round.png
+            DENSITY=$(echo $SIZE | awk '{print ($1==48?"mdpi":($1==72?"hdpi":($1==96?"xhdpi":($1==144?"xxhdpi":"xxxhdpi"))))}')
+            convert "$BASE_ICON" -resize ${SIZE}x${SIZE} $ICON_DIR/mipmap-$DENSITY/ic_launcher.png
+            convert "$ROUND_ICON" -resize ${SIZE}x${SIZE} $ICON_DIR/mipmap-$DENSITY/ic_launcher_round.png
           done
 
       # ---------- Gradle cache ----------
