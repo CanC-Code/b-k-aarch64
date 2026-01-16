@@ -1,0 +1,110 @@
+# File: .github/workflows/android.yml
+# Purpose: Android CI build for BKA (Banjo-Kazooie AArch64) APK
+
+name: Android Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ---------- Checkout ----------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ---------- Java ----------
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # ---------- Android SDK / NDK ----------
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 34
+          build-tools: "34.0.0"
+          ndk: "27.3.10554745"
+
+      # ---------- Manual CMake 3.24.1 install ----------
+      - name: Install CMake 3.24.1
+        run: |
+          CMAKE_VERSION=3.24.1
+          CMAKE_DIR=$HOME/cmake-$CMAKE_VERSION
+          mkdir -p $CMAKE_DIR
+          curl -L -o /tmp/cmake.tar.gz https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION-linux-x86_64.tar.gz
+          tar -xzf /tmp/cmake.tar.gz --strip-components=1 -C $CMAKE_DIR
+          echo "$CMAKE_DIR/bin" >> $GITHUB_PATH
+
+      - name: Verify CMake version
+        run: cmake --version
+
+      # ---------- ImageMagick ----------
+      - name: Install ImageMagick
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+
+      # ---------- Generate Launcher Icons ----------
+      - name: Generate Android launcher icons
+        run: |
+          ICON_DIR=app/src/main/res
+          BASE_ICON=/tmp/ic_launcher.png
+          ROUND_ICON=/tmp/ic_launcher_round.png
+
+          convert -size 1024x1024 xc:"#4B0082" \
+            -gravity center \
+            -fill "#FFD700" \
+            -font DejaVu-Sans-Bold \
+            -pointsize 160 \
+            -annotate +0+0 "BKA Banjo Kazooie\nAArch64" \
+            "$BASE_ICON"
+
+          convert "$BASE_ICON" \
+            \( -size 1024x1024 xc:none -fill white -draw "circle 512,512 512,0" \) \
+            -compose copyopacity -composite \
+            "$ROUND_ICON"
+
+          mkdir -p \
+            $ICON_DIR/mipmap-mdpi \
+            $ICON_DIR/mipmap-hdpi \
+            $ICON_DIR/mipmap-xhdpi \
+            $ICON_DIR/mipmap-xxhdpi \
+            $ICON_DIR/mipmap-xxxhdpi
+
+          for SIZE in 48 72 96 144 192; do
+            convert "$BASE_ICON" -resize ${SIZE}x${SIZE} $ICON_DIR/mipmap-$(echo $SIZE | awk '{print ($1==48?"mdpi":($1==72?"hdpi":($1==96?"xhdpi":($1==144?"xxhdpi":"xxxhdpi"))))}')/ic_launcher.png
+            convert "$ROUND_ICON" -resize ${SIZE}x${SIZE} $ICON_DIR/mipmap-$(echo $SIZE | awk '{print ($1==48?"mdpi":($1==72?"hdpi":($1==96?"xhdpi":($1==144?"xxhdpi":"xxxhdpi"))))}')/ic_launcher_round.png
+          done
+
+      # ---------- Gradle cache ----------
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            app/build
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}
+
+      # ---------- Permissions ----------
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      # ---------- Build ----------
+      - name: Build Debug APK
+        run: ./gradlew :app:assembleDebug --no-daemon --no-build-cache --stacktrace
+
+      # ---------- Upload ----------
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: BKA-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
