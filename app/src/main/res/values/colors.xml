@@ -1,4 +1,7 @@
+<!-- File: app/src/main/res/values/colors.xml -->
 <resources>
-    <color name="purple_500">#4B0082</color>
-    <color name="yellow_500">#FFD700</color>
+    <color name="purple_500">#6200EE</color>
+    <color name="purple_700">#3700B3</color>
+    <color name="teal_200">#03DAC5</color>
+    <color name="white">#FFFFFF</color>
 </resources>
