@@ -1,12 +1,10 @@
-// File: build.gradle (root)
 buildscript {
-    ext.kotlin_version = '1.9.0'
+    ext.kotlin_version = "1.8.22"
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath "com.android.tools.build:gradle:8.1.2"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
@@ -16,8 +14,13 @@ allprojects {
         google()
         mavenCentral()
     }
-}
 
-task clean(type: Delete) {
-    delete rootProject.buildDir
+    configurations.all {
+        resolutionStrategy {
+            // Force Kotlin stdlib versions to match
+            force "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+            force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+            force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+        }
+    }
 }
