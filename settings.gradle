@@ -1,2 +1,10 @@
+// File: settings.gradle
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+rootProject.name = "b-k-aarch64"
 include ':app'
-rootProject.name = 'b-k-aarch64'
