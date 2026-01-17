@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <vector>
 #include <mutex>
+#include <cstdio>
 
 #define LOG_TAG "BK_WRAPPER"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -39,6 +40,11 @@ static int g_fbHeight = 240;
 static std::atomic<bool> g_running{false};
 static std::thread g_emulationThread;
 static std::mutex g_stateMutex;
+
+// ------------------------------------------------------------
+// In-memory OTR
+// ------------------------------------------------------------
+static std::vector<uint8_t> g_OTR;
 
 // ------------------------------------------------------------
 // Emulation loop
@@ -79,6 +85,7 @@ static void emulation_loop() {
 // ------------------------------------------------------------
 extern "C" {
 
+// Load ROM bytes into RAM
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_loadRom(
         JNIEnv* env, jclass, jbyteArray romData) {
@@ -96,6 +103,7 @@ Java_com_bkawrapper_NativeBridge_loadRom(
     LOGI("ROM loaded: %d bytes", len);
 }
 
+// Process ROM → OTR
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_processRom(
         JNIEnv*, jclass) {
@@ -104,6 +112,45 @@ Java_com_bkawrapper_NativeBridge_processRom(
     LOGI("OTR processing complete");
 }
 
+// Access in-memory OTR
+JNIEXPORT jbyteArray JNICALL
+Java_com_bkawrapper_NativeBridge_getOTRData(
+        JNIEnv* env, jclass) {
+
+    jbyteArray out = env->NewByteArray(static_cast<jsize>(g_OTR.size()));
+    if (!out || g_OTR.empty()) return out;
+
+    env->SetByteArrayRegion(out, 0, static_cast<jsize>(g_OTR.size()),
+                            reinterpret_cast<jbyte*>(g_OTR.data()));
+    return out;
+}
+
+// Save OTR to file path
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeBridge_saveOTRToFile(
+        JNIEnv*, jclass, jstring path) {
+
+    if (!path) return;
+
+    const char* cpath = nullptr;
+    cpath = env->GetStringUTFChars(path, nullptr);
+    if (!cpath) return;
+
+    FILE* f = fopen(cpath, "wb");
+    if (!f) {
+        env->ReleaseStringUTFChars(path, cpath);
+        LOGI("Failed to open file: %s", cpath);
+        return;
+    }
+
+    fwrite(g_OTR.data(), 1, g_OTR.size(), f);
+    fclose(f);
+    env->ReleaseStringUTFChars(path, cpath);
+
+    LOGI("Saved BK.OTR: %zu bytes to %s", g_OTR.size(), cpath);
+}
+
+// Init game
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_initGame(
         JNIEnv*, jclass, jobject /* surface */) {
@@ -117,6 +164,7 @@ Java_com_bkawrapper_NativeBridge_initGame(
     LOGI("Game initialized");
 }
 
+// Start/stop game loop
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_startGameLoop(
         JNIEnv*, jclass) {
