@@ -1,7 +1,6 @@
 // File: Android/app/src/main/java/com/bkawrapper/MainActivity.java
 package com.bkawrapper;
 
-import android.content.ContentResolver;
 import android.net.Uri;
 import android.os.Bundle;
 import android.widget.Button;
@@ -11,8 +10,6 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.opengl.GLSurfaceView;
-
-import java.io.InputStream;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -50,23 +47,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void handleRomUri(Uri uri) {
-        // Convert ROM from URI into byte[] and pass to native layer
-        try {
-            ContentResolver resolver = getContentResolver();
-            InputStream input = resolver.openInputStream(uri);
-            if (input != null) {
-                byte[] romBytes = new byte[input.available()];
-                int read = input.read(romBytes);
-                input.close();
-                if (read > 0) {
-                    NativeBridge.loadRom(romBytes); // JNI call to load ROM into RAM
-                    NativeBridge.processRom();      // Build in-memory BK.OTR
-                    NativeBridge.initGame(glSurfaceView.getHolder().getSurface());
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        // Load ROM and automatically generate in-memory BK.OTR
+        NativeBridge.loadRomFromUri(getContentResolver(), uri);
+
+        // Initialize game with OpenGL surface
+        NativeBridge.initGame(glSurfaceView.getHolder().getSurface());
     }
 
     @Override
@@ -83,6 +68,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     static {
-        System.loadLibrary("wrapper"); // Load your JNI wrapper.cpp
+        System.loadLibrary("bka_wrapper"); // Load your JNI wrapper.cpp
     }
 }
