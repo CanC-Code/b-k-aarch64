@@ -20,6 +20,7 @@ public class MainActivity extends AppCompatActivity {
     private GLRenderer glRenderer;
 
     private boolean surfaceReady = false;
+    private boolean gameStarted = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,7 +32,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Setup OpenGL ES 2.0
         glSurfaceView.setEGLContextClientVersion(2);
-        glRenderer = new GLRenderer();
+        glRenderer = new GLRenderer(this);
         glSurfaceView.setRenderer(glRenderer);
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
@@ -43,7 +44,9 @@ public class MainActivity extends AppCompatActivity {
                 }
         );
 
-        loadGameBtn.setOnClickListener(v -> romPickerLauncher.launch(new String[]{"application/octet-stream"}));
+        loadGameBtn.setOnClickListener(v ->
+                romPickerLauncher.launch(new String[]{"application/octet-stream"})
+        );
     }
 
     private void handleRomUri(Uri uri) {
@@ -51,6 +54,11 @@ public class MainActivity extends AppCompatActivity {
         NativeBridge.loadRomFromUri(getContentResolver(), uri);
 
         Log.i("BK_APP", "ROM loaded via SAF");
+
+        if (surfaceReady && !gameStarted) {
+            NativeBridge.startGameLoop();
+            gameStarted = true;
+        }
     }
 
     @Override
@@ -58,9 +66,10 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         glSurfaceView.onResume();
 
-        if (surfaceReady) {
+        if (surfaceReady && !gameStarted) {
             Log.i("BK_APP", "Starting game loop onResume");
             NativeBridge.startGameLoop();
+            gameStarted = true;
         }
     }
 
@@ -72,11 +81,14 @@ public class MainActivity extends AppCompatActivity {
         Log.i("BK_APP", "Stopping game loop onPause");
         NativeBridge.stopGameLoop();
         NativeBridge.cleanupGame();
+        gameStarted = false;
     }
 
     // Called from GLRenderer when surface is created
     void onSurfaceReady() {
+        if (surfaceReady) return; // prevent multiple calls
         surfaceReady = true;
+
         Log.i("BK_APP", "GL surface ready, initializing game");
         NativeBridge.initGame(glSurfaceView.getHolder().getSurface());
     }
