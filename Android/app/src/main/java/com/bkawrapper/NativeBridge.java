@@ -4,6 +4,7 @@ package com.bkawrapper;
 import android.content.ContentResolver;
 import android.net.Uri;
 import android.view.Surface;
+
 import java.io.InputStream;
 import java.io.IOException;
 
@@ -20,9 +21,13 @@ public class NativeBridge {
     // ---- Game init / cleanup ----
     public static native void initGame(Surface surface);
     public static native void cleanupGame();
+    public static native void resetGame();
 
-    // ---- Frame stepping ----
-    public static native void stepFrame();
+    // ---- Frame / Loop control ----
+    public static native void startGameLoop();
+    public static native void stopGameLoop();
+
+    // ---- Framebuffer access ----
     public static native int[] getFrameBuffer();
 
     // ---- Audio ----
@@ -49,5 +54,20 @@ public class NativeBridge {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    // ---- Convenience helpers for threaded game loop ----
+    public static void startGame(Surface surface) {
+        initGame(surface);
+        startGameLoop();
+    }
+
+    public static void stopGame() {
+        stopGameLoop();
+        cleanupGame();
+    }
+
+    public static void reset() {
+        resetGame();
     }
 }
