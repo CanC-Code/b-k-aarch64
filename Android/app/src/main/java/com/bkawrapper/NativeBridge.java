@@ -5,96 +5,54 @@ import android.content.ContentResolver;
 import android.net.Uri;
 import android.view.Surface;
 
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.io.IOException;
 
 public final class NativeBridge {
 
     static {
-        // MUST match the CMake add_library() name
         System.loadLibrary("wrapper");
     }
 
-    private NativeBridge() {
-        // Prevent instantiation
-    }
+    private NativeBridge() {}
 
-    // -------------------------
-    // ROM / OTR
-    // -------------------------
-    public static native void loadRom(byte[] romData);
+    // -------- Native API --------
+
+    public static native void loadRom(byte[] rom);
     public static native void processRom();
 
-    // -------------------------
-    // Game lifecycle
-    // -------------------------
     public static native void initGame(Surface surface);
     public static native void cleanupGame();
-    public static native void resetGame();
 
-    // -------------------------
-    // Game loop
-    // -------------------------
     public static native void startGameLoop();
     public static native void stopGameLoop();
 
-    // -------------------------
-    // Rendering
-    // -------------------------
-    public static native int initTexture();            // Returns OpenGL texture ID
+    public static native int initTexture();
     public static native void updateTexture(int texId);
 
-    // -------------------------
-    // Audio
-    // -------------------------
-    public static native short[] getAudioBuffer(int samples);
+    // -------- SAF Loader --------
 
-    // -------------------------
-    // Optional debug / export
-    // -------------------------
-    public static native void saveOTR(String path);
+    public static void loadRomFromUri(ContentResolver resolver, Uri uri) throws Exception {
+        try (InputStream is = resolver.openInputStream(uri);
+             ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
 
-    // -------------------------
-    // SAF helper: load ROM from URI directly
-    // -------------------------
-    public static void loadRomFromUri(ContentResolver resolver, Uri uri) {
-        try (InputStream is = resolver.openInputStream(uri)) {
-            if (is == null) return;
-
-            int size = is.available();
-            byte[] buffer = new byte[size];
-            int offset = 0;
-
-            while (offset < size) {
-                int read = is.read(buffer, offset, size - offset);
-                if (read <= 0) break;
-                offset += read;
+            if (is == null) {
+                throw new Exception("InputStream null");
             }
 
-            if (offset > 0) {
-                loadRom(buffer);
-                processRom();
+            byte[] buf = new byte[8192];
+            int r;
+            while ((r = is.read(buf)) > 0) {
+                bos.write(buf, 0, r);
             }
 
-        } catch (IOException e) {
-            e.printStackTrace();
+            byte[] rom = bos.toByteArray();
+            if (rom.length < 0x1000) {
+                throw new Exception("ROM too small");
+            }
+
+            loadRom(rom);
+            processRom();
         }
-    }
-
-    // -------------------------
-    // Convenience helpers
-    // -------------------------
-    public static void startGame(Surface surface) {
-        initGame(surface);
-        startGameLoop();
-    }
-
-    public static void stopGame() {
-        stopGameLoop();
-        cleanupGame();
-    }
-
-    public static void reset() {
-        resetGame();
     }
 }
