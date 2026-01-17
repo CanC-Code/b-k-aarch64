@@ -35,6 +35,9 @@ public final class NativeBridge {
     public static native byte[] getOTRData();
     public static native void saveOTRToFile(String path);
 
+    // -------- OTR Progress --------
+    public static native float getOTRProgress(); // 0.0 to 1.0
+
     // -------- SAF Loader --------
     public static void loadRomFromUri(ContentResolver resolver, Uri uri) throws Exception {
         try (InputStream is = resolver.openInputStream(uri);
