@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.opengl.GLSurfaceView;
+import android.opengl.GLES20;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -41,17 +42,18 @@ public class MainActivity extends AppCompatActivity {
                 }
         );
 
-        loadGameBtn.setOnClickListener(v -> {
-            romPickerLauncher.launch(new String[]{"application/octet-stream"});
-        });
+        loadGameBtn.setOnClickListener(v -> romPickerLauncher.launch(new String[]{"application/octet-stream"}));
     }
 
     private void handleRomUri(Uri uri) {
-        // Load ROM and automatically generate in-memory BK.OTR
+        // Load ROM and automatically generate BK.OTR
         NativeBridge.loadRomFromUri(getContentResolver(), uri);
 
-        // Initialize game with OpenGL surface
-        NativeBridge.initGame(glSurfaceView.getHolder().getSurface());
+        // Initialize game and start native game loop
+        NativeBridge.startGame(glSurfaceView.getHolder().getSurface());
+
+        // Initialize OpenGL texture in native side
+        glRenderer.initTexture();
     }
 
     @Override
@@ -64,10 +66,42 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         glSurfaceView.onPause();
-        NativeBridge.cleanupGame(); // Cleanup native resources when paused
+        NativeBridge.stopGame(); // Stop loop + cleanup resources
     }
 
     static {
-        System.loadLibrary("bka_wrapper"); // Load JNI wrapper with OTR and GPU framebuffer
+        System.loadLibrary("bka_wrapper"); // Load JNI wrapper
+    }
+
+    // ---- OpenGL Renderer ----
+    private class GLRenderer implements GLSurfaceView.Renderer {
+
+        private int texId = 0;
+
+        @Override
+        public void onSurfaceCreated(javax.microedition.khronos.opengles.GL10 gl, javax.microedition.khronos.egl.EGLConfig config) {
+            GLES20.glClearColor(0f, 0f, 0f, 1f);
+        }
+
+        @Override
+        public void onSurfaceChanged(javax.microedition.khronos.opengles.GL10 gl, int width, int height) {
+            GLES20.glViewport(0, 0, width, height);
+        }
+
+        @Override
+        public void onDrawFrame(javax.microedition.khronos.opengles.GL10 gl) {
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+
+            if (texId != 0) {
+                NativeBridge.updateTexture(texId); // Update GPU texture from native framebuffer
+            }
+
+            // TODO: render a fullscreen quad using texId
+            // (you can use a simple textured quad shader to draw the N64 framebuffer)
+        }
+
+        public void initTexture() {
+            texId = NativeBridge.initTexture();
+        }
     }
 }
