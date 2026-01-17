@@ -36,6 +36,10 @@ public class NativeBridge {
     // ---- Optional: save OTR to file ----
     public static native void saveOTR(String path);
 
+    // ---- Texture management for GLRenderer ----
+    public static native int initTexture();          // Returns a new OpenGL texture ID
+    public static native void updateTexture(int texId);  // Updates the texture with native framebuffer
+
     // ---- Helper: load ROM from SAF URI directly ----
     public static void loadRomFromUri(ContentResolver resolver, Uri uri) {
         try (InputStream is = resolver.openInputStream(uri)) {
