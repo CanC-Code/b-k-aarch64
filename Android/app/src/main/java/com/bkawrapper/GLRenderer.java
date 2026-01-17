@@ -14,29 +14,28 @@ import javax.microedition.khronos.opengles.GL10;
 
 public class GLRenderer implements GLSurfaceView.Renderer {
 
+    private final MainActivity activity;
+
     private int program;
-    private int textureId;
-    private int positionHandle, texCoordHandle, mvpMatrixHandle, samplerHandle;
-    private FloatBuffer vertexBuffer, texCoordBuffer;
-    private float[] mvpMatrix = new float[16];
+    private int textureId = 0;
 
-    // Vertex coordinates (full screen quad)
-    private final float[] vertices = {
-            -1f, 1f, 0f,
-            -1f, -1f, 0f,
-            1f, 1f, 0f,
-            1f, -1f, 0f
+    private FloatBuffer vertexBuffer;
+    private FloatBuffer texBuffer;
+    private final float[] mvp = new float[16];
+
+    private final float[] verts = {
+            -1,  1, 0,
+            -1, -1, 0,
+             1,  1, 0,
+             1, -1, 0
     };
 
-    // Texture coordinates (U,V)
-    private final float[] texCoords = {
-            0f, 0f,
-            0f, 1f,
-            1f, 0f,
-            1f, 1f
+    private final float[] tex = {
+            0, 0,
+            0, 1,
+            1, 0,
+            1, 1
     };
-
-    private MainActivity activity; // store reference to notify surface ready
 
     public GLRenderer(MainActivity activity) {
         this.activity = activity;
@@ -44,110 +43,87 @@ public class GLRenderer implements GLSurfaceView.Renderer {
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-        GLES20.glClearColor(0f, 0f, 0f, 1f);
-        Matrix.setIdentityM(mvpMatrix, 0);
+        GLES20.glClearColor(0, 0, 0, 1);
+        Matrix.setIdentityM(mvp, 0);
 
-        // Vertex buffer
-        vertexBuffer = ByteBuffer.allocateDirect(vertices.length * 4)
-                .order(ByteOrder.nativeOrder())
-                .asFloatBuffer();
-        vertexBuffer.put(vertices).position(0);
+        vertexBuffer = ByteBuffer.allocateDirect(verts.length * 4)
+                .order(ByteOrder.nativeOrder()).asFloatBuffer();
+        vertexBuffer.put(verts).position(0);
 
-        // Texture coordinate buffer
-        texCoordBuffer = ByteBuffer.allocateDirect(texCoords.length * 4)
-                .order(ByteOrder.nativeOrder())
-                .asFloatBuffer();
-        texCoordBuffer.put(texCoords).position(0);
+        texBuffer = ByteBuffer.allocateDirect(tex.length * 4)
+                .order(ByteOrder.nativeOrder()).asFloatBuffer();
+        texBuffer.put(tex).position(0);
 
-        // Shader source
-        String vertexShaderCode =
-                "uniform mat4 uMVPMatrix;" +
-                        "attribute vec4 aPosition;" +
-                        "attribute vec2 aTexCoord;" +
-                        "varying vec2 vTexCoord;" +
-                        "void main() {" +
-                        "  gl_Position = uMVPMatrix * aPosition;" +
-                        "  vTexCoord = aTexCoord;" +
-                        "}";
-
-        String fragmentShaderCode =
-                "precision mediump float;" +
-                        "uniform sampler2D uTexture;" +
-                        "varying vec2 vTexCoord;" +
-                        "void main() {" +
-                        "  gl_FragColor = texture2D(uTexture, vTexCoord);" +
-                        "}";
-
-        // Compile shaders
-        int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode);
-        int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderCode);
-
-        // Create program
-        program = GLES20.glCreateProgram();
-        GLES20.glAttachShader(program, vertexShader);
-        GLES20.glAttachShader(program, fragmentShader);
-        GLES20.glLinkProgram(program);
-
-        // Initialize texture via JNI
-        textureId = NativeBridge.initTexture();
-
-        // Notify activity that surface is ready
+        program = buildProgram();
         activity.onSurfaceReady();
-    }
-
-    @Override
-    public void onSurfaceChanged(GL10 gl, int width, int height) {
-        GLES20.glViewport(0, 0, width, height);
     }
 
     @Override
     public void onDrawFrame(GL10 gl) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
-        if (textureId == 0) return;
+        if (textureId == 0) {
+            textureId = NativeBridge.initTexture();
+            if (textureId == 0) return;
+        }
 
-        // Update texture from native framebuffer
         NativeBridge.updateTexture(textureId);
 
         GLES20.glUseProgram(program);
 
-        // Get handles
-        positionHandle = GLES20.glGetAttribLocation(program, "aPosition");
-        texCoordHandle = GLES20.glGetAttribLocation(program, "aTexCoord");
-        mvpMatrixHandle = GLES20.glGetUniformLocation(program, "uMVPMatrix");
-        samplerHandle = GLES20.glGetUniformLocation(program, "uTexture");
+        int p = GLES20.glGetAttribLocation(program, "aPos");
+        int t = GLES20.glGetAttribLocation(program, "aUV");
+        int m = GLES20.glGetUniformLocation(program, "uMVP");
+        int s = GLES20.glGetUniformLocation(program, "uTex");
 
-        // Vertex attributes
-        GLES20.glEnableVertexAttribArray(positionHandle);
-        GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+        GLES20.glEnableVertexAttribArray(p);
+        GLES20.glVertexAttribPointer(p, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
 
-        GLES20.glEnableVertexAttribArray(texCoordHandle);
-        GLES20.glVertexAttribPointer(texCoordHandle, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer);
+        GLES20.glEnableVertexAttribArray(t);
+        GLES20.glVertexAttribPointer(t, 2, GLES20.GL_FLOAT, false, 0, texBuffer);
 
-        // Uniforms
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvpMatrix, 0);
-        GLES20.glUniform1i(samplerHandle, 0);
+        GLES20.glUniformMatrix4fv(m, 1, false, mvp, 0);
+        GLES20.glUniform1i(s, 0);
 
-        // Draw quad
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
 
-        // Disable attributes
-        GLES20.glDisableVertexAttribArray(positionHandle);
-        GLES20.glDisableVertexAttribArray(texCoordHandle);
+        GLES20.glDisableVertexAttribArray(p);
+        GLES20.glDisableVertexAttribArray(t);
     }
 
-    private int loadShader(int type, String code) {
-        int shader = GLES20.glCreateShader(type);
-        GLES20.glShaderSource(shader, code);
-        GLES20.glCompileShader(shader);
+    @Override
+    public void onSurfaceChanged(GL10 gl, int w, int h) {
+        GLES20.glViewport(0, 0, w, h);
+    }
 
-        int[] compiled = new int[1];
-        GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0);
-        if (compiled[0] == 0) {
-            String log = GLES20.glGetShaderInfoLog(shader);
-            GLES20.glDeleteShader(shader);
-            throw new RuntimeException("Shader compile failed: " + log);
-        }
-        return shader;
+    private int buildProgram() {
+        String vs =
+                "uniform mat4 uMVP;" +
+                "attribute vec4 aPos;" +
+                "attribute vec2 aUV;" +
+                "varying vec2 vUV;" +
+                "void main(){gl_Position=uMVP*aPos;vUV=aUV;}";
+
+        String fs =
+                "precision mediump float;" +
+                "uniform sampler2D uTex;" +
+                "varying vec2 vUV;" +
+                "void main(){gl_FragColor=texture2D(uTex,vUV);}";
+
+        int v = compile(GLES20.GL_VERTEX_SHADER, vs);
+        int f = compile(GLES20.GL_FRAGMENT_SHADER, fs);
+
+        int p = GLES20.glCreateProgram();
+        GLES20.glAttachShader(p, v);
+        GLES20.glAttachShader(p, f);
+        GLES20.glLinkProgram(p);
+        return p;
+    }
+
+    private int compile(int type, String src) {
+        int s = GLES20.glCreateShader(type);
+        GLES20.glShaderSource(s, src);
+        GLES20.glCompileShader(s);
+        return s;
     }
 }
