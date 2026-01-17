@@ -1,9 +1,11 @@
+// File: Android/app/src/main/java/com/bkawrapper/MainActivity.java
 package com.bkawrapper;
 
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.Surface;
 import android.widget.Button;
+import android.util.Log;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -13,11 +15,11 @@ import android.opengl.GLSurfaceView;
 
 public class MainActivity extends AppCompatActivity {
 
+    private ActivityResultLauncher<String[]> romPickerLauncher;
     private GLSurfaceView glSurfaceView;
     private GLRenderer glRenderer;
-    private ActivityResultLauncher<String[]> romPickerLauncher;
 
-    private boolean gameStarted = false;
+    private boolean surfaceReady = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,37 +29,28 @@ public class MainActivity extends AppCompatActivity {
         Button loadGameBtn = findViewById(R.id.button_load_game);
         glSurfaceView = findViewById(R.id.surface_gl);
 
-        // -------------------------
-        // GL setup
-        // -------------------------
+        // Setup OpenGL ES 2.0
         glSurfaceView.setEGLContextClientVersion(2);
         glRenderer = new GLRenderer();
         glSurfaceView.setRenderer(glRenderer);
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
-        // -------------------------
-        // File picker
-        // -------------------------
+        // SAF launcher for ROM selection
         romPickerLauncher = registerForActivityResult(
                 new ActivityResultContracts.OpenDocument(),
-                this::onRomSelected
+                uri -> {
+                    if (uri != null) handleRomUri(uri);
+                }
         );
 
-        loadGameBtn.setOnClickListener(v ->
-                romPickerLauncher.launch(new String[]{"application/octet-stream"})
-        );
+        loadGameBtn.setOnClickListener(v -> romPickerLauncher.launch(new String[]{"application/octet-stream"}));
     }
 
-    private void onRomSelected(Uri uri) {
-        if (uri == null) return;
-
+    private void handleRomUri(Uri uri) {
+        // Load ROM safely
         NativeBridge.loadRomFromUri(getContentResolver(), uri);
 
-        Surface surface = glSurfaceView.getHolder().getSurface();
-        NativeBridge.initGame(surface);
-
-        NativeBridge.startGameLoop();
-        gameStarted = true;
+        Log.i("BK_APP", "ROM loaded via SAF");
     }
 
     @Override
@@ -65,7 +58,8 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         glSurfaceView.onResume();
 
-        if (gameStarted) {
+        if (surfaceReady) {
+            Log.i("BK_APP", "Starting game loop onResume");
             NativeBridge.startGameLoop();
         }
     }
@@ -73,22 +67,21 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-
-        if (gameStarted) {
-            NativeBridge.stopGameLoop();
-        }
-
         glSurfaceView.onPause();
+
+        Log.i("BK_APP", "Stopping game loop onPause");
+        NativeBridge.stopGameLoop();
+        NativeBridge.cleanupGame();
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
+    // Called from GLRenderer when surface is created
+    void onSurfaceReady() {
+        surfaceReady = true;
+        Log.i("BK_APP", "GL surface ready, initializing game");
+        NativeBridge.initGame(glSurfaceView.getHolder().getSurface());
+    }
 
-        if (gameStarted) {
-            NativeBridge.stopGameLoop();
-            NativeBridge.cleanupGame();
-            gameStarted = false;
-        }
+    static {
+        System.loadLibrary("wrapper"); // Match your CMake add_library
     }
 }
