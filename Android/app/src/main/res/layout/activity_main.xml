@@ -1,28 +1,26 @@
+<!-- File: Android/app/src/main/res/layout/activity_main.xml -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <LinearLayout
-        android:orientation="vertical"
-        android:gravity="center"
+    <!-- GLSurfaceView for rendering -->
+    <android.opengl.GLSurfaceView
+        android:id="@+id/surface_gl"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:padding="24dp">
+        android:layout_height="match_parent" />
 
-        <Button
-            android:id="@+id/button_load_game"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Load Game"/>
+    <!-- Load ROM button (initially visible, disappears once menu/game starts) -->
+    <Button
+        android:id="@+id/button_load_game"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Load Game"
+        android:layout_gravity="center" />
 
-        <android.opengl.GLSurfaceView
-            android:id="@+id/surface_gl"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:layout_marginTop="16dp"/>
-    </LinearLayout>
+    <!-- Menu overlay (hidden by default) -->
+    <include
+        android:id="@+id/menu_overlay"
+        layout="@layout/menu_overlay"
+        android:visibility="gone" />
 
-    <!-- Menu overlay -->
-    <include layout="@layout/menu_overlay"/>
 </FrameLayout>
