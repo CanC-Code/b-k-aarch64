@@ -40,20 +40,26 @@ static std::vector<uint8_t> BK_OTR;
 // ---- Audio Cache ----
 static std::vector<int16_t> gAudioCache;
 
-// ---- Core function declarations ----
+// ---- Stubbed Core functions ----
 extern "C" {
-    void core1_stepCPU(uint8_t* ram);
-    void core2_stepFrame(uint8_t* ram, uint32_t* framebuffer, int width, int height);
-    void n_audioStep();
-    void n_audioGetBuffer(int16_t* buffer, size_t samples);
-    void n_audioInit();
-    void core1_reset(uint8_t* ram);
 
-    // OTR builder
-    void core1_loadOTR(uint8_t* romData, size_t romSize);
-    uint8_t* getOTRData(size_t* outSize);
-    void saveOTRToFile(const char* path);
+void core1_stepCPU(uint8_t* ram) { /* stub */ }
+void core2_stepFrame(uint8_t* ram, uint32_t* framebuffer, int width, int height) { /* stub */ }
+void n_audioStep() { /* stub */ }
+void n_audioGetBuffer(int16_t* buffer, size_t samples) { 
+    memset(buffer, 0, samples * sizeof(int16_t));
 }
+void n_audioInit() { /* stub */ }
+void core1_reset(uint8_t* ram) { memset(ram, 0, RAM_SIZE); }
+
+void core1_loadOTR(uint8_t* romData, size_t romSize) { /* stub */ }
+uint8_t* getOTRData(size_t* outSize) { 
+    *outSize = 0; 
+    return nullptr; 
+}
+void saveOTRToFile(const char* path) { /* stub */ }
+
+} // extern "C"
 
 // ---- Threaded Game Loop ----
 static std::atomic<bool> gRunning = false;
@@ -80,26 +86,25 @@ static void resizeFrameBuffer(int width, int height) {
     memset(gFrameBuffer.get(), 0, gWidth * gHeight * sizeof(uint32_t));
 }
 
-// ---- JNI Exposed Functions ----
-extern "C"
+// ---- JNI Exposed Functions for NativeBridge ----
+extern "C" {
+
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_MainActivity_loadRom(JNIEnv* env, jobject thiz, jbyteArray romData) {
+Java_com_bkawrapper_NativeBridge_loadRom(JNIEnv* env, jclass clazz, jbyteArray romData) {
     jsize len = env->GetArrayLength(romData);
     if (len > RAM_SIZE) len = RAM_SIZE;
     env->GetByteArrayRegion(romData, 0, len, reinterpret_cast<jbyte*>(n64RAM.data()));
     LOGI("ROM loaded: %d bytes into N64 RAM", len);
 }
 
-extern "C"
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_MainActivity_processRom(JNIEnv* env, jobject thiz) {
+Java_com_bkawrapper_NativeBridge_processRom(JNIEnv* env, jclass clazz) {
     core1_loadOTR(n64RAM.data(), n64RAM.size());
     LOGI("OTR processing complete");
 }
 
-extern "C"
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_MainActivity_initGame(JNIEnv* env, jobject thiz, jobject surface) {
+Java_com_bkawrapper_NativeBridge_initGame(JNIEnv* env, jclass clazz, jobject surface) {
     if (surface) {
         gWindow = ANativeWindow_fromSurface(env, surface);
         int width = ANativeWindow_getWidth(gWindow);
@@ -112,41 +117,36 @@ Java_com_bkawrapper_MainActivity_initGame(JNIEnv* env, jobject thiz, jobject sur
     LOGI("Game initialized: %dx%d framebuffer", gWidth, gHeight);
 }
 
-extern "C"
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_MainActivity_resetGame(JNIEnv* env, jobject thiz) {
+Java_com_bkawrapper_NativeBridge_resetGame(JNIEnv* env, jclass clazz) {
     std::fill(n64RAM.begin(), n64RAM.end(), 0);
     core1_reset(n64RAM.data());
     LOGI("Game reset complete");
 }
 
-extern "C"
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_MainActivity_startGameLoop(JNIEnv* env, jobject thiz) {
+Java_com_bkawrapper_NativeBridge_startGameLoop(JNIEnv* env, jclass clazz) {
     if (gRunning) return;
     gRunning = true;
     gLoopThread = std::thread(gameLoop);
 }
 
-extern "C"
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_MainActivity_stopGameLoop(JNIEnv* env, jobject thiz) {
+Java_com_bkawrapper_NativeBridge_stopGameLoop(JNIEnv* env, jclass clazz) {
     gRunning = false;
     if (gLoopThread.joinable()) gLoopThread.join();
 }
 
-extern "C"
 JNIEXPORT jintArray JNICALL
-Java_com_bkawrapper_MainActivity_getFrameBuffer(JNIEnv* env, jobject thiz) {
+Java_com_bkawrapper_NativeBridge_getFrameBuffer(JNIEnv* env, jclass clazz) {
     std::lock_guard<std::mutex> lock(gFrameMutex);
     jintArray out = env->NewIntArray(gWidth * gHeight);
     if (gFrameBuffer) env->SetIntArrayRegion(out, 0, gWidth * gHeight, reinterpret_cast<jint*>(gFrameBuffer.get()));
     return out;
 }
 
-extern "C"
 JNIEXPORT jshortArray JNICALL
-Java_com_bkawrapper_MainActivity_getAudioBuffer(JNIEnv* env, jobject thiz, jint samples) {
+Java_com_bkawrapper_NativeBridge_getAudioBuffer(JNIEnv* env, jclass clazz, jint samples) {
     gAudioCache.resize(samples);
     n_audioGetBuffer(gAudioCache.data(), samples);
     jshortArray out = env->NewShortArray(samples);
@@ -154,9 +154,8 @@ Java_com_bkawrapper_MainActivity_getAudioBuffer(JNIEnv* env, jobject thiz, jint 
     return out;
 }
 
-extern "C"
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_MainActivity_cleanupGame(JNIEnv* env, jobject thiz) {
+Java_com_bkawrapper_NativeBridge_cleanupGame(JNIEnv* env, jclass clazz) {
     gRunning = false;
     if (gLoopThread.joinable()) gLoopThread.join();
 
@@ -170,16 +169,13 @@ Java_com_bkawrapper_MainActivity_cleanupGame(JNIEnv* env, jobject thiz) {
     LOGI("Game cleaned up");
 }
 
-extern "C"
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_MainActivity_saveOTR(JNIEnv* env, jobject thiz, jstring path) {
+Java_com_bkawrapper_NativeBridge_saveOTR(JNIEnv* env, jclass clazz, jstring path) {
     const char* cpath = env->GetStringUTFChars(path, nullptr);
     saveOTRToFile(cpath);
     env->ReleaseStringUTFChars(path, cpath);
 }
 
-// ---- JNI OpenGL Texture ----
-extern "C"
 JNIEXPORT jint JNICALL
 Java_com_bkawrapper_NativeBridge_initTexture(JNIEnv* env, jclass clazz) {
     glGenTextures(1, &gTexture);
@@ -192,7 +188,6 @@ Java_com_bkawrapper_NativeBridge_initTexture(JNIEnv* env, jclass clazz) {
     return gTexture;
 }
 
-extern "C"
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass clazz, jint texId) {
     if (!gFrameBuffer || texId <= 0) return;
@@ -201,7 +196,8 @@ Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass clazz, jint t
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, gWidth, gHeight, GL_RGBA, GL_UNSIGNED_BYTE, gFrameBuffer.get());
 }
 
-// ---- JNI Load ----
+} // extern "C"
+
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
     LOGI("BKA wrapper JNI_OnLoad called");
     return JNI_VERSION_1_6;
