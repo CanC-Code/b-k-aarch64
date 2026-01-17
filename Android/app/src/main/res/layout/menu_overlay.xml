@@ -1,38 +1,45 @@
-<!-- File: Android/app/src/main/res/layout/menu_overlay.xml -->
+<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/menu_overlay_root"
+    android:id="@+id/menu_overlay"
+    android:orientation="vertical"
+    android:background="#AA000000"   <!-- semi-transparent black overlay -->
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="#CC000000"  <!-- semi-transparent black -->
-    android:gravity="center"
-    android:padding="24dp">
+    android:padding="16dp"
+    android:gravity="top|start">
 
-    <Button
-        android:id="@+id/button_resume"
+    <!-- Title -->
+    <TextView
+        android:id="@+id/menu_title"
+        android:text="Menu"
+        android:textSize="24sp"
+        android:textColor="#FFFFFF"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Resume"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="24dp"/>
 
+    <!-- Exit button -->
     <Button
-        android:id="@+id/button_settings"
+        android:id="@+id/menu_exit"
+        android:text="Exit"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"/>
+
+    <!-- Settings button (stub for future settings) -->
+    <Button
+        android:id="@+id/menu_settings"
         android:text="Settings"
-        android:layout_marginBottom="16dp" />
-
-    <Button
-        android:id="@+id/button_controller"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"/>
+
+    <!-- Controller layout button -->
+    <Button
+        android:id="@+id/menu_controller"
         android:text="Controller Layout"
-        android:layout_marginBottom="16dp" />
-
-    <Button
-        android:id="@+id/button_exit"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Exit" />
+        android:layout_marginBottom="12dp"/>
 
 </LinearLayout>
