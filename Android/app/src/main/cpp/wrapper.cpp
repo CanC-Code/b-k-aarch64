@@ -25,7 +25,7 @@ static ANativeWindow* gWindow = nullptr;
 static std::mutex gFrameMutex;
 
 // ---- N64 RAM ----
-constexpr size_t RAM_SIZE = 8 * 1024 * 1024; // 8 MB N64
+constexpr size_t RAM_SIZE = 8 * 1024 * 1024; // 8 MB typical N64
 static std::vector<uint8_t> n64RAM(RAM_SIZE);
 
 // ---- OTR Data ----
@@ -45,12 +45,8 @@ extern "C" {
 extern "C"
 void core1_loadOTR(uint8_t* romData, size_t romSize) {
     BK_OTR.clear();
+    BK_OTR.reserve(romSize + 0x10000); // Reserve extra for segments
 
-    // Reserve space: roughly the full ROM size + padding
-    BK_OTR.reserve(romSize + 0x10000);
-
-    // Example header parsing (simplified for Banjo Kazooie)
-    // N64 ROM: first 0x40 = header
     if (romSize < 0x100) {
         LOGI("ROM too small to parse");
         return;
@@ -59,27 +55,24 @@ void core1_loadOTR(uint8_t* romData, size_t romSize) {
     // Copy header as first segment
     BK_OTR.insert(BK_OTR.end(), romData, romData + 0x40);
 
-    // Read segment table (simplified: we assume standard B-K segments)
-    struct Segment {
-        uint32_t start;
-        uint32_t end;
-        uint32_t dest;
-    };
+    struct Segment { uint32_t start, end, dest; };
     Segment segments[16];
 
     for (int i = 0; i < 16; i++) {
-        // Offsets in header for segment table (mockup, real offsets from BK header)
-        uint32_t start = (romData[0x40 + i*8 + 0] << 24) | (romData[0x40 + i*8 + 1] << 16) |
-                         (romData[0x40 + i*8 + 2] << 8) | romData[0x40 + i*8 + 3];
-        uint32_t end   = (romData[0x40 + i*8 + 4] << 24) | (romData[0x40 + i*8 + 5] << 16) |
-                         (romData[0x40 + i*8 + 6] << 8) | romData[0x40 + i*8 + 7];
+        uint32_t start = (romData[0x40 + i*8 + 0] << 24) |
+                         (romData[0x40 + i*8 + 1] << 16) |
+                         (romData[0x40 + i*8 + 2] << 8) |
+                         romData[0x40 + i*8 + 3];
+        uint32_t end   = (romData[0x40 + i*8 + 4] << 24) |
+                         (romData[0x40 + i*8 + 5] << 16) |
+                         (romData[0x40 + i*8 + 6] << 8) |
+                         romData[0x40 + i*8 + 7];
         if (end <= start || end > romSize) continue;
 
         segments[i].start = start;
-        segments[i].end = end;
-        segments[i].dest = BK_OTR.size();
+        segments[i].end   = end;
+        segments[i].dest  = BK_OTR.size();
 
-        // Copy segment data into BK_OTR
         BK_OTR.insert(BK_OTR.end(), romData + start, romData + end);
         LOGI("Segment %d: 0x%08X -> 0x%08X (%u bytes)", i, start, BK_OTR.size(), end - start);
     }
@@ -90,7 +83,7 @@ void core1_loadOTR(uint8_t* romData, size_t romSize) {
 // ---- JNI Exposed Functions ----
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_MainActivity_loadRom(JNIEnv* env, jobject thiz, jbyteArray romData) {
+Java_com_bkawrapper_NativeBridge_loadRom(JNIEnv* env, jclass clazz, jbyteArray romData) {
     jsize len = env->GetArrayLength(romData);
     if (len > RAM_SIZE) len = RAM_SIZE;
 
@@ -100,14 +93,14 @@ Java_com_bkawrapper_MainActivity_loadRom(JNIEnv* env, jobject thiz, jbyteArray r
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_MainActivity_processRom(JNIEnv* env, jobject thiz) {
+Java_com_bkawrapper_NativeBridge_processRom(JNIEnv* env, jclass clazz) {
     core1_loadOTR(n64RAM.data(), n64RAM.size());
     LOGI("OTR processing complete, in-memory OTR ready");
 }
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_MainActivity_initGame(JNIEnv* env, jobject thiz, jobject surface) {
+Java_com_bkawrapper_NativeBridge_initGame(JNIEnv* env, jclass clazz, jobject surface) {
     if (surface) {
         gWindow = ANativeWindow_fromSurface(env, surface);
         gWidth = ANativeWindow_getWidth(gWindow);
@@ -126,7 +119,7 @@ Java_com_bkawrapper_MainActivity_initGame(JNIEnv* env, jobject thiz, jobject sur
 
 extern "C"
 JNIEXPORT jintArray JNICALL
-Java_com_bkawrapper_MainActivity_getFrameBuffer(JNIEnv* env, jobject thiz) {
+Java_com_bkawrapper_NativeBridge_getFrameBuffer(JNIEnv* env, jclass clazz) {
     std::lock_guard<std::mutex> lock(gFrameMutex);
     jintArray out = env->NewIntArray(gWidth * gHeight);
     env->SetIntArrayRegion(out, 0, gWidth * gHeight, reinterpret_cast<jint*>(gFrameBuffer));
@@ -135,7 +128,7 @@ Java_com_bkawrapper_MainActivity_getFrameBuffer(JNIEnv* env, jobject thiz) {
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_MainActivity_stepFrame(JNIEnv* env, jobject thiz) {
+Java_com_bkawrapper_NativeBridge_stepFrame(JNIEnv* env, jclass clazz) {
     std::lock_guard<std::mutex> lock(gFrameMutex);
     core1_stepCPU(n64RAM.data());
     core2_stepFrame(n64RAM.data(), gFrameBuffer, gWidth, gHeight);
@@ -144,7 +137,7 @@ Java_com_bkawrapper_MainActivity_stepFrame(JNIEnv* env, jobject thiz) {
 
 extern "C"
 JNIEXPORT jshortArray JNICALL
-Java_com_bkawrapper_MainActivity_getAudioBuffer(JNIEnv* env, jobject thiz, jint samples) {
+Java_com_bkawrapper_NativeBridge_getAudioBuffer(JNIEnv* env, jclass clazz, jint samples) {
     jshortArray out = env->NewShortArray(samples);
     std::vector<int16_t> buffer(samples, 0);
     n_audioGetBuffer(buffer.data(), samples);
@@ -154,7 +147,7 @@ Java_com_bkawrapper_MainActivity_getAudioBuffer(JNIEnv* env, jobject thiz, jint 
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_MainActivity_cleanupGame(JNIEnv* env, jobject thiz) {
+Java_com_bkawrapper_NativeBridge_cleanupGame(JNIEnv* env, jclass clazz) {
     if (gWindow) {
         ANativeWindow_release(gWindow);
         gWindow = nullptr;
@@ -169,7 +162,7 @@ Java_com_bkawrapper_MainActivity_cleanupGame(JNIEnv* env, jobject thiz) {
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_MainActivity_saveOTR(JNIEnv* env, jobject thiz, jstring path) {
+Java_com_bkawrapper_NativeBridge_saveOTR(JNIEnv* env, jclass clazz, jstring path) {
     const char* cpath = env->GetStringUTFChars(path, nullptr);
     FILE* f = fopen(cpath, "wb");
     if (f) {
