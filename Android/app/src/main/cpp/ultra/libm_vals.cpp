@@ -1,15 +1,9 @@
-// File: libm_vals.cpp
-// Purpose: Android-native replacement for libm_vals.s
-
+// File: Android/app/src/main/cpp/ultra/libm_vals.cpp
 #include <cstdint>
-#include <cstddef>
-#include <cstring>
-#include <array>
-#include <type_traits>
 
 extern "C" {
 
-// Ensure 32-bit aligned float
+// Single-precision quiet NaN (matching 0x7F810000)
 alignas(4) const uint32_t __libm_qnan_f = 0x7F810000;
 
-}
+} // extern "C"
