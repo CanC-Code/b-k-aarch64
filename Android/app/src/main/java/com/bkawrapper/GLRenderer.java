@@ -15,10 +15,12 @@ import javax.microedition.khronos.opengles.GL10;
 public class GLRenderer implements GLSurfaceView.Renderer {
 
     private int program;
-    private int textureId;
+    private int textureId = 0;
     private int positionHandle, texCoordHandle, mvpMatrixHandle, samplerHandle;
     private FloatBuffer vertexBuffer, texCoordBuffer;
     private float[] mvpMatrix = new float[16];
+
+    private boolean textureInitialized = false;
 
     // Vertex coordinates (full screen quad)
     private final float[] vertices = {
@@ -72,18 +74,20 @@ public class GLRenderer implements GLSurfaceView.Renderer {
                 "  gl_FragColor = texture2D(uTexture, vTexCoord);" +
                 "}";
 
-        // Compile shaders
+        // Compile shaders and link program
         int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode);
         int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderCode);
 
-        // Create program
         program = GLES20.glCreateProgram();
         GLES20.glAttachShader(program, vertexShader);
         GLES20.glAttachShader(program, fragmentShader);
         GLES20.glLinkProgram(program);
 
-        // Initialize texture via JNI
-        textureId = NativeBridge.initTexture();
+        // Only initialize texture if not already done
+        if (!textureInitialized) {
+            textureId = NativeBridge.initTexture();
+            textureInitialized = true;
+        }
     }
 
     @Override
@@ -95,10 +99,15 @@ public class GLRenderer implements GLSurfaceView.Renderer {
     public void onDrawFrame(GL10 gl) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
-        if (textureId == 0) return;
+        if (textureId == 0) return; // Wait until texture is ready
 
-        // Update texture from native framebuffer
-        NativeBridge.updateTexture(textureId);
+        // Update texture safely
+        try {
+            NativeBridge.updateTexture(textureId);
+        } catch (Exception e) {
+            // Prevent crash if framebuffer not yet ready
+            return;
+        }
 
         GLES20.glUseProgram(program);
 
@@ -128,7 +137,10 @@ public class GLRenderer implements GLSurfaceView.Renderer {
     }
 
     public void initTexture() {
-        textureId = NativeBridge.initTexture();
+        if (!textureInitialized) {
+            textureId = NativeBridge.initTexture();
+            textureInitialized = true;
+        }
     }
 
     private int loadShader(int type, String code) {
