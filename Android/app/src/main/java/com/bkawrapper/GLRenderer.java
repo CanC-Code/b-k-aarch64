@@ -1,4 +1,3 @@
-// File: Android/app/src/main/java/com/bkawrapper/GLRenderer.java
 package com.bkawrapper;
 
 import android.opengl.GLES20;
@@ -18,6 +17,7 @@ public class GLRenderer implements GLSurfaceView.Renderer {
 
     private int program;
     private int textureId = 0;
+    private boolean textureReady = false;
 
     private FloatBuffer vertexBuffer;
     private FloatBuffer texBuffer;
@@ -55,17 +55,21 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         texBuffer.put(tex).position(0);
 
         program = buildProgram();
+
         activity.onSurfaceReady();
+    }
+
+    /** Called ONLY by MainActivity once native core is ready */
+    public void attachTexture(int texId) {
+        this.textureId = texId;
+        this.textureReady = texId != 0;
     }
 
     @Override
     public void onDrawFrame(GL10 gl) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
-        if (textureId == 0) {
-            textureId = NativeBridge.initTexture();
-            if (textureId == 0) return;
-        }
+        if (!textureReady) return;
 
         NativeBridge.updateTexture(textureId);
 
