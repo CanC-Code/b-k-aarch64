@@ -1,4 +1,3 @@
-// File: Android/app/src/main/java/com/bkawrapper/MainActivity.java
 package com.bkawrapper;
 
 import android.net.Uri;
@@ -20,10 +19,8 @@ public class MainActivity extends AppCompatActivity {
     private GLRenderer glRenderer;
     private ActivityResultLauncher<String[]> romPickerLauncher;
 
-    // Launch gates
     private boolean surfaceReady = false;
     private boolean romReady = false;
-    private boolean gameInitialized = false;
     private boolean gameRunning = false;
 
     @Override
@@ -34,7 +31,6 @@ public class MainActivity extends AppCompatActivity {
         Button loadBtn = findViewById(R.id.button_load_game);
         glSurfaceView = findViewById(R.id.surface_gl);
 
-        // OpenGL setup ONLY
         glSurfaceView.setEGLContextClientVersion(2);
         glRenderer = new GLRenderer(this);
         glSurfaceView.setRenderer(glRenderer);
@@ -56,13 +52,10 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadRom(Uri uri) {
         try {
-            Log.i(TAG, "Loading ROM...");
+            Log.i(TAG, "Loading ROM");
             NativeBridge.loadRomFromUri(getContentResolver(), uri);
             romReady = true;
-            Log.i(TAG, "ROM + OTR ready");
-
             tryStartGame();
-
         } catch (Exception e) {
             Log.e(TAG, "ROM load failed", e);
         }
@@ -75,15 +68,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void tryStartGame() {
-        if (!surfaceReady || !romReady || gameInitialized) {
-            return;
-        }
+        if (!surfaceReady || !romReady || gameRunning) return;
 
-        Log.i(TAG, "Initializing game");
+        Log.i(TAG, "Initializing native core");
+
         NativeBridge.initGame(glSurfaceView.getHolder().getSurface());
-        NativeBridge.initTexture();
 
-        gameInitialized = true;
+        int texId = NativeBridge.initTexture();
+        glRenderer.attachTexture(texId);
 
         NativeBridge.startGameLoop();
         gameRunning = true;
@@ -100,7 +92,6 @@ public class MainActivity extends AppCompatActivity {
             NativeBridge.stopGameLoop();
             NativeBridge.cleanupGame();
             gameRunning = false;
-            gameInitialized = false;
         }
     }
 
