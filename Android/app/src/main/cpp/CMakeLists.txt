@@ -7,22 +7,26 @@ project(bkawrapper LANGUAGES C CXX)
 # ------------------------------
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # ------------------------------
-# Source files: include all .cpp in this directory
+# Source files
 # ------------------------------
-file(GLOB_RECURSE WRAPPER_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+set(WRAPPER_SOURCES
+    wrapper.cpp
+    setinitmasks.cpp
+    parameters.cpp
+    exceptasm.cpp
 )
 
 add_library(wrapper SHARED ${WRAPPER_SOURCES})
 
 # ------------------------------
-# Include directories (if needed)
+# Include directories
 # ------------------------------
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/emulator  # adjust if you have subdirs
+    ${CMAKE_CURRENT_SOURCE_DIR}/emulator
 )
 
 # ------------------------------
