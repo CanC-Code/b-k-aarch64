@@ -14,13 +14,24 @@ android {
         versionName "1.0"
 
         ndk {
-            abiFilters 'arm64-v8a'
+            // Add both 64-bit and 32-bit if desired
+            abiFilters 'arm64-v8a', 'armeabi-v7a'
+        }
+
+        externalNativeBuild {
+            cmake {
+                // Use default NDK CMake version
+                path "src/main/cpp/CMakeLists.txt"
+            }
         }
     }
 
     buildTypes {
         debug {
             debuggable true
+            ndk {
+                debugSymbolLevel 'FULL'  // full debug symbols for native code
+            }
         }
         release {
             minifyEnabled false
@@ -33,13 +44,19 @@ android {
     externalNativeBuild {
         cmake {
             path "src/main/cpp/CMakeLists.txt"
-            version "3.22.1"
+            version "3.22.1" // optional, override default if needed
         }
     }
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+    }
+
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 }
 
