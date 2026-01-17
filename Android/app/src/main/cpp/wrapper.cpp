@@ -1,5 +1,5 @@
 // File: Android/app/src/main/cpp/wrapper.cpp
-// Purpose: Android JNI wrapper for Banjo Kazooie decomp cores (core1/core2) with GPU-backed texture
+// Purpose: Android JNI wrapper for Banjo-Kazooie decomp cores (core1/core2) with GPU-backed texture
 // Author: CCVO
 
 #include <jni.h>
@@ -48,6 +48,11 @@ extern "C" {
     void n_audioGetBuffer(int16_t* buffer, size_t samples);
     void n_audioInit();
     void core1_reset(uint8_t* ram);
+
+    // OTR builder
+    void core1_loadOTR(uint8_t* romData, size_t romSize);
+    uint8_t* getOTRData(size_t* outSize);
+    void saveOTRToFile(const char* path);
 }
 
 // ---- Threaded Game Loop ----
@@ -73,90 +78,6 @@ static void resizeFrameBuffer(int width, int height) {
     gHeight = height;
     gFrameBuffer = std::make_unique<uint32_t[]>(gWidth * gHeight);
     memset(gFrameBuffer.get(), 0, gWidth * gHeight * sizeof(uint32_t));
-}
-
-// ---- Dynamic OTR Builder ----
-extern "C"
-void core1_loadOTR(uint8_t* romData, size_t romSize) {
-    BK_OTR.clear();
-    if (!romData || romSize < 0x100) {
-        LOGI("ROM too small or null");
-        return;
-    }
-
-    // Copy 0x40-byte header
-    BK_OTR.insert(BK_OTR.end(), romData, romData + 0x40);
-
-    struct Segment { uint32_t start, end, dest; };
-    Segment segments[16];
-
-    for (int i = 0; i < 16; i++) {
-        uint32_t start = (romData[0x40 + i*8 + 0] << 24) |
-                         (romData[0x40 + i*8 + 1] << 16) |
-                         (romData[0x40 + i*8 + 2] << 8)  |
-                         (romData[0x40 + i*8 + 3]);
-        uint32_t end   = (romData[0x40 + i*8 + 4] << 24) |
-                         (romData[0x40 + i*8 + 5] << 16) |
-                         (romData[0x40 + i*8 + 6] << 8)  |
-                         (romData[0x40 + i*8 + 7]);
-
-        if (start >= end || end > romSize) {
-            segments[i] = {0,0,0};
-            continue;
-        }
-
-        segments[i].start = start;
-        segments[i].end   = end;
-        segments[i].dest  = static_cast<uint32_t>(BK_OTR.size());
-
-        BK_OTR.insert(BK_OTR.end(), romData + start, romData + end);
-        LOGI("Segment %d: ROM 0x%08X->0x%08X => OTR 0x%08X (%u bytes)",
-             i, start, end, segments[i].dest, end - start);
-    }
-
-    size_t pad = (16 - (BK_OTR.size() % 16)) % 16;
-    BK_OTR.insert(BK_OTR.end(), pad, 0);
-    LOGI("Dynamic BK.OTR built: %zu bytes (+%zu padding)", BK_OTR.size(), pad);
-}
-
-// Accessor for OTR data
-extern "C"
-uint8_t* getOTRData(size_t* outSize) {
-    if (outSize) *outSize = BK_OTR.size();
-    return BK_OTR.empty() ? nullptr : BK_OTR.data();
-}
-
-extern "C"
-void saveOTRToFile(const char* path) {
-    if (!path || BK_OTR.empty()) return;
-    FILE* f = fopen(path, "wb");
-    if (!f) return;
-    fwrite(BK_OTR.data(), 1, BK_OTR.size(), f);
-    fclose(f);
-    LOGI("Saved BK.OTR: %zu bytes to %s", BK_OTR.size(), path);
-}
-
-// ---- JNI OpenGL Texture ----
-extern "C"
-JNIEXPORT jint JNICALL
-Java_com_bkawrapper_NativeBridge_initTexture(JNIEnv* env, jclass clazz) {
-    glGenTextures(1, &gTexture);
-    glBindTexture(GL_TEXTURE_2D, gTexture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, gWidth, gHeight, 0,
-                 GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-    LOGI("OpenGL texture initialized: ID=%u", gTexture);
-    return gTexture;
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass clazz, jint texId) {
-    if (!gFrameBuffer || texId <= 0) return;
-    std::lock_guard<std::mutex> lock(gFrameMutex);
-    glBindTexture(GL_TEXTURE_2D, texId);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, gWidth, gHeight, GL_RGBA, GL_UNSIGNED_BYTE, gFrameBuffer.get());
 }
 
 // ---- JNI Exposed Functions ----
@@ -257,7 +178,30 @@ Java_com_bkawrapper_MainActivity_saveOTR(JNIEnv* env, jobject thiz, jstring path
     env->ReleaseStringUTFChars(path, cpath);
 }
 
-// JNI Load
+// ---- JNI OpenGL Texture ----
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_bkawrapper_NativeBridge_initTexture(JNIEnv* env, jclass clazz) {
+    glGenTextures(1, &gTexture);
+    glBindTexture(GL_TEXTURE_2D, gTexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, gWidth, gHeight, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    LOGI("OpenGL texture initialized: ID=%u", gTexture);
+    return gTexture;
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass clazz, jint texId) {
+    if (!gFrameBuffer || texId <= 0) return;
+    std::lock_guard<std::mutex> lock(gFrameMutex);
+    glBindTexture(GL_TEXTURE_2D, texId);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, gWidth, gHeight, GL_RGBA, GL_UNSIGNED_BYTE, gFrameBuffer.get());
+}
+
+// ---- JNI Load ----
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
     LOGI("BKA wrapper JNI_OnLoad called");
     return JNI_VERSION_1_6;
