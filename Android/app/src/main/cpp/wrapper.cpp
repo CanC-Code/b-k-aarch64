@@ -1,8 +1,5 @@
 // File: Android/app/src/main/cpp/wrapper.cpp
-// Purpose: Android JNI wrapper for Banjo Kazooie decomp cores (core1/core2)
-// Author: CCVO
-// Fully functional, links N64 RAM, dynamic OTR, CPU/RSP stepping, framebuffer, audio.
-
+// Purpose: Android JNI wrapper for Banjo Kazooie decomp cores (core1/core2) with GPU-backed texture
 #include <jni.h>
 #include <cstdint>
 #include <vector>
@@ -11,6 +8,7 @@
 #include <android/log.h>
 #include <android/native_window_jni.h>
 #include <android/native_window.h>
+#include <GLES2/gl2.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -23,6 +21,9 @@ static int gWidth = 320;
 static int gHeight = 240;
 static ANativeWindow* gWindow = nullptr;
 static std::mutex gFrameMutex;
+
+// OpenGL texture
+static GLuint gTexture = 0;
 
 // ---- N64 RAM ----
 constexpr size_t RAM_SIZE = 8 * 1024 * 1024; // 8 MB typical N64
@@ -39,143 +40,32 @@ extern "C" {
     void n_audioGetBuffer(int16_t* buffer, size_t samples);
     void n_audioInit();
     void core1_reset(uint8_t* ram);
+    void core1_loadOTR(uint8_t* romData, size_t romSize);
 }
 
-// ---- Dynamic OTR Builder ----
+// ---- OpenGL Texture Helpers ----
 extern "C"
-void core1_loadOTR(uint8_t* romData, size_t romSize) {
-    BK_OTR.clear();
-    BK_OTR.reserve(romSize + 0x10000); // Reserve extra for segments
+JNIEXPORT jint JNICALL
+Java_com_bkawrapper_NativeBridge_initTexture(JNIEnv* env, jclass clazz) {
+    glGenTextures(1, &gTexture);
+    glBindTexture(GL_TEXTURE_2D, gTexture);
 
-    if (romSize < 0x100) {
-        LOGI("ROM too small to parse");
-        return;
-    }
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    // Copy header as first segment
-    BK_OTR.insert(BK_OTR.end(), romData, romData + 0x40);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, gWidth, gHeight, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
-    struct Segment { uint32_t start, end, dest; };
-    Segment segments[16];
-
-    for (int i = 0; i < 16; i++) {
-        uint32_t start = (romData[0x40 + i*8 + 0] << 24) |
-                         (romData[0x40 + i*8 + 1] << 16) |
-                         (romData[0x40 + i*8 + 2] << 8) |
-                         romData[0x40 + i*8 + 3];
-        uint32_t end   = (romData[0x40 + i*8 + 4] << 24) |
-                         (romData[0x40 + i*8 + 5] << 16) |
-                         (romData[0x40 + i*8 + 6] << 8) |
-                         romData[0x40 + i*8 + 7];
-        if (end <= start || end > romSize) continue;
-
-        segments[i].start = start;
-        segments[i].end   = end;
-        segments[i].dest  = BK_OTR.size();
-
-        BK_OTR.insert(BK_OTR.end(), romData + start, romData + end);
-        LOGI("Segment %d: 0x%08X -> 0x%08X (%u bytes)", i, start, BK_OTR.size(), end - start);
-    }
-
-    LOGI("Dynamic OTR built in memory: %zu bytes", BK_OTR.size());
-}
-
-// ---- JNI Exposed Functions ----
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_loadRom(JNIEnv* env, jclass clazz, jbyteArray romData) {
-    jsize len = env->GetArrayLength(romData);
-    if (len > RAM_SIZE) len = RAM_SIZE;
-
-    env->GetByteArrayRegion(romData, 0, len, reinterpret_cast<jbyte*>(n64RAM.data()));
-    LOGI("ROM loaded: %d bytes into N64 RAM", len);
+    LOGI("OpenGL texture initialized: ID=%u", gTexture);
+    return gTexture;
 }
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_processRom(JNIEnv* env, jclass clazz) {
-    core1_loadOTR(n64RAM.data(), n64RAM.size());
-    LOGI("OTR processing complete, in-memory OTR ready");
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_initGame(JNIEnv* env, jclass clazz, jobject surface) {
-    if (surface) {
-        gWindow = ANativeWindow_fromSurface(env, surface);
-        gWidth = ANativeWindow_getWidth(gWindow);
-        gHeight = ANativeWindow_getHeight(gWindow);
-        ANativeWindow_setBuffersGeometry(gWindow, gWidth, gHeight, WINDOW_FORMAT_RGBA_8888);
-
-        gFrameBuffer = new uint32_t[gWidth * gHeight];
-        memset(gFrameBuffer, 0, gWidth * gHeight * sizeof(uint32_t));
-    }
-
-    core1_reset(n64RAM.data());
-    n_audioInit();
-
-    LOGI("Game initialized: %dx%d framebuffer", gWidth, gHeight);
-}
-
-extern "C"
-JNIEXPORT jintArray JNICALL
-Java_com_bkawrapper_NativeBridge_getFrameBuffer(JNIEnv* env, jclass clazz) {
+Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass clazz, jint texId) {
     std::lock_guard<std::mutex> lock(gFrameMutex);
-    jintArray out = env->NewIntArray(gWidth * gHeight);
-    env->SetIntArrayRegion(out, 0, gWidth * gHeight, reinterpret_cast<jint*>(gFrameBuffer));
-    return out;
-}
 
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_stepFrame(JNIEnv* env, jclass clazz) {
-    std::lock_guard<std::mutex> lock(gFrameMutex);
-    core1_stepCPU(n64RAM.data());
-    core2_stepFrame(n64RAM.data(), gFrameBuffer, gWidth, gHeight);
-    n_audioStep();
-}
-
-extern "C"
-JNIEXPORT jshortArray JNICALL
-Java_com_bkawrapper_NativeBridge_getAudioBuffer(JNIEnv* env, jclass clazz, jint samples) {
-    jshortArray out = env->NewShortArray(samples);
-    std::vector<int16_t> buffer(samples, 0);
-    n_audioGetBuffer(buffer.data(), samples);
-    env->SetShortArrayRegion(out, 0, samples, buffer.data());
-    return out;
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_cleanupGame(JNIEnv* env, jclass clazz) {
-    if (gWindow) {
-        ANativeWindow_release(gWindow);
-        gWindow = nullptr;
-    }
-    if (gFrameBuffer) {
-        delete[] gFrameBuffer;
-        gFrameBuffer = nullptr;
-    }
-    BK_OTR.clear();
-    LOGI("Game cleaned up");
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_saveOTR(JNIEnv* env, jclass clazz, jstring path) {
-    const char* cpath = env->GetStringUTFChars(path, nullptr);
-    FILE* f = fopen(cpath, "wb");
-    if (f) {
-        fwrite(BK_OTR.data(), 1, BK_OTR.size(), f);
-        fclose(f);
-        LOGI("OTR saved: %zu bytes to %s", BK_OTR.size(), cpath);
-    } else {
-        LOGI("Failed to save OTR to %s", cpath);
-    }
-    env->ReleaseStringUTFChars(path, cpath);
-}
-
-JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
-    LOGI("BKA wrapper JNI_OnLoad called");
-    return JNI_VERSION_1_6;
+    glBindTexture(GL_TEXTURE_2D, texId);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, gWidth, gHeight,
+                    GL_RGBA, GL_UNSIGNED_BYTE, gFrameBuffer);
 }
