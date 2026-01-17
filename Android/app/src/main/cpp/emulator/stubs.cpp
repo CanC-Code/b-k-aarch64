@@ -79,11 +79,7 @@ void n_audioStep() {
 // ------------------------------------------------------------
 // OTR loader
 // ------------------------------------------------------------
-void core1_loadOTR(uint8_t* romData, size_t romSize) {
-    LOGI("core1_loadOTR (stub) romSize=%zu", romSize);
-
-    // Do nothing intentionally
-    (void)romData;
-}
+// IMPLEMENTED IN ultra/otr_builder.cpp — do NOT define here
+extern void core1_loadOTR(uint8_t* romData, size_t romSize);
 
 } // extern "C"
