@@ -10,13 +10,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # ------------------------------
-# Source files
+# Source files: include all .cpp in main cpp folder and ultra/
 # ------------------------------
-set(WRAPPER_SOURCES
-    wrapper.cpp
-    setinitmasks.cpp
-    parameters.cpp
-    exceptasm.cpp
+file(GLOB_RECURSE WRAPPER_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ultra/*.cpp"
 )
 
 add_library(wrapper SHARED ${WRAPPER_SOURCES})
@@ -26,6 +24,7 @@ add_library(wrapper SHARED ${WRAPPER_SOURCES})
 # ------------------------------
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/ultra
     ${CMAKE_CURRENT_SOURCE_DIR}/emulator
 )
 
