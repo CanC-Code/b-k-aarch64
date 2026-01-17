@@ -48,6 +48,22 @@ jobs:
       - name: Verify CMake version
         run: cmake --version
 
+
+      # ---------- Build OTR asset BINs ----------
+      - name: Build OTR asset BINs from YAML
+        run: |
+          mkdir -p Android/app/src/main/assets/otr_bins
+
+          python3 yaml_to_otr_bin.py \
+            decompressed.us.v10.yaml \
+            Android/app/src/main/assets/otr_bins/us_v10.bin
+
+          python3 yaml_to_otr_bin.py \
+            decompressed.pal.yaml \
+            Android/app/src/main/assets/otr_bins/pal.bin
+
+
+
       # ---------- ImageMagick ----------
       - name: Install ImageMagick
         run: |
