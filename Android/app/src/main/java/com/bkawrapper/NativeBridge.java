@@ -35,6 +35,7 @@ public class NativeBridge {
     public static void loadRomFromUri(ContentResolver resolver, Uri uri) {
         try (InputStream is = resolver.openInputStream(uri)) {
             if (is == null) return;
+
             byte[] romData = new byte[is.available()];
             int read = 0;
             while (read < romData.length) {
@@ -42,6 +43,7 @@ public class NativeBridge {
                 if (n < 0) break;
                 read += n;
             }
+
             loadRom(romData);
             processRom(); // Automatically build BK_OTR
         } catch (IOException e) {
