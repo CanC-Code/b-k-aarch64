@@ -5,9 +5,9 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MotionEvent;
-import android.view.Surface;
 import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -19,36 +19,31 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "BK_APP";
 
-    // OpenGL
     private GLSurfaceView glSurfaceView;
     private GLRenderer glRenderer;
-
-    // ROM
     private ActivityResultLauncher<String[]> romPickerLauncher;
-    private boolean romReady = false;
 
-    // Game state
+    private Button loadButton;
+    private LinearLayout menuOverlay;
+
+    // Launch gates
     private boolean surfaceReady = false;
+    private boolean romReady = false;
     private boolean gameInitialized = false;
     private boolean gameRunning = false;
 
-    // Menu overlay
-    private View menuOverlay;
-    private boolean menuVisible = false;
-
-    // Gesture
-    private float gestureStartX = 0;
-    private float gestureStartY = 0;
+    // Swipe gesture tracking for menu
+    private float swipeStartX = -1;
+    private float swipeStartY = -1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Views
         glSurfaceView = findViewById(R.id.surface_gl);
+        loadButton = findViewById(R.id.button_load_game);
         menuOverlay = findViewById(R.id.menu_overlay);
-        Button loadBtn = findViewById(R.id.button_load_game);
 
         // OpenGL setup
         glSurfaceView.setEGLContextClientVersion(2);
@@ -56,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
         glSurfaceView.setRenderer(glRenderer);
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
-        // SAF ROM picker
+        // ROM picker
         romPickerLauncher = registerForActivityResult(
                 new ActivityResultContracts.OpenDocument(),
                 uri -> {
@@ -64,40 +59,33 @@ public class MainActivity extends AppCompatActivity {
                 }
         );
 
-        loadBtn.setOnClickListener(v ->
+        loadButton.setOnClickListener(v ->
                 romPickerLauncher.launch(new String[]{"*/*"})
         );
 
-        Log.i(TAG, "App started – waiting for ROM");
-
         // Menu buttons
-        Button btnResume = menuOverlay.findViewById(R.id.button_resume);
-        btnResume.setOnClickListener(v -> hideMenu());
+        menuOverlay.findViewById(R.id.button_resume).setOnClickListener(v -> hideMenu());
+        menuOverlay.findViewById(R.id.button_exit).setOnClickListener(v -> finish());
+        menuOverlay.findViewById(R.id.button_settings).setOnClickListener(v ->
+                Log.i(TAG, "Settings clicked (stub)"));
+        menuOverlay.findViewById(R.id.button_controller).setOnClickListener(v ->
+                Log.i(TAG, "Controller Layout clicked (stub)"));
 
-        Button btnExit = menuOverlay.findViewById(R.id.button_exit);
-        btnExit.setOnClickListener(v -> finish());
-
-        Button btnSettings = menuOverlay.findViewById(R.id.button_settings);
-        btnSettings.setOnClickListener(v -> {
-            Log.i(TAG, "Settings clicked (stub)");
-        });
-
-        Button btnController = menuOverlay.findViewById(R.id.button_controller);
-        btnController.setOnClickListener(v -> {
-            Log.i(TAG, "Controller Layout clicked (stub)");
-        });
+        Log.i(TAG, "App started – waiting for ROM");
     }
 
-    // --------------------
-    // ROM / Game
-    // --------------------
     private void loadRom(Uri uri) {
         try {
             Log.i(TAG, "Loading ROM...");
             NativeBridge.loadRomFromUri(getContentResolver(), uri);
             romReady = true;
             Log.i(TAG, "ROM + OTR ready");
+
+            // Hide load button once ROM is loaded
+            loadButton.setVisibility(View.GONE);
+
             tryStartGame();
+
         } catch (Exception e) {
             Log.e(TAG, "ROM load failed", e);
         }
@@ -117,10 +105,52 @@ public class MainActivity extends AppCompatActivity {
         NativeBridge.initTexture();
 
         gameInitialized = true;
-        gameRunning = true;
 
         NativeBridge.startGameLoop();
+        gameRunning = true;
+
         Log.i(TAG, "Game running");
+    }
+
+    private void showMenu() {
+        menuOverlay.setVisibility(View.VISIBLE);
+        glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+    }
+
+    private void hideMenu() {
+        menuOverlay.setVisibility(View.GONE);
+        glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (menuOverlay.getVisibility() == View.VISIBLE) {
+            hideMenu();
+        } else {
+            showMenu();
+        }
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        // Detect top-left swipe down for menu
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                swipeStartX = event.getX();
+                swipeStartY = event.getY();
+                break;
+
+            case MotionEvent.ACTION_UP:
+                if (swipeStartX < 200 && swipeStartY < 200) { // top-left corner
+                    float dy = event.getY() - swipeStartY;
+                    if (dy > 150) { // swipe down threshold
+                        showMenu();
+                        return true;
+                    }
+                }
+                break;
+        }
+        return super.onTouchEvent(event);
     }
 
     @Override
@@ -140,50 +170,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         glSurfaceView.onResume();
-    }
-
-    // --------------------
-    // Menu handling
-    // --------------------
-    @Override
-    public void onBackPressed() {
-        if (!menuVisible) {
-            showMenu();
-        } else {
-            hideMenu();
-        }
-    }
-
-    private void showMenu() {
-        menuOverlay.setVisibility(View.VISIBLE);
-        menuVisible = true;
-    }
-
-    private void hideMenu() {
-        menuOverlay.setVisibility(View.GONE);
-        menuVisible = false;
-    }
-
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        switch (event.getAction()) {
-            case MotionEvent.ACTION_DOWN:
-                gestureStartX = event.getX();
-                gestureStartY = event.getY();
-                break;
-
-            case MotionEvent.ACTION_UP:
-                float dx = event.getX() - gestureStartX;
-                float dy = event.getY() - gestureStartY;
-
-                // Top-left swipe down > 200 px
-                if (gestureStartX < 150 && gestureStartY < 150 && dy > 200) {
-                    showMenu();
-                    return true;
-                }
-                break;
-        }
-        return super.onTouchEvent(event);
     }
 
     static {
