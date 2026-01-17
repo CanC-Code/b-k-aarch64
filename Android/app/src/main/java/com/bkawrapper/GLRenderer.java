@@ -82,7 +82,7 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         GLES20.glAttachShader(program, fragmentShader);
         GLES20.glLinkProgram(program);
 
-        // Initialize texture via JNI (GPU-backed framebuffer)
+        // Initialize texture via JNI
         textureId = NativeBridge.initTexture();
     }
 
