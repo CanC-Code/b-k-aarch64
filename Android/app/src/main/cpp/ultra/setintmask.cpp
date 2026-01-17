@@ -1,9 +1,9 @@
 // File: Android/app/src/main/cpp/setintmask.cpp
+
 #include <cstdint>
 #include <array>
-#include "native_bridge.h" // For PHYS_TO_K1(MI_INTR_MASK_REG) etc.
 
-// ---- Interrupt mask constants ----
+// ---- Interrupt mask constants (from N64 SDK) ----
 constexpr uint16_t CLR_SP = 0x0001;
 constexpr uint16_t SET_SP = 0x0002;
 constexpr uint16_t CLR_SI = 0x0004;
@@ -19,8 +19,8 @@ constexpr uint16_t SET_DP = 0x0800;
 
 constexpr uint16_t MI_INTR_MASK = 0x3F;
 
-// ---- LUT matching __osRcpImTable in assembly ----
-static constexpr std::array<uint16_t, 64> osRcpImTable = {
+// ---- LUT matching __osRcpImTable ----
+static constexpr std::array<uint16_t, 64> osRcpImTable = {{
     CLR_SP|CLR_SI|CLR_AI|CLR_VI|CLR_PI|CLR_DP,
     SET_SP|CLR_SI|CLR_AI|CLR_VI|CLR_PI|CLR_DP,
     CLR_SP|SET_SI|CLR_AI|CLR_VI|CLR_PI|CLR_DP,
@@ -53,14 +53,14 @@ static constexpr std::array<uint16_t, 64> osRcpImTable = {
     SET_SP|CLR_SI|SET_AI|SET_VI|SET_PI|CLR_DP,
     CLR_SP|SET_SI|SET_AI|SET_VI|SET_PI|CLR_DP,
     SET_SP|SET_SI|SET_AI|SET_VI|SET_PI|CLR_DP,
-    CLR_SP|CLR_SI|CLR_AI|CLR_VI|SET_PI|SET_DP,
-    SET_SP|CLR_SI|CLR_AI|CLR_VI|SET_PI|SET_DP,
-    CLR_SP|SET_SI|CLR_AI|CLR_VI|SET_PI|SET_DP,
-    SET_SP|SET_SI|CLR_AI|CLR_VI|SET_PI|SET_DP,
-    CLR_SP|CLR_SI|SET_AI|CLR_VI|SET_PI|SET_DP,
-    SET_SP|CLR_SI|SET_AI|CLR_VI|SET_PI|SET_DP,
-    CLR_SP|SET_SI|SET_AI|CLR_VI|SET_PI|SET_DP,
-    SET_SP|SET_SI|SET_AI|CLR_VI|SET_PI|SET_DP,
+    CLR_SP|CLR_SI|CLR_AI|CLR_VI|CLR_PI|SET_DP,
+    SET_SP|CLR_SI|CLR_AI|CLR_VI|CLR_PI|SET_DP,
+    CLR_SP|SET_SI|CLR_AI|CLR_VI|CLR_PI|SET_DP,
+    SET_SP|SET_SI|CLR_AI|CLR_VI|CLR_PI|SET_DP,
+    CLR_SP|CLR_SI|SET_AI|CLR_VI|CLR_PI|SET_DP,
+    SET_SP|CLR_SI|SET_AI|CLR_VI|CLR_PI|SET_DP,
+    CLR_SP|SET_SI|SET_AI|CLR_VI|CLR_PI|SET_DP,
+    SET_SP|SET_SI|SET_AI|CLR_VI|CLR_PI|SET_DP,
     CLR_SP|CLR_SI|CLR_AI|SET_VI|CLR_PI|SET_DP,
     SET_SP|CLR_SI|CLR_AI|SET_VI|CLR_PI|SET_DP,
     CLR_SP|SET_SI|CLR_AI|SET_VI|CLR_PI|SET_DP,
@@ -85,37 +85,30 @@ static constexpr std::array<uint16_t, 64> osRcpImTable = {
     SET_SP|CLR_SI|SET_AI|SET_VI|SET_PI|SET_DP,
     CLR_SP|SET_SI|SET_AI|SET_VI|SET_PI|SET_DP,
     SET_SP|SET_SI|SET_AI|SET_VI|SET_PI|SET_DP
-};
+}};
 
-// ---- Emulated global registers ----
-static uint16_t __OSGlobalIntMask = 0;
+// ---- Emulated global state ----
+static uint32_t __OSGlobalIntMask = 0;
 static uint16_t MI_INTR_MASK_REG_EMU = 0;
 
 extern "C" uint32_t osSetIntMask(uint32_t mask)
 {
-    // --- emulate CP0 Status read ---
-    uint32_t cp0_status = 0; // placeholder for previous status
-    uint16_t oldMask = __OSGlobalIntMask;
+    // Emulate CP0 Status read
+    uint32_t oldStatus = 0;
+    uint32_t oldMask   = __OSGlobalIntMask;
 
-    // --- Calculate new mask ---
-    uint16_t masked = mask & MI_INTR_MASK;
-    uint16_t xorMask = oldMask ^ 0xFFFF;
-    masked &= xorMask; // emulate XOR & AND with old mask
+    // Compute LUT index exactly like the assembly
+    uint32_t t0 = (mask & MI_INTR_MASK) & oldMask;
+    uint32_t index = (t0 >> 15) & 0x3F;
 
-    // --- LUT indexing matches srl/andi in assembly ---
-    uint16_t tableIndex = (masked & 0x3F); // exact mask applied
-    uint16_t lutVal = osRcpImTable[tableIndex];
+    // Write emulated MI interrupt mask register
+    MI_INTR_MASK_REG_EMU = osRcpImTable[index];
 
-    // --- Update memory-mapped MI_INTR_MASK_REG ---
-    MI_INTR_MASK_REG_EMU = lutVal;
+    // Preserve CP0 status bits (0xFF01 logic)
+    uint32_t merged =
+        (oldStatus & 0xFFFF00FF) |
+        ((mask & 0xFF01) & (oldMask & 0xFF00));
 
-    // --- Preserve upper/lower status bits like MIPS ---
-    uint16_t t0 = mask & 0xFF01;
-    uint16_t t1 = oldMask & 0xFF00;
-    uint16_t finalStatus = (cp0_status & 0xFFFF00FF) | (t0 & t1);
-
-    __OSGlobalIntMask = mask; // update global mask
-    cp0_status = finalStatus;
-
-    return cp0_status; // return previous "CP0 status"
+    __OSGlobalIntMask = mask;
+    return oldStatus;
 }
