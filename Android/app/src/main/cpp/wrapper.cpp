@@ -214,7 +214,6 @@ Java_com_bkawrapper_MainActivity_stopGameLoop(JNIEnv* env, jobject thiz) {
     if (gLoopThread.joinable()) gLoopThread.join();
 }
 
-// Get framebuffer as jintArray
 extern "C"
 JNIEXPORT jintArray JNICALL
 Java_com_bkawrapper_MainActivity_getFrameBuffer(JNIEnv* env, jobject thiz) {
@@ -224,7 +223,6 @@ Java_com_bkawrapper_MainActivity_getFrameBuffer(JNIEnv* env, jobject thiz) {
     return out;
 }
 
-// Audio
 extern "C"
 JNIEXPORT jshortArray JNICALL
 Java_com_bkawrapper_MainActivity_getAudioBuffer(JNIEnv* env, jobject thiz, jint samples) {
@@ -235,7 +233,6 @@ Java_com_bkawrapper_MainActivity_getAudioBuffer(JNIEnv* env, jobject thiz, jint 
     return out;
 }
 
-// Cleanup
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_MainActivity_cleanupGame(JNIEnv* env, jobject thiz) {
@@ -252,7 +249,6 @@ Java_com_bkawrapper_MainActivity_cleanupGame(JNIEnv* env, jobject thiz) {
     LOGI("Game cleaned up");
 }
 
-// Save OTR
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_MainActivity_saveOTR(JNIEnv* env, jobject thiz, jstring path) {
