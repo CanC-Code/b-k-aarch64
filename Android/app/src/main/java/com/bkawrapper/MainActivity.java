@@ -20,6 +20,7 @@ public class MainActivity extends AppCompatActivity {
     private GLRenderer glRenderer;
 
     private boolean surfaceReady = false;
+    private boolean romLoaded = false;
     private boolean gameStarted = false;
 
     @Override
@@ -32,7 +33,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Setup OpenGL ES 2.0
         glSurfaceView.setEGLContextClientVersion(2);
-        glRenderer = new GLRenderer(this);
+        glRenderer = new GLRenderer(this::onSurfaceReady);
         glSurfaceView.setRenderer(glRenderer);
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
@@ -50,14 +51,29 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void handleRomUri(Uri uri) {
-        // Load ROM safely
         NativeBridge.loadRomFromUri(getContentResolver(), uri);
-
+        romLoaded = true;
         Log.i("BK_APP", "ROM loaded via SAF");
 
-        if (surfaceReady && !gameStarted) {
+        // Start game loop if surface is ready
+        startGameIfReady();
+    }
+
+    private void onSurfaceReady() {
+        if (surfaceReady) return;
+        surfaceReady = true;
+        Log.i("BK_APP", "GL surface ready, initializing game");
+        NativeBridge.initGame(glSurfaceView.getHolder().getSurface());
+
+        // Start game loop if ROM is already loaded
+        startGameIfReady();
+    }
+
+    private void startGameIfReady() {
+        if (surfaceReady && romLoaded && !gameStarted) {
             NativeBridge.startGameLoop();
             gameStarted = true;
+            Log.i("BK_APP", "Game loop started");
         }
     }
 
@@ -65,12 +81,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         glSurfaceView.onResume();
-
-        if (surfaceReady && !gameStarted) {
-            Log.i("BK_APP", "Starting game loop onResume");
-            NativeBridge.startGameLoop();
-            gameStarted = true;
-        }
     }
 
     @Override
@@ -82,15 +92,6 @@ public class MainActivity extends AppCompatActivity {
         NativeBridge.stopGameLoop();
         NativeBridge.cleanupGame();
         gameStarted = false;
-    }
-
-    // Called from GLRenderer when surface is created
-    void onSurfaceReady() {
-        if (surfaceReady) return; // prevent multiple calls
-        surfaceReady = true;
-
-        Log.i("BK_APP", "GL surface ready, initializing game");
-        NativeBridge.initGame(glSurfaceView.getHolder().getSurface());
     }
 
     static {
