@@ -104,11 +104,11 @@ jobs:
 
       # ---------- Permissions ----------
       - name: Make gradlew executable
-        run: chmod +x Android/gradlew
+        run: chmod +x gradlew
 
       # ---------- Build ----------
       - name: Build Debug APK
-        run: Android/gradlew :app:assembleDebug --no-daemon --no-build-cache --stacktrace
+        run: gradlew :app:assembleDebug --no-daemon --no-build-cache --stacktrace
 
       # ---------- Upload ----------
       - name: Upload Debug APK
