@@ -1,96 +1,45 @@
-// File: wrapper.cpp
-// Author: CCVO
-// Purpose: JNI wrapper for BKA / N64 emulator integration
-// Updated to fix undeclared 'env' issues for Android NDK build
-#include <jni.h>
-#include <string>
-#include <fstream>
-#include <mutex>
+cmake_minimum_required(VERSION 3.18)
 
-#include "ultra/parameters.h"
-#include "ultra/libm_vals.h"
-#include "ultra/otr_builder.h"
-#include "ultra/setintmask.h"
-#include "ultra/exceptasm.h"
-#include "emulator/stubs.h"
-#include "emulator/texture_stubs.h"
+project(bkawrapper LANGUAGES C CXX)
 
-static std::mutex gMutex;
+# ------------------------------
+# Set C++ standard
+# ------------------------------
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-// Example OTR buffer (replace with your real data)
-static unsigned char* gOtrData = nullptr;
-static size_t gOtrSize = 0;
+# ------------------------------
+# Source files: include all .cpp in main cpp folder and ultra/
+# ------------------------------
+file(GLOB_RECURSE WRAPPER_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ultra/*.cpp"
+)
 
-extern "C" {
+add_library(wrapper SHARED ${WRAPPER_SOURCES})
 
-// Save OTR data to file
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_saveOTRToFile(JNIEnv* env, jclass clazz, jstring path) {
-    const char* cpath = env->GetStringUTFChars(path, nullptr);
-    std::lock_guard<std::mutex> lock(gMutex);
+# ------------------------------
+# Include directories
+# ------------------------------
+include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/ultra
+    ${CMAKE_CURRENT_SOURCE_DIR}/emulator
+)
 
-    if (gOtrData && gOtrSize > 0) {
-        std::ofstream out(cpath, std::ios::binary);
-        if (out.is_open()) {
-            out.write(reinterpret_cast<const char*>(gOtrData), gOtrSize);
-            out.close();
-        }
-    }
+# ------------------------------
+# Find required Android libraries
+# ------------------------------
+find_library(log-lib log)
+find_library(android-lib android)
+find_library(glesv2-lib GLESv2)
 
-    env->ReleaseStringUTFChars(path, cpath);
-}
-
-// Set OTR data from Java byte array
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_setOtrData(JNIEnv* env, jclass clazz, jbyteArray data) {
-    std::lock_guard<std::mutex> lock(gMutex);
-
-    jsize len = env->GetArrayLength(data);
-    if (len > 0) {
-        delete[] gOtrData;
-        gOtrData = new unsigned char[len];
-        env->GetByteArrayRegion(data, 0, len, reinterpret_cast<jbyte*>(gOtrData));
-        gOtrSize = len;
-    }
-}
-
-// Clear OTR buffer
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_clearOtrData(JNIEnv* env, jclass clazz) {
-    std::lock_guard<std::mutex> lock(gMutex);
-    delete[] gOtrData;
-    gOtrData = nullptr;
-    gOtrSize = 0;
-}
-
-// Stub: Initialize emulator (placeholder)
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_initEmulator(JNIEnv* env, jclass clazz) {
-    // Initialize emulator components if needed
-}
-
-// Stub: Load ROM
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_loadRom(JNIEnv* env, jclass clazz, jstring romPath) {
-    const char* cpath = env->GetStringUTFChars(romPath, nullptr);
-    // TODO: Implement actual ROM loading here
-    env->ReleaseStringUTFChars(romPath, cpath);
-}
-
-// Stub: Run emulator frame
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_runFrame(JNIEnv* env, jclass clazz) {
-    // TODO: Run one frame of the emulator
-}
-
-// Stub: Shutdown emulator
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_shutdownEmulator(JNIEnv* env, jclass clazz) {
-    // TODO: Clean up emulator state
-    std::lock_guard<std::mutex> lock(gMutex);
-    delete[] gOtrData;
-    gOtrData = nullptr;
-    gOtrSize = 0;
-}
-
-} // extern "C"
+# ------------------------------
+# Link libraries
+# ------------------------------
+target_link_libraries(wrapper
+    ${log-lib}
+    ${android-lib}
+    ${glesv2-lib}
+)
