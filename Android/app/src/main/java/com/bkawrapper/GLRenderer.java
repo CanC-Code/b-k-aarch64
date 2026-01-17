@@ -1,6 +1,6 @@
-// File: Android/app/src/main/java/com/bkawrapper/GLRenderer.java
 package com.bkawrapper;
 
+import android.content.Context;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
@@ -14,6 +14,8 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 public class GLRenderer implements GLSurfaceView.Renderer {
+
+    private final Context context;
 
     private int program;
     private int textureId = 0;
@@ -36,6 +38,10 @@ public class GLRenderer implements GLSurfaceView.Renderer {
     };
 
     private boolean surfaceCreated = false;
+
+    public GLRenderer(Context context) {
+        this.context = context;
+    }
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
@@ -60,21 +66,21 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         // Compile shaders
         String vertexShaderCode =
                 "uniform mat4 uMVPMatrix;" +
-                "attribute vec4 aPosition;" +
-                "attribute vec2 aTexCoord;" +
-                "varying vec2 vTexCoord;" +
-                "void main() {" +
-                "  gl_Position = uMVPMatrix * aPosition;" +
-                "  vTexCoord = aTexCoord;" +
-                "}";
+                        "attribute vec4 aPosition;" +
+                        "attribute vec2 aTexCoord;" +
+                        "varying vec2 vTexCoord;" +
+                        "void main() {" +
+                        "  gl_Position = uMVPMatrix * aPosition;" +
+                        "  vTexCoord = aTexCoord;" +
+                        "}";
 
         String fragmentShaderCode =
                 "precision mediump float;" +
-                "uniform sampler2D uTexture;" +
-                "varying vec2 vTexCoord;" +
-                "void main() {" +
-                "  gl_FragColor = texture2D(uTexture, vTexCoord);" +
-                "}";
+                        "uniform sampler2D uTexture;" +
+                        "varying vec2 vTexCoord;" +
+                        "void main() {" +
+                        "  gl_FragColor = texture2D(uTexture, vTexCoord);" +
+                        "}";
 
         int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode);
         int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderCode);
@@ -85,8 +91,8 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         GLES20.glLinkProgram(program);
 
         // Notify MainActivity that surface is ready
-        if (getContext() instanceof MainActivity) {
-            ((MainActivity)getContext()).onSurfaceReady();
+        if (context instanceof MainActivity) {
+            ((MainActivity) context).onSurfaceReady();
         }
     }
 
@@ -130,12 +136,6 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         GLES20.glDisableVertexAttribArray(texCoordHandle);
     }
 
-    public void initTexture() {
-        if (surfaceCreated && textureId == 0) {
-            textureId = NativeBridge.initTexture();
-        }
-    }
-
     private int loadShader(int type, String code) {
         int shader = GLES20.glCreateShader(type);
         GLES20.glShaderSource(shader, code);
@@ -149,10 +149,5 @@ public class GLRenderer implements GLSurfaceView.Renderer {
             throw new RuntimeException("Shader compile failed: " + log);
         }
         return shader;
-    }
-
-    // Helper to get context (MainActivity) from GLSurfaceView
-    private android.content.Context getContext() {
-        return ((android.view.View) this).getContext();
     }
 }
