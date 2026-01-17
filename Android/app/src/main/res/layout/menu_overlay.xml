@@ -18,17 +18,25 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="24dp"/>
 
+    <!-- Resume button -->
+    <Button
+        android:id="@+id/button_resume"
+        android:text="Resume"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"/>
+
     <!-- Exit button -->
     <Button
-        android:id="@+id/menu_exit"
+        android:id="@+id/button_exit"
         android:text="Exit"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="12dp"/>
 
-    <!-- Settings button (stub) -->
+    <!-- Settings button -->
     <Button
-        android:id="@+id/menu_settings"
+        android:id="@+id/button_settings"
         android:text="Settings"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -36,7 +44,7 @@
 
     <!-- Controller layout button -->
     <Button
-        android:id="@+id/menu_controller"
+        android:id="@+id/button_controller"
         android:text="Controller Layout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
