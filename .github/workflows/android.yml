@@ -54,7 +54,7 @@ jobs:
       # ---------- Generate Launcher Icons ----------
       - name: Generate Android launcher icons
         run: |
-          ICON_DIR=app/src/main/res
+          ICON_DIR=Android/app/src/main/res
           BASE_ICON=/tmp/ic_launcher.png
           ROUND_ICON=/tmp/ic_launcher_round.png
 
@@ -98,21 +98,21 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-            app/build
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+            Android/app/build
+          key: gradle-${{ runner.os }}-${{ hashFiles('Android/**/*.gradle*', 'Android/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}
 
       # ---------- Permissions ----------
       - name: Make gradlew executable
-        run: chmod +x ./gradlew
+        run: chmod +x Android/gradlew
 
       # ---------- Build ----------
       - name: Build Debug APK
-        run: ./gradlew :app:assembleDebug --no-daemon --no-build-cache --stacktrace
+        run: Android/gradlew :app:assembleDebug --no-daemon --no-build-cache --stacktrace
 
       # ---------- Upload ----------
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: BKA-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: Android/app/build/outputs/apk/debug/*.apk
