@@ -1,19 +1,40 @@
-// emulator/stubs.cpp
-// Minimal stubs for core and audio functions
 #include <cstdint>
+#include <android/log.h>
+#include <unistd.h>
+
+#define LOG_TAG "BK_STUBS"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+
+/*
+ * These are TEMPORARY SAFE IMPLEMENTATIONS.
+ * They keep the process alive and prevent crashes.
+ * Real implementations will replace these later.
+ */
 
 extern "C" {
 
-// Core 1
-void core1_stepCPU() {}
-void core1_reset() {}
+void core1_reset(uint8_t* ram) {
+    LOGI("core1_reset called (stub)");
+}
 
-// Core 2
-void core2_stepFrame() {}
+void core1_stepCPU() {
+    // Stub: do nothing safely
+}
 
-// Audio
-void n_audioStep() {}
-void n_audioGetBuffer() {}
-void n_audioInit() {}
+void core2_stepFrame() {
+    // Stub: do nothing safely
+}
 
-} // extern "C"
+void n_audioInit() {
+    LOGI("audio init (stub)");
+}
+
+void n_audioStep() {
+    // Stub: do nothing safely
+}
+
+void core1_loadOTR(const char* path) {
+    LOGI("load OTR: %s (stub)", path ? path : "<null>");
+}
+
+}
