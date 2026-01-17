@@ -2,8 +2,41 @@ cmake_minimum_required(VERSION 3.18)
 
 project(bkawrapper LANGUAGES C CXX)
 
-add_library(wrapper SHARED wrapper.cpp)
+# ------------------------------
+# Set C++ standard
+# ------------------------------
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# ------------------------------
+# Source files: include all .cpp in this directory
+# ------------------------------
+file(GLOB_RECURSE WRAPPER_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+)
+
+add_library(wrapper SHARED ${WRAPPER_SOURCES})
+
+# ------------------------------
+# Include directories (if needed)
+# ------------------------------
+include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/emulator  # adjust if you have subdirs
+)
+
+# ------------------------------
+# Find required Android libraries
+# ------------------------------
 find_library(log-lib log)
+find_library(android-lib android)
+find_library(glesv2-lib GLESv2)
 
-target_link_libraries(wrapper ${log-lib})
+# ------------------------------
+# Link libraries
+# ------------------------------
+target_link_libraries(wrapper
+    ${log-lib}
+    ${android-lib}
+    ${glesv2-lib}
+)
