@@ -22,10 +22,10 @@ public class GLRenderer implements GLSurfaceView.Renderer {
 
     // Vertex coordinates (full screen quad)
     private final float[] vertices = {
-            -1f,  1f, 0f,
+            -1f, 1f, 0f,
             -1f, -1f, 0f,
-             1f,  1f, 0f,
-             1f, -1f, 0f
+            1f, 1f, 0f,
+            1f, -1f, 0f
     };
 
     private final float[] texCoords = {
@@ -37,7 +37,6 @@ public class GLRenderer implements GLSurfaceView.Renderer {
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-        GLES20.glClearColor(0f, 0f, 0f, 1f);
         Matrix.setIdentityM(mvpMatrix, 0);
 
         vertexBuffer = ByteBuffer.allocateDirect(vertices.length * 4)
@@ -50,21 +49,21 @@ public class GLRenderer implements GLSurfaceView.Renderer {
 
         String vertexShaderCode =
                 "uniform mat4 uMVPMatrix;" +
-                "attribute vec4 aPosition;" +
-                "attribute vec2 aTexCoord;" +
-                "varying vec2 vTexCoord;" +
-                "void main() {" +
-                "  gl_Position = uMVPMatrix * aPosition;" +
-                "  vTexCoord = aTexCoord;" +
-                "}";
+                        "attribute vec4 aPosition;" +
+                        "attribute vec2 aTexCoord;" +
+                        "varying vec2 vTexCoord;" +
+                        "void main() {" +
+                        "  gl_Position = uMVPMatrix * aPosition;" +
+                        "  vTexCoord = aTexCoord;" +
+                        "}";
 
         String fragmentShaderCode =
                 "precision mediump float;" +
-                "uniform sampler2D uTexture;" +
-                "varying vec2 vTexCoord;" +
-                "void main() {" +
-                "  gl_FragColor = texture2D(uTexture, vTexCoord);" +
-                "}";
+                        "uniform sampler2D uTexture;" +
+                        "varying vec2 vTexCoord;" +
+                        "void main() {" +
+                        "  gl_FragColor = texture2D(uTexture, vTexCoord);" +
+                        "}";
 
         int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode);
         int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderCode);
@@ -74,7 +73,7 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         GLES20.glAttachShader(program, fragmentShader);
         GLES20.glLinkProgram(program);
 
-        // Allocate native-backed texture for OTR framebuffer
+        // Initialize texture via JNI
         textureId = NativeBridge.initTexture();
     }
 
@@ -82,8 +81,7 @@ public class GLRenderer implements GLSurfaceView.Renderer {
     public void onDrawFrame(GL10 gl) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
-        // Step one frame of the game and update native texture
-        NativeBridge.stepFrame();
+        // Update texture with native framebuffer
         NativeBridge.updateTexture(textureId);
 
         GLES20.glUseProgram(program);
