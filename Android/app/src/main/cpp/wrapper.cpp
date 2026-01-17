@@ -1,11 +1,15 @@
 // File: Android/app/src/main/cpp/wrapper.cpp
 // Purpose: Android JNI wrapper for Banjo Kazooie decomp cores (core1/core2) with GPU-backed texture
 // Author: CCVO
+
 #include <jni.h>
 #include <cstdint>
 #include <vector>
 #include <atomic>
 #include <mutex>
+#include <thread>
+#include <chrono>
+#include <memory>
 #include <android/log.h>
 #include <android/native_window_jni.h>
 #include <android/native_window.h>
@@ -17,7 +21,7 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
 // ---- Global Frame & Audio ----
-static uint32_t* gFrameBuffer = nullptr;
+static std::unique_ptr<uint32_t[]> gFrameBuffer;
 static int gWidth = 320;
 static int gHeight = 240;
 static ANativeWindow* gWindow = nullptr;
@@ -33,6 +37,9 @@ static std::vector<uint8_t> n64RAM(RAM_SIZE);
 // ---- OTR Data ----
 static std::vector<uint8_t> BK_OTR;
 
+// ---- Audio Cache ----
+static std::vector<int16_t> gAudioCache;
+
 // ---- Core function declarations ----
 extern "C" {
     void core1_stepCPU(uint8_t* ram);
@@ -41,6 +48,31 @@ extern "C" {
     void n_audioGetBuffer(int16_t* buffer, size_t samples);
     void n_audioInit();
     void core1_reset(uint8_t* ram);
+}
+
+// ---- Threaded Game Loop ----
+static std::atomic<bool> gRunning = false;
+static std::thread gLoopThread;
+
+static void gameLoop() {
+    while (gRunning) {
+        {
+            std::lock_guard<std::mutex> lock(gFrameMutex);
+            core1_stepCPU(n64RAM.data());
+            if (gFrameBuffer) core2_stepFrame(n64RAM.data(), gFrameBuffer.get(), gWidth, gHeight);
+            n_audioStep();
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(16)); // ~60 FPS
+    }
+}
+
+// ---- Framebuffer Helpers ----
+static void resizeFrameBuffer(int width, int height) {
+    std::lock_guard<std::mutex> lock(gFrameMutex);
+    gWidth = width;
+    gHeight = height;
+    gFrameBuffer = std::make_unique<uint32_t[]>(gWidth * gHeight);
+    memset(gFrameBuffer.get(), 0, gWidth * gHeight * sizeof(uint32_t));
 }
 
 // ---- Dynamic OTR Builder ----
@@ -55,7 +87,6 @@ void core1_loadOTR(uint8_t* romData, size_t romSize) {
     // Copy 0x40-byte header
     BK_OTR.insert(BK_OTR.end(), romData, romData + 0x40);
 
-    // 16 segments
     struct Segment { uint32_t start, end, dest; };
     Segment segments[16];
 
@@ -78,27 +109,23 @@ void core1_loadOTR(uint8_t* romData, size_t romSize) {
         segments[i].end   = end;
         segments[i].dest  = static_cast<uint32_t>(BK_OTR.size());
 
-        // Copy segment
         BK_OTR.insert(BK_OTR.end(), romData + start, romData + end);
         LOGI("Segment %d: ROM 0x%08X->0x%08X => OTR 0x%08X (%u bytes)",
              i, start, end, segments[i].dest, end - start);
     }
 
-    // Align OTR to 16-byte boundary
     size_t pad = (16 - (BK_OTR.size() % 16)) % 16;
     BK_OTR.insert(BK_OTR.end(), pad, 0);
-
     LOGI("Dynamic BK.OTR built: %zu bytes (+%zu padding)", BK_OTR.size(), pad);
 }
 
-// Accessor for cores
+// Accessor for OTR data
 extern "C"
 uint8_t* getOTRData(size_t* outSize) {
     if (outSize) *outSize = BK_OTR.size();
     return BK_OTR.empty() ? nullptr : BK_OTR.data();
 }
 
-// Optional: save OTR to disk
 extern "C"
 void saveOTRToFile(const char* path) {
     if (!path || BK_OTR.empty()) return;
@@ -109,7 +136,7 @@ void saveOTRToFile(const char* path) {
     LOGI("Saved BK.OTR: %zu bytes to %s", BK_OTR.size(), path);
 }
 
-// ---- OpenGL Texture Helpers ----
+// ---- JNI OpenGL Texture ----
 extern "C"
 JNIEXPORT jint JNICALL
 Java_com_bkawrapper_NativeBridge_initTexture(JNIEnv* env, jclass clazz) {
@@ -126,10 +153,10 @@ Java_com_bkawrapper_NativeBridge_initTexture(JNIEnv* env, jclass clazz) {
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass clazz, jint texId) {
+    if (!gFrameBuffer || texId <= 0) return;
     std::lock_guard<std::mutex> lock(gFrameMutex);
     glBindTexture(GL_TEXTURE_2D, texId);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, gWidth, gHeight,
-                    GL_RGBA, GL_UNSIGNED_BYTE, gFrameBuffer);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, gWidth, gHeight, GL_RGBA, GL_UNSIGNED_BYTE, gFrameBuffer.get());
 }
 
 // ---- JNI Exposed Functions ----
@@ -154,12 +181,10 @@ JNIEXPORT void JNICALL
 Java_com_bkawrapper_MainActivity_initGame(JNIEnv* env, jobject thiz, jobject surface) {
     if (surface) {
         gWindow = ANativeWindow_fromSurface(env, surface);
-        gWidth = ANativeWindow_getWidth(gWindow);
-        gHeight = ANativeWindow_getHeight(gWindow);
-        ANativeWindow_setBuffersGeometry(gWindow, gWidth, gHeight, WINDOW_FORMAT_RGBA_8888);
-
-        gFrameBuffer = new uint32_t[gWidth * gHeight];
-        memset(gFrameBuffer, 0, gWidth * gHeight * sizeof(uint32_t));
+        int width = ANativeWindow_getWidth(gWindow);
+        int height = ANativeWindow_getHeight(gWindow);
+        ANativeWindow_setBuffersGeometry(gWindow, width, height, WINDOW_FORMAT_RGBA_8888);
+        resizeFrameBuffer(width, height);
     }
     core1_reset(n64RAM.data());
     n_audioInit();
@@ -167,48 +192,67 @@ Java_com_bkawrapper_MainActivity_initGame(JNIEnv* env, jobject thiz, jobject sur
 }
 
 extern "C"
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_MainActivity_resetGame(JNIEnv* env, jobject thiz) {
+    std::fill(n64RAM.begin(), n64RAM.end(), 0);
+    core1_reset(n64RAM.data());
+    LOGI("Game reset complete");
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_MainActivity_startGameLoop(JNIEnv* env, jobject thiz) {
+    if (gRunning) return;
+    gRunning = true;
+    gLoopThread = std::thread(gameLoop);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_MainActivity_stopGameLoop(JNIEnv* env, jobject thiz) {
+    gRunning = false;
+    if (gLoopThread.joinable()) gLoopThread.join();
+}
+
+// Get framebuffer as jintArray
+extern "C"
 JNIEXPORT jintArray JNICALL
 Java_com_bkawrapper_MainActivity_getFrameBuffer(JNIEnv* env, jobject thiz) {
     std::lock_guard<std::mutex> lock(gFrameMutex);
     jintArray out = env->NewIntArray(gWidth * gHeight);
-    env->SetIntArrayRegion(out, 0, gWidth * gHeight, reinterpret_cast<jint*>(gFrameBuffer));
+    if (gFrameBuffer) env->SetIntArrayRegion(out, 0, gWidth * gHeight, reinterpret_cast<jint*>(gFrameBuffer.get()));
     return out;
 }
 
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_MainActivity_stepFrame(JNIEnv* env, jobject thiz) {
-    std::lock_guard<std::mutex> lock(gFrameMutex);
-    core1_stepCPU(n64RAM.data());
-    core2_stepFrame(n64RAM.data(), gFrameBuffer, gWidth, gHeight);
-    n_audioStep();
-}
-
+// Audio
 extern "C"
 JNIEXPORT jshortArray JNICALL
 Java_com_bkawrapper_MainActivity_getAudioBuffer(JNIEnv* env, jobject thiz, jint samples) {
+    gAudioCache.resize(samples);
+    n_audioGetBuffer(gAudioCache.data(), samples);
     jshortArray out = env->NewShortArray(samples);
-    std::vector<int16_t> buffer(samples, 0);
-    n_audioGetBuffer(buffer.data(), samples);
-    env->SetShortArrayRegion(out, 0, samples, buffer.data());
+    env->SetShortArrayRegion(out, 0, samples, gAudioCache.data());
     return out;
 }
 
+// Cleanup
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_MainActivity_cleanupGame(JNIEnv* env, jobject thiz) {
+    gRunning = false;
+    if (gLoopThread.joinable()) gLoopThread.join();
+
     if (gWindow) {
         ANativeWindow_release(gWindow);
         gWindow = nullptr;
     }
-    if (gFrameBuffer) {
-        delete[] gFrameBuffer;
-        gFrameBuffer = nullptr;
-    }
+    gFrameBuffer.reset();
     BK_OTR.clear();
+    gAudioCache.clear();
     LOGI("Game cleaned up");
 }
 
+// Save OTR
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_MainActivity_saveOTR(JNIEnv* env, jobject thiz, jstring path) {
@@ -217,6 +261,7 @@ Java_com_bkawrapper_MainActivity_saveOTR(JNIEnv* env, jobject thiz, jstring path
     env->ReleaseStringUTFChars(path, cpath);
 }
 
+// JNI Load
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
     LOGI("BKA wrapper JNI_OnLoad called");
     return JNI_VERSION_1_6;
