@@ -18,7 +18,6 @@ public final class NativeBridge {
     private NativeBridge() {}
 
     // -------- Native API --------
-
     public static native void loadRom(byte[] rom);
     public static native void processRom();
 
