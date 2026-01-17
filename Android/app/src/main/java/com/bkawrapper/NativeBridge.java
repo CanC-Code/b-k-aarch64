@@ -1,3 +1,4 @@
+// File: Android/app/src/main/java/com/bkawrapper/NativeBridge.java
 package com.bkawrapper;
 
 import android.content.ContentResolver;
@@ -10,11 +11,12 @@ import java.io.IOException;
 public final class NativeBridge {
 
     static {
-        System.loadLibrary("wrapper"); // MUST match add_library(wrapper ...)
+        // MUST match the CMake add_library() name
+        System.loadLibrary("wrapper");
     }
 
     private NativeBridge() {
-        // no instances
+        // Prevent instantiation
     }
 
     // -------------------------
@@ -39,7 +41,7 @@ public final class NativeBridge {
     // -------------------------
     // Rendering
     // -------------------------
-    public static native int initTexture();
+    public static native int initTexture();            // Returns OpenGL texture ID
     public static native void updateTexture(int texId);
 
     // -------------------------
@@ -53,26 +55,46 @@ public final class NativeBridge {
     public static native void saveOTR(String path);
 
     // -------------------------
-    // SAF helper
+    // SAF helper: load ROM from URI directly
     // -------------------------
     public static void loadRomFromUri(ContentResolver resolver, Uri uri) {
         try (InputStream is = resolver.openInputStream(uri)) {
             if (is == null) return;
 
-            byte[] buffer = new byte[is.available()];
+            int size = is.available();
+            byte[] buffer = new byte[size];
             int offset = 0;
 
-            while (offset < buffer.length) {
-                int read = is.read(buffer, offset, buffer.length - offset);
+            while (offset < size) {
+                int read = is.read(buffer, offset, size - offset);
                 if (read <= 0) break;
                 offset += read;
             }
 
-            loadRom(buffer);
-            processRom();
+            if (offset > 0) {
+                loadRom(buffer);
+                processRom();
+            }
 
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    // -------------------------
+    // Convenience helpers
+    // -------------------------
+    public static void startGame(Surface surface) {
+        initGame(surface);
+        startGameLoop();
+    }
+
+    public static void stopGame() {
+        stopGameLoop();
+        cleanupGame();
+    }
+
+    public static void reset() {
+        resetGame();
     }
 }
