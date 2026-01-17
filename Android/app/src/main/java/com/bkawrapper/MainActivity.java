@@ -68,6 +68,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     static {
-        System.loadLibrary("bka_wrapper"); // Load your JNI wrapper.cpp
+        System.loadLibrary("bka_wrapper"); // Load JNI wrapper with OTR and GPU framebuffer
     }
 }
