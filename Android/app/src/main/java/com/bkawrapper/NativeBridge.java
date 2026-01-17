@@ -1,4 +1,3 @@
-// File: Android/app/src/main/java/com/bkawrapper/NativeBridge.java
 package com.bkawrapper;
 
 import android.content.ContentResolver;
@@ -8,70 +7,72 @@ import android.view.Surface;
 import java.io.InputStream;
 import java.io.IOException;
 
-public class NativeBridge {
+public final class NativeBridge {
 
     static {
-        System.loadLibrary("bka_wrapper"); // Matches wrapper.cpp
+        System.loadLibrary("wrapper"); // MUST match add_library(wrapper ...)
     }
 
-    // ---- ROM / OTR ----
+    private NativeBridge() {
+        // no instances
+    }
+
+    // -------------------------
+    // ROM / OTR
+    // -------------------------
     public static native void loadRom(byte[] romData);
     public static native void processRom();
 
-    // ---- Game init / cleanup ----
+    // -------------------------
+    // Game lifecycle
+    // -------------------------
     public static native void initGame(Surface surface);
     public static native void cleanupGame();
     public static native void resetGame();
 
-    // ---- Frame / Loop control ----
+    // -------------------------
+    // Game loop
+    // -------------------------
     public static native void startGameLoop();
     public static native void stopGameLoop();
 
-    // ---- Framebuffer access ----
-    public static native int[] getFrameBuffer();
+    // -------------------------
+    // Rendering
+    // -------------------------
+    public static native int initTexture();
+    public static native void updateTexture(int texId);
 
-    // ---- Audio ----
+    // -------------------------
+    // Audio
+    // -------------------------
     public static native short[] getAudioBuffer(int samples);
 
-    // ---- Optional: save OTR to file ----
+    // -------------------------
+    // Optional debug / export
+    // -------------------------
     public static native void saveOTR(String path);
 
-    // ---- Texture management for GLRenderer ----
-    public static native int initTexture();          // Returns a new OpenGL texture ID
-    public static native void updateTexture(int texId);  // Updates the texture with native framebuffer
-
-    // ---- Helper: load ROM from SAF URI directly ----
+    // -------------------------
+    // SAF helper
+    // -------------------------
     public static void loadRomFromUri(ContentResolver resolver, Uri uri) {
         try (InputStream is = resolver.openInputStream(uri)) {
             if (is == null) return;
 
-            byte[] romData = new byte[is.available()];
-            int read = 0;
-            while (read < romData.length) {
-                int n = is.read(romData, read, romData.length - read);
-                if (n < 0) break;
-                read += n;
+            byte[] buffer = new byte[is.available()];
+            int offset = 0;
+
+            while (offset < buffer.length) {
+                int read = is.read(buffer, offset, buffer.length - offset);
+                if (read <= 0) break;
+                offset += read;
             }
 
-            loadRom(romData);
-            processRom(); // Automatically build BK_OTR
+            loadRom(buffer);
+            processRom();
+
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    // ---- Convenience helpers for threaded game loop ----
-    public static void startGame(Surface surface) {
-        initGame(surface);
-        startGameLoop();
-    }
-
-    public static void stopGame() {
-        stopGameLoop();
-        cleanupGame();
-    }
-
-    public static void reset() {
-        resetGame();
     }
 }
