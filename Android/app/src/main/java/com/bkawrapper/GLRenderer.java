@@ -1,0 +1,118 @@
+// File: Android/app/src/main/java/com/bkawrapper/GLRenderer.java
+package com.bkawrapper;
+
+import android.opengl.GLES20;
+import android.opengl.GLSurfaceView;
+import android.opengl.Matrix;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
+
+import javax.microedition.khronos.egl.EGLConfig;
+import javax.microedition.khronos.opengles.GL10;
+
+public class GLRenderer implements GLSurfaceView.Renderer {
+
+    private int program;
+    private int textureId;
+    private int positionHandle, texCoordHandle, mvpMatrixHandle, samplerHandle;
+    private FloatBuffer vertexBuffer, texCoordBuffer;
+    private float[] mvpMatrix = new float[16];
+
+    // Vertex coordinates (full screen quad)
+    private final float[] vertices = {
+            -1f, 1f, 0f,
+            -1f, -1f, 0f,
+            1f, 1f, 0f,
+            1f, -1f, 0f
+    };
+
+    private final float[] texCoords = {
+            0f, 0f,
+            0f, 1f,
+            1f, 0f,
+            1f, 1f
+    };
+
+    @Override
+    public void onSurfaceCreated(GL10 gl, EGLConfig config) {
+        Matrix.setIdentityM(mvpMatrix, 0);
+
+        vertexBuffer = ByteBuffer.allocateDirect(vertices.length * 4)
+                .order(ByteOrder.nativeOrder()).asFloatBuffer();
+        vertexBuffer.put(vertices).position(0);
+
+        texCoordBuffer = ByteBuffer.allocateDirect(texCoords.length * 4)
+                .order(ByteOrder.nativeOrder()).asFloatBuffer();
+        texCoordBuffer.put(texCoords).position(0);
+
+        String vertexShaderCode =
+                "uniform mat4 uMVPMatrix;" +
+                        "attribute vec4 aPosition;" +
+                        "attribute vec2 aTexCoord;" +
+                        "varying vec2 vTexCoord;" +
+                        "void main() {" +
+                        "  gl_Position = uMVPMatrix * aPosition;" +
+                        "  vTexCoord = aTexCoord;" +
+                        "}";
+
+        String fragmentShaderCode =
+                "precision mediump float;" +
+                        "uniform sampler2D uTexture;" +
+                        "varying vec2 vTexCoord;" +
+                        "void main() {" +
+                        "  gl_FragColor = texture2D(uTexture, vTexCoord);" +
+                        "}";
+
+        int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode);
+        int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderCode);
+
+        program = GLES20.glCreateProgram();
+        GLES20.glAttachShader(program, vertexShader);
+        GLES20.glAttachShader(program, fragmentShader);
+        GLES20.glLinkProgram(program);
+
+        textureId = NativeBridge.initTexture(); // Allocate texture in native code
+    }
+
+    @Override
+    public void onDrawFrame(GL10 gl) {
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+
+        NativeBridge.updateTexture(textureId); // Copy native framebuffer to GL texture
+
+        GLES20.glUseProgram(program);
+
+        positionHandle = GLES20.glGetAttribLocation(program, "aPosition");
+        texCoordHandle = GLES20.glGetAttribLocation(program, "aTexCoord");
+        mvpMatrixHandle = GLES20.glGetUniformLocation(program, "uMVPMatrix");
+        samplerHandle = GLES20.glGetUniformLocation(program, "uTexture");
+
+        GLES20.glEnableVertexAttribArray(positionHandle);
+        GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+
+        GLES20.glEnableVertexAttribArray(texCoordHandle);
+        GLES20.glVertexAttribPointer(texCoordHandle, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer);
+
+        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvpMatrix, 0);
+        GLES20.glUniform1i(samplerHandle, 0);
+
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+
+        GLES20.glDisableVertexAttribArray(positionHandle);
+        GLES20.glDisableVertexAttribArray(texCoordHandle);
+    }
+
+    @Override
+    public void onSurfaceChanged(GL10 gl, int width, int height) {
+        GLES20.glViewport(0, 0, width, height);
+    }
+
+    private int loadShader(int type, String code) {
+        int shader = GLES20.glCreateShader(type);
+        GLES20.glShaderSource(shader, code);
+        GLES20.glCompileShader(shader);
+        return shader;
+    }
+}
