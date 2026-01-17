@@ -1,4 +1,3 @@
-// File: Android/app/src/main/java/com/bkawrapper/MainActivity.java
 package com.bkawrapper;
 
 import android.net.Uri;
@@ -14,9 +13,11 @@ import android.opengl.GLSurfaceView;
 
 public class MainActivity extends AppCompatActivity {
 
-    private ActivityResultLauncher<String[]> romPickerLauncher;
     private GLSurfaceView glSurfaceView;
     private GLRenderer glRenderer;
+    private ActivityResultLauncher<String[]> romPickerLauncher;
+
+    private boolean gameStarted = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -26,18 +27,20 @@ public class MainActivity extends AppCompatActivity {
         Button loadGameBtn = findViewById(R.id.button_load_game);
         glSurfaceView = findViewById(R.id.surface_gl);
 
-        // Setup OpenGL ES 2.0
+        // -------------------------
+        // GL setup
+        // -------------------------
         glSurfaceView.setEGLContextClientVersion(2);
         glRenderer = new GLRenderer();
         glSurfaceView.setRenderer(glRenderer);
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
-        // SAF launcher for ROM selection
+        // -------------------------
+        // File picker
+        // -------------------------
         romPickerLauncher = registerForActivityResult(
                 new ActivityResultContracts.OpenDocument(),
-                uri -> {
-                    if (uri != null) handleRomUri(uri);
-                }
+                this::onRomSelected
         );
 
         loadGameBtn.setOnClickListener(v ->
@@ -45,37 +48,47 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
-    private void handleRomUri(Uri uri) {
-        // Load ROM and generate BK.OTR in memory
+    private void onRomSelected(Uri uri) {
+        if (uri == null) return;
+
         NativeBridge.loadRomFromUri(getContentResolver(), uri);
 
-        // Initialize game with OpenGL surface
         Surface surface = glSurfaceView.getHolder().getSurface();
         NativeBridge.initGame(surface);
 
-        // Initialize GL texture in renderer
-        glRenderer.initTexture();
-
-        // Start the native game loop
         NativeBridge.startGameLoop();
+        gameStarted = true;
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         glSurfaceView.onResume();
-        NativeBridge.startGameLoop();
+
+        if (gameStarted) {
+            NativeBridge.startGameLoop();
+        }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
+
+        if (gameStarted) {
+            NativeBridge.stopGameLoop();
+        }
+
         glSurfaceView.onPause();
-        NativeBridge.stopGameLoop();
-        NativeBridge.cleanupGame();
     }
 
-    static {
-        System.loadLibrary("bka_wrapper"); // Load native JNI wrapper
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        if (gameStarted) {
+            NativeBridge.stopGameLoop();
+            NativeBridge.cleanupGame();
+            gameStarted = false;
+        }
     }
 }
