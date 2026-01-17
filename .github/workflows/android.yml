@@ -14,6 +14,12 @@ jobs:
         with:
           fetch-depth: 0
 
+
+      # ---------- submodules ----------
+
+      - name: Initialize git submodules
+        run: git submodule update --init --recursive
+
       # ---------- Java ----------
       - name: Set up JDK 17
         uses: actions/setup-java@v4
