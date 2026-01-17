@@ -14,37 +14,25 @@ android {
         versionName "1.0"
 
         ndk {
-            // Add both 64-bit and 32-bit if desired
-            abiFilters 'arm64-v8a', 'armeabi-v7a'
-        }
-
-        externalNativeBuild {
-            cmake {
-                // Use default NDK CMake version
-                path "src/main/cpp/CMakeLists.txt"
-            }
+            abiFilters 'arm64-v8a'
         }
     }
 
     buildTypes {
         debug {
             debuggable true
-            ndk {
-                debugSymbolLevel 'FULL'  // full debug symbols for native code
-            }
         }
         release {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile(
-                'proguard-android-optimize.txt'
-            ), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
+                          'proguard-rules.pro'
         }
     }
 
     externalNativeBuild {
         cmake {
-            path "src/main/cpp/CMakeLists.txt"
-            version "3.22.1" // optional, override default if needed
+            version "3.22.1"                         // Optional: specific CMake version
+            path file("src/main/cpp/CMakeLists.txt") // Must use 'file()'
         }
     }
 
@@ -53,10 +41,9 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    packagingOptions {
-        jniLibs {
-            useLegacyPackaging = true
-        }
+    // Optional: Enable JNI debug symbols for easier troubleshooting
+    buildFeatures {
+        prefab true
     }
 }
 
