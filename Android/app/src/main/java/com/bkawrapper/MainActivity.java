@@ -10,7 +10,6 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.opengl.GLSurfaceView;
-
 import android.opengl.GLES20;
 
 public class MainActivity extends AppCompatActivity {
@@ -55,21 +54,30 @@ public class MainActivity extends AppCompatActivity {
         // Initialize game with OpenGL surface
         NativeBridge.initGame(glSurfaceView.getHolder().getSurface());
 
-        // Initialize the GL texture in renderer
+        // Initialize GL texture in renderer
         glRenderer.initTexture();
+
+        // Start the native game loop automatically
+        NativeBridge.startGameLoop();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         glSurfaceView.onResume();
+
+        // Resume game loop if a ROM was already loaded
+        NativeBridge.startGameLoop();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         glSurfaceView.onPause();
-        NativeBridge.cleanupGame(); // Cleanup native resources when paused
+
+        // Stop game loop and cleanup resources
+        NativeBridge.stopGameLoop();
+        NativeBridge.cleanupGame();
     }
 
     // ---- OpenGL Renderer ----
@@ -92,7 +100,8 @@ public class MainActivity extends AppCompatActivity {
         private java.nio.FloatBuffer vertexBuffer;
 
         @Override
-        public void onSurfaceCreated(javax.microedition.khronos.opengles.GL10 gl, javax.microedition.khronos.egl.EGLConfig config) {
+        public void onSurfaceCreated(javax.microedition.khronos.opengles.GL10 gl,
+                                     javax.microedition.khronos.egl.EGLConfig config) {
             GLES20.glClearColor(0f, 0f, 0f, 1f);
 
             // Upload vertex data
