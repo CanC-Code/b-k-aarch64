@@ -2,11 +2,15 @@ package com.bkawrapper;
 
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -25,6 +29,11 @@ public class MainActivity extends AppCompatActivity {
     private Button loadButton;
     private LinearLayout menuOverlay;
 
+    // OTR generation UI
+    private LinearLayout progressLayout;
+    private ProgressBar progressBar;
+    private TextView progressText;
+
     // Launch gates
     private boolean surfaceReady = false;
     private boolean romReady = false;
@@ -35,6 +44,8 @@ public class MainActivity extends AppCompatActivity {
     private float swipeStartX = -1;
     private float swipeStartY = -1;
 
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -43,6 +54,10 @@ public class MainActivity extends AppCompatActivity {
         glSurfaceView = findViewById(R.id.surface_gl);
         loadButton = findViewById(R.id.button_load_game);
         menuOverlay = findViewById(R.id.menu_overlay);
+
+        progressLayout = findViewById(R.id.progress_layout);
+        progressBar = findViewById(R.id.progress_bar);
+        progressText = findViewById(R.id.progress_text);
 
         // OpenGL setup
         glSurfaceView.setEGLContextClientVersion(2);
@@ -77,17 +92,46 @@ public class MainActivity extends AppCompatActivity {
         try {
             Log.i(TAG, "Loading ROM...");
             NativeBridge.loadRomFromUri(getContentResolver(), uri);
-            NativeBridge.processRom();
             romReady = true;
-            Log.i(TAG, "ROM + OTR ready (size: " + NativeBridge.getOTRData().length + " bytes)");
 
             // Hide load button once ROM is loaded
             loadButton.setVisibility(View.GONE);
 
-            tryStartGame();
+            // Start OTR generation with progress
+            startOTRGeneration();
         } catch (Exception e) {
             Log.e(TAG, "ROM load failed", e);
         }
+    }
+
+    private void startOTRGeneration() {
+        progressLayout.setVisibility(View.VISIBLE);
+        progressBar.setProgress(0);
+        progressText.setText("Generating OTR...");
+
+        new Thread(() -> {
+            // Call native to build OTR
+            NativeBridge.processRom(); // or call separate generateOTR if you implement
+
+            // Poll progress
+            int progress = 0;
+            while (progress < 100) {
+                progress = NativeBridge.getOTRProgress(); // stub for native
+                int finalProgress = progress;
+                mainHandler.post(() -> {
+                    progressBar.setProgress(finalProgress);
+                    progressText.setText("Generating OTR: " + finalProgress + "%");
+                });
+
+                try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+            }
+
+            mainHandler.post(() -> {
+                progressLayout.setVisibility(View.GONE);
+                Log.i(TAG, "OTR generation complete, size: " + NativeBridge.getOTRData().length);
+                tryStartGame();
+            });
+        }).start();
     }
 
     void onSurfaceReady() {
