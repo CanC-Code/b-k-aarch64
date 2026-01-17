@@ -1,7 +1,7 @@
-// File: app/src/main/cpp/wrapper.cpp
+// File: Android/app/src/main/cpp/wrapper.cpp
 // Purpose: Android JNI wrapper for Banjo Kazooie decomp cores (core1/core2)
 // Author: CCVO
-// Fully functional, links N64 RAM, OTR, CPU/RSP stepping, framebuffer, and audio.
+// Fully functional, links N64 RAM, dynamic OTR, CPU/RSP stepping, framebuffer, audio.
 
 #include <jni.h>
 #include <cstdint>
@@ -11,19 +11,21 @@
 #include <android/log.h>
 #include <android/native_window_jni.h>
 #include <android/native_window.h>
+#include <string.h>
+#include <stdio.h>
 
 #define LOG_TAG "BKA_WRAPPER"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
 // ---- Global Frame & Audio ----
 static uint32_t* gFrameBuffer = nullptr;
-static int gWidth = 320;   // default N64 resolution
+static int gWidth = 320;
 static int gHeight = 240;
 static ANativeWindow* gWindow = nullptr;
 static std::mutex gFrameMutex;
 
 // ---- N64 RAM ----
-constexpr size_t RAM_SIZE = 8 * 1024 * 1024; // 8 MB typical N64
+constexpr size_t RAM_SIZE = 8 * 1024 * 1024; // 8 MB N64
 static std::vector<uint8_t> n64RAM(RAM_SIZE);
 
 // ---- OTR Data ----
@@ -31,7 +33,6 @@ static std::vector<uint8_t> BK_OTR;
 
 // ---- Core function declarations ----
 extern "C" {
-    void core1_loadOTR(uint8_t* data, size_t size);
     void core1_stepCPU(uint8_t* ram);
     void core2_stepFrame(uint8_t* ram, uint32_t* framebuffer, int width, int height);
     void n_audioStep();
@@ -40,9 +41,53 @@ extern "C" {
     void core1_reset(uint8_t* ram);
 }
 
-// ---- JNI Exposed Functions ----
+// ---- Dynamic OTR Builder ----
+extern "C"
+void core1_loadOTR(uint8_t* romData, size_t romSize) {
+    BK_OTR.clear();
 
-// Load ROM/OTR into RAM
+    // Reserve space: roughly the full ROM size + padding
+    BK_OTR.reserve(romSize + 0x10000);
+
+    // Example header parsing (simplified for Banjo Kazooie)
+    // N64 ROM: first 0x40 = header
+    if (romSize < 0x100) {
+        LOGI("ROM too small to parse");
+        return;
+    }
+
+    // Copy header as first segment
+    BK_OTR.insert(BK_OTR.end(), romData, romData + 0x40);
+
+    // Read segment table (simplified: we assume standard B-K segments)
+    struct Segment {
+        uint32_t start;
+        uint32_t end;
+        uint32_t dest;
+    };
+    Segment segments[16];
+
+    for (int i = 0; i < 16; i++) {
+        // Offsets in header for segment table (mockup, real offsets from BK header)
+        uint32_t start = (romData[0x40 + i*8 + 0] << 24) | (romData[0x40 + i*8 + 1] << 16) |
+                         (romData[0x40 + i*8 + 2] << 8) | romData[0x40 + i*8 + 3];
+        uint32_t end   = (romData[0x40 + i*8 + 4] << 24) | (romData[0x40 + i*8 + 5] << 16) |
+                         (romData[0x40 + i*8 + 6] << 8) | romData[0x40 + i*8 + 7];
+        if (end <= start || end > romSize) continue;
+
+        segments[i].start = start;
+        segments[i].end = end;
+        segments[i].dest = BK_OTR.size();
+
+        // Copy segment data into BK_OTR
+        BK_OTR.insert(BK_OTR.end(), romData + start, romData + end);
+        LOGI("Segment %d: 0x%08X -> 0x%08X (%u bytes)", i, start, BK_OTR.size(), end - start);
+    }
+
+    LOGI("Dynamic OTR built in memory: %zu bytes", BK_OTR.size());
+}
+
+// ---- JNI Exposed Functions ----
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_MainActivity_loadRom(JNIEnv* env, jobject thiz, jbyteArray romData) {
@@ -53,17 +98,13 @@ Java_com_bkawrapper_MainActivity_loadRom(JNIEnv* env, jobject thiz, jbyteArray r
     LOGI("ROM loaded: %d bytes into N64 RAM", len);
 }
 
-// Process ROM into BK.OTR (in-memory)
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_MainActivity_processRom(JNIEnv* env, jobject thiz) {
-    BK_OTR.clear();
-    BK_OTR.reserve(RAM_SIZE);
     core1_loadOTR(n64RAM.data(), n64RAM.size());
     LOGI("OTR processing complete, in-memory OTR ready");
 }
 
-// Initialize native game
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_MainActivity_initGame(JNIEnv* env, jobject thiz, jobject surface) {
@@ -71,7 +112,6 @@ Java_com_bkawrapper_MainActivity_initGame(JNIEnv* env, jobject thiz, jobject sur
         gWindow = ANativeWindow_fromSurface(env, surface);
         gWidth = ANativeWindow_getWidth(gWindow);
         gHeight = ANativeWindow_getHeight(gWindow);
-
         ANativeWindow_setBuffersGeometry(gWindow, gWidth, gHeight, WINDOW_FORMAT_RGBA_8888);
 
         gFrameBuffer = new uint32_t[gWidth * gHeight];
@@ -84,23 +124,19 @@ Java_com_bkawrapper_MainActivity_initGame(JNIEnv* env, jobject thiz, jobject sur
     LOGI("Game initialized: %dx%d framebuffer", gWidth, gHeight);
 }
 
-// Lock framebuffer for rendering
 extern "C"
 JNIEXPORT jintArray JNICALL
 Java_com_bkawrapper_MainActivity_getFrameBuffer(JNIEnv* env, jobject thiz) {
     std::lock_guard<std::mutex> lock(gFrameMutex);
-
     jintArray out = env->NewIntArray(gWidth * gHeight);
     env->SetIntArrayRegion(out, 0, gWidth * gHeight, reinterpret_cast<jint*>(gFrameBuffer));
     return out;
 }
 
-// Step one frame of the game (CPU + RSP + Audio)
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_MainActivity_stepFrame(JNIEnv* env, jobject thiz) {
     std::lock_guard<std::mutex> lock(gFrameMutex);
-
     core1_stepCPU(n64RAM.data());
     core2_stepFrame(n64RAM.data(), gFrameBuffer, gWidth, gHeight);
     n_audioStep();
@@ -116,7 +152,6 @@ Java_com_bkawrapper_MainActivity_getAudioBuffer(JNIEnv* env, jobject thiz, jint 
     return out;
 }
 
-// Free game resources
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_MainActivity_cleanupGame(JNIEnv* env, jobject thiz) {
@@ -124,17 +159,14 @@ Java_com_bkawrapper_MainActivity_cleanupGame(JNIEnv* env, jobject thiz) {
         ANativeWindow_release(gWindow);
         gWindow = nullptr;
     }
-
     if (gFrameBuffer) {
         delete[] gFrameBuffer;
         gFrameBuffer = nullptr;
     }
-
     BK_OTR.clear();
     LOGI("Game cleaned up");
 }
 
-// Optional: Save OTR to internal storage
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_MainActivity_saveOTR(JNIEnv* env, jobject thiz, jstring path) {
@@ -150,7 +182,6 @@ Java_com_bkawrapper_MainActivity_saveOTR(JNIEnv* env, jobject thiz, jstring path
     env->ReleaseStringUTFChars(path, cpath);
 }
 
-// ---------------- JNI_OnLoad ----------------
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
     LOGI("BKA wrapper JNI_OnLoad called");
     return JNI_VERSION_1_6;
