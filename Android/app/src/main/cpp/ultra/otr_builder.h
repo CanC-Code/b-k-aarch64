@@ -6,17 +6,20 @@
 
 namespace OTRBuilder {
 
-struct RomInfo {
-    std::string version;
-};
+struct RomInfo { std::string version; };
 
-// Detect ROM version by SHA1
 bool detectRomVersion(const uint8_t* romData, size_t romSize, RomInfo& outInfo);
+std::vector<uint8_t> loadYAMLAsset(AAssetManager* mgr, const char* path);
 
-// Generate OTR from ROM + YAML (main API)
 bool buildOTRForROM(AAssetManager* mgr,
                     const uint8_t* romData,
                     size_t romSize,
                     std::vector<uint8_t>& outOTR);
+
+bool buildBKOTR(const uint8_t* romData,
+                size_t romSize,
+                const char* yamlData,
+                size_t yamlSize,
+                std::vector<uint8_t>& outOTR);
 
 } // namespace OTRBuilder
