@@ -50,7 +50,7 @@ public class MainActivity extends Activity {
 
     // Called by GLRenderer when surface is ready
     public void onSurfaceReady() {
-        // Optional: start game loop if already loaded
+        // Optional: start game loop or attach texture if OTR exists
     }
 
     private void pickRom() {
@@ -75,26 +75,13 @@ public class MainActivity extends Activity {
                         NativeBridge.loadRomFromUri(getContentResolver(), uri);
                         NativeBridge.processRom();
 
-                        // Poll OTR progress until generation completes
-                        byte[] otrData;
-                        while ((otrData = NativeBridge.getOTR()) == null) {
-                            float progress = NativeBridge.getOTRProgress() * 100f;
-                            runOnUiThread(() -> {
-                                progressBar.setProgress((int) progress);
-                                progressText.setText(String.format("%.0f%%", progress));
-                            });
-                            Thread.sleep(50);
-                        }
-
-                        // OTR is ready, attach texture
-                        byte[] finalOtrData = otrData;
+                        // retrieve OTR bytes
+                        byte[] otrData = NativeBridge.getOTR();
                         runOnUiThread(() -> {
-                            glRenderer.setOTRData(finalOtrData);
+                            glRenderer.setOTRData(otrData);
                             progressOverlay.setVisibility(View.GONE);
-                            loadButton.setVisibility(View.GONE);
                         });
-
-                    } catch (IOException | InterruptedException e) {
+                    } catch (IOException e) {
                         runOnUiThread(() -> {
                             progressOverlay.setVisibility(View.GONE);
                             Toast.makeText(this, "Failed to load ROM: " + e.getMessage(), Toast.LENGTH_LONG).show();
