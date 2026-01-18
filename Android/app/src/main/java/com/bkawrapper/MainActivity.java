@@ -57,15 +57,19 @@ public class MainActivity extends AppCompatActivity {
         otrProgressBar = findViewById(R.id.otr_progress_bar);
         otrProgressText = findViewById(R.id.otr_progress_text);
 
+        // OpenGL setup
         glSurfaceView.setEGLContextClientVersion(2);
         glRenderer = new GLRenderer(this);
         glSurfaceView.setRenderer(glRenderer);
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
+        // ROM picker
         romPickerLauncher = registerForActivityResult(
                 new ActivityResultContracts.OpenDocument(),
                 uri -> {
-                    if (uri != null) loadRom(uri);
+                    if (uri != null) {
+                        loadRom(uri);
+                    }
                 }
         );
 
@@ -73,18 +77,22 @@ public class MainActivity extends AppCompatActivity {
                 romPickerLauncher.launch(new String[]{"*/*"})
         );
 
+        // Menu buttons
         menuOverlay.findViewById(R.id.button_resume).setOnClickListener(v -> hideMenu());
         menuOverlay.findViewById(R.id.button_exit).setOnClickListener(v -> finish());
         menuOverlay.findViewById(R.id.button_settings).setOnClickListener(v ->
-                Log.i(TAG, "Settings clicked (stub)"));
+                Log.i(TAG, "Settings clicked (stub)")
+        );
         menuOverlay.findViewById(R.id.button_controller).setOnClickListener(v ->
-                Log.i(TAG, "Controller Layout clicked (stub)"));
+                Log.i(TAG, "Controller Layout clicked (stub)")
+        );
 
+        Log.i(TAG, "App started – waiting for ROM");
+
+        // Progress polling thread
         progressThread = new HandlerThread("OTRProgressThread");
         progressThread.start();
         progressHandler = new Handler(progressThread.getLooper());
-
-        Log.i(TAG, "App started – waiting for ROM");
     }
 
     private void loadRom(Uri uri) {
@@ -93,18 +101,15 @@ public class MainActivity extends AppCompatActivity {
 
             InputStream romStream = getContentResolver().openInputStream(uri);
             if (romStream == null) {
-                Log.e(TAG, "ROM stream null");
+                Log.e(TAG, "ROM stream is null");
                 return;
             }
 
+            // Native side re-reads ROM via AssetManager / file descriptor
             romStream.close();
 
-            // Native side owns ROM access / extraction
-            boolean started = NativeBridge.processRom();
-            if (!started) {
-                Log.e(TAG, "processRom() failed");
-                return;
-            }
+            // Kick off native OTR generation (async, no return value)
+            NativeBridge.processRom();
 
             showOTRProgress();
             generatingOTR = true;
@@ -116,18 +121,22 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showOTRProgress() {
-        runOnUiThread(() -> progressOverlay.setVisibility(View.VISIBLE));
+        runOnUiThread(() ->
+                progressOverlay.setVisibility(View.VISIBLE)
+        );
     }
 
     private void hideOTRProgress() {
-        runOnUiThread(() -> progressOverlay.setVisibility(View.GONE));
+        runOnUiThread(() ->
+                progressOverlay.setVisibility(View.GONE)
+        );
     }
 
     private void pollOTRProgress() {
         if (!generatingOTR) return;
 
         float progress = NativeBridge.getOTRProgress();
-        int percent = Math.max(0, Math.min(100, (int) (progress * 100.0f)));
+        int percent = Math.min(100, Math.max(0, (int) (progress * 100)));
 
         runOnUiThread(() -> {
             otrProgressBar.setProgress(percent);
