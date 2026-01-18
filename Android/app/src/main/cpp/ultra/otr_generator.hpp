@@ -3,28 +3,29 @@
 #include <string>
 #include <cstdint>
 #include <functional>
+#include <android/asset_manager.h>
 
 class OTRGenerator {
 public:
     struct RomInfo {
         std::string version;
-        // Add other info if needed
+        // Future: add more metadata fields if needed
     };
 
     using ProgressCallback = std::function<void(float)>;
 
     OTRGenerator() = default;
 
-    // Set the progress callback
+    // Assign a progress callback for real-time updates
     void setProgressCallback(ProgressCallback cb) {
         progressCallback = cb;
     }
 
-    // Detect ROM version
+    // Detect ROM version (returns true if recognized)
     static bool detectRomVersion(const uint8_t* romData, size_t romSize, RomInfo& outInfo);
 
-    // Load YAML file from asset manager
-    static std::vector<uint8_t> loadYAMLAsset(void* mgr, const char* assetPath);
+    // Load YAML file from Android assets
+    static std::vector<uint8_t> loadYAMLAsset(AAssetManager* mgr, const char* assetPath);
 
     // Generate OTR from ROM + YAML
     bool generateOTR(const uint8_t* romData,
