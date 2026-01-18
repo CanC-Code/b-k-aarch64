@@ -11,16 +11,19 @@ import javax.microedition.khronos.opengles.GL10;
 
 public class GLRenderer implements GLSurfaceView.Renderer {
 
+    private final GLSurfaceView glSurfaceView;
     private final ProgressBar progressBar;
     private final TextView progressText;
     private final FrameLayout overlay;
 
     private byte[] otrData = null;
+    private boolean otrInitialized = false;
 
-    public GLRenderer(MainActivity activity,
+    public GLRenderer(GLSurfaceView glSurfaceView,
                       ProgressBar progressBar,
                       TextView progressText,
                       FrameLayout overlay) {
+        this.glSurfaceView = glSurfaceView;
         this.progressBar = progressBar;
         this.progressText = progressText;
         this.overlay = overlay;
@@ -28,9 +31,17 @@ public class GLRenderer implements GLSurfaceView.Renderer {
 
     public void setOTRData(byte[] data) {
         this.otrData = data;
-        if (data != null) {
-            NativeBridge.initTextureWithOTR(data);
-            overlay.setVisibility(FrameLayout.GONE);
+        this.otrInitialized = false;
+
+        if (otrData != null) {
+            // Queue texture init on GL thread
+            glSurfaceView.queueEvent(() -> {
+                NativeBridge.initTextureWithOTR(otrData);
+                otrInitialized = true;
+            });
+
+            // Hide overlay on UI thread
+            overlay.post(() -> overlay.setVisibility(FrameLayout.GONE));
         }
     }
 
@@ -48,7 +59,7 @@ public class GLRenderer implements GLSurfaceView.Renderer {
     public void onDrawFrame(GL10 gl) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
-        if (otrData != null) {
+        if (otrData != null && otrInitialized) {
             NativeBridge.updateTexture(NativeBridge.getTextureId());
         }
     }
