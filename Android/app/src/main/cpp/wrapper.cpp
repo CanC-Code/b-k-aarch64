@@ -1,168 +1,134 @@
-// File: wrapper.cpp
-// Purpose: JNI bridge + ROM → OTR pipeline with progress tracking
-
 #include <jni.h>
 #include <vector>
 #include <cstdint>
 #include <cstring>
-#include <android/log.h>
-#include <thread>
 #include <atomic>
+#include <thread>
+#include <mutex>
+#include <android/log.h>
+#include <android/asset_manager_jni.h>
 
-#include "ultra/otr_builder.h"
+#include "otr_builder.h"
 
 #define LOG_TAG "BK_WRAPPER"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-// ---------------------------
-// Global buffers / progress
-// ---------------------------
+// --------------------
+// Global buffers & state
+// --------------------
 static std::vector<uint8_t> g_rom;
 static std::vector<uint8_t> g_otr;
-static std::atomic<float> g_otr_progress(0.0f);
-static std::thread g_otr_thread;
 
-// ---------------------------
-// Helper: Run OTR build in background
-// ---------------------------
-static void runOTRBuild()
-{
-    g_otr.clear();
-    g_otr_progress = 0.0f;
+static std::atomic<float> g_otr_progress{0.0f};
+static std::mutex g_otr_mutex;
+static bool g_generating = false;
 
-    auto progressCallback = [](float progress, void*) {
-        g_otr_progress = progress; // update atomic
-    };
+// --------------------
+// Threaded OTR generation
+// --------------------
+static void generateOTRThread(AAssetManager* mgr) {
+    {
+        std::lock_guard<std::mutex> lock(g_otr_mutex);
+        g_otr.clear();
+        g_otr_progress = 0.0f;
+        g_generating = true;
+    }
 
-    bool success = buildBKOTR(
+    bool ok = buildOTRForROM(
+        mgr,
         g_rom.data(),
         g_rom.size(),
-        nullptr,      // optional YAML data pointer (if embedded)
-        0,            // optional YAML size
         g_otr,
-        progressCallback,
-        nullptr       // user data
+        [](float progress) {
+            g_otr_progress = progress;
+        }
     );
 
-    if (!success || g_otr.empty()) {
-        LOGE("OTR build failed");
-        g_otr_progress = 1.0f; // mark complete even if failed
+    if (!ok) {
+        LOGE("OTR generation failed");
+        std::lock_guard<std::mutex> lock(g_otr_mutex);
         g_otr.clear();
+        g_otr_progress = 0.0f;
     } else {
-        LOGI("OTR build complete: %zu bytes", g_otr.size());
+        LOGI("OTR generation complete: %zu bytes", g_otr.size());
         g_otr_progress = 1.0f;
     }
+
+    g_generating = false;
 }
 
-// ---------------------------
-// JNI: Load ROM
-// ---------------------------
+// --------------------
+// JNI interface
+// --------------------
 extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_loadRom(
+JNIEXPORT jboolean JNICALL
+Java_com_bkawrapper_NativeBridge_processRom(
         JNIEnv* env,
         jobject /* this */,
+        jobject assetManager,
         jbyteArray romData)
 {
     if (!romData) {
         LOGE("ROM data is null");
-        return;
+        return JNI_FALSE;
     }
 
-    jsize size = env->GetArrayLength(romData);
-    if (size <= 0) {
+    const jsize romSize = env->GetArrayLength(romData);
+    if (romSize <= 0) {
         LOGE("ROM size invalid");
-        return;
+        return JNI_FALSE;
     }
 
-    g_rom.resize(static_cast<size_t>(size));
+    g_rom.resize(static_cast<size_t>(romSize));
     env->GetByteArrayRegion(
         romData,
         0,
-        size,
+        romSize,
         reinterpret_cast<jbyte*>(g_rom.data())
     );
 
-    LOGI("ROM loaded: %d bytes", size);
+    LOGI("ROM received: %d bytes", romSize);
+
+    AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
+    if (!mgr) {
+        LOGE("Failed to get AAssetManager");
+        return JNI_FALSE;
+    }
+
+    // Start generation in a separate thread
+    std::thread(generateOTRThread, mgr).detach();
+    return JNI_TRUE;
 }
 
-// ---------------------------
-// JNI: Start processing ROM → OTR
-// ---------------------------
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_processRom(
-        JNIEnv*,
-        jobject)
-{
-    // Stop any previous thread
-    if (g_otr_thread.joinable()) g_otr_thread.join();
-
-    // Start new background thread
-    g_otr_thread = std::thread(runOTRBuild);
-}
-
-// ---------------------------
-// JNI: Get OTR progress
-// ---------------------------
 extern "C"
 JNIEXPORT jfloat JNICALL
 Java_com_bkawrapper_NativeBridge_getOTRProgress(
-        JNIEnv*,
-        jobject)
+        JNIEnv* /* env */,
+        jobject /* this */)
 {
     return g_otr_progress.load();
 }
 
-// ---------------------------
-// JNI: Retrieve OTR data
-// ---------------------------
 extern "C"
 JNIEXPORT jbyteArray JNICALL
-Java_com_bkawrapper_NativeBridge_getOTRData(
+Java_com_bkawrapper_NativeBridge_getOTR(
         JNIEnv* env,
-        jobject)
+        jobject /* this */)
 {
+    std::lock_guard<std::mutex> lock(g_otr_mutex);
+
     if (g_otr.empty()) {
         LOGE("OTR buffer empty");
         return nullptr;
     }
 
     jbyteArray out = env->NewByteArray(static_cast<jsize>(g_otr.size()));
-    env->SetByteArrayRegion(out, 0, static_cast<jsize>(g_otr.size()), reinterpret_cast<const jbyte*>(g_otr.data()));
+    env->SetByteArrayRegion(
+        out,
+        0,
+        static_cast<jsize>(g_otr.size()),
+        reinterpret_cast<const jbyte*>(g_otr.data())
+    );
     return out;
 }
-
-// ---------------------------
-// JNI: Save OTR to file path (optional convenience)
-// ---------------------------
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_saveOTRToFile(
-        JNIEnv* env,
-        jobject,
-        jstring path)
-{
-    if (g_otr.empty()) {
-        LOGE("OTR buffer empty");
-        return;
-    }
-
-    const char* cpath = env->GetStringUTFChars(path, nullptr);
-    FILE* f = fopen(cpath, "wb");
-    if (!f) {
-        LOGE("Failed to open file for writing: %s", cpath);
-        env->ReleaseStringUTFChars(path, cpath);
-        return;
-    }
-
-    fwrite(g_otr.data(), 1, g_otr.size(), f);
-    fclose(f);
-    env->ReleaseStringUTFChars(path, cpath);
-    LOGI("OTR saved to %s", cpath);
-}
-
-// ---------------------------
-// TODO: Implement remaining game loop, texture, and Surface JNI calls
-// ---------------------------
