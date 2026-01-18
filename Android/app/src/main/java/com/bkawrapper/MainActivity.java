@@ -1,4 +1,3 @@
-// File: Android/app/src/main/java/com/bkawrapper/MainActivity.java
 package com.bkawrapper;
 
 import android.net.Uri;
@@ -17,6 +16,8 @@ import android.opengl.GLSurfaceView;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+
+import java.io.InputStream;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -93,9 +94,25 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadRom(Uri uri) {
-        try {
+        try (InputStream is = getContentResolver().openInputStream(uri)) {
+            if (is == null) {
+                Log.e(TAG, "Failed to open ROM input stream");
+                return;
+            }
+
+            byte[] romBytes = new byte[is.available()];
+            int read = is.read(romBytes);
+            if (read <= 0) {
+                Log.e(TAG, "Failed to read ROM bytes");
+                return;
+            }
+
             Log.i(TAG, "Loading ROM...");
-            NativeBridge.loadRomFromUri(getContentResolver(), uri);
+            boolean started = NativeBridge.loadRomFromBytes(getAssets(), romBytes);
+            if (!started) {
+                Log.e(TAG, "Native ROM processing failed");
+                return;
+            }
 
             // Start OTR progress overlay
             showOTRProgress();
@@ -120,7 +137,7 @@ public class MainActivity extends AppCompatActivity {
     private void pollOTRProgress() {
         if (!generatingOTR) return;
 
-        float progress = NativeBridge.getOTRProgress();
+        float progress = NativeBridge.pollOTRProgress();
         int percent = Math.min(100, Math.max(0, (int)(progress * 100)));
 
         runOnUiThread(() -> {
@@ -132,6 +149,7 @@ public class MainActivity extends AppCompatActivity {
             // OTR generation finished
             generatingOTR = false;
             hideOTRProgress();
+
             runOnUiThread(() -> {
                 romReady = true;
                 loadButton.setVisibility(View.GONE);
