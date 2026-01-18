@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # ------------------------------
-# Source files: include all .cpp in main cpp folder, ultra/, emulator/
+# Source files: main cpp folder + ultra/ + emulator/
 # ------------------------------
 file(GLOB_RECURSE WRAPPER_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
@@ -28,8 +28,10 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/otr_generator
     ${ANDROID_NDK}/sources/android/native_app_glue
     ${ANDROID_NDK}/sysroot/usr/include
-    ${ANDROID_NDK}/sysroot/usr/include/${ANDROID_TOOLCHAIN_NAME}
 )
+
+# Ensure Android macro for conditional compilation
+add_definitions(-DANDROID)
 
 # ------------------------------
 # Create shared library
