@@ -1,52 +1,28 @@
 #include "otr_assets.hpp"
-#include <fstream>
-#include <vector>
+#include <cstddef>
 #include <cstdint>
-#include <iostream>
 
 // ------------------------------
-// Helper to load a file and convert to a constexpr-like array at build time
+// Embedded YAML data
 // ------------------------------
-namespace {
-
-std::vector<uint8_t> readFileBytes(const char* path) {
-    std::ifstream file(path, std::ios::binary);
-    if (!file) {
-        std::cerr << "Failed to open file: " << path << std::endl;
-        return {};
-    }
-    std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(file)),
-                                std::istreambuf_iterator<char>());
-    return buffer;
-}
-
-// Macro to generate array and size
-#define EMBED_YAML_ARRAY(NAME, PATH)                 \
-    static std::vector<uint8_t> NAME##_vec = readFileBytes(PATH); \
-    const uint8_t NAME[] = {                         \
-        NAME##_vec.empty() ? 0 : NAME##_vec[0]      /* placeholder for static array */ \
-    };                                               \
-    const size_t NAME##_size = NAME##_vec.size();
-
-} // anonymous namespace
 
 // ------------------------------
-// Embed the YAML files
+// decompressed.pal.yaml
 // ------------------------------
-// Update paths relative to CMake or source root
-static const char* palYamlPath = "Android/app/src/main/assets/otr_yaml/decompressed.pal.yaml";
-static const char* usYamlPath  = "Android/app/src/main/assets/otr_yaml/decompressed.us.v10.yaml";
-
-// Load files into static byte arrays
-std::vector<uint8_t> embedded_pal_vector = readFileBytes(palYamlPath);
-std::vector<uint8_t> embedded_us_vector  = readFileBytes(usYamlPath);
-
 const uint8_t embedded_pal_yaml[] = {
-    embedded_pal_vector.empty() ? 0 : embedded_pal_vector[0]  // Placeholder for build-time embedding
+    0x23,0x20,0x50,0x41,0x4C,0x20,0x44,0x61,0x74,0x61,0x0A,0x23,0x20,0x54,0x68,0x69,
+    0x73,0x20,0x69,0x73,0x20,0x61,0x20,0x73,0x6D,0x61,0x6C,0x6C,0x20,0x73,0x61,0x6D,
+    0x70,0x6C,0x65,0x0A
+    // … continue with full byte dump of decompressed.pal.yaml …
 };
-const size_t embedded_pal_size = embedded_pal_vector.size();
+const size_t embedded_pal_size = sizeof(embedded_pal_yaml);
 
+// ------------------------------
+// decompressed.us.v10.yaml
+// ------------------------------
 const uint8_t embedded_us_yaml[] = {
-    embedded_us_vector.empty() ? 0 : embedded_us_vector[0]  // Placeholder for build-time embedding
+    0x23,0x20,0x55,0x53,0x20,0x44,0x61,0x74,0x61,0x0A,0x23,0x20,0x56,0x65,0x72,0x73,
+    0x69,0x6F,0x6E,0x20,0x31,0x30,0x0A
+    // … continue with full byte dump of decompressed.us.v10.yaml …
 };
-const size_t embedded_us_size = embedded_us_vector.size();
+const size_t embedded_us_size = sizeof(embedded_us_yaml);
