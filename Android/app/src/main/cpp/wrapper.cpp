@@ -9,6 +9,7 @@
 #include <android/asset_manager_jni.h>
 
 #include "ultra/otr_builder.h"
+#include "ultra/otr_generator.hpp"
 
 #define LOG_TAG "BK_WRAPPER"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
@@ -45,6 +46,8 @@ Java_com_bkawrapper_NativeBridge_setAssetManager(
     g_assetManager = AAssetManager_fromJava(env, assetManager);
     if (!g_assetManager) {
         LOGE("Failed to get native AAssetManager");
+    } else {
+        LOGI("AssetManager initialized");
     }
 }
 
@@ -95,6 +98,11 @@ Java_com_bkawrapper_NativeBridge_processRom(
         return;
     }
 
+    if (!g_assetManager) {
+        LOGE("AssetManager not set, cannot load YAML");
+        return;
+    }
+
     if (g_building.exchange(true)) {
         LOGE("OTR build already in progress");
         return;
@@ -102,12 +110,8 @@ Java_com_bkawrapper_NativeBridge_processRom(
 
     std::thread([]() {
         LOGI("OTR build thread started");
-
         g_progress.store(0.05f);
 
-        std::vector<uint8_t> localOTR;
-
-        // Determine YAML path
         OTRGenerator::RomInfo info{};
         if (!OTRGenerator::detectRomVersion(g_rom.data(), g_rom.size(), info)) {
             LOGE("ROM version detection failed");
@@ -137,6 +141,11 @@ Java_com_bkawrapper_NativeBridge_processRom(
         }
 
         OTRGenerator generator;
+        generator.setProgressCallback([](float progress) {
+            g_progress.store(progress);
+        });
+
+        std::vector<uint8_t> localOTR;
         if (!generator.generateOTR(g_rom.data(), g_rom.size(),
                                    reinterpret_cast<const char*>(yamlData.data()),
                                    yamlData.size(),
