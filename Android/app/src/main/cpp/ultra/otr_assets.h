@@ -7,4 +7,4 @@ namespace OTRAssets {
 
     extern const char* pal_yaml;
     extern const size_t pal_size;
-}
+} // namespace OTRAssets
