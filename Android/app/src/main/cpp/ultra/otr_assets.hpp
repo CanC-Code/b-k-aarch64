@@ -1,28 +1,35 @@
-#include "otr_assets.hpp"
+#pragma once
 #include <cstddef>
 #include <cstdint>
 
 // ------------------------------
-// Embedded YAML data
+// Embedded OTR YAML assets
 // ------------------------------
 
-// ------------------------------
-// decompressed.pal.yaml
-// ------------------------------
-const uint8_t embedded_pal_yaml[] = {
-    0x23,0x20,0x50,0x41,0x4C,0x20,0x44,0x61,0x74,0x61,0x0A,0x23,0x20,0x54,0x68,0x69,
-    0x73,0x20,0x69,0x73,0x20,0x61,0x20,0x73,0x6D,0x61,0x6C,0x6C,0x20,0x73,0x61,0x6D,
-    0x70,0x6C,0x65,0x0A
-    // … continue with full byte dump of decompressed.pal.yaml …
-};
-const size_t embedded_pal_size = sizeof(embedded_pal_yaml);
+// PAL YAML
+extern const uint8_t embedded_pal_yaml[];
+extern const size_t embedded_pal_size;
+
+// US YAML
+extern const uint8_t embedded_us_yaml[];
+extern const size_t embedded_us_size;
 
 // ------------------------------
-// decompressed.us.v10.yaml
+// Helper function to access as string
 // ------------------------------
-const uint8_t embedded_us_yaml[] = {
-    0x23,0x20,0x55,0x53,0x20,0x44,0x61,0x74,0x61,0x0A,0x23,0x20,0x56,0x65,0x72,0x73,
-    0x69,0x6F,0x6E,0x20,0x31,0x30,0x0A
-    // … continue with full byte dump of decompressed.us.v10.yaml …
-};
-const size_t embedded_us_size = sizeof(embedded_us_yaml);
+inline const char* getEmbeddedPalYamlAsCString() {
+    return reinterpret_cast<const char*>(embedded_pal_yaml);
+}
+
+inline const char* getEmbeddedUsYamlAsCString() {
+    return reinterpret_cast<const char*>(embedded_us_yaml);
+}
+
+// Returns size
+inline size_t getEmbeddedPalYamlSize() {
+    return embedded_pal_size;
+}
+
+inline size_t getEmbeddedUsYamlSize() {
+    return embedded_us_size;
+}
