@@ -1,11 +1,9 @@
-// File: Android/app/src/main/java/com/bkawrapper/NativeBridge.java
 package com.bkawrapper;
 
 import android.content.ContentResolver;
 import android.content.Context;
 import android.net.Uri;
 import android.view.Surface;
-import android.content.res.AssetManager;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
@@ -20,17 +18,13 @@ public final class NativeBridge {
     private NativeBridge() {}
 
     // -------- Native API --------
-    public static native void setAssetManager(AssetManager mgr);
-
-    public static native boolean loadRom(byte[] rom);
+    public static native void setAssetManager(Object assetManager);
+    public static native void loadRom(byte[] rom);
     public static native boolean processRom();
-
     public static native void initGame(Surface surface);
     public static native void cleanupGame();
-
     public static native void startGameLoop();
     public static native void stopGameLoop();
-
     public static native int initTexture();
     public static native void updateTexture(int texId);
 
@@ -40,11 +34,6 @@ public final class NativeBridge {
 
     // -------- OTR Progress --------
     public static native float getOTRProgress(); // 0.0 to 1.0
-
-    // -------- Initialization --------
-    public static void initialize(Context context) {
-        setAssetManager(context.getAssets());
-    }
 
     // -------- SAF Loader --------
     public static void loadRomFromUri(ContentResolver resolver, Uri uri) throws Exception {
@@ -60,9 +49,14 @@ public final class NativeBridge {
             byte[] rom = bos.toByteArray();
             if (rom.length < 0x1000) throw new Exception("ROM too small");
 
-            if (!loadRom(rom)) throw new Exception("ROM load failed");
+            loadRom(rom);
             if (!processRom()) throw new Exception("OTR generation failed");
         }
+    }
+
+    // -------- Initialize AssetManager (must call once before loading ROM) --------
+    public static void initAssets(Context context) {
+        setAssetManager(context.getAssets());
     }
 
     // -------- Helper: Save OTR to file path (Java side convenience) --------
