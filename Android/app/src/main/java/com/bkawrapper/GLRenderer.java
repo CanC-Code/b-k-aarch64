@@ -3,6 +3,9 @@ package com.bkawrapper;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
+import android.view.View;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -37,6 +40,10 @@ public class GLRenderer implements GLSurfaceView.Renderer {
             1, 1
     };
 
+    // UI progress overlay references
+    private ProgressBar progressBar;
+    private TextView progressText;
+
     public GLRenderer(MainActivity activity) {
         this.activity = activity;
     }
@@ -56,42 +63,52 @@ public class GLRenderer implements GLSurfaceView.Renderer {
 
         program = buildProgram();
 
-        activity.onSurfaceReady();
+        // bind progress overlay
+        progressBar = activity.findViewById(R.id.otrProgressBar);
+        progressText = activity.findViewById(R.id.otrProgressText);
 
-        // Attempt to attach native texture if OTR already cached
-        int cachedTex = NativeBridge.getTextureId();
-        if (cachedTex != 0) attachTexture(cachedTex);
+        activity.onSurfaceReady();
     }
 
     @Override
     public void onDrawFrame(GL10 gl) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
-        if (!textureReady) return;
+        // --- update progress overlay ---
+        float progress = NativeBridge.getOTRProgress();
+        if (progressBar != null && progressText != null) {
+            activity.runOnUiThread(() -> {
+                progressBar.setProgress((int)(progress * 100));
+                progressText.setText((int)(progress * 100) + "%");
+            });
+        }
 
-        // Update texture from native core each frame
-        NativeBridge.updateTexture(textureId);
+        // --- if texture is ready, render ---
+        if (textureReady) {
+            // Update texture from native
+            NativeBridge.updateTexture(textureId);
 
-        GLES20.glUseProgram(program);
+            GLES20.glUseProgram(program);
 
-        int p = GLES20.glGetAttribLocation(program, "aPos");
-        int t = GLES20.glGetAttribLocation(program, "aUV");
-        int m = GLES20.glGetUniformLocation(program, "uMVP");
-        int s = GLES20.glGetUniformLocation(program, "uTex");
+            int p = GLES20.glGetAttribLocation(program, "aPos");
+            int t = GLES20.glGetAttribLocation(program, "aUV");
+            int m = GLES20.glGetUniformLocation(program, "uMVP");
+            int s = GLES20.glGetUniformLocation(program, "uTex");
 
-        GLES20.glEnableVertexAttribArray(p);
-        GLES20.glVertexAttribPointer(p, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+            GLES20.glEnableVertexAttribArray(p);
+            GLES20.glVertexAttribPointer(p, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
 
-        GLES20.glEnableVertexAttribArray(t);
-        GLES20.glVertexAttribPointer(t, 2, GLES20.GL_FLOAT, false, 0, texBuffer);
+            GLES20.glEnableVertexAttribArray(t);
+            GLES20.glVertexAttribPointer(t, 2, GLES20.GL_FLOAT, false, 0, texBuffer);
 
-        GLES20.glUniformMatrix4fv(m, 1, false, mvp, 0);
-        GLES20.glUniform1i(s, 0);
+            GLES20.glUniformMatrix4fv(m, 1, false, mvp, 0);
+            GLES20.glUniform1i(s, 0);
 
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
 
-        GLES20.glDisableVertexAttribArray(p);
-        GLES20.glDisableVertexAttribArray(t);
+            GLES20.glDisableVertexAttribArray(p);
+            GLES20.glDisableVertexAttribArray(t);
+        }
     }
 
     @Override
@@ -138,7 +155,7 @@ public class GLRenderer implements GLSurfaceView.Renderer {
 
     /**
      * Upload OTR bytes to native core and attach resulting GPU texture.
-     * Should be called after OTR generation is complete.
+     * Called after OTR generation is complete.
      */
     public void setOTRData(byte[] otrData) {
         if (otrData == null || otrData.length == 0) return;
@@ -146,5 +163,11 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         NativeBridge.initTextureWithOTR(otrData);
         int texId = NativeBridge.getTextureId();
         attachTexture(texId);
+
+        // Hide progress overlay
+        activity.runOnUiThread(() -> {
+            View overlay = activity.findViewById(R.id.progressOverlay);
+            if (overlay != null) overlay.setVisibility(View.GONE);
+        });
     }
 }
