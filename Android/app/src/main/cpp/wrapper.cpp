@@ -1,13 +1,8 @@
-// File: wrapper.cpp
-// Purpose: JNI bridge + ROM → OTR pipeline owner (Android NDK safe)
-
 #include <jni.h>
 #include <vector>
 #include <cstdint>
 #include <cstring>
 #include <android/log.h>
-#include <android/asset_manager_jni.h>
-#include <cstdio>
 
 #include "otr_builder.h"
 
@@ -15,150 +10,72 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-// ---------------------------------------------------------------------
-// Global buffers owned by wrapper
-// ---------------------------------------------------------------------
+// Global buffers
 static std::vector<uint8_t> g_rom;
 static std::vector<uint8_t> g_otr;
-static AAssetManager* g_assetMgr = nullptr;
+static float g_progress = 0.0f;  // 0.0 -> 1.0
 
-// ---------------------------------------------------------------------
-// Set AssetManager from Java context
-// ---------------------------------------------------------------------
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_setAssetManager(
-        JNIEnv* env,
-        jobject /* this */,
-        jobject assetManager)
-{
-    g_assetMgr = AAssetManager_fromJava(env, assetManager);
-    LOGI("AssetManager set: %p", g_assetMgr);
-}
+extern "C" {
 
-// ---------------------------------------------------------------------
 // Load ROM bytes into memory
-// ---------------------------------------------------------------------
-extern "C"
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_loadRom(
-        JNIEnv* env,
-        jobject /* this */,
-        jbyteArray romData)
-{
-    if (!romData) {
-        LOGE("ROM data is null");
-        return;
-    }
-
+Java_com_bkawrapper_NativeBridge_loadRom(JNIEnv* env, jclass, jbyteArray romData) {
+    if (!romData) return;
     const jsize romSize = env->GetArrayLength(romData);
-    if (romSize <= 0) {
-        LOGE("ROM size invalid");
-        return;
-    }
-
-    g_rom.resize(static_cast<size_t>(romSize));
-    env->GetByteArrayRegion(
-        romData,
-        0,
-        romSize,
-        reinterpret_cast<jbyte*>(g_rom.data())
-    );
-
+    g_rom.resize(romSize);
+    env->GetByteArrayRegion(romData, 0, romSize, reinterpret_cast<jbyte*>(g_rom.data()));
     LOGI("ROM loaded: %d bytes", romSize);
 }
 
-// ---------------------------------------------------------------------
-// Process ROM → build OTR in memory
-// ---------------------------------------------------------------------
-extern "C"
-JNIEXPORT jboolean JNICALL
-Java_com_bkawrapper_NativeBridge_processRom(
-        JNIEnv* env,
-        jobject /* this */)
-{
-    if (g_rom.empty()) {
-        LOGE("No ROM loaded");
-        return JNI_FALSE;
-    }
-
-    if (!g_assetMgr) {
-        LOGE("AssetManager not set");
-        return JNI_FALSE;
-    }
-
+// Generate OTR
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeBridge_processRom(JNIEnv* env, jclass) {
     g_otr.clear();
+    g_progress = 0.0f;
 
-    const bool success = OTRBuilder::buildOTRForROM(
-        g_assetMgr,
+    // Simulate progress callback
+    auto progressCallback = [](float p) {
+        g_progress = p;
+    };
+
+    bool success = buildBKOTR(
         g_rom.data(),
         g_rom.size(),
-        g_otr
+        nullptr, 0,           // Use null yaml for now if buildBKOTR supports it
+        g_otr,
+        progressCallback      // Pass callback
     );
 
-    if (!success || g_otr.empty()) {
-        LOGE("OTR build failed");
-        return JNI_FALSE;
-    }
-
-    LOGI("OTR build complete: %zu bytes", g_otr.size());
-    return JNI_TRUE;
+    if (!success) LOGE("OTR build failed");
+    else LOGI("OTR build complete: %zu bytes", g_otr.size());
 }
 
-// ---------------------------------------------------------------------
-// Retrieve OTR as Java byte array
-// ---------------------------------------------------------------------
-extern "C"
+// Return current progress (0.0 -> 1.0)
+JNIEXPORT jfloat JNICALL
+Java_com_bkawrapper_NativeBridge_getOTRProgress(JNIEnv*, jclass) {
+    return g_progress;
+}
+
+// Return OTR bytes
 JNIEXPORT jbyteArray JNICALL
-Java_com_bkawrapper_NativeBridge_getOTRData(
-        JNIEnv* env,
-        jobject /* this */)
-{
-    if (g_otr.empty()) {
-        LOGE("OTR buffer empty");
-        return nullptr;
-    }
-
-    jbyteArray out = env->NewByteArray(
-        static_cast<jsize>(g_otr.size())
-    );
-
-    env->SetByteArrayRegion(
-        out,
-        0,
-        static_cast<jsize>(g_otr.size()),
-        reinterpret_cast<const jbyte*>(g_otr.data())
-    );
-
+Java_com_bkawrapper_NativeBridge_getOTRData(JNIEnv* env, jclass) {
+    if (g_otr.empty()) return nullptr;
+    jbyteArray out = env->NewByteArray(g_otr.size());
+    env->SetByteArrayRegion(out, 0, g_otr.size(), reinterpret_cast<const jbyte*>(g_otr.data()));
     return out;
 }
 
-// ---------------------------------------------------------------------
-// Save OTR to file path (optional, convenience)
-// ---------------------------------------------------------------------
-extern "C"
+// Save OTR to file
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_saveOTRToFile(
-        JNIEnv* env,
-        jobject /* this */,
-        jstring path)
-{
-    if (!path || g_otr.empty()) {
-        LOGE("Invalid path or empty OTR");
-        return;
-    }
-
+Java_com_bkawrapper_NativeBridge_saveOTRToFile(JNIEnv* env, jclass, jstring path) {
+    if (g_otr.empty()) return;
     const char* cpath = env->GetStringUTFChars(path, nullptr);
     FILE* f = fopen(cpath, "wb");
-    if (!f) {
-        LOGE("Failed to open file: %s", cpath);
-        env->ReleaseStringUTFChars(path, cpath);
-        return;
+    if (f) {
+        fwrite(g_otr.data(), 1, g_otr.size(), f);
+        fclose(f);
     }
-
-    fwrite(g_otr.data(), 1, g_otr.size(), f);
-    fclose(f);
     env->ReleaseStringUTFChars(path, cpath);
-
-    LOGI("OTR saved to: %s", cpath);
 }
+
+} // extern "C"
