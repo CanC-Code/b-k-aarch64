@@ -60,6 +60,9 @@ public final class NativeBridge {
     public static native void processRom();
     public static native float getOTRProgress();
 
+    /** Retrieve the generated OTR from native memory */
+    public static native byte[] getOTR();
+
     // -----------------------------
     // Rendering / lifecycle
     // -----------------------------
