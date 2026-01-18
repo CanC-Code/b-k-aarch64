@@ -7,6 +7,8 @@
 #include <android/log.h>
 #include <android/asset_manager.h>
 #include <android/asset_manager_jni.h>
+#include <fstream>
+#include <sys/stat.h>
 
 #include "ultra/otr_builder.h"
 #include "ultra/otr_generator.hpp"
@@ -26,6 +28,44 @@ static std::atomic<bool>  g_building{false};
 static std::mutex         g_mutex;
 
 static AAssetManager* g_assetManager = nullptr;
+
+// -----------------------------
+// Helpers: File caching
+// -----------------------------
+static bool fileExists(const std::string& path) {
+    struct stat buffer{};
+    return (stat(path.c_str(), &buffer) == 0);
+}
+
+static bool saveOTRToDisk(const std::string& path, const std::vector<uint8_t>& data) {
+    std::ofstream out(path, std::ios::binary);
+    if (!out.is_open()) {
+        LOGE("Failed to open OTR file for writing: %s", path.c_str());
+        return false;
+    }
+    out.write(reinterpret_cast<const char*>(data.data()), data.size());
+    out.close();
+    LOGI("OTR saved to disk: %s (%zu bytes)", path.c_str(), data.size());
+    return true;
+}
+
+static bool loadOTRFromDisk(const std::string& path, std::vector<uint8_t>& out) {
+    if (!fileExists(path)) return false;
+    std::ifstream in(path, std::ios::binary | std::ios::ate);
+    if (!in.is_open()) return false;
+    std::streamsize size = in.tellg();
+    in.seekg(0, std::ios::beg);
+    out.resize(size);
+    if (!in.read(reinterpret_cast<char*>(out.data()), size)) {
+        out.clear();
+        return false;
+    }
+    LOGI("OTR loaded from disk: %s (%zu bytes)", path.c_str(), out.size());
+    return true;
+}
+
+// Path for cached OTR
+static const std::string kOTRCachePath = "/data/data/com.bkawrapper/files/otr_cache.bin";
 
 // -----------------------------
 // JNI: setAssetManager
@@ -110,8 +150,18 @@ Java_com_bkawrapper_NativeBridge_processRom(
 
     std::thread([]() {
         LOGI("OTR build thread started");
+
+        // Check for cached OTR first
+        if (loadOTRFromDisk(kOTRCachePath, g_otr)) {
+            g_progress.store(1.0f);
+            g_building.store(false);
+            LOGI("Using cached OTR, skipping generation");
+            return;
+        }
+
         g_progress.store(0.05f);
 
+        // Detect ROM version
         OTRGenerator::RomInfo info{};
         if (!OTRGenerator::detectRomVersion(g_rom.data(), g_rom.size(), info)) {
             LOGE("ROM version detection failed");
@@ -140,6 +190,7 @@ Java_com_bkawrapper_NativeBridge_processRom(
             return;
         }
 
+        // Generate OTR
         OTRGenerator generator;
         generator.setProgressCallback([](float progress) {
             g_progress.store(progress);
@@ -157,8 +208,11 @@ Java_com_bkawrapper_NativeBridge_processRom(
                 std::lock_guard<std::mutex> lock(g_mutex);
                 g_otr = std::move(localOTR);
             }
+            // Save to disk
+            saveOTRToDisk(kOTRCachePath, g_otr);
+
             g_progress.store(1.0f);
-            LOGI("OTR build complete (%zu bytes)", g_otr.size());
+            LOGI("OTR build complete and cached (%zu bytes)", g_otr.size());
         }
 
         g_building.store(false);
