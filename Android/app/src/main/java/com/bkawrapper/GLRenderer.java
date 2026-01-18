@@ -131,16 +131,4 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         this.textureId = texId;
         this.textureReady = texId != 0;
     }
-
-    /**
-     * Upload OTR bytes to native core and attach resulting GPU texture.
-     * Should be called after OTR generation is complete.
-     */
-    public void setOTRData(byte[] otrData) {
-        if (otrData == null || otrData.length == 0) return;
-
-        NativeBridge.initTextureWithOTR(otrData);
-        int texId = NativeBridge.getTextureId();
-        attachTexture(texId);
-    }
 }
