@@ -2,28 +2,43 @@
 #include <vector>
 #include <cstdint>
 #include <string>
-#include <functional>
 #include <android/asset_manager_jni.h>
-#include "otr_generator.h"
+#include "otr_generator.hpp"
 
-// Callback type for progress updates (0.0 → 1.0)
-using ProgressCallback = std::function<void(float)>;
+inline bool buildOTRForROM(AAssetManager* mgr,
+                            const uint8_t* romData,
+                            size_t romSize,
+                            std::vector<uint8_t>& outOTR,
+                            OTRGenerator::ProgressCallback progressCb = nullptr)
+{
+    OTRGenerator::RomInfo info{};
+    if (!OTRGenerator::detectRomVersion(romData, romSize, info)) return false;
 
-// Build OTR using embedded YAML per ROM version
-bool buildOTRForROM(
-    AAssetManager* mgr,
-    const uint8_t* romData,
-    size_t romSize,
-    std::vector<uint8_t>& outOTR,
-    ProgressCallback progress = nullptr
-);
+    std::string yamlFile;
+    if (info.version == "USv1.0") yamlFile = "otr_yaml/decompressed.us.v10.yaml";
+    else if (info.version == "PAL") yamlFile = "otr_yaml/decompressed.pal.yaml";
+    else return false;
 
-// Legacy: Build OTR using preloaded YAML in memory
+    std::vector<uint8_t> yamlBuf = OTRGenerator::loadYAMLAsset(mgr, yamlFile.c_str());
+    if (yamlBuf.empty()) return false;
+
+    OTRGenerator gen;
+    if (progressCb) gen.setProgressCallback(progressCb);
+
+    return gen.generateOTR(
+        romData,
+        romSize,
+        reinterpret_cast<const char*>(yamlBuf.data()),
+        yamlBuf.size(),
+        outOTR
+    );
+}
+
+// Legacy: SHA1 → BIN loader
 bool buildBKOTR(
     const uint8_t* romData,
     size_t romSize,
     const char* yamlData,
     size_t yamlSize,
-    std::vector<uint8_t>& outOTR,
-    ProgressCallback progress = nullptr
+    std::vector<uint8_t>& outOTR
 );
