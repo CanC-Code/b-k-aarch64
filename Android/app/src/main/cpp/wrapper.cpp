@@ -1,72 +1,29 @@
+// File: Android/app/src/main/cpp/wrapper.cpp
 #include <jni.h>
 #include <vector>
 #include <cstdint>
 #include <cstring>
-#include <atomic>
-#include <thread>
-#include <mutex>
 #include <android/log.h>
 #include <android/asset_manager_jni.h>
 
-#include "otr_builder.h"
+#include "ultra/otr_builder.h" // Your OTR builder with progress support
 
 #define LOG_TAG "BK_WRAPPER"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-// --------------------
-// Global buffers & state
-// --------------------
+// ---------------- Global state ----------------
 static std::vector<uint8_t> g_rom;
 static std::vector<uint8_t> g_otr;
 
-static std::atomic<float> g_otr_progress{0.0f};
-static std::mutex g_otr_mutex;
-static bool g_generating = false;
+// Progress tracking
+static float g_otrProgress = 0.0f;
 
-// --------------------
-// Threaded OTR generation
-// --------------------
-static void generateOTRThread(AAssetManager* mgr) {
-    {
-        std::lock_guard<std::mutex> lock(g_otr_mutex);
-        g_otr.clear();
-        g_otr_progress = 0.0f;
-        g_generating = true;
-    }
-
-    bool ok = buildOTRForROM(
-        mgr,
-        g_rom.data(),
-        g_rom.size(),
-        g_otr,
-        [](float progress) {
-            g_otr_progress = progress;
-        }
-    );
-
-    if (!ok) {
-        LOGE("OTR generation failed");
-        std::lock_guard<std::mutex> lock(g_otr_mutex);
-        g_otr.clear();
-        g_otr_progress = 0.0f;
-    } else {
-        LOGI("OTR generation complete: %zu bytes", g_otr.size());
-        g_otr_progress = 1.0f;
-    }
-
-    g_generating = false;
-}
-
-// --------------------
-// JNI interface
-// --------------------
 extern "C"
 JNIEXPORT jboolean JNICALL
 Java_com_bkawrapper_NativeBridge_processRom(
         JNIEnv* env,
-        jobject /* this */,
-        jobject assetManager,
+        jclass,
         jbyteArray romData)
 {
     if (!romData) {
@@ -90,45 +47,95 @@ Java_com_bkawrapper_NativeBridge_processRom(
 
     LOGI("ROM received: %d bytes", romSize);
 
-    AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
-    if (!mgr) {
-        LOGE("Failed to get AAssetManager");
+    g_otr.clear();
+    g_otrProgress = 0.0f;
+
+    // Example OTR builder with progress callback
+    auto progressCallback = [](float progress) {
+        g_otrProgress = progress; // store progress for JNI polling
+    };
+
+    const bool success = buildBKOTR(
+        g_rom.data(),
+        g_rom.size(),
+        nullptr,  // yamlData optional if using embedded bin
+        0,
+        g_otr,
+        progressCallback
+    );
+
+    if (!success || g_otr.empty()) {
+        LOGE("OTR build failed");
+        g_otrProgress = 0.0f;
         return JNI_FALSE;
     }
 
-    // Start generation in a separate thread
-    std::thread(generateOTRThread, mgr).detach();
+    g_otrProgress = 1.0f;
+    LOGI("OTR build complete: %zu bytes", g_otr.size());
     return JNI_TRUE;
-}
-
-extern "C"
-JNIEXPORT jfloat JNICALL
-Java_com_bkawrapper_NativeBridge_getOTRProgress(
-        JNIEnv* /* env */,
-        jobject /* this */)
-{
-    return g_otr_progress.load();
 }
 
 extern "C"
 JNIEXPORT jbyteArray JNICALL
 Java_com_bkawrapper_NativeBridge_getOTR(
         JNIEnv* env,
-        jobject /* this */)
+        jclass)
 {
-    std::lock_guard<std::mutex> lock(g_otr_mutex);
-
     if (g_otr.empty()) {
         LOGE("OTR buffer empty");
         return nullptr;
     }
 
     jbyteArray out = env->NewByteArray(static_cast<jsize>(g_otr.size()));
-    env->SetByteArrayRegion(
-        out,
-        0,
-        static_cast<jsize>(g_otr.size()),
-        reinterpret_cast<const jbyte*>(g_otr.data())
-    );
+    env->SetByteArrayRegion(out, 0, static_cast<jsize>(g_otr.size()),
+                            reinterpret_cast<const jbyte*>(g_otr.data()));
     return out;
+}
+
+extern "C"
+JNIEXPORT jfloat JNICALL
+Java_com_bkawrapper_NativeBridge_getOTRProgress(
+        JNIEnv* env,
+        jclass)
+{
+    return g_otrProgress;
+}
+
+// ---------------- Game / OpenGL stubs ----------------
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeBridge_initGame(JNIEnv* env, jclass, jobject surface) {
+    // Initialize your GL context / game engine
+    LOGI("Game initialized");
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeBridge_cleanupGame(JNIEnv* env, jclass) {
+    LOGI("Game cleanup");
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeBridge_startGameLoop(JNIEnv* env, jclass) {
+    LOGI("Game loop started");
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeBridge_stopGameLoop(JNIEnv* env, jclass) {
+    LOGI("Game loop stopped");
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeBridge_initTexture(JNIEnv* env, jclass) {
+    LOGI("Texture initialized");
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass, jint texId) {
+    // Bind and update your texture here
+    LOGI("Texture updated: %d", texId);
 }
