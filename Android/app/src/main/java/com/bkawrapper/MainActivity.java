@@ -50,9 +50,8 @@ public class MainActivity extends Activity {
         loadButton.setOnClickListener(v -> pickRom());
     }
 
-    // Reserved for later native surface init
     public void onSurfaceReady() {
-        // intentionally empty
+        // Reserved for later native surface init
     }
 
     private void pickRom() {
@@ -68,36 +67,54 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == PICK_ROM_REQUEST && resultCode == RESULT_OK && data != null) {
-            Uri uri = data.getData();
-            if (uri == null) return;
+        if (requestCode != PICK_ROM_REQUEST || resultCode != RESULT_OK || data == null) return;
 
-            progressOverlay.setVisibility(View.VISIBLE);
-            progressBar.setProgress(0);
-            progressText.setText("0%");
+        Uri uri = data.getData();
+        if (uri == null) return;
 
-            new Thread(() -> {
-                try {
-                    NativeBridge.loadRomFromUri(getContentResolver(), uri);
-                    NativeBridge.processRom();
+        progressOverlay.setVisibility(View.VISIBLE);
+        progressBar.setProgress(0);
+        progressText.setText("0%");
 
-                    byte[] otrData = NativeBridge.getOTR();
+        new Thread(() -> {
+            try {
+                NativeBridge.loadRomFromUri(getContentResolver(), uri);
+                NativeBridge.processRom();
+
+                // Poll progress while building
+                while (NativeBridge.getOTRProgress() < 1.0f) {
+                    float p = NativeBridge.getOTRProgress();
+                    runOnUiThread(() -> {
+                        progressBar.setProgress((int)(p*100));
+                        progressText.setText((int)(p*100) + "%");
+                    });
+                    Thread.sleep(50);
+                }
+
+                // Retrieve OTR safely
+                byte[] otrData = NativeBridge.getOTR();
+                if (otrData != null && otrData.length > 0) {
                     runOnUiThread(() -> {
                         glRenderer.setOTRData(otrData);
                         progressOverlay.setVisibility(View.GONE);
                     });
-
-                } catch (IOException e) {
+                } else {
                     runOnUiThread(() -> {
+                        Toast.makeText(this,
+                                "OTR generation failed",
+                                Toast.LENGTH_LONG).show();
                         progressOverlay.setVisibility(View.GONE);
-                        Toast.makeText(
-                                MainActivity.this,
-                                "Failed to load ROM: " + e.getMessage(),
-                                Toast.LENGTH_LONG
-                        ).show();
                     });
                 }
-            }).start();
-        }
+
+            } catch (IOException | InterruptedException e) {
+                runOnUiThread(() -> {
+                    progressOverlay.setVisibility(View.GONE);
+                    Toast.makeText(this,
+                            "Failed to load ROM: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                });
+            }
+        }).start();
     }
 }
