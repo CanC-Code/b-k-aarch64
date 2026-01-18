@@ -72,7 +72,7 @@ static const std::string kOTRCachePath = "/data/data/com.bkawrapper/files/otr_ca
 // -----------------------------
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_setAssetManager(
+Java_com_bkawrapper_NativeBridge_nativeSetAssetManager(
         JNIEnv* env,
         jclass,
         jobject assetManager) {
@@ -229,4 +229,23 @@ Java_com_bkawrapper_NativeBridge_getOTRProgress(
         jclass)
 {
     return g_progress.load();
+}
+
+// -----------------------------
+// JNI: getOTR
+// -----------------------------
+extern "C"
+JNIEXPORT jbyteArray JNICALL
+Java_com_bkawrapper_NativeBridge_getOTR(
+        JNIEnv* env,
+        jclass)
+{
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (g_otr.empty()) return nullptr;
+
+    jbyteArray arr = env->NewByteArray(g_otr.size());
+    if (!arr) return nullptr;
+
+    env->SetByteArrayRegion(arr, 0, g_otr.size(), reinterpret_cast<const jbyte*>(g_otr.data()));
+    return arr;
 }
