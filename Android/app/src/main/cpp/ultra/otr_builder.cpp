@@ -1,96 +1,83 @@
 // File: otr_builder.cpp
-// Purpose: Deterministic ROM → OTR builder (self-contained)
+// Purpose: Deterministic ROM → OTR loader (inline, no fictional abstractions)
 
-#include "ultra/otr_builder.h"
-
-#include <vector>
 #include <cstdint>
+#include <cstddef>
+#include <vector>
 #include <string>
-#include <cstring>
+#include <unordered_map>
+#include <fstream>
+#include <sstream>
 
-// Core OTR pipeline
-#include "ultra/otr_archive.h"
-#include "ultra/asset_builder.h"
+#include <openssl/sha.h>
 
-// ------------------------------------------------------------
-// Inline ROM detection (no external headers)
-// ------------------------------------------------------------
+#include <android/log.h>
 
-enum class BKRegion {
-    NTSC,
-    PAL,
-    UNKNOWN
+#define LOG_TAG "OTR_BUILDER"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+
+// ---------------------------------------------------------------------
+// Known ROM SHA1 → OTR BIN filename
+// ---------------------------------------------------------------------
+static const std::unordered_map<std::string, std::string> g_romToBin = {
+    // Banjo-Kazooie US v1.0
+    { "1fb13cad402518d3ae9a8dc4b52c5c54b2a4adc7", "us_v10.bin" },
+
+    // Banjo-Kazooie PAL
+    // Fill in real SHA1 when verified
+    // { "<PAL_SHA1>", "pal.bin" },
 };
 
-struct RomInfo {
-    std::string gameId;
-    BKRegion region;
-    size_t romSize;
-};
+// ---------------------------------------------------------------------
+// Compute SHA1 hex string
+// ---------------------------------------------------------------------
+static std::string sha1Hex(const uint8_t* data, size_t size) {
+    uint8_t hash[SHA_DIGEST_LENGTH];
+    SHA1(data, size, hash);
 
-// N64 ROMs are usually byte-swapped or big-endian.
-// BK retail ROM size is exactly 16 MB.
-static bool detectBKRom(
-    const uint8_t* romData,
-    size_t romSize,
-    RomInfo& outInfo
+    static const char hex[] = "0123456789abcdef";
+    std::string out;
+    out.reserve(SHA_DIGEST_LENGTH * 2);
+
+    for (int i = 0; i < SHA_DIGEST_LENGTH; ++i) {
+        out.push_back(hex[(hash[i] >> 4) & 0xF]);
+        out.push_back(hex[hash[i] & 0xF]);
+    }
+
+    return out;
+}
+
+// ---------------------------------------------------------------------
+// Load entire file into vector
+// ---------------------------------------------------------------------
+static bool loadFile(
+    const std::string& path,
+    std::vector<uint8_t>& outData
 ) {
-    if (!romData || romSize == 0) {
+    std::ifstream f(path, std::ios::binary);
+    if (!f.is_open()) {
+        LOGE("Failed to open OTR BIN: %s", path.c_str());
         return false;
     }
 
-    // Banjo-Kazooie retail ROM is exactly 16MB
-    constexpr size_t BK_ROM_SIZE = 16 * 1024 * 1024;
-    if (romSize != BK_ROM_SIZE) {
+    f.seekg(0, std::ios::end);
+    size_t size = static_cast<size_t>(f.tellg());
+    f.seekg(0, std::ios::beg);
+
+    if (size == 0) {
+        LOGE("OTR BIN empty: %s", path.c_str());
         return false;
     }
 
-    // N64 header magic (big-endian)
-    // 0x80371240 = standard big-endian N64 ROM
-    uint32_t magic =
-        (romData[0] << 24) |
-        (romData[1] << 16) |
-        (romData[2] << 8)  |
-        (romData[3]);
-
-    if (magic != 0x80371240 &&
-        magic != 0x37804012 && // byte-swapped
-        magic != 0x40123780) { // little-endian
-        return false;
-    }
-
-    // Game ID is stored at 0x3B–0x3E in ASCII
-    // Example: "NBKE" (NTSC), "NBKP" (PAL)
-    char gameId[5] = {};
-    gameId[0] = static_cast<char>(romData[0x3B]);
-    gameId[1] = static_cast<char>(romData[0x3C]);
-    gameId[2] = static_cast<char>(romData[0x3D]);
-    gameId[3] = static_cast<char>(romData[0x3E]);
-    gameId[4] = '\0';
-
-    BKRegion region = BKRegion::UNKNOWN;
-
-    if (gameId[3] == 'E') {
-        region = BKRegion::NTSC;
-    } else if (gameId[3] == 'P') {
-        region = BKRegion::PAL;
-    }
-
-    if (region == BKRegion::UNKNOWN) {
-        return false;
-    }
-
-    outInfo.gameId  = gameId;
-    outInfo.region  = region;
-    outInfo.romSize = romSize;
-
+    outData.resize(size);
+    f.read(reinterpret_cast<char*>(outData.data()), size);
     return true;
 }
 
-// ------------------------------------------------------------
-// Public OTR builder entry point
-// ------------------------------------------------------------
-
+// ---------------------------------------------------------------------
+// Public API: buildBKOTR
+// ---------------------------------------------------------------------
 bool buildBKOTR(
     const uint8_t* romData,
     size_t romSize,
@@ -99,40 +86,35 @@ bool buildBKOTR(
     outOTR.clear();
 
     if (!romData || romSize == 0) {
+        LOGE("Invalid ROM input");
         return false;
     }
 
-    // --- Detect ROM (inline, deterministic) ---
-    RomInfo info{};
-    if (!detectBKRom(romData, romSize, info)) {
+    // --- Detect ROM via SHA1 ---
+    std::string sha1 = sha1Hex(romData, romSize);
+    LOGI("ROM SHA1: %s", sha1.c_str());
+
+    auto it = g_romToBin.find(sha1);
+    if (it == g_romToBin.end()) {
+        LOGE("Unsupported ROM SHA1");
         return false;
     }
 
-    // --- Create OTR archive ---
-    OTRArchive archive;
-    archive.setGameId(info.gameId);
+    // --- Resolve OTR BIN path ---
+    // APK packs these under:
+    // Android/app/src/main/assets/otr_bins/
+    const std::string binPath =
+        "/android_asset/otr_bins/" + it->second;
 
-    switch (info.region) {
-        case BKRegion::NTSC:
-            archive.setRegion("NTSC");
-            break;
-        case BKRegion::PAL:
-            archive.setRegion("PAL");
-            break;
-        default:
-            return false;
-    }
+    LOGI("Selected OTR BIN: %s", binPath.c_str());
 
-    // --- Build assets ---
-    if (!buildAssetsFromRom(
-            romData,
-            romSize,
-            info.gameId,
-            archive
-        )) {
+    // --- Load BIN into memory ---
+    if (!loadFile(binPath, outOTR)) {
+        LOGE("Failed to load OTR BIN");
+        outOTR.clear();
         return false;
     }
 
-    // --- Serialize OTR ---
-    return archive.serialize(outOTR);
+    LOGI("OTR loaded successfully (%zu bytes)", outOTR.size());
+    return true;
 }
