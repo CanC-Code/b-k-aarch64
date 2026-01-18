@@ -28,9 +28,9 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         // --- bind views ---
-        glSurfaceView = findViewById(R.id.glSurfaceView);
-        progressOverlay = findViewById(R.id.progressOverlay);
-        loadButton = findViewById(R.id.loadButton);
+        glSurfaceView = findViewById(R.id.surface_gl);
+        progressOverlay = findViewById(R.id.progress_overlay);
+        loadButton = findViewById(R.id.button_load_game);
 
         // --- setup GLSurfaceView ---
         glRenderer = new GLRenderer(this);
@@ -42,12 +42,17 @@ public class MainActivity extends Activity {
         loadButton.setOnClickListener(v -> pickRom());
     }
 
-    /** Called by GLRenderer when the surface is ready */
+    /**
+     * Called by GLRenderer when surface is ready.
+     * Optional: attach existing OTR texture or start loop.
+     */
     public void onSurfaceReady() {
-        // Optional: attach texture if OTR bytes already exist
+        // Example: glRenderer.attachTexture(NativeBridge.getTextureId());
     }
 
-    /** Open file picker to select ROM */
+    /**
+     * Start Android file picker for ROM selection.
+     */
     private void pickRom() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("*/*"); // accept all files
@@ -63,19 +68,17 @@ public class MainActivity extends Activity {
             if (uri != null) {
                 progressOverlay.setVisibility(View.VISIBLE);
 
+                // Process ROM on background thread
                 new Thread(() -> {
                     try {
-                        // Load ROM via NativeBridge
                         NativeBridge.loadRomFromUri(getContentResolver(), uri);
                         NativeBridge.processRom();
 
-                        // Retrieve OTR bytes (GPU texture)
+                        // retrieve OTR bytes
                         byte[] otrData = NativeBridge.getOTR();
 
                         runOnUiThread(() -> {
-                            if (otrData != null && otrData.length > 0) {
-                                glRenderer.setOTRData(otrData);
-                            }
+                            glRenderer.setOTRData(otrData);
                             progressOverlay.setVisibility(View.GONE);
                         });
                     } catch (IOException e) {
