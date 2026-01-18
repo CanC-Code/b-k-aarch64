@@ -1,3 +1,4 @@
+// File: Android/app/src/main/java/com/bkawrapper/MainActivity.java
 package com.bkawrapper;
 
 import android.net.Uri;
@@ -33,13 +34,11 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar otrProgressBar;
     private TextView otrProgressText;
 
-    // Launch gates
     private boolean surfaceReady = false;
     private boolean romReady = false;
     private boolean gameInitialized = false;
     private boolean gameRunning = false;
 
-    // Swipe gesture tracking for menu
     private float swipeStartX = -1;
     private float swipeStartY = -1;
 
@@ -73,9 +72,7 @@ public class MainActivity extends AppCompatActivity {
                 }
         );
 
-        loadButton.setOnClickListener(v ->
-                romPickerLauncher.launch(new String[]{"*/*"})
-        );
+        loadButton.setOnClickListener(v -> romPickerLauncher.launch(new String[]{"*/*"}));
 
         // Menu buttons
         menuOverlay.findViewById(R.id.button_resume).setOnClickListener(v -> hideMenu());
@@ -94,30 +91,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadRom(Uri uri) {
-        try (InputStream is = getContentResolver().openInputStream(uri)) {
-            if (is == null) {
-                Log.e(TAG, "Failed to open ROM input stream");
-                return;
-            }
-
-            byte[] romBytes = new byte[is.available()];
-            int read = is.read(romBytes);
-            if (read <= 0) {
-                Log.e(TAG, "Failed to read ROM bytes");
-                return;
-            }
-
+        try {
             Log.i(TAG, "Loading ROM...");
-            boolean started = NativeBridge.loadRomFromBytes(getAssets(), romBytes);
+            InputStream romStream = getContentResolver().openInputStream(uri);
+            byte[] romBytes = romStream.readAllBytes();
+            romStream.close();
+
+            boolean started = NativeBridge.processRom(romBytes);
             if (!started) {
-                Log.e(TAG, "Native ROM processing failed");
+                Log.e(TAG, "Failed to process ROM");
                 return;
             }
 
-            // Start OTR progress overlay
             showOTRProgress();
 
-            // Start polling OTR progress
             generatingOTR = true;
             progressHandler.post(this::pollOTRProgress);
 
@@ -137,7 +124,7 @@ public class MainActivity extends AppCompatActivity {
     private void pollOTRProgress() {
         if (!generatingOTR) return;
 
-        float progress = NativeBridge.pollOTRProgress();
+        float progress = NativeBridge.getOTRProgress();
         int percent = Math.min(100, Math.max(0, (int)(progress * 100)));
 
         runOnUiThread(() -> {
@@ -146,10 +133,8 @@ public class MainActivity extends AppCompatActivity {
         });
 
         if (progress >= 1.0f) {
-            // OTR generation finished
             generatingOTR = false;
             hideOTRProgress();
-
             runOnUiThread(() -> {
                 romReady = true;
                 loadButton.setVisibility(View.GONE);
@@ -175,9 +160,9 @@ public class MainActivity extends AppCompatActivity {
         NativeBridge.initTexture();
 
         gameInitialized = true;
-
         NativeBridge.startGameLoop();
         gameRunning = true;
+
         Log.i(TAG, "Game running");
     }
 
@@ -202,7 +187,6 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        // Detect top-left swipe down for menu
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 swipeStartX = event.getX();
@@ -210,9 +194,9 @@ public class MainActivity extends AppCompatActivity {
                 break;
 
             case MotionEvent.ACTION_UP:
-                if (swipeStartX < 200 && swipeStartY < 200) { // top-left corner
+                if (swipeStartX < 200 && swipeStartY < 200) {
                     float dy = event.getY() - swipeStartY;
-                    if (dy > 150) { // swipe down threshold
+                    if (dy > 150) {
                         showMenu();
                         return true;
                     }
