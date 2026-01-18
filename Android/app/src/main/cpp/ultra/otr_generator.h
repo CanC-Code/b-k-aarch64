@@ -4,8 +4,8 @@
 #include <string>
 
 struct OTRSegmentEntry {
-    uint32_t romOffset;
-    uint32_t segmentType;
+    uint32_t rom_offset;
+    uint32_t segment_type;
 };
 
 class OTRGenerator {
@@ -28,11 +28,17 @@ public:
 
     uint32_t segmentTypeId(const std::string& typeStr);
 
+    struct RomInfo {
+        std::string version;
+        std::string region;
+        std::string gameId;
+    };
+
     static bool detectRomVersion(
         const uint8_t* romData,
         size_t romSize,
-        struct OTRBuilder::RomInfo& outInfo
+        RomInfo& outInfo
     );
 
-    static std::string sha1Hex(const uint8_t* data, size_t len);
+    static std::vector<uint8_t> loadYAMLAsset(void* assetManager, const char* path);
 };
