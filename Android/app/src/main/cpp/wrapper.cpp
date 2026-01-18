@@ -17,12 +17,8 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-// -----------------------------
-// Global state
-// -----------------------------
 static std::vector<uint8_t> g_rom;
 static std::vector<uint8_t> g_otr;
-
 static std::atomic<float> g_progress{0.0f};
 static std::atomic<bool>  g_building{false};
 static std::mutex         g_mutex;
@@ -99,29 +95,18 @@ JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_loadRom(
         JNIEnv* env,
         jclass,
-        jbyteArray romData)
-{
-    if (!romData) {
-        LOGE("loadRom: null byte array");
-        return;
-    }
+        jbyteArray romData) {
 
-    const jsize size = env->GetArrayLength(romData);
-    if (size <= 0) {
-        LOGE("loadRom: invalid size");
-        return;
-    }
+    if (!romData) return;
 
     std::lock_guard<std::mutex> lock(g_mutex);
 
+    size_t size = env->GetArrayLength(romData);
     g_rom.resize(size);
     env->GetByteArrayRegion(romData, 0, size, reinterpret_cast<jbyte*>(g_rom.data()));
 
     g_otr.clear();
     g_progress.store(0.0f);
-    g_building.store(false);
-
-    LOGI("ROM loaded (%d bytes)", size);
 }
 
 // -----------------------------
@@ -130,11 +115,11 @@ Java_com_bkawrapper_NativeBridge_loadRom(
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_processRom(
-        JNIEnv*,
-        jclass)
-{
+        JNIEnv* env,
+        jclass) {
+
     if (g_rom.empty()) {
-        LOGE("processRom called with no ROM loaded");
+        LOGE("No ROM loaded");
         return;
     }
 
@@ -197,10 +182,11 @@ Java_com_bkawrapper_NativeBridge_processRom(
         });
 
         std::vector<uint8_t> localOTR;
-        if (!generator.generateOTR(g_rom.data(), g_rom.size(),
-                                   reinterpret_cast<const char*>(yamlData.data()),
-                                   yamlData.size(),
-                                   localOTR)) {
+        if (!generator.generateOTR(
+                g_rom.data(), g_rom.size(),
+                reinterpret_cast<const char*>(yamlData.data()),
+                yamlData.size(),
+                localOTR)) {
             LOGE("OTR generation failed");
             g_progress.store(0.0f);
         } else {
@@ -208,17 +194,16 @@ Java_com_bkawrapper_NativeBridge_processRom(
                 std::lock_guard<std::mutex> lock(g_mutex);
                 g_otr = std::move(localOTR);
             }
+
             // Save to disk
             saveOTRToDisk(kOTRCachePath, g_otr);
-
-            // Directly upload to GPU texture
-            generator.uploadOTRToGPU(g_otr);
 
             g_progress.store(1.0f);
             LOGI("OTR build complete and cached (%zu bytes)", g_otr.size());
         }
 
         g_building.store(false);
+
     }).detach();
 }
 
@@ -229,7 +214,22 @@ extern "C"
 JNIEXPORT jfloat JNICALL
 Java_com_bkawrapper_NativeBridge_getOTRProgress(
         JNIEnv*,
-        jclass)
-{
+        jclass) {
     return g_progress.load();
+}
+
+// -----------------------------
+// JNI: getOTR
+// -----------------------------
+extern "C"
+JNIEXPORT jbyteArray JNICALL
+Java_com_bkawrapper_NativeBridge_getOTR(
+        JNIEnv* env,
+        jclass) {
+
+    std::lock_guard<std::mutex> lock(g_mutex);
+    jbyteArray outArray = env->NewByteArray(g_otr.size());
+    if (!outArray) return nullptr;
+    env->SetByteArrayRegion(outArray, 0, g_otr.size(), reinterpret_cast<const jbyte*>(g_otr.data()));
+    return outArray;
 }
