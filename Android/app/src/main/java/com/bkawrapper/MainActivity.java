@@ -1,256 +1,145 @@
 package com.bkawrapper;
 
-import android.content.res.AssetManager;
-import android.net.Uri;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.HandlerThread;
-import android.util.Log;
-import android.view.MotionEvent;
-import android.view.View;
-import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.ProgressBar;
-import android.widget.TextView;
+import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
+import android.opengl.Matrix;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.appcompat.app.AppCompatActivity;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
 
-public class MainActivity extends AppCompatActivity {
+import javax.microedition.khronos.egl.EGLConfig;
+import javax.microedition.khronos.opengles.GL10;
 
-    private static final String TAG = "BK_APP";
+public class GLRenderer implements GLSurfaceView.Renderer {
 
-    private GLSurfaceView glSurfaceView;
-    private GLRenderer glRenderer;
-    private ActivityResultLauncher<String[]> romPickerLauncher;
+    private final MainActivity activity;
 
-    private Button loadButton;
-    private LinearLayout menuOverlay;
-    private LinearLayout progressOverlay;
-    private ProgressBar otrProgressBar;
-    private TextView otrProgressText;
+    private int program;
+    private int textureId = 0;
+    private boolean textureReady = false;
 
-    private boolean surfaceReady = false;
-    private boolean romReady = false;
-    private boolean gameInitialized = false;
-    private boolean gameRunning = false;
+    private FloatBuffer vertexBuffer;
+    private FloatBuffer texBuffer;
+    private final float[] mvp = new float[16];
 
-    private float swipeStartX = -1;
-    private float swipeStartY = -1;
+    private final float[] verts = {
+            -1,  1, 0,
+            -1, -1, 0,
+             1,  1, 0,
+             1, -1, 0
+    };
 
-    private HandlerThread progressThread;
-    private Handler progressHandler;
-    private boolean generatingOTR = false;
+    private final float[] tex = {
+            0, 0,
+            0, 1,
+            1, 0,
+            1, 1
+    };
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
-        glSurfaceView = findViewById(R.id.surface_gl);
-        loadButton = findViewById(R.id.button_load_game);
-        menuOverlay = findViewById(R.id.menu_overlay);
-        progressOverlay = findViewById(R.id.progress_overlay);
-        otrProgressBar = findViewById(R.id.otr_progress_bar);
-        otrProgressText = findViewById(R.id.otr_progress_text);
-
-        // OpenGL setup
-        glSurfaceView.setEGLContextClientVersion(2);
-        glRenderer = new GLRenderer(this);
-        glSurfaceView.setRenderer(glRenderer);
-        glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
-
-        // AssetManager setup for native OTR loading
-        AssetManager assetManager = getAssets();
-        NativeBridge.setAssetManager(assetManager);
-
-        // ROM picker
-        romPickerLauncher = registerForActivityResult(
-                new ActivityResultContracts.OpenDocument(),
-                uri -> {
-                    if (uri != null) {
-                        loadRom(uri);
-                    }
-                }
-        );
-
-        loadButton.setOnClickListener(v ->
-                romPickerLauncher.launch(new String[]{"*/*"})
-        );
-
-        // Menu buttons
-        menuOverlay.findViewById(R.id.button_resume).setOnClickListener(v -> hideMenu());
-        menuOverlay.findViewById(R.id.button_exit).setOnClickListener(v -> finish());
-        menuOverlay.findViewById(R.id.button_settings).setOnClickListener(v ->
-                Log.i(TAG, "Settings clicked (stub)")
-        );
-        menuOverlay.findViewById(R.id.button_controller).setOnClickListener(v ->
-                Log.i(TAG, "Controller Layout clicked (stub)")
-        );
-
-        Log.i(TAG, "App started – waiting for ROM");
-
-        // Progress polling thread
-        progressThread = new HandlerThread("OTRProgressThread");
-        progressThread.start();
-        progressHandler = new Handler(progressThread.getLooper());
-    }
-
-    private void loadRom(Uri uri) {
-        try {
-            Log.i(TAG, "Reading ROM");
-
-            // Ensure AssetManager is ready; native layer handles bytes
-            if (getContentResolver().openInputStream(uri) == null) {
-                Log.e(TAG, "ROM stream is null");
-                return;
-            }
-
-            showOTRProgress();
-            generatingOTR = true;
-            progressHandler.post(this::pollOTRProgress);
-
-            // Kick off native OTR generation
-            NativeBridge.processRom();
-
-        } catch (Exception e) {
-            Log.e(TAG, "ROM load failed", e);
-        }
-    }
-
-    private void showOTRProgress() {
-        runOnUiThread(() -> {
-            progressOverlay.setVisibility(View.VISIBLE);
-            loadButton.setVisibility(View.GONE);
-        });
-    }
-
-    private void hideOTRProgress() {
-        runOnUiThread(() -> progressOverlay.setVisibility(View.GONE));
-    }
-
-    private void pollOTRProgress() {
-        if (!generatingOTR) return;
-
-        float progress = NativeBridge.getOTRProgress();
-        int percent = Math.min(100, Math.max(0, (int) (progress * 100)));
-
-        runOnUiThread(() -> {
-            otrProgressBar.setProgress(percent);
-            otrProgressText.setText(percent + "%");
-        });
-
-        if (progress >= 1.0f) {
-            generatingOTR = false;
-            hideOTRProgress();
-
-            runOnUiThread(() -> {
-                romReady = true;
-
-                // Retrieve generated OTR and upload to GPU
-                byte[] otrBytes = NativeBridge.getOTR();
-                if (otrBytes != null && otrBytes.length > 0) {
-                    NativeBridge.initTextureWithOTR(otrBytes);           // Upload texture to native
-                    int texId = NativeBridge.getTextureId();           // Get GPU texture ID
-                    glRenderer.attachTexture(texId);                   // Attach to renderer
-                    tryStartGame();
-                } else {
-                    Log.e(TAG, "OTR is empty after generation");
-                }
-            });
-        } else {
-            progressHandler.postDelayed(this::pollOTRProgress, 50);
-        }
-    }
-
-    void onSurfaceReady() {
-        surfaceReady = true;
-        Log.i(TAG, "GL surface ready");
-        tryStartGame();
-    }
-
-    private void tryStartGame() {
-        if (!surfaceReady || !romReady || gameInitialized) return;
-
-        Log.i(TAG, "Initializing game");
-
-        NativeBridge.initGame(glSurfaceView.getHolder().getSurface());
-
-        gameInitialized = true;
-        NativeBridge.startGameLoop();
-        gameRunning = true;
-
-        Log.i(TAG, "Game running");
-    }
-
-    private void showMenu() {
-        menuOverlay.setVisibility(View.VISIBLE);
-        glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
-    }
-
-    private void hideMenu() {
-        menuOverlay.setVisibility(View.GONE);
-        glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+    public GLRenderer(MainActivity activity) {
+        this.activity = activity;
     }
 
     @Override
-    public void onBackPressed() {
-        if (menuOverlay.getVisibility() == View.VISIBLE) {
-            hideMenu();
-        } else {
-            showMenu();
-        }
+    public void onSurfaceCreated(GL10 gl, EGLConfig config) {
+        GLES20.glClearColor(0, 0, 0, 1);
+        Matrix.setIdentityM(mvp, 0);
+
+        vertexBuffer = ByteBuffer.allocateDirect(verts.length * 4)
+                .order(ByteOrder.nativeOrder()).asFloatBuffer();
+        vertexBuffer.put(verts).position(0);
+
+        texBuffer = ByteBuffer.allocateDirect(tex.length * 4)
+                .order(ByteOrder.nativeOrder()).asFloatBuffer();
+        texBuffer.put(tex).position(0);
+
+        program = buildProgram();
+
+        activity.onSurfaceReady();
     }
 
     @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        switch (event.getAction()) {
-            case MotionEvent.ACTION_DOWN:
-                swipeStartX = event.getX();
-                swipeStartY = event.getY();
-                break;
+    public void onDrawFrame(GL10 gl) {
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
-            case MotionEvent.ACTION_UP:
-                if (swipeStartX < 200 && swipeStartY < 200) {
-                    float dy = event.getY() - swipeStartY;
-                    if (dy > 150) {
-                        showMenu();
-                        return true;
-                    }
-                }
-                break;
-        }
-        return super.onTouchEvent(event);
+        if (!textureReady) return;
+
+        // Bind texture from native layer
+        NativeBridge.updateTexture(textureId);
+
+        GLES20.glUseProgram(program);
+
+        int p = GLES20.glGetAttribLocation(program, "aPos");
+        int t = GLES20.glGetAttribLocation(program, "aUV");
+        int m = GLES20.glGetUniformLocation(program, "uMVP");
+        int s = GLES20.glGetUniformLocation(program, "uTex");
+
+        GLES20.glEnableVertexAttribArray(p);
+        GLES20.glVertexAttribPointer(p, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+
+        GLES20.glEnableVertexAttribArray(t);
+        GLES20.glVertexAttribPointer(t, 2, GLES20.GL_FLOAT, false, 0, texBuffer);
+
+        GLES20.glUniformMatrix4fv(m, 1, false, mvp, 0);
+        GLES20.glUniform1i(s, 0);
+
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+
+        GLES20.glDisableVertexAttribArray(p);
+        GLES20.glDisableVertexAttribArray(t);
     }
 
     @Override
-    protected void onPause() {
-        super.onPause();
-        glSurfaceView.onPause();
-
-        if (gameRunning) {
-            NativeBridge.stopGameLoop();
-            NativeBridge.cleanupGame();
-            gameRunning = false;
-            gameInitialized = false;
-        }
+    public void onSurfaceChanged(GL10 gl, int width, int height) {
+        GLES20.glViewport(0, 0, width, height);
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        glSurfaceView.onResume();
+    private int buildProgram() {
+        String vs =
+                "uniform mat4 uMVP;" +
+                "attribute vec4 aPos;" +
+                "attribute vec2 aUV;" +
+                "varying vec2 vUV;" +
+                "void main(){gl_Position=uMVP*aPos;vUV=aUV;}";
+
+        String fs =
+                "precision mediump float;" +
+                "uniform sampler2D uTex;" +
+                "varying vec2 vUV;" +
+                "void main(){gl_FragColor=texture2D(uTex,vUV);}";
+
+        int v = compile(GLES20.GL_VERTEX_SHADER, vs);
+        int f = compile(GLES20.GL_FRAGMENT_SHADER, fs);
+
+        int p = GLES20.glCreateProgram();
+        GLES20.glAttachShader(p, v);
+        GLES20.glAttachShader(p, f);
+        GLES20.glLinkProgram(p);
+        return p;
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        progressThread.quitSafely();
+    private int compile(int type, String src) {
+        int s = GLES20.glCreateShader(type);
+        GLES20.glShaderSource(s, src);
+        GLES20.glCompileShader(s);
+        return s;
     }
 
-    static {
-        System.loadLibrary("wrapper");
+    /** Attach a texture ID from native core */
+    public void attachTexture(int texId) {
+        this.textureId = texId;
+        this.textureReady = texId != 0;
+    }
+
+    /**
+     * Optional: Upload OTR bytes to native core and attach resulting GPU texture.
+     * Native layer now auto-generates texture after OTR build, so you may skip this.
+     */
+    public void setOTRData(byte[] otrData) {
+        if (otrData == null || otrData.length == 0) return;
+
+        NativeBridge.initTextureWithOTR(otrData);
+        attachTexture(NativeBridge.getTextureId());
     }
 }
