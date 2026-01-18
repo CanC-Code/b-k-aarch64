@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # ------------------------------
-# Source files: main cpp folder + ultra/ + emulator/
+# Source files: cpp/, ultra/, emulator/
 # ------------------------------
 file(GLOB_RECURSE WRAPPER_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
@@ -34,9 +34,15 @@ include_directories(
 add_definitions(-DANDROID)
 
 # ------------------------------
-# Add already embedded OTR assets
+# Embed OTR YAMLs at build time
 # ------------------------------
-list(APPEND WRAPPER_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/otr_assets.cpp)
+set(OTR_PAL_YAML   ${CMAKE_CURRENT_SOURCE_DIR}/ultra/otr_yaml/decompressed.pal.yaml)
+set(OTR_US_YAML    ${CMAKE_CURRENT_SOURCE_DIR}/ultra/otr_yaml/decompressed.us.v10.yaml)
+set(EMBED_CPP      ${CMAKE_CURRENT_BINARY_DIR}/otr_assets.cpp)
+set(EMBED_HPP      ${CMAKE_CURRENT_SOURCE_DIR}/ultra/otr_assets.hpp)
+
+# Add the preexisting ultra/otr_assets.cpp to sources
+list(APPEND WRAPPER_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/ultra/otr_assets.cpp)
 
 # ------------------------------
 # Create shared library
