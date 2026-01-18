@@ -1,4 +1,3 @@
-// File: Android/app/src/main/java/com/bkawrapper/GLRenderer.java
 package com.bkawrapper;
 
 import android.opengl.GLES20;
@@ -130,5 +129,20 @@ public class GLRenderer implements GLSurfaceView.Renderer {
     public void attachTexture(int texId) {
         this.textureId = texId;
         this.textureReady = texId != 0;
+    }
+
+    /**
+     * Set the OTR data retrieved from NativeBridge.
+     * This should be called after OTR generation is complete.
+     */
+    public void setOTRData(byte[] otrData) {
+        if (otrData == null || otrData.length == 0) return;
+
+        // Send the OTR to native layer to initialize textures/game memory
+        NativeBridge.initTextureWithOTR(otrData);
+
+        // Attach the resulting texture ID
+        int texId = NativeBridge.getTextureId();
+        attachTexture(texId);
     }
 }
