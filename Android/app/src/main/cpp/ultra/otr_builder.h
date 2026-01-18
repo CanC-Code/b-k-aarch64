@@ -17,5 +17,13 @@ bool buildOTRForROM(AAssetManager* mgr, const uint8_t* romData, size_t romSize,
     return gen.generateOTR(romData, romSize,
                            reinterpret_cast<const char*>(yamlBuf.data()),
                            yamlBuf.size(),
-                           outOTR);
+                           outOTR)
+
+bool buildBKOTR(
+    const uint8_t* romData,
+    size_t romSize,
+    const char* yamlData,
+    size_t yamlSize,
+    std::vector<uint8_t>& outOTR
+);
 }
