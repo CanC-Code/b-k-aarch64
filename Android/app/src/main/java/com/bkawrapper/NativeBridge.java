@@ -1,65 +1,76 @@
-// File: Android/app/src/main/java/com/bkawrapper/NativeBridge.java
 package com.bkawrapper;
 
-import android.content.ContentResolver;
-import android.net.Uri;
-import android.os.ParcelFileDescriptor;
+import android.content.res.AssetManager;
 import android.util.Log;
-
-import java.io.FileInputStream;
-import java.io.IOException;
 
 public class NativeBridge {
 
-    private static final String TAG = "BK_NATIVE";
+    private static final String TAG = "BK_NativeBridge";
 
-    // Load ROM from a URI (from file picker)
-    public static void loadRomFromUri(ContentResolver resolver, Uri uri) {
-        try (ParcelFileDescriptor pfd = resolver.openFileDescriptor(uri, "r");
-             FileInputStream fis = new FileInputStream(pfd.getFileDescriptor())) {
+    // --------------------
+    // JNI methods
+    // --------------------
+    public static native boolean processRom(AssetManager assetManager, byte[] romData);
+    public static native float getOTRProgress();
+    public static native byte[] getOTR();
 
-            byte[] buffer = new byte[fis.available()];
-            int read = fis.read(buffer);
-            if (read != buffer.length) {
-                Log.w(TAG, "Read ROM size mismatch: " + read + " != " + buffer.length);
-            }
+    // --------------------
+    // Java helpers
+    // --------------------
 
-            loadRom(buffer);
-
-        } catch (IOException e) {
-            Log.e(TAG, "Failed to load ROM from URI", e);
+    /**
+     * Start processing a ROM with OTR generation
+     * @param assetManager AssetManager from context
+     * @param romData ROM bytes
+     * @return true if processing started successfully
+     */
+    public static boolean loadRomFromBytes(AssetManager assetManager, byte[] romData) {
+        if (romData == null || romData.length == 0) {
+            Log.e(TAG, "ROM data is null or empty");
+            return false;
         }
+
+        boolean started = processRom(assetManager, romData);
+        if (!started) {
+            Log.e(TAG, "Failed to start ROM processing");
+        } else {
+            Log.i(TAG, "ROM processing started");
+        }
+        return started;
     }
 
-    // -----------------------------
-    // JNI functions
-    // -----------------------------
+    /**
+     * Poll the OTR progress (0.0f → 1.0f)
+     */
+    public static float pollOTRProgress() {
+        return getOTRProgress();
+    }
 
-    // Load ROM bytes into native layer
-    private static native void loadRom(byte[] romData);
+    /**
+     * Retrieve the generated OTR bytes after processing finishes
+     */
+    public static byte[] retrieveOTR() {
+        byte[] otrData = getOTR();
+        if (otrData == null || otrData.length == 0) {
+            Log.e(TAG, "OTR data not ready");
+            return null;
+        }
+        Log.i(TAG, "OTR data retrieved: " + otrData.length + " bytes");
+        return otrData;
+    }
 
-    // Start processing ROM → OTR in background
-    public static native void processRom();
-
-    // Get OTR generation progress (0.0 → 1.0)
-    public static native float getOTRProgress();
-
-    // Retrieve finished OTR bytes
-    public static native byte[] getOTRData();
-
-    // Save OTR to file path
-    public static native void saveOTRToFile(String path);
-
-    // -----------------------------
-    // Optional: Game loop / Surface / Texture hooks
-    // These should already exist in your previous NativeBridge
-    // -----------------------------
+    // --------------------
+    // Game initialization stubs
+    // --------------------
     public static native void initGame(Object surface);
     public static native void initTexture();
     public static native void startGameLoop();
     public static native void stopGameLoop();
     public static native void cleanupGame();
 
+    // --------------------
+    // Load native library
+    // --------------------
     static {
         System.loadLibrary("wrapper");
     }
