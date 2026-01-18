@@ -1,44 +1,40 @@
+// File: NativeBridge.java
 package com.bkawrapper;
 
-import android.content.ContentResolver;
-import android.net.Uri;
+import android.content.res.AssetManager;
 
-import java.io.ByteArrayOutputStream;
-import java.io.FileOutputStream;
-import java.io.InputStream;
+public class NativeBridge {
 
-public final class NativeBridge {
-
-    static { System.loadLibrary("wrapper"); }
-    private NativeBridge(){}
-
-    // JNI
-    public static native void loadRom(byte[] rom);
-    public static native void processRom();
-    public static native float getOTRProgress();      // <- progress
-    public static native byte[] getOTRData();
-    public static native void saveOTRToFile(String path);
-
-    // Helper: load ROM from URI
-    public static void loadRomFromUri(ContentResolver resolver, Uri uri) throws Exception {
-        try(InputStream is = resolver.openInputStream(uri);
-            ByteArrayOutputStream bos = new ByteArrayOutputStream()){
-            if(is==null) throw new Exception("InputStream null");
-            byte[] buf = new byte[8192]; int r;
-            while((r=is.read(buf))>0) bos.write(buf,0,r);
-            byte[] rom = bos.toByteArray();
-            if(rom.length<0x1000) throw new Exception("ROM too small");
-            loadRom(rom);
-            processRom();
-        }
+    static {
+        System.loadLibrary("wrapper"); // matches your wrapper.cpp library name
     }
 
-    public static void saveOTRToPath(String path) throws Exception {
-        byte[] otr = getOTRData();
-        if(otr==null || otr.length==0) throw new Exception("OTR empty");
-        try(FileOutputStream fos = new FileOutputStream(path)){
-            fos.write(otr);
-            fos.flush();
-        }
+    // ----------------------------
+    // ROM / OTR Pipeline
+    // ----------------------------
+
+    /** Load a ROM into native memory */
+    public static native boolean loadRom(byte[] romData);
+
+    /** Process loaded ROM using embedded YAML and generate OTR */
+    public static native boolean processRom(AssetManager assetManager);
+
+    /** Get current OTR generation progress (0.0 → 1.0) */
+    public static native float getOTRProgress();
+
+    /** Get the generated OTR as a byte array */
+    public static native byte[] getOTRData();
+
+    /** Save generated OTR to a file path */
+    public static native void saveOTRToFile(String path);
+
+    // ----------------------------
+    // Convenience helpers
+    // ----------------------------
+
+    /** Synchronously generate OTR from ROM with progress updates */
+    public static boolean generateOTR(byte[] romData, AssetManager mgr) {
+        if (!loadRom(romData)) return false;
+        return processRom(mgr);
     }
 }
