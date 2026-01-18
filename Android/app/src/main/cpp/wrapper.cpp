@@ -1,39 +1,65 @@
 // File: wrapper.cpp
-// Purpose: JNI bridge + ROM → OTR pipeline with real YAML parsing and progress
+// Purpose: JNI bridge + ROM → OTR pipeline with progress tracking
 
 #include <jni.h>
 #include <vector>
 #include <cstdint>
 #include <cstring>
-#include <functional>
-#include <atomic>
 #include <android/log.h>
-#include <android/asset_manager_jni.h>
-#include "otr_builder.h"
-#include "otr_generator.h"
+#include <thread>
+#include <atomic>
+
+#include "ultra/otr_builder.h"
 
 #define LOG_TAG "BK_WRAPPER"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
 // ---------------------------
-// Global buffers / state
+// Global buffers / progress
 // ---------------------------
 static std::vector<uint8_t> g_rom;
 static std::vector<uint8_t> g_otr;
-static std::atomic<float> g_progress(0.0f);
+static std::atomic<float> g_otr_progress(0.0f);
+static std::thread g_otr_thread;
 
 // ---------------------------
-// Progress callback
+// Helper: Run OTR build in background
 // ---------------------------
-static void progressCallback(float progress) {
-    g_progress.store(progress);
+static void runOTRBuild()
+{
+    g_otr.clear();
+    g_otr_progress = 0.0f;
+
+    auto progressCallback = [](float progress, void*) {
+        g_otr_progress = progress; // update atomic
+    };
+
+    bool success = buildBKOTR(
+        g_rom.data(),
+        g_rom.size(),
+        nullptr,      // optional YAML data pointer (if embedded)
+        0,            // optional YAML size
+        g_otr,
+        progressCallback,
+        nullptr       // user data
+    );
+
+    if (!success || g_otr.empty()) {
+        LOGE("OTR build failed");
+        g_otr_progress = 1.0f; // mark complete even if failed
+        g_otr.clear();
+    } else {
+        LOGI("OTR build complete: %zu bytes", g_otr.size());
+        g_otr_progress = 1.0f;
+    }
 }
 
 // ---------------------------
-// JNI functions
+// JNI: Load ROM
 // ---------------------------
-extern "C" JNIEXPORT jboolean JNICALL
+extern "C"
+JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_loadRom(
         JNIEnv* env,
         jobject /* this */,
@@ -41,104 +67,92 @@ Java_com_bkawrapper_NativeBridge_loadRom(
 {
     if (!romData) {
         LOGE("ROM data is null");
-        return JNI_FALSE;
+        return;
     }
 
-    jsize romSize = env->GetArrayLength(romData);
-    if (romSize <= 0) {
+    jsize size = env->GetArrayLength(romData);
+    if (size <= 0) {
         LOGE("ROM size invalid");
-        return JNI_FALSE;
+        return;
     }
 
-    g_rom.resize(static_cast<size_t>(romSize));
+    g_rom.resize(static_cast<size_t>(size));
     env->GetByteArrayRegion(
         romData,
         0,
-        romSize,
+        size,
         reinterpret_cast<jbyte*>(g_rom.data())
     );
 
-    LOGI("ROM loaded: %d bytes", romSize);
-    g_otr.clear();
-    g_progress.store(0.0f);
-
-    return JNI_TRUE;
+    LOGI("ROM loaded: %d bytes", size);
 }
 
-extern "C" JNIEXPORT jboolean JNICALL
+// ---------------------------
+// JNI: Start processing ROM → OTR
+// ---------------------------
+extern "C"
+JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_processRom(
-        JNIEnv* env,
-        jobject /* this */,
-        jobject assetManager)
+        JNIEnv*,
+        jobject)
 {
-    if (g_rom.empty()) {
-        LOGE("ROM not loaded");
-        return JNI_FALSE;
-    }
+    // Stop any previous thread
+    if (g_otr_thread.joinable()) g_otr_thread.join();
 
-    AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
-    if (!mgr) {
-        LOGE("Invalid AssetManager");
-        return JNI_FALSE;
-    }
-
-    g_otr.clear();
-    g_progress.store(0.0f);
-
-    bool success = buildOTRForROM(mgr, g_rom.data(), g_rom.size(), g_otr);
-    if (!success) {
-        LOGE("OTR generation failed");
-        return JNI_FALSE;
-    }
-
-    g_progress.store(1.0f);
-    LOGI("OTR generation complete: %zu bytes", g_otr.size());
-    return JNI_TRUE;
+    // Start new background thread
+    g_otr_thread = std::thread(runOTRBuild);
 }
 
-extern "C" JNIEXPORT jfloat JNICALL
+// ---------------------------
+// JNI: Get OTR progress
+// ---------------------------
+extern "C"
+JNIEXPORT jfloat JNICALL
 Java_com_bkawrapper_NativeBridge_getOTRProgress(
-        JNIEnv* env,
-        jobject /* this */)
+        JNIEnv*,
+        jobject)
 {
-    return g_progress.load();
+    return g_otr_progress.load();
 }
 
-extern "C" JNIEXPORT jbyteArray JNICALL
+// ---------------------------
+// JNI: Retrieve OTR data
+// ---------------------------
+extern "C"
+JNIEXPORT jbyteArray JNICALL
 Java_com_bkawrapper_NativeBridge_getOTRData(
         JNIEnv* env,
-        jobject /* this */)
+        jobject)
 {
-    if (g_otr.empty()) return nullptr;
+    if (g_otr.empty()) {
+        LOGE("OTR buffer empty");
+        return nullptr;
+    }
 
     jbyteArray out = env->NewByteArray(static_cast<jsize>(g_otr.size()));
-    env->SetByteArrayRegion(
-        out,
-        0,
-        static_cast<jsize>(g_otr.size()),
-        reinterpret_cast<const jbyte*>(g_otr.data())
-    );
-
+    env->SetByteArrayRegion(out, 0, static_cast<jsize>(g_otr.size()), reinterpret_cast<const jbyte*>(g_otr.data()));
     return out;
 }
 
-extern "C" JNIEXPORT void JNICALL
+// ---------------------------
+// JNI: Save OTR to file path (optional convenience)
+// ---------------------------
+extern "C"
+JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_saveOTRToFile(
         JNIEnv* env,
-        jobject /* this */,
+        jobject,
         jstring path)
 {
     if (g_otr.empty()) {
-        LOGE("OTR empty, cannot save");
+        LOGE("OTR buffer empty");
         return;
     }
 
     const char* cpath = env->GetStringUTFChars(path, nullptr);
-    if (!cpath) return;
-
     FILE* f = fopen(cpath, "wb");
     if (!f) {
-        LOGE("Failed to open file: %s", cpath);
+        LOGE("Failed to open file for writing: %s", cpath);
         env->ReleaseStringUTFChars(path, cpath);
         return;
     }
@@ -146,6 +160,9 @@ Java_com_bkawrapper_NativeBridge_saveOTRToFile(
     fwrite(g_otr.data(), 1, g_otr.size(), f);
     fclose(f);
     env->ReleaseStringUTFChars(path, cpath);
-
     LOGI("OTR saved to %s", cpath);
 }
+
+// ---------------------------
+// TODO: Implement remaining game loop, texture, and Surface JNI calls
+// ---------------------------
