@@ -70,11 +70,15 @@ public class MainActivity extends AppCompatActivity {
         romPickerLauncher = registerForActivityResult(
                 new ActivityResultContracts.OpenDocument(),
                 uri -> {
-                    if (uri != null) loadRom(uri);
+                    if (uri != null) {
+                        loadRom(uri);
+                    }
                 }
         );
 
-        loadButton.setOnClickListener(v -> romPickerLauncher.launch(new String[]{"*/*"}));
+        loadButton.setOnClickListener(v ->
+                romPickerLauncher.launch(new String[]{"*/*"})
+        );
 
         // Menu buttons
         menuOverlay.findViewById(R.id.button_resume).setOnClickListener(v -> hideMenu());
@@ -107,8 +111,9 @@ public class MainActivity extends AppCompatActivity {
             generatingOTR = true;
             progressHandler.post(this::pollOTRProgress);
 
-            NativeBridge.loadRomFromUri(getContentResolver(), uri); // Load ROM bytes
-            NativeBridge.processRom(); // Kick off native OTR generation
+            // Kick off native OTR generation
+            NativeBridge.processRom();
+
         } catch (Exception e) {
             Log.e(TAG, "ROM load failed", e);
         }
@@ -139,16 +144,20 @@ public class MainActivity extends AppCompatActivity {
         if (progress >= 1.0f) {
             generatingOTR = false;
             hideOTRProgress();
-            romReady = true;
 
-            // Attach native-generated texture to GLRenderer
-            int texId = NativeBridge.getTextureId();
-            if (texId != 0) {
-                glRenderer.attachTexture(texId);
-                tryStartGame();
-            } else {
-                Log.e(TAG, "Texture ID is 0 after OTR generation");
-            }
+            runOnUiThread(() -> {
+                romReady = true;
+
+                // Attach the native texture ID directly
+                int texId = NativeBridge.getTextureId();
+                if (texId != 0) {
+                    glRenderer.attachTexture(texId);
+                    tryStartGame();
+                } else {
+                    Log.e(TAG, "Native texture ID not available after OTR generation");
+                }
+            });
+
         } else {
             progressHandler.postDelayed(this::pollOTRProgress, 50);
         }
@@ -166,9 +175,9 @@ public class MainActivity extends AppCompatActivity {
         Log.i(TAG, "Initializing game");
 
         NativeBridge.initGame(glSurfaceView.getHolder().getSurface());
-        NativeBridge.startGameLoop();
 
         gameInitialized = true;
+        NativeBridge.startGameLoop();
         gameRunning = true;
 
         Log.i(TAG, "Game running");
