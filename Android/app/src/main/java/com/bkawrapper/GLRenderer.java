@@ -65,6 +65,7 @@ public class GLRenderer implements GLSurfaceView.Renderer {
 
         if (!textureReady) return;
 
+        // Update texture from native if needed
         NativeBridge.updateTexture(textureId);
 
         GLES20.glUseProgram(program);
@@ -125,23 +126,20 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         return s;
     }
 
-    /** Called ONLY by MainActivity once native core is ready */
+    /** Attach a texture ID from native core */
     public void attachTexture(int texId) {
         this.textureId = texId;
         this.textureReady = texId != 0;
     }
 
     /**
-     * Set the OTR data retrieved from NativeBridge.
-     * This should be called after OTR generation is complete.
+     * Upload OTR bytes to native core and attach resulting GPU texture.
+     * Should be called after OTR generation is complete.
      */
     public void setOTRData(byte[] otrData) {
         if (otrData == null || otrData.length == 0) return;
 
-        // Send the OTR to native layer to initialize textures/game memory
         NativeBridge.initTextureWithOTR(otrData);
-
-        // Attach the resulting texture ID
         int texId = NativeBridge.getTextureId();
         attachTexture(texId);
     }
