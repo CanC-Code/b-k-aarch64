@@ -14,9 +14,7 @@ jobs:
         with:
           fetch-depth: 0
 
-
-      # ---------- submodules ----------
-
+      # ---------- Submodules ----------
       - name: Initialize git submodules
         run: git submodule update --init --recursive
 
@@ -48,21 +46,20 @@ jobs:
       - name: Verify CMake version
         run: cmake --version
 
-
       # ---------- Build OTR asset BINs ----------
       - name: Build OTR asset BINs from YAML
         run: |
           mkdir -p Android/app/src/main/assets/otr_bins
 
+          # Build US v1.0
           python3 yaml_to_otr_bin.py \
             decompressed.us.v10.yaml \
             Android/app/src/main/assets/otr_bins/us_v10.bin
 
+          # Build PAL
           python3 yaml_to_otr_bin.py \
             decompressed.pal.yaml \
             Android/app/src/main/assets/otr_bins/pal.bin
-
-
 
       # ---------- ImageMagick ----------
       - name: Install ImageMagick
