@@ -5,13 +5,13 @@
 
     <!-- GLSurfaceView for rendering -->
     <android.opengl.GLSurfaceView
-        android:id="@+id/surface_gl"
+        android:id="@+id/glSurfaceView"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- Load ROM button (initially visible, disappears once menu/game starts) -->
+    <!-- Load ROM button -->
     <Button
-        android:id="@+id/button_load_game"
+        android:id="@+id/loadButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Load Game"
@@ -19,7 +19,7 @@
 
     <!-- Progress overlay (hidden by default) -->
     <LinearLayout
-        android:id="@+id/progress_overlay"
+        android:id="@+id/progressOverlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
@@ -28,7 +28,7 @@
         android:background="#88000000">
 
         <ProgressBar
-            android:id="@+id/otr_progress_bar"
+            android:id="@+id/otrProgressBar"
             android:layout_width="200dp"
             android:layout_height="wrap_content"
             style="?android:attr/progressBarStyleHorizontal"
@@ -37,7 +37,7 @@
             android:layout_marginBottom="16dp"/>
 
         <TextView
-            android:id="@+id/otr_progress_text"
+            android:id="@+id/otrProgressText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="0%"
@@ -47,7 +47,7 @@
 
     <!-- Menu overlay (hidden by default) -->
     <include
-        android:id="@+id/menu_overlay"
+        android:id="@+id/menuOverlay"
         layout="@layout/menu_overlay"
         android:visibility="gone" />
 
