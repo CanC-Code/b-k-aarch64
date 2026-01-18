@@ -1,7 +1,6 @@
 package com.bkawrapper;
 
 import android.content.ContentResolver;
-import android.content.res.AssetManager;
 import android.net.Uri;
 
 import java.io.InputStream;
@@ -34,22 +33,22 @@ public final class NativeBridge {
             }
 
             loadRom(out.toByteArray());
-            processRom();
         }
     }
 
     // -----------------------------
-    // Native API (MUST MATCH JNI)
+    // Native API
     // -----------------------------
     public static native void loadRom(byte[] romData);
     public static native void processRom();
     public static native float getOTRProgress();
 
     // -----------------------------
-    // Game lifecycle
+    // Rendering / lifecycle
     // -----------------------------
     public static native void initGame(Object surface);
     public static native void initTexture();
+    public static native void updateTexture(int textureId);
     public static native void startGameLoop();
     public static native void stopGameLoop();
     public static native void cleanupGame();
