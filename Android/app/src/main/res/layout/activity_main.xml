@@ -17,7 +17,7 @@
         android:text="Load Game"
         android:layout_gravity="center" />
 
-    <!-- Progress overlay (hidden by default) -->
+    <!-- Progress overlay -->
     <LinearLayout
         android:id="@+id/progressOverlay"
         android:layout_width="match_parent"
@@ -42,13 +42,12 @@
             android:layout_height="wrap_content"
             android:text="0%"
             android:textColor="#FFFFFF"
-            android:textSize="18sp" />
+            android:textSize="18sp"/>
     </LinearLayout>
 
-    <!-- Menu overlay (hidden by default) -->
+    <!-- Menu overlay -->
     <include
         android:id="@+id/menuOverlay"
         layout="@layout/menu_overlay"
-        android:visibility="gone" />
-
+        android:visibility="gone"/>
 </FrameLayout>
