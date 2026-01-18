@@ -107,6 +107,7 @@ Java_com_bkawrapper_NativeBridge_loadRom(
 
     g_otr.clear();
     g_progress.store(0.0f);
+    LOGI("ROM loaded into native layer (%zu bytes)", g_rom.size());
 }
 
 // -----------------------------
@@ -124,7 +125,7 @@ Java_com_bkawrapper_NativeBridge_processRom(
     }
 
     if (!g_assetManager) {
-        LOGE("AssetManager not set, cannot load YAML");
+        LOGE("AssetManager not set");
         return;
     }
 
@@ -136,7 +137,7 @@ Java_com_bkawrapper_NativeBridge_processRom(
     std::thread([]() {
         LOGI("OTR build thread started");
 
-        // Check for cached OTR first
+        // Check for cached OTR
         if (loadOTRFromDisk(kOTRCachePath, g_otr)) {
             g_progress.store(1.0f);
             g_building.store(false);
@@ -159,7 +160,7 @@ Java_com_bkawrapper_NativeBridge_processRom(
         if (info.version == "USv1.0") yamlPath = "otr_yaml/decompressed.us.v10.yaml";
         else if (info.version == "PAL") yamlPath = "otr_yaml/decompressed.pal.yaml";
         else {
-            LOGE("Unsupported ROM version");
+            LOGE("Unsupported ROM version: %s", info.version.c_str());
             g_building.store(false);
             g_progress.store(0.0f);
             return;
@@ -195,9 +196,7 @@ Java_com_bkawrapper_NativeBridge_processRom(
                 g_otr = std::move(localOTR);
             }
 
-            // Save to disk
             saveOTRToDisk(kOTRCachePath, g_otr);
-
             g_progress.store(1.0f);
             LOGI("OTR build complete and cached (%zu bytes)", g_otr.size());
         }
