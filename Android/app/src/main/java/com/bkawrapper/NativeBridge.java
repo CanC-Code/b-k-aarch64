@@ -1,6 +1,7 @@
 package com.bkawrapper;
 
 import android.content.ContentResolver;
+import android.content.res.AssetManager;
 import android.net.Uri;
 
 import java.io.InputStream;
@@ -36,12 +37,24 @@ public final class NativeBridge {
                 out.write(buffer, 0, read);
             }
 
+            // Send bytes to native layer
             loadRom(out.toByteArray());
         }
     }
 
     // -----------------------------
-    // Native API
+    // Asset Manager (for YAML loading)
+    // -----------------------------
+    public static void setAssetManager(AssetManager manager) {
+        if (manager != null) {
+            nativeSetAssetManager(manager);
+        }
+    }
+
+    private static native void nativeSetAssetManager(AssetManager manager);
+
+    // -----------------------------
+    // Native OTR API
     // -----------------------------
     public static native void loadRom(byte[] romData);
     public static native void processRom();
