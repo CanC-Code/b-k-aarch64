@@ -1,60 +1,59 @@
 // File: Android/app/src/main/java/com/bkawrapper/NativeBridge.java
 package com.bkawrapper;
 
-import android.content.ContentResolver;
-import android.net.Uri;
-import android.view.Surface;
+import android.content.res.AssetManager;
+import android.util.Log;
 
-import java.io.ByteArrayOutputStream;
-import java.io.FileOutputStream;
-import java.io.InputStream;
+public class NativeBridge {
 
-public final class NativeBridge {
+    private static final String TAG = "NativeBridge";
 
+    // ROM processing & OTR
+    public static boolean processRom(byte[] romData) {
+        if (romData == null || romData.length == 0) return false;
+        return nativeProcessRom(romData, romData.length);
+    }
+
+    public static float getOTRProgress() {
+        return nativeGetOTRProgress();
+    }
+
+    // Game initialization & rendering
+    public static void initGame(Object surface) {
+        nativeInitGame(surface);
+    }
+
+    public static void initTexture() {
+        nativeInitTexture();
+    }
+
+    public static void startGameLoop() {
+        nativeStartGameLoop();
+    }
+
+    public static void stopGameLoop() {
+        nativeStopGameLoop();
+    }
+
+    public static void cleanupGame() {
+        nativeCleanupGame();
+    }
+
+    // -------------------
+    // Native JNI methods
+    // -------------------
+    private static native boolean nativeProcessRom(byte[] romData, int romSize);
+    private static native float nativeGetOTRProgress();
+
+    private static native void nativeInitGame(Object surface);
+    private static native void nativeInitTexture();
+    private static native void nativeStartGameLoop();
+    private static native void nativeStopGameLoop();
+    private static native void nativeCleanupGame();
+
+    // Load native library
     static {
         System.loadLibrary("wrapper");
-    }
-
-    private NativeBridge() {}
-
-    // -------- Native API --------
-    public static native boolean processRom(byte[] romData);
-    public static native byte[] getOTR();
-    public static native float getOTRProgress();
-
-    public static native void initGame(Surface surface);
-    public static native void cleanupGame();
-    public static native void startGameLoop();
-    public static native void stopGameLoop();
-    public static native void initTexture();
-    public static native void updateTexture(int texId);
-
-    // -------- SAF Loader --------
-    public static void loadRomFromUri(ContentResolver resolver, Uri uri) throws Exception {
-        try (InputStream is = resolver.openInputStream(uri);
-             ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
-
-            if (is == null) throw new Exception("InputStream null");
-
-            byte[] buf = new byte[8192];
-            int r;
-            while ((r = is.read(buf)) > 0) bos.write(buf, 0, r);
-
-            byte[] rom = bos.toByteArray();
-            if (rom.length < 0x1000) throw new Exception("ROM too small");
-
-            if (!processRom(rom)) throw new Exception("ROM processing failed");
-        }
-    }
-
-    // -------- Helper: Save OTR to file path (Java side convenience) --------
-    public static void saveOTRToPath(String path) throws Exception {
-        byte[] otr = getOTR();
-        if (otr == null || otr.length == 0) throw new Exception("OTR empty");
-
-        try (FileOutputStream fos = new FileOutputStream(path)) {
-            fos.write(otr);
-            fos.flush();
-        }
+        Log.i(TAG, "Native library 'wrapper' loaded");
     }
 }
