@@ -1,3 +1,4 @@
+// File: Android/app/src/main/java/com/bkawrapper/NativeBridge.java
 package com.bkawrapper;
 
 import android.content.ContentResolver;
@@ -17,10 +18,14 @@ public final class NativeBridge {
 
     private NativeBridge() {}
 
-    // -------- Native API --------
+    // ------------------- JNI API -------------------
     public static native void setAssetManager(Object assetManager);
     public static native void loadRom(byte[] rom);
     public static native boolean processRom();
+    public static native byte[] getOTRData();
+    public static native void saveOTRToFile(String path);
+
+    // ------------------- Game loop / texture (optional) -------------------
     public static native void initGame(Surface surface);
     public static native void cleanupGame();
     public static native void startGameLoop();
@@ -28,14 +33,7 @@ public final class NativeBridge {
     public static native int initTexture();
     public static native void updateTexture(int texId);
 
-    // -------- OTR access --------
-    public static native byte[] getOTRData();
-    public static native void saveOTRToFile(String path);
-
-    // -------- OTR Progress --------
-    public static native float getOTRProgress(); // 0.0 to 1.0
-
-    // -------- SAF Loader --------
+    // ------------------- SAF / URI loader -------------------
     public static void loadRomFromUri(ContentResolver resolver, Uri uri) throws Exception {
         try (InputStream is = resolver.openInputStream(uri);
              ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
@@ -50,16 +48,10 @@ public final class NativeBridge {
             if (rom.length < 0x1000) throw new Exception("ROM too small");
 
             loadRom(rom);
-            if (!processRom()) throw new Exception("OTR generation failed");
         }
     }
 
-    // -------- Initialize AssetManager (must call once before loading ROM) --------
-    public static void initAssets(Context context) {
-        setAssetManager(context.getAssets());
-    }
-
-    // -------- Helper: Save OTR to file path (Java side convenience) --------
+    // ------------------- Helper: Save OTR to file path -------------------
     public static void saveOTRToPath(String path) throws Exception {
         byte[] otr = getOTRData();
         if (otr == null || otr.length == 0) throw new Exception("OTR empty");
@@ -68,5 +60,10 @@ public final class NativeBridge {
             fos.write(otr);
             fos.flush();
         }
+    }
+
+    // ------------------- Convenience: set AssetManager from Context -------------------
+    public static void initAssetManager(Context ctx) {
+        setAssetManager(ctx.getAssets());
     }
 }
