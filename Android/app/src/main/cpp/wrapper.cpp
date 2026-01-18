@@ -1,141 +1,123 @@
 // File: Android/app/src/main/cpp/wrapper.cpp
 #include <jni.h>
-#include <vector>
-#include <cstdint>
-#include <cstring>
-#include <android/log.h>
 #include <android/asset_manager_jni.h>
+#include <android/log.h>
+#include <vector>
+#include <mutex>
+#include "otr_generator.h"
 
-#include "ultra/otr_builder.h" // Your OTR builder with progress support
-
-#define LOG_TAG "BK_WRAPPER"
+#define LOG_TAG "WrapperCPP"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-// ---------------- Global state ----------------
-static std::vector<uint8_t> g_rom;
-static std::vector<uint8_t> g_otr;
-
+// -------------------------------
 // Progress tracking
-static float g_otrProgress = 0.0f;
+// -------------------------------
+static std::mutex progressMutex;
+static float currentProgress = 0.0f;
 
+// Internal function for OTR progress updates
+void updateProgress(float progress) {
+    std::lock_guard<std::mutex> lock(progressMutex);
+    currentProgress = progress;
+}
+
+// -------------------------------
+// JNI: process ROM & generate OTR
+// -------------------------------
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_bkawrapper_NativeBridge_processRom(
+Java_com_bkawrapper_NativeBridge_nativeProcessRom(
         JNIEnv* env,
-        jclass,
-        jbyteArray romData)
-{
-    if (!romData) {
-        LOGE("ROM data is null");
-        return JNI_FALSE;
-    }
+        jclass clazz,
+        jbyteArray romData,
+        jint romSize
+) {
+    if (!romData || romSize <= 0) return JNI_FALSE;
 
-    const jsize romSize = env->GetArrayLength(romData);
-    if (romSize <= 0) {
-        LOGE("ROM size invalid");
-        return JNI_FALSE;
-    }
+    jbyte* romBytes = env->GetByteArrayElements(romData, nullptr);
+    std::vector<uint8_t> romVec(romBytes, romBytes + romSize);
+    env->ReleaseByteArrayElements(romData, romBytes, 0);
 
-    g_rom.resize(static_cast<size_t>(romSize));
-    env->GetByteArrayRegion(
-        romData,
-        0,
-        romSize,
-        reinterpret_cast<jbyte*>(g_rom.data())
-    );
+    std::vector<uint8_t> outOTR;
 
-    LOGI("ROM received: %d bytes", romSize);
+    // Reset progress
+    updateProgress(0.0f);
 
-    g_otr.clear();
-    g_otrProgress = 0.0f;
+    // Build OTR using embedded YAML
+    bool success = buildOTRForROM(nullptr, romVec.data(), romVec.size(), outOTR);
 
-    // Example OTR builder with progress callback
-    auto progressCallback = [](float progress) {
-        g_otrProgress = progress; // store progress for JNI polling
-    };
+    // OTR generation finished → mark progress complete
+    updateProgress(1.0f);
 
-    const bool success = buildBKOTR(
-        g_rom.data(),
-        g_rom.size(),
-        nullptr,  // yamlData optional if using embedded bin
-        0,
-        g_otr,
-        progressCallback
-    );
+    LOGI("nativeProcessRom finished, size=%zu, success=%d", outOTR.size(), success);
 
-    if (!success || g_otr.empty()) {
-        LOGE("OTR build failed");
-        g_otrProgress = 0.0f;
-        return JNI_FALSE;
-    }
-
-    g_otrProgress = 1.0f;
-    LOGI("OTR build complete: %zu bytes", g_otr.size());
-    return JNI_TRUE;
+    return success ? JNI_TRUE : JNI_FALSE;
 }
 
-extern "C"
-JNIEXPORT jbyteArray JNICALL
-Java_com_bkawrapper_NativeBridge_getOTR(
-        JNIEnv* env,
-        jclass)
-{
-    if (g_otr.empty()) {
-        LOGE("OTR buffer empty");
-        return nullptr;
-    }
-
-    jbyteArray out = env->NewByteArray(static_cast<jsize>(g_otr.size()));
-    env->SetByteArrayRegion(out, 0, static_cast<jsize>(g_otr.size()),
-                            reinterpret_cast<const jbyte*>(g_otr.data()));
-    return out;
-}
-
+// -------------------------------
+// JNI: get current OTR progress
+// -------------------------------
 extern "C"
 JNIEXPORT jfloat JNICALL
-Java_com_bkawrapper_NativeBridge_getOTRProgress(
+Java_com_bkawrapper_NativeBridge_nativeGetOTRProgress(
         JNIEnv* env,
-        jclass)
-{
-    return g_otrProgress;
+        jclass clazz
+) {
+    std::lock_guard<std::mutex> lock(progressMutex);
+    return currentProgress;
 }
 
-// ---------------- Game / OpenGL stubs ----------------
+// -------------------------------
+// Game/OpenGL stubs
+// -------------------------------
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_initGame(JNIEnv* env, jclass, jobject surface) {
-    // Initialize your GL context / game engine
-    LOGI("Game initialized");
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_cleanupGame(JNIEnv* env, jclass) {
-    LOGI("Game cleanup");
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_startGameLoop(JNIEnv* env, jclass) {
-    LOGI("Game loop started");
+Java_com_bkawrapper_NativeBridge_nativeInitGame(
+        JNIEnv* env,
+        jclass clazz,
+        jobject surface
+) {
+    LOGI("nativeInitGame called");
+    // TODO: attach to your OpenGL engine
 }
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_stopGameLoop(JNIEnv* env, jclass) {
-    LOGI("Game loop stopped");
+Java_com_bkawrapper_NativeBridge_nativeInitTexture(
+        JNIEnv* env,
+        jclass clazz
+) {
+    LOGI("nativeInitTexture called");
+    // TODO: setup texture in your OpenGL context
 }
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_initTexture(JNIEnv* env, jclass) {
-    LOGI("Texture initialized");
+Java_com_bkawrapper_NativeBridge_nativeStartGameLoop(
+        JNIEnv* env,
+        jclass clazz
+) {
+    LOGI("nativeStartGameLoop called");
+    // TODO: start game loop thread
 }
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass, jint texId) {
-    // Bind and update your texture here
-    LOGI("Texture updated: %d", texId);
+Java_com_bkawrapper_NativeBridge_nativeStopGameLoop(
+        JNIEnv* env,
+        jclass clazz
+) {
+    LOGI("nativeStopGameLoop called");
+    // TODO: stop game loop thread
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeBridge_nativeCleanupGame(
+        JNIEnv* env,
+        jclass clazz
+) {
+    LOGI("nativeCleanupGame called");
+    // TODO: cleanup resources
 }
