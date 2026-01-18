@@ -59,16 +59,25 @@ public final class NativeBridge {
     public static native void loadRom(byte[] romData);
     public static native void processRom();
     public static native float getOTRProgress();
-
-    /** Retrieve the generated OTR from native memory */
     public static native byte[] getOTR();
 
     // -----------------------------
     // Rendering / lifecycle
     // -----------------------------
     public static native void initGame(Object surface);
+
+    /** Standard texture initialization (without OTR) */
     public static native void initTexture();
+
+    /** Update the existing texture each frame */
     public static native void updateTexture(int textureId);
+
+    /** Initialize texture from generated OTR bytes */
+    public static native void initTextureWithOTR(byte[] otrData);
+
+    /** Retrieve OpenGL texture ID created by native core */
+    public static native int getTextureId();
+
     public static native void startGameLoop();
     public static native void stopGameLoop();
     public static native void cleanupGame();
