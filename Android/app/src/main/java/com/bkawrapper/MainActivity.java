@@ -102,7 +102,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             Log.i(TAG, "Reading ROM");
 
-            // Native layer handles ROM bytes; we just ensure AssetManager is ready
+            // Ensure AssetManager is ready; native layer handles bytes
             if (getContentResolver().openInputStream(uri) == null) {
                 Log.e(TAG, "ROM stream is null");
                 return;
@@ -149,10 +149,12 @@ public class MainActivity extends AppCompatActivity {
             runOnUiThread(() -> {
                 romReady = true;
 
-                // Fetch the generated/cached OTR
+                // Retrieve generated OTR and upload to GPU
                 byte[] otrBytes = NativeBridge.getOTR();
                 if (otrBytes != null && otrBytes.length > 0) {
-                    glRenderer.setOTRData(otrBytes);
+                    NativeBridge.initTextureWithOTR(otrBytes);           // Upload texture to native
+                    int texId = NativeBridge.getTextureId();           // Get GPU texture ID
+                    glRenderer.attachTexture(texId);                   // Attach to renderer
                     tryStartGame();
                 } else {
                     Log.e(TAG, "OTR is empty after generation");
@@ -175,7 +177,6 @@ public class MainActivity extends AppCompatActivity {
         Log.i(TAG, "Initializing game");
 
         NativeBridge.initGame(glSurfaceView.getHolder().getSurface());
-        NativeBridge.initTexture();
 
         gameInitialized = true;
         NativeBridge.startGameLoop();
