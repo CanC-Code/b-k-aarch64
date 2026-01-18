@@ -1,106 +1,110 @@
-// File: Android/app/src/main/cpp/ultra/otr_builder.cpp
-// Purpose: Build dynamic BK.OTR from a user-provided Banjo-Kazooie ROM
-// Author: CCVO
-// Fully production-ready Android version with progress tracking.
-
+// File: Android/app/src/main/cpp/ultra/otr_builder_bin.cpp
 #include <cstdint>
 #include <vector>
 #include <android/log.h>
+#include <atomic>
 #include <cstring>
 #include <cstdio>
-#include <atomic>
 
-#define LOG_TAG "BKA_OTR"
+#define LOG_TAG "BKA_OTR_BIN"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
-// ---- Global in-memory OTR ----
+// ---- Global OTR ----
 static std::vector<uint8_t> BK_OTR;
-
-// ---- Segment structure ----
-struct Segment {
-    uint32_t start; // offset in ROM
-    uint32_t end;   // offset in ROM
-    uint32_t dest;  // offset in OTR
-};
-
-// ---- Progress tracking ----
 static std::atomic<float> g_progress{0.0f};
 
-// ---- Build dynamic OTR from ROM ----
+// ---- Segment descriptor from BIN ----
+struct OTRSegment {
+    uint32_t offset;
+    uint32_t size;
+};
+
+// ---- Load OTR from precomputed BIN ----
 extern "C"
-void core1_loadOTR(uint8_t* romData, size_t romSize) {
+bool loadOTRFromBin(const char* binPath) {
     BK_OTR.clear();
     g_progress = 0.0f;
+    if (!binPath) return false;
 
-    if (!romData || romSize < 0x100) {
-        LOGI("ROM too small or null");
-        return;
+    FILE* f = fopen(binPath, "rb");
+    if (!f) {
+        LOGI("Failed to open BIN: %s", binPath);
+        return false;
     }
 
-    // Step 1: Copy 0x40-byte header
-    BK_OTR.insert(BK_OTR.end(), romData, romData + 0x40);
+    // Read entry count (first 4 bytes)
+    uint32_t entryCount = 0;
+    if (fread(&entryCount, 4, 1, f) != 1) {
+        fclose(f);
+        LOGI("Failed to read entry count from BIN");
+        return false;
+    }
 
-    // Step 2: Extract 16-segment table
-    Segment segments[16];
-    int totalSegments = 16;
-    for (int i = 0; i < 16; i++) {
-        uint32_t start = (romData[0x40 + i*8 + 0] << 24) |
-                         (romData[0x40 + i*8 + 1] << 16) |
-                         (romData[0x40 + i*8 + 2] << 8)  |
-                         (romData[0x40 + i*8 + 3]);
-        uint32_t end   = (romData[0x40 + i*8 + 4] << 24) |
-                         (romData[0x40 + i*8 + 5] << 16) |
-                         (romData[0x40 + i*8 + 6] << 8)  |
-                         (romData[0x40 + i*8 + 7]);
+    if (entryCount == 0) {
+        fclose(f);
+        LOGI("BIN has no entries");
+        return false;
+    }
 
-        if (start >= end || end > romSize) {
-            segments[i] = {0,0,0};
-            g_progress = float(i + 1) / totalSegments;
-            continue;
+    struct EntryHeader { uint32_t offset; uint32_t size; };
+    std::vector<EntryHeader> entries(entryCount);
+
+    if (fread(entries.data(), sizeof(EntryHeader), entryCount, f) != entryCount) {
+        fclose(f);
+        LOGI("Failed to read entry headers");
+        return false;
+    }
+
+    // Copy each entry into BK_OTR
+    for (uint32_t i = 0; i < entryCount; i++) {
+        const auto& e = entries[i];
+        if (e.size == 0) continue;
+
+        // Seek to offset
+        if (fseek(f, e.offset, SEEK_SET) != 0) {
+            fclose(f);
+            LOGI("Failed to seek to offset 0x%X", e.offset);
+            return false;
         }
 
-        segments[i].start = start;
-        segments[i].end   = end;
-        segments[i].dest  = static_cast<uint32_t>(BK_OTR.size());
+        size_t curSize = BK_OTR.size();
+        BK_OTR.resize(curSize + e.size);
+        if (fread(BK_OTR.data() + curSize, 1, e.size, f) != e.size) {
+            fclose(f);
+            LOGI("Failed to read segment %u", i);
+            return false;
+        }
 
-        // Copy bytes into OTR
-        BK_OTR.insert(BK_OTR.end(), romData + start, romData + end);
-
-        // Update progress
-        g_progress = float(i + 1) / totalSegments;
-
-        LOGI("Segment %d: ROM 0x%08X->0x%08X => OTR 0x%08X (%u bytes)",
-             i, start, end, segments[i].dest, end - start);
+        g_progress = float(i + 1) / entryCount;
+        LOGI("Segment %u: offset 0x%X size %u", i, e.offset, e.size);
     }
 
-    // Step 3: Pad to 16-byte alignment
+    fclose(f);
+
+    // Pad to 16 bytes
     size_t pad = (16 - (BK_OTR.size() % 16)) % 16;
     BK_OTR.insert(BK_OTR.end(), pad, 0);
 
     g_progress = 1.0f;
-
-    LOGI("Dynamic BK.OTR built: %zu bytes (+%zu padding)", BK_OTR.size(), pad);
+    LOGI("Loaded BIN OTR: %zu bytes (+%zu padding)", BK_OTR.size(), pad);
+    return true;
 }
 
 // ---- Accessors ----
-extern "C"
-uint8_t* getOTRData(size_t* outSize) {
+extern "C" uint8_t* getOTRData(size_t* outSize) {
     if (outSize) *outSize = BK_OTR.size();
     return BK_OTR.empty() ? nullptr : BK_OTR.data();
 }
 
+extern "C" float getOTRProgress() { return g_progress.load(); }
+
 extern "C"
-void saveOTRToFile(const char* path) {
-    if (!path || BK_OTR.empty()) return;
+bool saveOTRToFile(const char* path) {
+    if (!path || BK_OTR.empty()) return false;
     FILE* f = fopen(path, "wb");
-    if (!f) return;
+    if (!f) return false;
     fwrite(BK_OTR.data(), 1, BK_OTR.size(), f);
     fclose(f);
-    LOGI("Saved BK.OTR: %zu bytes to %s", BK_OTR.size(), path);
-}
-
-// ---- Progress accessor for Java ----
-extern "C"
-float getOTRProgress() {
-    return g_progress.load();
+    LOGI("Saved BK.OTR to %s (%zu bytes)", path, BK_OTR.size());
+    return true;
 }
