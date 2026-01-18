@@ -1,17 +1,17 @@
-<!-- File: Android/app/src/main/res/layout/activity_main.xml -->
+<?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
     <!-- GLSurfaceView for rendering -->
     <android.opengl.GLSurfaceView
-        android:id="@+id/glSurfaceView"
+        android:id="@+id/surface_gl"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
     <!-- Load ROM button -->
     <Button
-        android:id="@+id/loadButton"
+        android:id="@+id/button_load_game"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Load Game"
@@ -34,7 +34,7 @@
             style="?android:attr/progressBarStyleHorizontal"
             android:max="100"
             android:progress="0"
-            android:layout_marginBottom="16dp"/>
+            android:layout_marginBottom="16dp" />
 
         <TextView
             android:id="@+id/otrProgressText"
@@ -42,7 +42,7 @@
             android:layout_height="wrap_content"
             android:text="0%"
             android:textColor="#FFFFFF"
-            android:textSize="18sp"/>
+            android:textSize="18sp" />
     </LinearLayout>
 
     <!-- Menu overlay (hidden by default) -->
