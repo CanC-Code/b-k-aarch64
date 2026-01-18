@@ -31,12 +31,15 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // --- bind views ---
-        glSurfaceView = findViewById(R.id.surface_gl);
-        progressOverlay = findViewById(R.id.progress_overlay);
-        progressBar = findViewById(R.id.otr_progress_bar);
-        progressText = findViewById(R.id.otr_progress_text);
-        loadButton = findViewById(R.id.button_load_game);
+        // 🔴 REQUIRED: set AssetManager BEFORE any native work
+        NativeBridge.setAssetManager(getAssets());
+
+        // --- bind views (MATCH XML IDS EXACTLY) ---
+        glSurfaceView   = findViewById(R.id.glSurfaceView);
+        progressOverlay = findViewById(R.id.progressOverlay);
+        progressBar     = findViewById(R.id.otrProgressBar);
+        progressText    = findViewById(R.id.otrProgressText);
+        loadButton      = findViewById(R.id.button_load_game);
 
         // --- setup GLSurfaceView ---
         glRenderer = new GLRenderer(this);
@@ -44,51 +47,56 @@ public class MainActivity extends Activity {
         glSurfaceView.setRenderer(glRenderer);
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
-        // --- button click to load ROM ---
         loadButton.setOnClickListener(v -> pickRom());
     }
 
-    // Called by GLRenderer when surface is ready
     public void onSurfaceReady() {
-        // Optional: start game loop or attach texture if OTR exists
+        // reserved for later native init
     }
 
     private void pickRom() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        intent.setType("*/*"); // accept all files
-        startActivityForResult(Intent.createChooser(intent, "Select ROM"), PICK_ROM_REQUEST);
+        intent.setType("*/*");
+        startActivityForResult(
+                Intent.createChooser(intent, "Select ROM"),
+                PICK_ROM_REQUEST
+        );
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == PICK_ROM_REQUEST && resultCode == RESULT_OK) {
+        if (requestCode == PICK_ROM_REQUEST && resultCode == RESULT_OK && data != null) {
             Uri uri = data.getData();
-            if (uri != null) {
-                progressOverlay.setVisibility(View.VISIBLE);
-                progressBar.setProgress(0);
-                progressText.setText("0%");
+            if (uri == null) return;
 
-                new Thread(() -> {
-                    try {
-                        NativeBridge.loadRomFromUri(getContentResolver(), uri);
-                        NativeBridge.processRom();
+            progressOverlay.setVisibility(View.VISIBLE);
+            progressBar.setProgress(0);
+            progressText.setText("0%");
 
-                        // retrieve OTR bytes
-                        byte[] otrData = NativeBridge.getOTR();
-                        runOnUiThread(() -> {
-                            glRenderer.setOTRData(otrData);
-                            progressOverlay.setVisibility(View.GONE);
-                        });
-                    } catch (IOException e) {
-                        runOnUiThread(() -> {
-                            progressOverlay.setVisibility(View.GONE);
-                            Toast.makeText(this, "Failed to load ROM: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                        });
-                    }
-                }).start();
-            }
+            new Thread(() -> {
+                try {
+                    NativeBridge.loadRomFromUri(getContentResolver(), uri);
+                    NativeBridge.processRom();
+
+                    byte[] otrData = NativeBridge.getOTR();
+                    runOnUiThread(() -> {
+                        glRenderer.setOTRData(otrData);
+                        progressOverlay.setVisibility(View.GONE);
+                    });
+
+                } catch (IOException e) {
+                    runOnUiThread(() -> {
+                        progressOverlay.setVisibility(View.GONE);
+                        Toast.makeText(
+                                this,
+                                "Failed to load ROM: " + e.getMessage(),
+                                Toast.LENGTH_LONG
+                        ).show();
+                    });
+                }
+            }).start();
         }
     }
 }
