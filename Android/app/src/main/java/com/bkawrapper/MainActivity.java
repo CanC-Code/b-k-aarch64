@@ -18,8 +18,6 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
-import java.io.InputStream;
-
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "BK_APP";
@@ -104,20 +102,17 @@ public class MainActivity extends AppCompatActivity {
         try {
             Log.i(TAG, "Reading ROM");
 
-            InputStream romStream = getContentResolver().openInputStream(uri);
-            if (romStream == null) {
+            // Native layer handles ROM bytes; we just ensure AssetManager is ready
+            if (getContentResolver().openInputStream(uri) == null) {
                 Log.e(TAG, "ROM stream is null");
                 return;
             }
 
-            // Native side re-reads ROM via AssetManager / file descriptor
-            romStream.close();
-
-            // Kick off native OTR generation (async)
             showOTRProgress();
             generatingOTR = true;
             progressHandler.post(this::pollOTRProgress);
 
+            // Kick off native OTR generation
             NativeBridge.processRom();
 
         } catch (Exception e) {
@@ -128,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
     private void showOTRProgress() {
         runOnUiThread(() -> {
             progressOverlay.setVisibility(View.VISIBLE);
-            loadButton.setVisibility(View.GONE); // hide picker while generating
+            loadButton.setVisibility(View.GONE);
         });
     }
 
@@ -153,7 +148,15 @@ public class MainActivity extends AppCompatActivity {
 
             runOnUiThread(() -> {
                 romReady = true;
-                tryStartGame();
+
+                // Fetch the generated/cached OTR
+                byte[] otrBytes = NativeBridge.getOTR();
+                if (otrBytes != null && otrBytes.length > 0) {
+                    glRenderer.setOTRData(otrBytes);
+                    tryStartGame();
+                } else {
+                    Log.e(TAG, "OTR is empty after generation");
+                }
             });
         } else {
             progressHandler.postDelayed(this::pollOTRProgress, 50);
