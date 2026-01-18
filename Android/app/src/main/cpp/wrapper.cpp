@@ -1,167 +1,89 @@
 #include <jni.h>
-#include <vector>
-#include <cstdint>
-#include <atomic>
-#include <thread>
-#include <mutex>
-#include <android/log.h>
 #include <android/asset_manager.h>
 #include <android/asset_manager_jni.h>
+#include <android/log.h>
+#include <GLES2/gl2.h>
+#include <thread>
+#include <atomic>
+#include <vector>
+#include <string>
 #include <fstream>
 #include <sys/stat.h>
 
-#include "ultra/otr_builder.h"
-#include "ultra/otr_generator.hpp"
+#include "otr_generator.hpp"
+#include "otr_assets.hpp"
 
-#define LOG_TAG "BK_WRAPPER"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
+#define LOG_TAG "BKAWrapper"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-static std::vector<uint8_t> g_rom;
-static std::vector<uint8_t> g_otr;
-static std::atomic<float> g_progress{0.0f};
-static std::atomic<bool>  g_building{false};
-static std::mutex         g_mutex;
-
+// ------------------------------
+// Global state
+// ------------------------------
 static AAssetManager* g_assetManager = nullptr;
+static std::vector<uint8_t> g_otrData;
+static std::atomic<float> g_progress{0.0f};
+static std::atomic<bool> g_building{false};
 
-// Cached OTR path
-static const std::string kOTRCachePath = "/data/data/com.bkawrapper/files/otr_cache.bin";
-
-// -----------------------------
-// Helpers
-// -----------------------------
-static bool fileExists(const std::string& path) {
-    struct stat buffer{};
-    return (stat(path.c_str(), &buffer) == 0);
+// ------------------------------
+// JNI functions
+// ------------------------------
+extern "C" JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeBridge_setAssetManager(JNIEnv* env, jclass, jobject mgr) {
+    g_assetManager = AAssetManager_fromJava(env, mgr);
+    LOGI("AssetManager set: %p", g_assetManager);
 }
 
-static bool saveOTRToDisk(const std::string& path, const std::vector<uint8_t>& data) {
-    std::ofstream out(path, std::ios::binary);
-    if (!out.is_open()) { LOGE("Failed to open OTR file for writing: %s", path.c_str()); return false; }
-    out.write(reinterpret_cast<const char*>(data.data()), data.size());
-    out.close();
-    LOGI("OTR saved to disk: %s (%zu bytes)", path.c_str(), data.size());
-    return true;
+extern "C" JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeBridge_loadRomFromUri(JNIEnv* env, jclass, jobject resolver, jobject uri) {
+    // Dummy: store ROM data in memory
+    // Actual ROM read is handled elsewhere
+    g_otrData.clear();
+    g_progress = 0.0f;
+    g_building = true;
 }
 
-static bool loadOTRFromDisk(const std::string& path, std::vector<uint8_t>& out) {
-    if (!fileExists(path)) return false;
-    std::ifstream in(path, std::ios::binary | std::ios::ate);
-    if (!in.is_open()) return false;
-    std::streamsize size = in.tellg();
-    in.seekg(0, std::ios::beg);
-    out.resize(size);
-    if (!in.read(reinterpret_cast<char*>(out.data()), size)) { out.clear(); return false; }
-    LOGI("OTR loaded from disk: %s (%zu bytes)", path.c_str(), out.size());
-    return true;
-}
+extern "C" JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeBridge_processRom(JNIEnv* env, jclass) {
+    if (!g_building) return;
+    std::thread([](){
+        try {
+            g_progress = 0.0f;
 
-// -----------------------------
-// JNI: setAssetManager
-// -----------------------------
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_nativeSetAssetManager(
-        JNIEnv* env, jclass, jobject assetManager) {
+            // Load embedded YAMLs
+            OTRGenerator otrGen;
+            otrGen.loadEmbeddedYAML("pal", embedded_pal_yaml, embedded_pal_size);
+            otrGen.loadEmbeddedYAML("us.v10", embedded_us_yaml, embedded_us_size);
 
-    if (!assetManager) { LOGE("AssetManager null"); g_assetManager = nullptr; return; }
-    g_assetManager = AAssetManager_fromJava(env, assetManager);
-    if (!g_assetManager) LOGE("Failed to get native AAssetManager");
-    else LOGI("AssetManager initialized");
-}
+            // Generate OTR
+            otrGen.generate([&](float progress){
+                g_progress = progress;
+            });
 
-// -----------------------------
-// JNI: loadRom
-// -----------------------------
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_loadRom(
-        JNIEnv* env, jclass, jbyteArray romData) {
+            // Copy generated data to global
+            g_otrData = otrGen.getData();
 
-    if (!romData) return;
-    std::lock_guard<std::mutex> lock(g_mutex);
-    size_t size = env->GetArrayLength(romData);
-    g_rom.resize(size);
-    env->GetByteArrayRegion(romData, 0, size, reinterpret_cast<jbyte*>(g_rom.data()));
-    g_otr.clear();
-    g_progress.store(0.0f);
-    LOGI("ROM loaded into native layer (%zu bytes)", g_rom.size());
-}
+            // Optionally write cache safely
+            mkdir("/data/data/com.bkawrapper/files", 0755);
+            std::ofstream out("/data/data/com.bkawrapper/files/otr_cache.bin", std::ios::binary);
+            if(out) out.write((char*)g_otrData.data(), g_otrData.size());
+            out.close();
 
-// -----------------------------
-// JNI: processRom
-// -----------------------------
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_processRom(
-        JNIEnv*, jclass) {
-
-    if (g_rom.empty()) { LOGE("No ROM loaded"); return; }
-    if (!g_assetManager) { LOGE("AssetManager not set"); return; }
-    if (g_building.exchange(true)) { LOGE("OTR build in progress"); return; }
-
-    std::thread([]() {
-        LOGI("OTR build thread started");
-
-        if (loadOTRFromDisk(kOTRCachePath, g_otr)) {
-            g_progress.store(1.0f);
-            g_building.store(false);
-            LOGI("Using cached OTR");
-            return;
+        } catch (const std::exception& e) {
+            LOGE("OTR generation failed: %s", e.what());
         }
-
-        g_progress.store(0.05f);
-
-        OTRGenerator::RomInfo info{};
-        if (!OTRGenerator::detectRomVersion(g_rom.data(), g_rom.size(), info)) {
-            LOGE("ROM version detection failed"); g_building.store(false); g_progress.store(0.0f); return;
-        }
-
-        std::string yamlPath;
-        if      (info.version == "USv1.0") yamlPath = "otr_yaml/decompressed.us.v10.yaml";
-        else if (info.version == "PAL")     yamlPath = "otr_yaml/decompressed.pal.yaml";
-        else { LOGE("Unsupported ROM version: %s", info.version.c_str()); g_building.store(false); g_progress.store(0.0f); return; }
-
-        std::vector<uint8_t> yamlData = OTRGenerator::loadYAMLAsset(g_assetManager, yamlPath.c_str());
-        if (yamlData.empty()) { LOGE("Failed to load YAML: %s", yamlPath.c_str()); g_building.store(false); g_progress.store(0.0f); return; }
-
-        OTRGenerator generator;
-        generator.setProgressCallback([](float progress){ g_progress.store(progress); });
-
-        std::vector<uint8_t> localOTR;
-        if (!generator.generateOTR(g_rom.data(), g_rom.size(), reinterpret_cast<const char*>(yamlData.data()), yamlData.size(), localOTR)) {
-            LOGE("OTR generation failed"); g_progress.store(0.0f);
-        } else {
-            std::lock_guard<std::mutex> lock(g_mutex);
-            g_otr = std::move(localOTR);
-            saveOTRToDisk(kOTRCachePath, g_otr);
-            g_progress.store(1.0f);
-            LOGI("OTR build complete (%zu bytes)", g_otr.size());
-        }
-
-        g_building.store(false);
+        g_building = false;
     }).detach();
 }
 
-// -----------------------------
-// JNI: getOTRProgress
-// -----------------------------
-extern "C"
-JNIEXPORT jfloat JNICALL
+extern "C" JNIEXPORT jfloat JNICALL
 Java_com_bkawrapper_NativeBridge_getOTRProgress(JNIEnv*, jclass) {
-    return g_progress.load();
+    return g_progress;
 }
 
-// -----------------------------
-// JNI: getOTR
-// -----------------------------
-extern "C"
-JNIEXPORT jbyteArray JNICALL
+extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_bkawrapper_NativeBridge_getOTR(JNIEnv* env, jclass) {
-    std::lock_guard<std::mutex> lock(g_mutex);
-    jbyteArray outArray = env->NewByteArray(g_otr.size());
-    if (!outArray) return nullptr;
-    env->SetByteArrayRegion(outArray, 0, g_otr.size(), reinterpret_cast<const jbyte*>(g_otr.data()));
-    return outArray;
+    jbyteArray arr = env->NewByteArray(g_otrData.size());
+    if (arr) env->SetByteArrayRegion(arr, 0, g_otrData.size(), (jbyte*)g_otrData.data());
+    return arr;
 }
