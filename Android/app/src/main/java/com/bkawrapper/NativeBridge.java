@@ -1,4 +1,3 @@
-// File: Android/app/src/main/java/com/bkawrapper/NativeBridge.java
 package com.bkawrapper;
 
 import android.content.ContentResolver;
@@ -8,11 +7,12 @@ import android.view.Surface;
 import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.IOException;
 
 public final class NativeBridge {
 
     static {
-        System.loadLibrary("wrapper");
+        System.loadLibrary("wrapper"); // make sure otr_generator + JNI compiled here
     }
 
     private NativeBridge() {}
@@ -32,34 +32,33 @@ public final class NativeBridge {
 
     // -------- OTR access --------
     public static native byte[] getOTRData();
-    public static native void saveOTRToFile(String path);
 
     // -------- OTR Progress --------
     public static native float getOTRProgress(); // 0.0 to 1.0
 
     // -------- SAF Loader --------
-    public static void loadRomFromUri(ContentResolver resolver, Uri uri) throws Exception {
+    public static void loadRomFromUri(ContentResolver resolver, Uri uri) throws IOException {
         try (InputStream is = resolver.openInputStream(uri);
              ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
 
-            if (is == null) throw new Exception("InputStream null");
+            if (is == null) throw new IOException("InputStream null");
 
             byte[] buf = new byte[8192];
             int r;
-            while ((r = is.read(buf)) > 0) bos.write(buf, 0, r);
+            while ((r = is.read(buf)) != -1) bos.write(buf, 0, r);
 
             byte[] rom = bos.toByteArray();
-            if (rom.length < 0x1000) throw new Exception("ROM too small");
+            if (rom.length < 0x1000) throw new IOException("ROM too small");
 
             loadRom(rom);
-            processRom();
+            processRom(); // generates in-memory OTR
         }
     }
 
     // -------- Helper: Save OTR to file path (Java side convenience) --------
-    public static void saveOTRToPath(String path) throws Exception {
+    public static void saveOTRToPath(String path) throws IOException {
         byte[] otr = getOTRData();
-        if (otr == null || otr.length == 0) throw new Exception("OTR empty");
+        if (otr == null || otr.length == 0) throw new IOException("OTR empty");
 
         try (FileOutputStream fos = new FileOutputStream(path)) {
             fos.write(otr);
