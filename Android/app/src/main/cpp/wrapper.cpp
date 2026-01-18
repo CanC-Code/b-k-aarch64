@@ -1,207 +1,89 @@
+// File: wrapper.cpp
+// Purpose: JNI bridge + ROM → OTR pipeline owner
+// No fake core symbols. No undefined ABI.
+
 #include <jni.h>
-#include <cstdint>
-#include <thread>
-#include <atomic>
-#include <android/log.h>
-#include <unistd.h>
 #include <vector>
-#include <mutex>
-#include <cstdio>
+#include <cstdint>
+#include <cstring>
+#include <android/log.h>
+
+#include "ultra/otr_builder.h"
 
 #define LOG_TAG "BK_WRAPPER"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-// ------------------------------------------------------------
-// External core symbols (real or stubbed elsewhere)
-// ------------------------------------------------------------
-extern "C" {
-    void core1_reset(uint8_t* ram);
-    void core1_stepCPU(uint8_t* ram);
-    void core2_stepFrame(uint8_t* ram, uint32_t* framebuffer, int w, int h);
+// Global buffers owned by wrapper
+static std::vector<uint8_t> g_rom;
+static std::vector<uint8_t> g_otr;
 
-    void n_audioInit();
-    void n_audioStep();
-
-    void core1_loadOTR(uint8_t* romData, size_t romSize);
-}
-
-// ------------------------------------------------------------
-// Global state
-// ------------------------------------------------------------
-static constexpr size_t RAM_SIZE = 8 * 1024 * 1024;
-
-static std::vector<uint8_t> g_ram(RAM_SIZE);
-static std::vector<uint32_t> g_framebuffer;
-static int g_fbWidth  = 320;
-static int g_fbHeight = 240;
-
-static std::atomic<bool> g_running{false};
-static std::thread g_emulationThread;
-static std::mutex g_stateMutex;
-
-// In-memory OTR
-static std::vector<uint8_t> g_OTR;
-
-// ------------------------------------------------------------
-// Emulation loop
-// ------------------------------------------------------------
-static void emulation_loop() {
-    LOGI("Emulation thread started");
-
-    n_audioInit();
-    core1_reset(g_ram.data());
-
-    while (g_running.load()) {
-        {
-            std::lock_guard<std::mutex> lock(g_stateMutex);
-
-            core1_stepCPU(g_ram.data());
-
-            if (!g_framebuffer.empty()) {
-                core2_stepFrame(
-                    g_ram.data(),
-                    g_framebuffer.data(),
-                    g_fbWidth,
-                    g_fbHeight
-                );
-            }
-
-            n_audioStep();
-        }
-
-        // ~60Hz pacing
-        usleep(16 * 1000);
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_canc_code_bk_NativeBridge_processRom(
+        JNIEnv* env,
+        jobject /* this */,
+        jbyteArray romData)
+{
+    if (!romData) {
+        LOGE("ROM data is null");
+        return JNI_FALSE;
     }
 
-    LOGI("Emulation thread exiting");
-}
+    const jsize romSize = env->GetArrayLength(romData);
+    if (romSize <= 0) {
+        LOGE("ROM size invalid");
+        return JNI_FALSE;
+    }
 
-// ------------------------------------------------------------
-// JNI API
-// ------------------------------------------------------------
-extern "C" {
-
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_loadRom(
-        JNIEnv* env, jclass, jbyteArray romData) {
-
-    if (!romData) return;
-
-    jsize len = env->GetArrayLength(romData);
-    if (len > RAM_SIZE) len = RAM_SIZE;
-
+    g_rom.resize(static_cast<size_t>(romSize));
     env->GetByteArrayRegion(
-        romData, 0, len,
-        reinterpret_cast<jbyte*>(g_ram.data())
+        romData,
+        0,
+        romSize,
+        reinterpret_cast<jbyte*>(g_rom.data())
     );
 
-    LOGI("ROM loaded: %d bytes", len);
+    LOGI("ROM received: %d bytes", romSize);
+
+    g_otr.clear();
+
+    const bool success = buildBKOTR(
+        g_rom.data(),
+        g_rom.size(),
+        g_otr
+    );
+
+    if (!success || g_otr.empty()) {
+        LOGE("OTR build failed");
+        return JNI_FALSE;
+    }
+
+    LOGI("OTR build complete: %zu bytes", g_otr.size());
+    return JNI_TRUE;
 }
 
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_processRom(
-        JNIEnv*, jclass) {
-
-    core1_loadOTR(g_ram.data(), g_ram.size());
-    LOGI("OTR processing complete");
-}
-
+extern "C"
 JNIEXPORT jbyteArray JNICALL
-Java_com_bkawrapper_NativeBridge_getOTRData(
-        JNIEnv* env, jclass) {
+Java_com_canc_code_bk_NativeBridge_getOTR(
+        JNIEnv* env,
+        jobject /* this */)
+{
+    if (g_otr.empty()) {
+        LOGE("OTR buffer empty");
+        return nullptr;
+    }
 
-    jbyteArray out = env->NewByteArray(static_cast<jsize>(g_OTR.size()));
-    if (!out || g_OTR.empty()) return out;
+    jbyteArray out = env->NewByteArray(
+        static_cast<jsize>(g_otr.size())
+    );
 
-    env->SetByteArrayRegion(out, 0, static_cast<jsize>(g_OTR.size()),
-                            reinterpret_cast<jbyte*>(g_OTR.data()));
+    env->SetByteArrayRegion(
+        out,
+        0,
+        static_cast<jsize>(g_otr.size()),
+        reinterpret_cast<const jbyte*>(g_otr.data())
+    );
+
     return out;
-}
-
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_saveOTRToFile(
-        JNIEnv* env, jclass, jstring path) {
-
-    if (!path) return;
-
-    const char* cpath = env->GetStringUTFChars(path, nullptr);
-    if (!cpath) return;
-
-    FILE* f = fopen(cpath, "wb");
-    if (!f) {
-        env->ReleaseStringUTFChars(path, cpath);
-        LOGI("Failed to open file: %s", cpath);
-        return;
-    }
-
-    fwrite(g_OTR.data(), 1, g_OTR.size(), f);
-    fclose(f);
-    env->ReleaseStringUTFChars(path, cpath);
-
-    LOGI("Saved BK.OTR: %zu bytes to %s", g_OTR.size(), cpath);
-}
-
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_initGame(
-        JNIEnv*, jclass, jobject /* surface */) {
-
-    std::lock_guard<std::mutex> lock(g_stateMutex);
-
-    g_framebuffer.resize(g_fbWidth * g_fbHeight);
-    std::fill(g_framebuffer.begin(), g_framebuffer.end(), 0);
-
-    core1_reset(g_ram.data());
-    LOGI("Game initialized");
-}
-
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_startGameLoop(
-        JNIEnv*, jclass) {
-
-    if (g_running.load()) {
-        LOGI("Game loop already running");
-        return;
-    }
-
-    g_running.store(true);
-    g_emulationThread = std::thread(emulation_loop);
-    LOGI("Game loop started");
-}
-
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_stopGameLoop(
-        JNIEnv*, jclass) {
-
-    if (!g_running.load()) return;
-
-    g_running.store(false);
-
-    if (g_emulationThread.joinable()) {
-        g_emulationThread.join();
-    }
-
-    LOGI("Game loop stopped");
-}
-
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_cleanupGame(
-        JNIEnv*, jclass) {
-
-    Java_com_bkawrapper_NativeBridge_stopGameLoop(nullptr, nullptr);
-
-    std::lock_guard<std::mutex> lock(g_stateMutex);
-    g_framebuffer.clear();
-
-    LOGI("Game cleaned up");
-}
-
-} // extern "C"
-
-// ------------------------------------------------------------
-// JNI load
-// ------------------------------------------------------------
-JNIEXPORT jint JNICALL
-JNI_OnLoad(JavaVM*, void*) {
-    LOGI("JNI_OnLoad called");
-    return JNI_VERSION_1_6;
 }
