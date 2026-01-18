@@ -1,5 +1,6 @@
 package com.bkawrapper;
 
+import android.content.res.AssetManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -63,6 +64,10 @@ public class MainActivity extends AppCompatActivity {
         glSurfaceView.setRenderer(glRenderer);
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
+        // AssetManager setup for native OTR loading
+        AssetManager assetManager = getAssets();
+        NativeBridge.setAssetManager(assetManager);
+
         // ROM picker
         romPickerLauncher = registerForActivityResult(
                 new ActivityResultContracts.OpenDocument(),
@@ -108,12 +113,12 @@ public class MainActivity extends AppCompatActivity {
             // Native side re-reads ROM via AssetManager / file descriptor
             romStream.close();
 
-            // Kick off native OTR generation (async, no return value)
-            NativeBridge.processRom();
-
+            // Kick off native OTR generation (async)
             showOTRProgress();
             generatingOTR = true;
             progressHandler.post(this::pollOTRProgress);
+
+            NativeBridge.processRom();
 
         } catch (Exception e) {
             Log.e(TAG, "ROM load failed", e);
@@ -123,14 +128,12 @@ public class MainActivity extends AppCompatActivity {
     private void showOTRProgress() {
         runOnUiThread(() -> {
             progressOverlay.setVisibility(View.VISIBLE);
-            loadButton.setVisibility(View.GONE); // Hide ROM picker immediately
+            loadButton.setVisibility(View.GONE); // hide picker while generating
         });
     }
 
     private void hideOTRProgress() {
-        runOnUiThread(() ->
-                progressOverlay.setVisibility(View.GONE)
-        );
+        runOnUiThread(() -> progressOverlay.setVisibility(View.GONE));
     }
 
     private void pollOTRProgress() {
