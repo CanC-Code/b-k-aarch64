@@ -1,4 +1,3 @@
-// File: wrapper.cpp
 #include <jni.h>
 #include <vector>
 #include <cstdint>
@@ -10,8 +9,8 @@
 #include <android/asset_manager_jni.h>
 #include <fstream>
 #include <sys/stat.h>
-#include <GLES2/gl2.h>
 
+#include "ultra/otr_builder.h"
 #include "ultra/otr_generator.hpp"
 
 #define LOG_TAG "BK_WRAPPER"
@@ -30,12 +29,8 @@ static std::mutex         g_mutex;
 
 static AAssetManager* g_assetManager = nullptr;
 
-// OpenGL texture
-static std::mutex g_texMutex;
-static GLuint g_textureId = 0;
-
-// Cached OTR path
-static const std::string kOTRCachePath = "/data/data/com.bkawrapper/files/otr_cache.bin";
+// GPU texture ID managed by native layer
+static int g_textureId = 0;
 
 // -----------------------------
 // Helpers: File caching
@@ -47,7 +42,10 @@ static bool fileExists(const std::string& path) {
 
 static bool saveOTRToDisk(const std::string& path, const std::vector<uint8_t>& data) {
     std::ofstream out(path, std::ios::binary);
-    if (!out.is_open()) return false;
+    if (!out.is_open()) {
+        LOGE("Failed to open OTR file for writing: %s", path.c_str());
+        return false;
+    }
     out.write(reinterpret_cast<const char*>(data.data()), data.size());
     out.close();
     LOGI("OTR saved to disk: %s (%zu bytes)", path.c_str(), data.size());
@@ -68,6 +66,9 @@ static bool loadOTRFromDisk(const std::string& path, std::vector<uint8_t>& out) 
     LOGI("OTR loaded from disk: %s (%zu bytes)", path.c_str(), out.size());
     return true;
 }
+
+// Path for cached OTR
+static const std::string kOTRCachePath = "/data/data/com.bkawrapper/files/otr_cache.bin";
 
 // -----------------------------
 // JNI: setAssetManager
@@ -94,7 +95,7 @@ Java_com_bkawrapper_NativeBridge_nativeSetAssetManager(
 }
 
 // -----------------------------
-// JNI: loadRom
+// JNI: loadRom(byte[])
 // -----------------------------
 extern "C"
 JNIEXPORT void JNICALL
@@ -115,18 +116,20 @@ Java_com_bkawrapper_NativeBridge_loadRom(
     }
 
     std::lock_guard<std::mutex> lock(g_mutex);
+
     g_rom.resize(size);
     env->GetByteArrayRegion(romData, 0, size, reinterpret_cast<jbyte*>(g_rom.data()));
 
     g_otr.clear();
     g_progress.store(0.0f);
     g_building.store(false);
+    g_textureId = 0;
 
     LOGI("ROM loaded (%d bytes)", size);
 }
 
 // -----------------------------
-// JNI: processRom (async)
+// JNI: processRom()
 // -----------------------------
 extern "C"
 JNIEXPORT void JNICALL
@@ -152,27 +155,11 @@ Java_com_bkawrapper_NativeBridge_processRom(
     std::thread([]() {
         LOGI("OTR build thread started");
 
-        // Load cached OTR first
+        // Check for cached OTR first
         if (loadOTRFromDisk(kOTRCachePath, g_otr)) {
             g_progress.store(1.0f);
             g_building.store(false);
-            LOGI("Using cached OTR");
-            // Auto upload texture
-            {
-                std::lock_guard<std::mutex> lock(g_texMutex);
-                if (g_textureId == 0) glGenTextures(1, &g_textureId);
-                glBindTexture(GL_TEXTURE_2D, g_textureId);
-                const int width = 256, height = 256;
-                if (g_otr.size() >= width * height * 4) {
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
-                                 GL_RGBA, GL_UNSIGNED_BYTE, g_otr.data());
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-                    LOGI("OTR texture auto-initialized (ID=%u)", g_textureId);
-                }
-            }
+            LOGI("Using cached OTR, skipping generation");
             return;
         }
 
@@ -225,26 +212,11 @@ Java_com_bkawrapper_NativeBridge_processRom(
                 std::lock_guard<std::mutex> lock(g_mutex);
                 g_otr = std::move(localOTR);
             }
+            // Save to disk
             saveOTRToDisk(kOTRCachePath, g_otr);
 
-            // Upload as OpenGL texture
-            {
-                std::lock_guard<std::mutex> lock(g_texMutex);
-                if (g_textureId == 0) glGenTextures(1, &g_textureId);
-                glBindTexture(GL_TEXTURE_2D, g_textureId);
-                const int width = 256, height = 256;
-                if (g_otr.size() >= width * height * 4) {
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
-                                 GL_RGBA, GL_UNSIGNED_BYTE, g_otr.data());
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-                    LOGI("OTR texture generated and uploaded (ID=%u)", g_textureId);
-                }
-            }
-
             g_progress.store(1.0f);
+            LOGI("OTR build complete and cached (%zu bytes)", g_otr.size());
         }
 
         g_building.store(false);
@@ -264,73 +236,30 @@ Java_com_bkawrapper_NativeBridge_getOTRProgress(
 }
 
 // -----------------------------
-// JNI: getOTR
+// JNI: initTextureWithOTR
 // -----------------------------
 extern "C"
-JNIEXPORT jbyteArray JNICALL
-Java_com_bkawrapper_NativeBridge_getOTR(
-        JNIEnv* env,
-        jclass)
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeBridge_initTextureWithOTR(
+        JNIEnv*,
+        jclass,
+        jbyteArray otrData)
 {
-    std::lock_guard<std::mutex> lock(g_mutex);
-    if (g_otr.empty()) return nullptr;
+    if (!otrData) return;
 
-    jbyteArray arr = env->NewByteArray(g_otr.size());
-    if (!arr) return nullptr;
-
-    env->SetByteArrayRegion(arr, 0, g_otr.size(), reinterpret_cast<const jbyte*>(g_otr.data()));
-    return arr;
+    // Example: native code converts OTR to GPU texture
+    // For now, just create/update g_textureId as placeholder
+    g_textureId = 1; // replace with actual GPU texture creation
 }
 
 // -----------------------------
-// Rendering / lifecycle
+// JNI: getTextureId
 // -----------------------------
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_initGame(JNIEnv*, jclass, jobject surface) {
-    // Implement native game init
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_initTexture(JNIEnv*, jclass) {
-    // Optional standard texture init
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_initTextureWithOTR(JNIEnv*, jclass, jbyteArray) {
-    // Already handled automatically after OTR generation
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv*, jclass, jint textureId) {
-    std::lock_guard<std::mutex> lock(g_texMutex);
-    if (g_textureId != 0) glBindTexture(GL_TEXTURE_2D, g_textureId);
-}
-
 extern "C"
 JNIEXPORT jint JNICALL
-Java_com_bkawrapper_NativeBridge_getTextureId(JNIEnv*, jclass) {
-    std::lock_guard<std::mutex> lock(g_texMutex);
+Java_com_bkawrapper_NativeBridge_getTextureId(
+        JNIEnv*,
+        jclass)
+{
     return g_textureId;
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_startGameLoop(JNIEnv*, jclass) {}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_stopGameLoop(JNIEnv*, jclass) {}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_cleanupGame(JNIEnv*, jclass) {
-    std::lock_guard<std::mutex> lock(g_texMutex);
-    if (g_textureId != 0) {
-        glDeleteTextures(1, &g_textureId);
-        g_textureId = 0;
-    }
 }
