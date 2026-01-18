@@ -1,48 +1,43 @@
-#include "otr_generator.hpp"
-#include <cstring>
-#include <stdexcept>
+#include <android/asset_manager.h>
+#include <android/asset_manager_jni.h>
+#include <vector>
+#include <cstdint>
+#include <string>
+#include <android/log.h>
 
-bool OTRGenerator::detectRomVersion(const uint8_t* romData, size_t romSize, RomInfo& outInfo) {
-    // Simple detection placeholder
-    if (romSize >= 4) {
-        if (romData[0] == 'U') outInfo.version = "USv1.0";
-        else if (romData[0] == 'P') outInfo.version = "PAL";
-        else return false;
-        return true;
-    }
-    return false;
-}
+#define LOG_TAG "OTR_GEN"
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
+// mgr must be AAssetManager*
 std::vector<uint8_t> OTRGenerator::loadYAMLAsset(void* mgr, const char* assetPath) {
-    // Android asset manager loading placeholder
-    std::vector<uint8_t> buf;
+    std::vector<uint8_t> buffer;
 
-    // In real implementation, cast to AAssetManager* and read the file
-    // For now return empty if assetPath is missing
-    return buf;
-}
-
-bool OTRGenerator::generateOTR(const uint8_t* romData,
-                               size_t romSize,
-                               const char* yamlData,
-                               size_t yamlSize,
-                               std::vector<uint8_t>& outOTR) {
-    if (!romData || !yamlData) return false;
-
-    size_t totalSteps = 100; // fake progress steps
-    outOTR.clear();
-    outOTR.reserve(romSize + yamlSize);
-
-    for (size_t i = 0; i < totalSteps; ++i) {
-        // Simulate work
-        float progress = static_cast<float>(i) / static_cast<float>(totalSteps);
-        reportProgress(progress);
+    if (!mgr || !assetPath) {
+        LOGE("Invalid asset manager or path");
+        return buffer;
     }
 
-    // Simple mock: combine ROM + YAML
-    outOTR.insert(outOTR.end(), romData, romData + romSize);
-    outOTR.insert(outOTR.end(), yamlData, yamlData + yamlSize);
+    AAssetManager* assetManager = static_cast<AAssetManager*>(mgr);
+    AAsset* asset = AAssetManager_open(assetManager, assetPath, AASSET_MODE_STREAMING);
+    if (!asset) {
+        LOGE("Failed to open asset: %s", assetPath);
+        return buffer;
+    }
 
-    reportProgress(1.0f);
-    return true;
+    off_t size = AAsset_getLength(asset);
+    if (size <= 0) {
+        LOGE("Empty or invalid asset: %s", assetPath);
+        AAsset_close(asset);
+        return buffer;
+    }
+
+    buffer.resize(size);
+    int read = AAsset_read(asset, buffer.data(), size);
+    if (read != size) {
+        LOGE("Failed to read full asset: %s (read %d of %ld)", assetPath, read, size);
+        buffer.clear();
+    }
+
+    AAsset_close(asset);
+    return buffer;
 }
