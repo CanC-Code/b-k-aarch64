@@ -1,24 +1,25 @@
 #include "otr_generator.h"
-#include <vector>
+
 #include <string>
-#include <cstring>
+#include <sstream>
 #include <algorithm>
 #include <cctype>
+#include <cstring>
 #include <cstdio>
-#include <cstdlib>
-#include <sstream>
 
 const char MAGIC[8] = "BKOTR\0\0\0";
 const uint32_t VERSION = 1;
 
-// Helper: trim whitespace
+// --------------------- Helpers ---------------------
+
 static inline std::string trim(const std::string& s) {
     size_t start = s.find_first_not_of(" \t\r\n");
     size_t end = s.find_last_not_of(" \t\r\n");
     return (start == std::string::npos) ? "" : s.substr(start, end - start + 1);
 }
 
-// Helper: convert segment type string to ID
+// --------------------- Segment type ---------------------
+
 uint32_t OTRGenerator::segmentTypeId(const std::string& typeStr) {
     if (typeStr == "bin") return 1;
     if (typeStr == "code") return 2;
@@ -26,7 +27,8 @@ uint32_t OTRGenerator::segmentTypeId(const std::string& typeStr) {
     return 0;
 }
 
-// Minimal parser for our subset of YAML
+// --------------------- Minimal YAML parser ---------------------
+
 bool OTRGenerator::parseYAML(const char* yamlData, size_t yamlSize,
                              std::vector<OTRSegmentEntry>& entries) {
     std::istringstream stream(std::string(yamlData, yamlSize));
@@ -57,7 +59,6 @@ bool OTRGenerator::parseYAML(const char* yamlData, size_t yamlSize,
         }
 
         if (inSubsegments && line.find("- [") == 0) {
-            // Expected format: - [rom_offset, kind, name]
             size_t start = line.find("[");
             size_t end = line.find("]");
             if (start == std::string::npos || end == std::string::npos) continue;
@@ -83,7 +84,8 @@ bool OTRGenerator::parseYAML(const char* yamlData, size_t yamlSize,
     return !entries.empty();
 }
 
-// Main generator
+// --------------------- Generate OTR ---------------------
+
 bool OTRGenerator::generateOTR(const uint8_t* romData, size_t romSize,
                                const char* yamlData, size_t yamlSize,
                                std::vector<uint8_t>& outOTR) {
@@ -98,7 +100,7 @@ bool OTRGenerator::generateOTR(const uint8_t* romData, size_t romSize,
                   return a.rom_offset < b.rom_offset;
               });
 
-    // Calculate output size
+    // Output memory layout
     size_t outSize = 8 + sizeof(uint32_t) * 2 + entries.size() * sizeof(OTRSegmentEntry);
     outOTR.resize(outSize);
 
@@ -113,6 +115,35 @@ bool OTRGenerator::generateOTR(const uint8_t* romData, size_t romSize,
         std::memcpy(ptr, &e.rom_offset, sizeof(uint32_t)); ptr += sizeof(uint32_t);
         std::memcpy(ptr, &e.segment_type, sizeof(uint32_t)); ptr += sizeof(uint32_t);
     }
+
+    return true;
+}
+
+// --------------------- Asset loading ---------------------
+
+std::vector<uint8_t> OTRGenerator::loadYAMLAsset(AAssetManager* mgr, const char* filename) {
+    std::vector<uint8_t> buf;
+    if (!mgr || !filename) return buf;
+
+    AAsset* asset = AAssetManager_open(mgr, filename, AASSET_MODE_BUFFER);
+    if (!asset) return buf;
+
+    size_t size = AAsset_getLength(asset);
+    buf.resize(size);
+    AAsset_read(asset, buf.data(), size);
+    AAsset_close(asset);
+    return buf;
+}
+
+// --------------------- ROM detection stub ---------------------
+
+bool OTRGenerator::detectRomVersion(const uint8_t* romData, size_t romSize, RomInfo& outInfo) {
+    if (!romData || romSize < 0x1000) return false;
+
+    // Example: look at ROM header at 0x3C to detect version
+    // This must be adjusted to your real detection logic
+    if (romData[0x3C] == 0x55) outInfo.version = "USv1.0";
+    else outInfo.version = "PAL";
 
     return true;
 }
