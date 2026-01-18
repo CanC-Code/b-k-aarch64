@@ -25,8 +25,11 @@ static std::mutex         g_mutex;
 
 static AAssetManager* g_assetManager = nullptr;
 
+// Cached OTR path
+static const std::string kOTRCachePath = "/data/data/com.bkawrapper/files/otr_cache.bin";
+
 // -----------------------------
-// Helpers: File caching
+// Helpers
 // -----------------------------
 static bool fileExists(const std::string& path) {
     struct stat buffer{};
@@ -35,10 +38,7 @@ static bool fileExists(const std::string& path) {
 
 static bool saveOTRToDisk(const std::string& path, const std::vector<uint8_t>& data) {
     std::ofstream out(path, std::ios::binary);
-    if (!out.is_open()) {
-        LOGE("Failed to open OTR file for writing: %s", path.c_str());
-        return false;
-    }
+    if (!out.is_open()) { LOGE("Failed to open OTR file for writing: %s", path.c_str()); return false; }
     out.write(reinterpret_cast<const char*>(data.data()), data.size());
     out.close();
     LOGI("OTR saved to disk: %s (%zu bytes)", path.c_str(), data.size());
@@ -52,16 +52,10 @@ static bool loadOTRFromDisk(const std::string& path, std::vector<uint8_t>& out) 
     std::streamsize size = in.tellg();
     in.seekg(0, std::ios::beg);
     out.resize(size);
-    if (!in.read(reinterpret_cast<char*>(out.data()), size)) {
-        out.clear();
-        return false;
-    }
+    if (!in.read(reinterpret_cast<char*>(out.data()), size)) { out.clear(); return false; }
     LOGI("OTR loaded from disk: %s (%zu bytes)", path.c_str(), out.size());
     return true;
 }
-
-// Path for cached OTR
-static const std::string kOTRCachePath = "/data/data/com.bkawrapper/files/otr_cache.bin";
 
 // -----------------------------
 // JNI: setAssetManager
@@ -69,140 +63,84 @@ static const std::string kOTRCachePath = "/data/data/com.bkawrapper/files/otr_ca
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_nativeSetAssetManager(
-        JNIEnv* env,
-        jclass,
-        jobject assetManager) {
+        JNIEnv* env, jclass, jobject assetManager) {
 
-    if (!assetManager) {
-        LOGE("AssetManager is null");
-        g_assetManager = nullptr;
-        return;
-    }
-
+    if (!assetManager) { LOGE("AssetManager null"); g_assetManager = nullptr; return; }
     g_assetManager = AAssetManager_fromJava(env, assetManager);
-    if (!g_assetManager) {
-        LOGE("Failed to get native AAssetManager");
-    } else {
-        LOGI("AssetManager initialized");
-    }
+    if (!g_assetManager) LOGE("Failed to get native AAssetManager");
+    else LOGI("AssetManager initialized");
 }
 
 // -----------------------------
-// JNI: loadRom(byte[])
+// JNI: loadRom
 // -----------------------------
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_loadRom(
-        JNIEnv* env,
-        jclass,
-        jbyteArray romData) {
+        JNIEnv* env, jclass, jbyteArray romData) {
 
     if (!romData) return;
-
     std::lock_guard<std::mutex> lock(g_mutex);
-
     size_t size = env->GetArrayLength(romData);
     g_rom.resize(size);
     env->GetByteArrayRegion(romData, 0, size, reinterpret_cast<jbyte*>(g_rom.data()));
-
     g_otr.clear();
     g_progress.store(0.0f);
     LOGI("ROM loaded into native layer (%zu bytes)", g_rom.size());
 }
 
 // -----------------------------
-// JNI: processRom()
+// JNI: processRom
 // -----------------------------
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_processRom(
-        JNIEnv* env,
-        jclass) {
+        JNIEnv*, jclass) {
 
-    if (g_rom.empty()) {
-        LOGE("No ROM loaded");
-        return;
-    }
-
-    if (!g_assetManager) {
-        LOGE("AssetManager not set");
-        return;
-    }
-
-    if (g_building.exchange(true)) {
-        LOGE("OTR build already in progress");
-        return;
-    }
+    if (g_rom.empty()) { LOGE("No ROM loaded"); return; }
+    if (!g_assetManager) { LOGE("AssetManager not set"); return; }
+    if (g_building.exchange(true)) { LOGE("OTR build in progress"); return; }
 
     std::thread([]() {
         LOGI("OTR build thread started");
 
-        // Check for cached OTR
         if (loadOTRFromDisk(kOTRCachePath, g_otr)) {
             g_progress.store(1.0f);
             g_building.store(false);
-            LOGI("Using cached OTR, skipping generation");
+            LOGI("Using cached OTR");
             return;
         }
 
         g_progress.store(0.05f);
 
-        // Detect ROM version
         OTRGenerator::RomInfo info{};
         if (!OTRGenerator::detectRomVersion(g_rom.data(), g_rom.size(), info)) {
-            LOGE("ROM version detection failed");
-            g_building.store(false);
-            g_progress.store(0.0f);
-            return;
+            LOGE("ROM version detection failed"); g_building.store(false); g_progress.store(0.0f); return;
         }
 
         std::string yamlPath;
-        if (info.version == "USv1.0") yamlPath = "otr_yaml/decompressed.us.v10.yaml";
-        else if (info.version == "PAL") yamlPath = "otr_yaml/decompressed.pal.yaml";
-        else {
-            LOGE("Unsupported ROM version: %s", info.version.c_str());
-            g_building.store(false);
-            g_progress.store(0.0f);
-            return;
-        }
+        if      (info.version == "USv1.0") yamlPath = "otr_yaml/decompressed.us.v10.yaml";
+        else if (info.version == "PAL")     yamlPath = "otr_yaml/decompressed.pal.yaml";
+        else { LOGE("Unsupported ROM version: %s", info.version.c_str()); g_building.store(false); g_progress.store(0.0f); return; }
 
-        std::vector<uint8_t> yamlData =
-            OTRGenerator::loadYAMLAsset(g_assetManager, yamlPath.c_str());
+        std::vector<uint8_t> yamlData = OTRGenerator::loadYAMLAsset(g_assetManager, yamlPath.c_str());
+        if (yamlData.empty()) { LOGE("Failed to load YAML: %s", yamlPath.c_str()); g_building.store(false); g_progress.store(0.0f); return; }
 
-        if (yamlData.empty()) {
-            LOGE("Failed to load YAML asset: %s", yamlPath.c_str());
-            g_building.store(false);
-            g_progress.store(0.0f);
-            return;
-        }
-
-        // Generate OTR
         OTRGenerator generator;
-        generator.setProgressCallback([](float progress) {
-            g_progress.store(progress);
-        });
+        generator.setProgressCallback([](float progress){ g_progress.store(progress); });
 
         std::vector<uint8_t> localOTR;
-        if (!generator.generateOTR(
-                g_rom.data(), g_rom.size(),
-                reinterpret_cast<const char*>(yamlData.data()),
-                yamlData.size(),
-                localOTR)) {
-            LOGE("OTR generation failed");
-            g_progress.store(0.0f);
+        if (!generator.generateOTR(g_rom.data(), g_rom.size(), reinterpret_cast<const char*>(yamlData.data()), yamlData.size(), localOTR)) {
+            LOGE("OTR generation failed"); g_progress.store(0.0f);
         } else {
-            {
-                std::lock_guard<std::mutex> lock(g_mutex);
-                g_otr = std::move(localOTR);
-            }
-
+            std::lock_guard<std::mutex> lock(g_mutex);
+            g_otr = std::move(localOTR);
             saveOTRToDisk(kOTRCachePath, g_otr);
             g_progress.store(1.0f);
-            LOGI("OTR build complete and cached (%zu bytes)", g_otr.size());
+            LOGI("OTR build complete (%zu bytes)", g_otr.size());
         }
 
         g_building.store(false);
-
     }).detach();
 }
 
@@ -211,9 +149,7 @@ Java_com_bkawrapper_NativeBridge_processRom(
 // -----------------------------
 extern "C"
 JNIEXPORT jfloat JNICALL
-Java_com_bkawrapper_NativeBridge_getOTRProgress(
-        JNIEnv*,
-        jclass) {
+Java_com_bkawrapper_NativeBridge_getOTRProgress(JNIEnv*, jclass) {
     return g_progress.load();
 }
 
@@ -222,10 +158,7 @@ Java_com_bkawrapper_NativeBridge_getOTRProgress(
 // -----------------------------
 extern "C"
 JNIEXPORT jbyteArray JNICALL
-Java_com_bkawrapper_NativeBridge_getOTR(
-        JNIEnv* env,
-        jclass) {
-
+Java_com_bkawrapper_NativeBridge_getOTR(JNIEnv* env, jclass) {
     std::lock_guard<std::mutex> lock(g_mutex);
     jbyteArray outArray = env->NewByteArray(g_otr.size());
     if (!outArray) return nullptr;
