@@ -29,9 +29,6 @@ static std::mutex         g_mutex;
 
 static AAssetManager* g_assetManager = nullptr;
 
-// GPU texture ID managed by native layer
-static int g_textureId = 0;
-
 // -----------------------------
 // Helpers: File caching
 // -----------------------------
@@ -123,7 +120,6 @@ Java_com_bkawrapper_NativeBridge_loadRom(
     g_otr.clear();
     g_progress.store(0.0f);
     g_building.store(false);
-    g_textureId = 0;
 
     LOGI("ROM loaded (%d bytes)", size);
 }
@@ -215,6 +211,9 @@ Java_com_bkawrapper_NativeBridge_processRom(
             // Save to disk
             saveOTRToDisk(kOTRCachePath, g_otr);
 
+            // Directly upload to GPU texture
+            generator.uploadOTRToGPU(g_otr);
+
             g_progress.store(1.0f);
             LOGI("OTR build complete and cached (%zu bytes)", g_otr.size());
         }
@@ -233,33 +232,4 @@ Java_com_bkawrapper_NativeBridge_getOTRProgress(
         jclass)
 {
     return g_progress.load();
-}
-
-// -----------------------------
-// JNI: initTextureWithOTR
-// -----------------------------
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_initTextureWithOTR(
-        JNIEnv*,
-        jclass,
-        jbyteArray otrData)
-{
-    if (!otrData) return;
-
-    // Example: native code converts OTR to GPU texture
-    // For now, just create/update g_textureId as placeholder
-    g_textureId = 1; // replace with actual GPU texture creation
-}
-
-// -----------------------------
-// JNI: getTextureId
-// -----------------------------
-extern "C"
-JNIEXPORT jint JNICALL
-Java_com_bkawrapper_NativeBridge_getTextureId(
-        JNIEnv*,
-        jclass)
-{
-    return g_textureId;
 }
