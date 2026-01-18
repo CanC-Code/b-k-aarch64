@@ -42,11 +42,12 @@ public class MainActivity extends Activity {
         loadButton.setOnClickListener(v -> pickRom());
     }
 
-    // Called by GLRenderer when surface is ready
+    /** Called by GLRenderer when the surface is ready */
     public void onSurfaceReady() {
-        // Optional: start game loop or attach texture if OTR exists
+        // Optional: attach texture if OTR bytes already exist
     }
 
+    /** Open file picker to select ROM */
     private void pickRom() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("*/*"); // accept all files
@@ -64,13 +65,17 @@ public class MainActivity extends Activity {
 
                 new Thread(() -> {
                     try {
+                        // Load ROM via NativeBridge
                         NativeBridge.loadRomFromUri(getContentResolver(), uri);
                         NativeBridge.processRom();
 
-                        // retrieve OTR bytes
+                        // Retrieve OTR bytes (GPU texture)
                         byte[] otrData = NativeBridge.getOTR();
+
                         runOnUiThread(() -> {
-                            glRenderer.setOTRData(otrData);
+                            if (otrData != null && otrData.length > 0) {
+                                glRenderer.setOTRData(otrData);
+                            }
                             progressOverlay.setVisibility(View.GONE);
                         });
                     } catch (IOException e) {
