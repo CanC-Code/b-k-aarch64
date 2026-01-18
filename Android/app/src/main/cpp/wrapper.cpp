@@ -7,8 +7,9 @@
 #include <cstring>
 #include <android/log.h>
 #include <android/asset_manager_jni.h>
+#include <cstdio>
 
-#include "ultra/otr_builder.h"
+#include "otr_builder.h"
 
 #define LOG_TAG "BK_WRAPPER"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -88,7 +89,7 @@ Java_com_bkawrapper_NativeBridge_processRom(
 
     g_otr.clear();
 
-    const bool success = buildOTRForROM(
+    const bool success = OTRBuilder::buildOTRForROM(
         g_assetMgr,
         g_rom.data(),
         g_rom.size(),
