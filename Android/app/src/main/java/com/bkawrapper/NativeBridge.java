@@ -16,9 +16,13 @@ public final class NativeBridge {
     private NativeBridge() {}
 
     // -----------------------------
-    // ROM loading
+    // ROM loading (Java → native)
     // -----------------------------
     public static void loadRomFromUri(ContentResolver resolver, Uri uri) throws IOException {
+        if (resolver == null || uri == null) {
+            throw new IOException("Invalid resolver or URI");
+        }
+
         try (InputStream in = resolver.openInputStream(uri);
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 
@@ -28,7 +32,7 @@ public final class NativeBridge {
 
             byte[] buffer = new byte[8192];
             int read;
-            while ((read = in.read(buffer)) > 0) {
+            while ((read = in.read(buffer)) != -1) {
                 out.write(buffer, 0, read);
             }
 
