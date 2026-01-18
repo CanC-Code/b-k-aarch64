@@ -121,9 +121,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showOTRProgress() {
-        runOnUiThread(() ->
-                progressOverlay.setVisibility(View.VISIBLE)
-        );
+        runOnUiThread(() -> {
+            progressOverlay.setVisibility(View.VISIBLE);
+            loadButton.setVisibility(View.GONE); // Hide ROM picker immediately
+        });
     }
 
     private void hideOTRProgress() {
@@ -149,7 +150,6 @@ public class MainActivity extends AppCompatActivity {
 
             runOnUiThread(() -> {
                 romReady = true;
-                loadButton.setVisibility(View.GONE);
                 tryStartGame();
             });
         } else {
