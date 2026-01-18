@@ -8,14 +8,10 @@ import java.io.InputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-/**
- * Bridge between Java (Android) and native emulator/game core.
- * Handles ROM loading, OTR generation, and GPU texture management.
- */
 public final class NativeBridge {
 
     static {
-        System.loadLibrary("wrapper"); // wrapper.cpp
+        System.loadLibrary("wrapper"); // Load native wrapper
     }
 
     private NativeBridge() {}
@@ -23,6 +19,9 @@ public final class NativeBridge {
     // -----------------------------
     // ROM loading (Java → native)
     // -----------------------------
+    /**
+     * Load a ROM file from a URI and pass it to the native layer.
+     */
     public static void loadRomFromUri(ContentResolver resolver, Uri uri) throws IOException {
         if (resolver == null || uri == null) {
             throw new IOException("Invalid resolver or URI");
@@ -41,13 +40,17 @@ public final class NativeBridge {
                 out.write(buffer, 0, read);
             }
 
+            // Pass ROM bytes to native
             loadRom(out.toByteArray());
         }
     }
 
     // -----------------------------
-    // Asset Manager (for YAML or other assets)
+    // Asset Manager (for YAML/asset access)
     // -----------------------------
+    /**
+     * Set the Android AssetManager for native access to assets.
+     */
     public static void setAssetManager(AssetManager manager) {
         if (manager != null) {
             nativeSetAssetManager(manager);
@@ -59,40 +62,53 @@ public final class NativeBridge {
     // -----------------------------
     // Native OTR API
     // -----------------------------
-    /** Load ROM bytes into native core */
+    /**
+     * Load raw ROM bytes into native core.
+     */
     public static native void loadRom(byte[] romData);
 
-    /** Process ROM → generate OTR bytes (blocking) */
+    /**
+     * Process the loaded ROM to generate OTR bytes.
+     */
     public static native void processRom();
 
-    /** Return OTR progress (0.0 → 1.0) */
+    /**
+     * Return progress of OTR generation (0.0 → 1.0).
+     */
     public static native float getOTRProgress();
 
-    /** Retrieve generated OTR bytes */
+    /**
+     * Retrieve generated OTR bytes from native core.
+     */
     public static native byte[] getOTR();
 
     // -----------------------------
     // Rendering / lifecycle
     // -----------------------------
-    /** Initialize game surface (GLSurfaceView / Surface) */
+    /**
+     * Initialize the game with a GLSurfaceView surface object.
+     */
     public static native void initGame(Object surface);
 
-    /** Initialize GPU texture placeholder (optional) */
+    /** Standard texture initialization (without OTR) */
     public static native void initTexture();
 
-    /** Upload OTR bytes to GPU */
-    public static native void initTextureWithOTR(byte[] otrData);
-
-    /** Update GPU texture (per-frame) */
+    /** Update an existing texture each frame */
     public static native void updateTexture(int textureId);
 
-    /** Return OpenGL texture ID */
+    /**
+     * Initialize texture directly from OTR bytes.
+     * Called after OTR generation is complete.
+     */
+    public static native void initTextureWithOTR(byte[] otrData);
+
+    /** Get the OpenGL texture ID created by native core */
     public static native int getTextureId();
 
-    /** Start game loop (native thread) */
+    /** Start the native game loop */
     public static native void startGameLoop();
 
-    /** Stop game loop */
+    /** Stop the native game loop */
     public static native void stopGameLoop();
 
     /** Cleanup native resources */
