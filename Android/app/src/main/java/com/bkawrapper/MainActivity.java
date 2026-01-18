@@ -7,6 +7,8 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.opengl.GLSurfaceView;
 
@@ -18,6 +20,8 @@ public class MainActivity extends Activity {
     private GLRenderer glRenderer;
 
     private FrameLayout progressOverlay;
+    private ProgressBar progressBar;
+    private TextView progressText;
     private Button loadButton;
 
     private static final int PICK_ROM_REQUEST = 1;
@@ -27,26 +31,20 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // 🔴 Set AssetManager before any native calls
         NativeBridge.setAssetManager(getAssets());
 
-        // --- bind views ---
         glSurfaceView   = findViewById(R.id.surface_gl);
         progressOverlay = findViewById(R.id.progressOverlay);
+        progressBar     = findViewById(R.id.otrProgressBar);
+        progressText    = findViewById(R.id.otrProgressText);
         loadButton      = findViewById(R.id.button_load_game);
 
-        // --- setup GLSurfaceView ---
-        glRenderer = new GLRenderer(this);
+        glRenderer = new GLRenderer(this, progressBar, progressText, progressOverlay);
         glSurfaceView.setEGLContextClientVersion(2);
         glSurfaceView.setRenderer(glRenderer);
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
         loadButton.setOnClickListener(v -> pickRom());
-    }
-
-    // Called by GLRenderer when surface is ready
-    public void onSurfaceReady() {
-        // reserved for later native surface init
     }
 
     private void pickRom() {
@@ -66,25 +64,27 @@ public class MainActivity extends Activity {
             Uri uri = data.getData();
             if (uri == null) return;
 
-            // Show progress overlay
             progressOverlay.setVisibility(View.VISIBLE);
+            progressBar.setProgress(0);
+            progressText.setText("0%");
 
-            // Load and process ROM in background thread
             new Thread(() -> {
                 try {
                     NativeBridge.loadRomFromUri(getContentResolver(), uri);
                     NativeBridge.processRom();
 
-                    // Retrieve OTR bytes after generation completes
-                    byte[] otrData;
+                    // Wait until OTR generation completes
                     while (NativeBridge.getOTRProgress() < 1.0f) {
-                        // Wait for OTR to finish; GLRenderer updates progress
+                        float p = NativeBridge.getOTRProgress();
+                        runOnUiThread(() -> {
+                            progressBar.setProgress((int)(p * 100));
+                            progressText.setText((int)(p * 100) + "%");
+                        });
                         Thread.sleep(16);
                     }
-                    otrData = NativeBridge.getOTR();
 
-                    // Attach texture to renderer
-                    glRenderer.setOTRData(otrData);
+                    byte[] otrData = NativeBridge.getOTR();
+                    runOnUiThread(() -> glRenderer.setOTRData(otrData));
 
                 } catch (IOException | InterruptedException e) {
                     runOnUiThread(() -> {
