@@ -31,11 +31,11 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // 🔴 REQUIRED: set AssetManager BEFORE any native work
+        // REQUIRED: set AssetManager before any native calls
         NativeBridge.setAssetManager(getAssets());
 
         // --- bind views (MATCH XML IDS EXACTLY) ---
-        glSurfaceView   = findViewById(R.id.glSurfaceView);
+        glSurfaceView   = findViewById(R.id.surface_gl);
         progressOverlay = findViewById(R.id.progressOverlay);
         progressBar     = findViewById(R.id.otrProgressBar);
         progressText    = findViewById(R.id.otrProgressText);
@@ -50,8 +50,9 @@ public class MainActivity extends Activity {
         loadButton.setOnClickListener(v -> pickRom());
     }
 
+    // Reserved for later native surface init
     public void onSurfaceReady() {
-        // reserved for later native init
+        // intentionally empty
     }
 
     private void pickRom() {
@@ -90,7 +91,7 @@ public class MainActivity extends Activity {
                     runOnUiThread(() -> {
                         progressOverlay.setVisibility(View.GONE);
                         Toast.makeText(
-                                this,
+                                MainActivity.this,
                                 "Failed to load ROM: " + e.getMessage(),
                                 Toast.LENGTH_LONG
                         ).show();
