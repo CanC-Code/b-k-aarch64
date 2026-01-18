@@ -12,8 +12,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.opengl.GLSurfaceView;
 
-import java.io.IOException;
-
 public class MainActivity extends Activity {
 
     private GLSurfaceView glSurfaceView;
@@ -31,18 +29,16 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Set AssetManager before any native calls
+        // Set AssetManager for native use
         NativeBridge.setAssetManager(getAssets());
 
-        // Bind views
         glSurfaceView   = findViewById(R.id.surface_gl);
         progressOverlay = findViewById(R.id.progressOverlay);
         progressBar     = findViewById(R.id.otrProgressBar);
         progressText    = findViewById(R.id.otrProgressText);
         loadButton      = findViewById(R.id.button_load_game);
 
-        // Setup GLSurfaceView and Renderer
-        glRenderer = new GLRenderer(glSurfaceView, progressBar, progressText, progressOverlay);
+        glRenderer = new GLRenderer(this);
         glSurfaceView.setEGLContextClientVersion(2);
         glSurfaceView.setRenderer(glRenderer);
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
@@ -60,46 +56,35 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode != PICK_ROM_REQUEST || resultCode != RESULT_OK || data == null) return;
+        if (requestCode == PICK_ROM_REQUEST && resultCode == RESULT_OK && data != null) {
+            Uri uri = data.getData();
+            if (uri == null) return;
 
-        Uri uri = data.getData();
-        if (uri == null) return;
+            progressOverlay.setVisibility(View.VISIBLE);
+            progressBar.setProgress(0);
+            progressText.setText("0%");
 
-        // Show progress overlay
-        progressOverlay.setVisibility(View.VISIBLE);
-        progressBar.setProgress(0);
-        progressText.setText("0%");
+            NativeBridge.loadRomFromUri(getContentResolver(), uri);
+            NativeBridge.processRom();
 
-        // Background thread for ROM load + OTR generation
-        new Thread(() -> {
-            try {
-                NativeBridge.loadRomFromUri(getContentResolver(), uri);
-                NativeBridge.processRom();
-
-                // Poll progress
+            // Progress updater thread
+            new Thread(() -> {
                 while (NativeBridge.getOTRProgress() < 1.0f) {
-                    float progress = NativeBridge.getOTRProgress();
+                    float prog = NativeBridge.getOTRProgress();
                     runOnUiThread(() -> {
-                        progressBar.setProgress((int)(progress * 100));
-                        progressText.setText((int)(progress * 100) + "%");
+                        progressBar.setProgress((int)(prog*100));
+                        progressText.setText((int)(prog*100) + "%");
                     });
-                    Thread.sleep(16);
+                    try { Thread.sleep(50); } catch (InterruptedException ignored) {}
                 }
 
-                // Retrieve OTR bytes
+                runOnUiThread(() -> progressOverlay.setVisibility(View.GONE));
+
+                // Get OTR data and update GLRenderer on GL thread
                 byte[] otrData = NativeBridge.getOTR();
+                glSurfaceView.queueEvent(() -> glRenderer.setOTRData(otrData));
 
-                // Apply OTR on GL thread
-                runOnUiThread(() -> glRenderer.setOTRData(otrData));
-
-            } catch (IOException | InterruptedException e) {
-                runOnUiThread(() -> {
-                    progressOverlay.setVisibility(View.GONE);
-                    Toast.makeText(MainActivity.this,
-                            "Failed to load ROM: " + e.getMessage(),
-                            Toast.LENGTH_LONG).show();
-                });
-            }
-        }).start();
+            }).start();
+        }
     }
 }
