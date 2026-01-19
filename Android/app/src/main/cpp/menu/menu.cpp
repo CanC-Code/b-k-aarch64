@@ -8,44 +8,49 @@ MenuHandler::MenuHandler(JavaVM* vm, jobject activity)
     : vm_(vm) {
 
     JNIEnv* env = nullptr;
-    vm_->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+    vm_->GetEnv((void**)&env, JNI_VERSION_1_6);
 
     activityGlobal_ = env->NewGlobalRef(activity);
+
+    jclass activityCls = env->GetObjectClass(activity);
+    jfieldID menuField =
+        env->GetFieldID(activityCls, "menuOverlay", "Landroid/widget/LinearLayout;");
+
+    jobject menuLocal = env->GetObjectField(activity, menuField);
+    menuOverlayGlobal_ = env->NewGlobalRef(menuLocal);
+
     LOGI("MenuHandler initialized");
 }
 
 MenuHandler::~MenuHandler() {
     JNIEnv* env = nullptr;
-    vm_->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+    vm_->GetEnv((void**)&env, JNI_VERSION_1_6);
 
-    if (activityGlobal_) {
-        env->DeleteGlobalRef(activityGlobal_);
-        activityGlobal_ = nullptr;
-    }
+    env->DeleteGlobalRef(menuOverlayGlobal_);
+    env->DeleteGlobalRef(activityGlobal_);
 }
 
-void MenuHandler::callJava(const char* methodName) {
+void MenuHandler::setVisibility(bool visible) {
     JNIEnv* env = nullptr;
     vm_->AttachCurrentThread(&env, nullptr);
 
-    jclass cls = env->GetObjectClass(activityGlobal_);
-    jmethodID mid = env->GetMethodID(cls, methodName, "()V");
+    jclass viewCls = env->GetObjectClass(menuOverlayGlobal_);
+    jmethodID setVis =
+        env->GetMethodID(viewCls, "setVisibility", "(I)V");
 
-    if (mid) {
-        env->CallVoidMethod(activityGlobal_, mid);
-    } else {
-        LOGI("Method not found: %s", methodName);
-    }
-
-    env->DeleteLocalRef(cls);
+    env->CallVoidMethod(
+        menuOverlayGlobal_,
+        setVis,
+        visible ? 0 /* View.VISIBLE */ : 8 /* View.GONE */
+    );
 }
 
 void MenuHandler::showMenu() {
-    LOGI("Request show menu");
-    callJava("showMenuFromNative");
+    LOGI("showMenu()");
+    setVisibility(true);
 }
 
 void MenuHandler::hideMenu() {
-    LOGI("Request hide menu");
-    callJava("hideMenuFromNative");
+    LOGI("hideMenu()");
+    setVisibility(false);
 }
