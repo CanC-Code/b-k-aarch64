@@ -3,30 +3,47 @@
 #include <string>
 #include <cstdint>
 #include <functional>
+#include <android/asset_manager.h>
+#include <android/log.h>
 
-struct EmbeddedAsset {
-    const char* name;
-    const uint8_t* data;
-    size_t size;
-};
+#define LOG_TAG "OTR_GEN"
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
+// -----------------------------
+// OTR Generator
+// -----------------------------
 class OTRGenerator {
 public:
+    struct RomInfo {
+        std::string version;
+        // Future: add metadata fields here
+    };
+
     using ProgressCallback = std::function<void(float)>;
 
-    OTRGenerator(const EmbeddedAsset* assets = nullptr, size_t count = 0)
-        : embeddedAssets(assets), embeddedCount(count) {}
+    OTRGenerator() = default;
 
-    // Build OTR from embedded assets
-    std::vector<uint8_t> buildOTR(ProgressCallback cb = nullptr);
+    // Assign progress callback
+    void setProgressCallback(ProgressCallback cb) { progressCallback = cb; }
+
+    // Detect ROM version
+    static bool detectRomVersion(const uint8_t* romData, size_t romSize, RomInfo& outInfo);
+
+    // Generate OTR from ROM + dynamically loaded YAMLs
+    bool generate(
+        const uint8_t* romData,
+        size_t romSize,
+        const std::vector<std::pair<std::string, std::vector<uint8_t>>>& yamlAssets
+    );
+
+    // Retrieve generated OTR
+    const std::vector<uint8_t>& getData() const { return outOTR; }
 
 protected:
-    void reportProgress(float p) {
-        if (cb) cb(p);
-    }
+    void reportProgress(float p) { if (progressCallback) progressCallback(p); }
 
 private:
-    const EmbeddedAsset* embeddedAssets = nullptr;
-    size_t embeddedCount = 0;
-    ProgressCallback cb = nullptr;
+    ProgressCallback progressCallback;
+    std::vector<uint8_t> outOTR;
 };
