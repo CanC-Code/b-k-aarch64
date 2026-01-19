@@ -1,28 +1,35 @@
 package com.bkawrapper;
 
 import android.os.Bundle;
-import android.view.View;
+import android.opengl.GLSurfaceView;
+
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.bkawrapper.menu.MenuController;
+import com.bkawrapper.menu.MenuOverlayView;
 
 public class MainActivity extends AppCompatActivity {
 
     private MenuController menuController;
-    private View menuOverlay;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        menuOverlay = findViewById(R.id.menu_overlay);
+        GLSurfaceView glView = findViewById(R.id.surface_gl);
+        glView.setEGLContextClientVersion(2);
+        glView.setRenderer(new GLRenderer(this));
 
-        menuController = new MenuController(this, menuOverlay);
+        MenuOverlayView menuOverlay =
+                findViewById(R.id.menu_overlay);
 
-        // Initialize emulator as before
-        initEmulator();
+        menuController = new MenuController(menuOverlay);
+        NativeBridge.setMenuController(menuController);
     }
 
-    private void initEmulator() {
-        // existing GLSurfaceView / game loop setup
+    @Override
+    public void onBackPressed() {
+        menuController.toggle();
     }
 }
