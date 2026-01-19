@@ -6,123 +6,127 @@ import android.content.res.AssetManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
 
 import android.opengl.GLSurfaceView;
 
-import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity {
 
-    private static final int REQUEST_ROM_FILE = 1;
+    private static final int REQUEST_CODE_OPEN_ROM = 1001;
 
     private GLSurfaceView glSurfaceView;
     private GLRenderer glRenderer;
-
     private Button loadGameButton;
     private LinearLayout progressOverlay;
     private ProgressBar progressBar;
     private TextView progressText;
 
-    private Handler uiHandler = new Handler();
-    private Runnable progressRunnable;
+    private Handler uiHandler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        glSurfaceView = findViewById(R.id.gl_surface);
-        glRenderer = new GLRenderer(this);
-        glSurfaceView.setRenderer(glRenderer);
+        uiHandler = new Handler(Looper.getMainLooper());
 
+        glSurfaceView = findViewById(R.id.gl_surface);
         loadGameButton = findViewById(R.id.button_load_game);
         progressOverlay = findViewById(R.id.progress_overlay);
         progressBar = findViewById(R.id.progress_bar);
         progressText = findViewById(R.id.progress_text);
 
-        loadGameButton.setOnClickListener(v -> openROMFilePicker());
+        glRenderer = new GLRenderer(this);
+        glSurfaceView.setEGLContextClientVersion(2);
+        glSurfaceView.setRenderer(glRenderer);
 
-        // Initialize native system with AssetManager
-        NativeBridge.nativeInit(getAssets());
+        // Initialize native side with AssetManager
+        AssetManager assetManager = getAssets();
+        NativeBridge.nativeInit(assetManager);
+
+        loadGameButton.setOnClickListener(v -> openRomFile());
     }
 
-    private void openROMFilePicker() {
+    /** Open ROM using SAF */
+    private void openRomFile() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.setType("*/*");
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType("*/*"); // ROM file type
-        startActivityForResult(intent, REQUEST_ROM_FILE);
+        startActivityForResult(intent, REQUEST_CODE_OPEN_ROM);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_ROM_FILE && resultCode == Activity.RESULT_OK) {
-            if (data != null) {
-                Uri romUri = data.getData();
-                loadROMAndGenerateOTR(romUri);
+
+        if (requestCode == REQUEST_CODE_OPEN_ROM && resultCode == RESULT_OK && data != null) {
+            Uri romUri = data.getData();
+            if (romUri != null) {
+                try (InputStream is = getContentResolver().openInputStream(romUri)) {
+                    byte[] romBytes = new byte[is.available()];
+                    is.read(romBytes);
+
+                    startOTRGeneration(romBytes);
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    Toast.makeText(this, "Failed to read ROM: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
             }
         }
     }
 
-    private void loadROMAndGenerateOTR(Uri romUri) {
-        try {
-            // Load ROM bytes from SAF
-            InputStream romStream = getContentResolver().openInputStream(romUri);
-            ByteArrayOutputStream romBuffer = new ByteArrayOutputStream();
-            byte[] temp = new byte[8192];
-            int read;
-            while ((read = romStream.read(temp)) != -1) {
-                romBuffer.write(temp, 0, read);
-            }
-            romStream.close();
-            byte[] romBytes = romBuffer.toByteArray();
+    /** Trigger OTR generation in native code */
+    private void startOTRGeneration(byte[] romBytes) {
+        progressOverlay.setVisibility(View.VISIBLE);
+        progressBar.setProgress(0);
+        progressText.setText("0%");
 
-            // Select YAML from assets (example: pal)
-            String yamlAssetPath = "otr_yaml/decompressed.pal.yaml";
+        new Thread(() -> {
+            boolean success = NativeBridge.nativeGenerateOTR(
+                    romBytes,
+                    "otr_yaml/decompressed.us.v10.yaml",
+                    getFilesDir().getAbsolutePath()
+            );
 
-            progressOverlay.setVisibility(View.VISIBLE);
-            progressBar.setProgress(0);
-            progressText.setText("0%");
-
-            // Update progress periodically
-            progressRunnable = new Runnable() {
-                @Override
-                public void run() {
+            if (success) {
+                // Wait for progress to reach 1.0
+                while (NativeBridge.nativeGetProgress() < 1.0f) {
                     float progress = NativeBridge.nativeGetProgress();
-                    progressBar.setProgress((int) (progress * 100));
-                    progressText.setText((int) (progress * 100) + "%");
-                    if (progress < 1.0f) {
-                        uiHandler.postDelayed(this, 50);
-                    }
+                    uiHandler.post(() -> {
+                        progressBar.setProgress((int)(progress * 100));
+                        progressText.setText(String.format("%d%%", (int)(progress * 100)));
+                    });
+
+                    try { Thread.sleep(50); } catch (InterruptedException ignored) {}
                 }
-            };
-            uiHandler.post(progressRunnable);
 
-            // Generate OTR
-            new Thread(() -> {
-                boolean success = NativeBridge.nativeGenerateOTR(romBytes, yamlAssetPath, getFilesDir().getAbsolutePath());
                 uiHandler.post(() -> {
-                    uiHandler.removeCallbacks(progressRunnable);
+                    progressBar.setProgress(100);
+                    progressText.setText("100%");
                     progressOverlay.setVisibility(View.GONE);
-                    if (success) {
-                        // Retrieve in-memory OTR from native
-                        byte[] generatedOTR = NativeBridge.getGeneratedOTRBytes();
-                        glRenderer.loadOTR(generatedOTR);
-                    }
-                });
-            }).start();
 
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+                    // Notify GLRenderer to refresh OTR
+                    glRenderer.refreshOTR();
+                    Toast.makeText(this, "OTR generation complete", Toast.LENGTH_SHORT).show();
+                });
+
+            } else {
+                uiHandler.post(() -> {
+                    progressOverlay.setVisibility(View.GONE);
+                    Toast.makeText(this, "OTR generation failed", Toast.LENGTH_LONG).show();
+                });
+            }
+        }).start();
     }
 }
