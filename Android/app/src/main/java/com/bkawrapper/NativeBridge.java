@@ -5,22 +5,20 @@ import android.content.res.AssetManager;
 public final class NativeBridge {
 
     static {
-        System.loadLibrary("bka"); // your native .so name
+        System.loadLibrary("wrapper"); // matches your CMake add_library(wrapper SHARED ...)
     }
 
-    // Initialize native side (renderer, etc.)
-    public static native void nativeInit(AssetManager assetManager);
-
-    // Generate OTR from ROM bytes + YAML asset
-    public static native boolean nativeGenerateOTR(
-            byte[] romData,
-            String yamlAssetPath,
-            String outputDir
+    /**
+     * Load and generate OTR from embedded ROM + YAML.
+     * The progressCallback is a lambda: float -> void
+     */
+    public static native boolean loadEmbeddedOTRAssets(
+            android.content.Context context,
+            AssetManager assetManager,
+            ProgressCallback progressCallback
     );
 
-    // Progress [0.0 – 1.0]
-    public static native float nativeGetProgress();
-
-    // Notify native renderer to load generated OTR
-    public static native void nativeLoadOTR(String otrPath);
+    public interface ProgressCallback {
+        void onProgress(float progress); // 0.0 – 1.0
+    }
 }
