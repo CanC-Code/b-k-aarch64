@@ -1,28 +1,25 @@
 package com.bkawrapper;
 
-import android.content.Context;
 import android.content.res.AssetManager;
 
 public final class NativeBridge {
 
     static {
-        System.loadLibrary("wrapper"); // matches your native library name
+        System.loadLibrary("bka"); // your native .so
     }
 
-    /**
-     * Load and generate OTR from embedded ROM + YAML.
-     * The progressCallback will be called with 0.0f → 1.0f
-     */
-    public static native boolean loadEmbeddedOTRAssets(
-            Context context,
-            AssetManager assetManager,
-            ProgressCallback progressCallback
+    // Initialize native side with AssetManager
+    public static native void nativeInit(AssetManager assetManager);
+
+    // Generate OTR from ROM bytes + YAML path in assets
+    public static native boolean nativeGenerateOTR(
+            byte[] romData,
+            String yamlAssetPath
     );
 
-    /**
-     * Simple interface for reporting progress to Java
-     */
-    public interface ProgressCallback {
-        void onProgress(float progress);
-    }
+    // Get progress [0.0 – 1.0]
+    public static native float nativeGetProgress();
+
+    // Load generated OTR into renderer
+    public static native void nativeLoadOTR();
 }
