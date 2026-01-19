@@ -1,4 +1,3 @@
-// File: Android/app/src/main/java/com/bkawrapper/MainActivity.java
 package com.bkawrapper;
 
 import android.net.Uri;
@@ -9,17 +8,13 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
-import android.widget.TextView;
-import android.opengl.GLSurfaceView;
-
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String TAG = "BK_APP";
+    private static final String TAG = "BK_MAIN";
 
     private GLSurfaceView glSurfaceView;
     private GLRenderer glRenderer;
@@ -32,9 +27,6 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar otrProgressBar;
     private TextView otrProgressText;
 
-    // Launch gates
-    private boolean surfaceReady = false;
-    private boolean romReady = false;
     private boolean gameInitialized = false;
     private boolean gameRunning = false;
 
@@ -75,25 +67,18 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupRomPicker() {
         romPickerLauncher = registerForActivityResult(
-                new ActivityResultContracts.OpenDocument(),
-                uri -> {
-                    if (uri != null) loadRom(uri);
-                }
+            new ActivityResultContracts.OpenDocument(),
+            uri -> loadRom(uri)
         );
-
-        loadButton.setOnClickListener(v ->
-                romPickerLauncher.launch(new String[]{"*/*"})
-        );
+        loadButton.setOnClickListener(v -> romPickerLauncher.launch(new String[]{"*/*"}));
     }
 
     private void setupMenuButtons() {
         findViewById(R.id.button_resume).setOnClickListener(v -> hideMenu());
         findViewById(R.id.button_exit).setOnClickListener(v -> finish());
-
         findViewById(R.id.button_settings).setOnClickListener(v ->
                 Log.i(TAG, "Settings clicked (stub)")
         );
-
         findViewById(R.id.button_controller).setOnClickListener(v ->
                 Log.i(TAG, "Controller layout clicked (stub)")
         );
@@ -105,29 +90,31 @@ public class MainActivity extends AppCompatActivity {
         progressHandler = new Handler(progressThread.getLooper());
     }
 
-    /* =======================
-       ROM + OTR FLOW
-       ======================= */
-
     private void loadRom(Uri uri) {
         try {
             Log.i(TAG, "Loading ROM");
             NativeBridge.loadRomFromUri(getContentResolver(), uri);
-
             showOTRProgress();
             generatingOTR = true;
             progressHandler.post(this::pollOTRProgress);
-
         } catch (Exception e) {
             Log.e(TAG, "ROM load failed", e);
         }
+    }
+
+    private void showOTRProgress() {
+        runOnUiThread(() -> progressOverlay.setVisibility(View.VISIBLE));
+    }
+
+    private void hideOTRProgress() {
+        runOnUiThread(() -> progressOverlay.setVisibility(View.GONE));
     }
 
     private void pollOTRProgress() {
         if (!generatingOTR) return;
 
         float progress = NativeBridge.getOTRProgress();
-        int percent = Math.min(100, Math.max(0, (int) (progress * 100)));
+        int percent = Math.min(100, Math.max(0, (int)(progress * 100)));
 
         runOnUiThread(() -> {
             otrProgressBar.setProgress(percent);
@@ -137,57 +124,25 @@ public class MainActivity extends AppCompatActivity {
         if (progress >= 1.0f) {
             generatingOTR = false;
             hideOTRProgress();
-
             runOnUiThread(() -> {
-                romReady = true;
                 loadButton.setVisibility(View.GONE);
-                tryStartGame();
             });
         } else {
-            progressHandler.postDelayed(this::pollOTRProgress, 50);
+            progressHandler.postDelayed(this::pollOTRProgress, 100);
         }
     }
-
-    private void showOTRProgress() {
-        runOnUiThread(() ->
-                progressOverlay.setVisibility(View.VISIBLE)
-        );
-    }
-
-    private void hideOTRProgress() {
-        runOnUiThread(() ->
-                progressOverlay.setVisibility(View.GONE)
-        );
-    }
-
-    /* =======================
-       GAME BOOT
-       ======================= */
 
     void onSurfaceReady() {
         surfaceReady = true;
         Log.i(TAG, "GL surface ready");
-        tryStartGame();
-    }
 
-    private void tryStartGame() {
-        if (!surfaceReady || !romReady || gameInitialized) return;
-
-        Log.i(TAG, "Initializing game");
-
-        NativeBridge.initGame(glSurfaceView.getHolder().getSurface());
         NativeBridge.initTexture();
-
         gameInitialized = true;
+
         NativeBridge.startGameLoop();
         gameRunning = true;
-
         Log.i(TAG, "Game running");
     }
-
-    /* =======================
-       MENU CONTROL (LOCKED)
-       ======================= */
 
     private void showMenu() {
         menuOverlay.setVisibility(View.VISIBLE);
@@ -197,47 +152,5 @@ public class MainActivity extends AppCompatActivity {
     private void hideMenu() {
         menuOverlay.setVisibility(View.GONE);
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
-    }
-
-    @Override
-    public void onBackPressed() {
-        if (menuOverlay.getVisibility() == View.VISIBLE) {
-            hideMenu();
-        } else {
-            showMenu();
-        }
-    }
-
-    /* =======================
-       LIFECYCLE
-       ======================= */
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        glSurfaceView.onPause();
-
-        if (gameRunning) {
-            NativeBridge.stopGameLoop();
-            NativeBridge.cleanupGame();
-            gameRunning = false;
-            gameInitialized = false;
-        }
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        glSurfaceView.onResume();
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        progressThread.quitSafely();
-    }
-
-    static {
-        System.loadLibrary("wrapper");
     }
 }
