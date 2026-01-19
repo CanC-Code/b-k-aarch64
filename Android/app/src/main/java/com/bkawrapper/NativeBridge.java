@@ -1,19 +1,18 @@
 package com.bkawrapper;
 
 import android.content.ContentResolver;
-import android.content.res.AssetManager;
 import android.net.Uri;
-import android.os.ParcelFileDescriptor;
-import android.util.Log;
+import android.os.Handler;
+import android.os.Looper;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.FrameLayout;
 
+import java.io.InputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.channels.FileChannel;
 
 public final class NativeBridge {
-
-    private static final String TAG = "BKAWrapper";
 
     static {
         System.loadLibrary("wrapper");
@@ -22,63 +21,81 @@ public final class NativeBridge {
     private NativeBridge() {}
 
     // -----------------------------
-    // Load ROM bytes from URI
+    // Embedded ROM loader
     // -----------------------------
-    public static byte[] loadRomFromUri(ContentResolver resolver, Uri uri) throws IOException {
-        if (resolver == null || uri == null) {
-            throw new IOException("Invalid resolver or URI");
+    public static void loadRomFromUri(ContentResolver resolver, Uri uri) throws IOException {
+        if (resolver == null || uri == null) throw new IOException("Invalid resolver or URI");
+
+        try (InputStream in = resolver.openInputStream(uri);
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+            if (in == null) throw new IOException("Failed to open ROM input stream");
+
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+            }
+
+            loadRom(out.toByteArray());
         }
-
-        ParcelFileDescriptor pfd = resolver.openFileDescriptor(uri, "r");
-        if (pfd == null) {
-            throw new IOException("Failed to open file descriptor");
-        }
-
-        FileInputStream fis = new FileInputStream(pfd.getFileDescriptor());
-        FileChannel channel = fis.getChannel();
-        long size = channel.size();
-        if (size > Integer.MAX_VALUE) {
-            fis.close();
-            pfd.close();
-            throw new IOException("ROM file too large");
-        }
-
-        byte[] buffer = new byte[(int) size];
-        int read = fis.read(buffer);
-        fis.close();
-        pfd.close();
-
-        if (read != size) {
-            throw new IOException("Failed to read full ROM");
-        }
-
-        return buffer;
     }
 
     // -----------------------------
-    // Start OTR generation
+    // Asset manager (for YAMLs)
     // -----------------------------
-    public static void processRom(AssetManager assetManager, byte[] romData) {
-        if (romData == null || romData.length == 0) {
-            Log.e(TAG, "ROM data is empty");
-            return;
+    public static void setAssetManager(android.content.res.AssetManager manager) {
+        if (manager != null) {
+            nativeSetAssetManager(manager);
         }
-
-        nativeProcessRom(assetManager, romData);
     }
 
+    private static native void nativeSetAssetManager(android.content.res.AssetManager manager);
+
     // -----------------------------
-    // Query OTR progress (0.0 - 1.0)
+    // Native ROM/OTR API
     // -----------------------------
+    public static native void loadRom(byte[] romData);
+    public static native void processRom();
     public static native float getOTRProgress();
-
-    // -----------------------------
-    // Retrieve generated OTR bytes
-    // -----------------------------
     public static native byte[] getOTR();
 
     // -----------------------------
-    // Native function
+    // Real-time progress integration
     // -----------------------------
-    private static native void nativeProcessRom(AssetManager assetManager, byte[] romData);
+    public static void generateOTRWithProgress(FrameLayout overlay,
+                                               ProgressBar progressBar,
+                                               TextView progressText,
+                                               Runnable onComplete) {
+        overlay.setVisibility(android.view.View.VISIBLE);
+        progressBar.setProgress(0);
+        progressText.setText("0%");
+
+        new Thread(() -> {
+            processRom();
+
+            Handler handler = new Handler(Looper.getMainLooper());
+            while (true) {
+                float progress = getOTRProgress();
+                final int p = Math.round(progress * 100f);
+
+                handler.post(() -> {
+                    progressBar.setProgress(p);
+                    progressText.setText(p + "%");
+                });
+
+                if (progress >= 1.0f) break;
+
+                try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+            }
+
+            byte[] otrData = getOTR();
+
+            handler.post(() -> {
+                overlay.setVisibility(android.view.View.GONE);
+                if (onComplete != null) onComplete.run();
+            });
+
+        }).start();
+    }
 }
