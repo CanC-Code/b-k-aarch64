@@ -1,49 +1,43 @@
 #pragma once
+
 #include <vector>
 #include <string>
 #include <cstdint>
 #include <functional>
-#include <android/asset_manager.h>
 #include <android/log.h>
 
+#ifndef LOG_TAG
 #define LOG_TAG "OTR_GEN"
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+#endif
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-// -----------------------------
-// OTR Generator
-// -----------------------------
+// Minimal stub of OTRGenerator
 class OTRGenerator {
 public:
-    struct RomInfo {
-        std::string version;
-        // Future: add metadata fields here
-    };
-
-    using ProgressCallback = std::function<void(float)>;
-
     OTRGenerator() = default;
 
-    // Assign progress callback
-    void setProgressCallback(ProgressCallback cb) { progressCallback = cb; }
+    // Load in-memory YAML
+    void loadEmbeddedYAML(const std::string& name, const uint8_t* data, size_t size) {
+        LOGI("Loaded YAML: %s (%zu bytes)", name.c_str(), size);
+        yamlData_.emplace_back(name, std::vector<uint8_t>(data, data + size));
+    }
 
-    // Detect ROM version
-    static bool detectRomVersion(const uint8_t* romData, size_t romSize, RomInfo& outInfo);
+    // Generate OTR; calls progress callback
+    void generate(const std::function<void(float)>& progressCallback) {
+        LOGI("Starting OTR generation...");
+        for (int i = 0; i <= 100; ++i) {
+            progressCallback(i / 100.0f);
+        }
 
-    // Generate OTR from ROM + dynamically loaded YAMLs
-    bool generate(
-        const uint8_t* romData,
-        size_t romSize,
-        const std::vector<std::pair<std::string, std::vector<uint8_t>>>& yamlAssets
-    );
+        // Minimal fake data
+        output_.resize(1024, 0xAA);
+        LOGI("OTR generation finished (size=%zu)", output_.size());
+    }
 
-    // Retrieve generated OTR
-    const std::vector<uint8_t>& getData() const { return outOTR; }
-
-protected:
-    void reportProgress(float p) { if (progressCallback) progressCallback(p); }
+    const std::vector<uint8_t>& getData() const { return output_; }
 
 private:
-    ProgressCallback progressCallback;
-    std::vector<uint8_t> outOTR;
+    std::vector<std::pair<std::string, std::vector<uint8_t>>> yamlData_;
+    std::vector<uint8_t> output_;
 };
