@@ -3,42 +3,30 @@
 #include <string>
 #include <cstdint>
 #include <functional>
-#include <android/asset_manager.h>
+
+struct EmbeddedAsset {
+    const char* name;
+    const uint8_t* data;
+    size_t size;
+};
 
 class OTRGenerator {
 public:
-    struct RomInfo {
-        std::string version;
-        // Future: add more metadata fields if needed
-    };
-
     using ProgressCallback = std::function<void(float)>;
 
-    OTRGenerator() = default;
+    OTRGenerator(const EmbeddedAsset* assets = nullptr, size_t count = 0)
+        : embeddedAssets(assets), embeddedCount(count) {}
 
-    // Assign a progress callback for real-time updates
-    void setProgressCallback(ProgressCallback cb) {
-        progressCallback = cb;
-    }
-
-    // Detect ROM version (returns true if recognized)
-    static bool detectRomVersion(const uint8_t* romData, size_t romSize, RomInfo& outInfo);
-
-    // Load YAML file from Android assets
-    static std::vector<uint8_t> loadYAMLAsset(AAssetManager* mgr, const char* assetPath);
-
-    // Generate OTR from ROM + YAML
-    bool generateOTR(const uint8_t* romData,
-                     size_t romSize,
-                     const char* yamlData,
-                     size_t yamlSize,
-                     std::vector<uint8_t>& outOTR);
+    // Build OTR from embedded assets
+    std::vector<uint8_t> buildOTR(ProgressCallback cb = nullptr);
 
 protected:
     void reportProgress(float p) {
-        if (progressCallback) progressCallback(p);
+        if (cb) cb(p);
     }
 
 private:
-    ProgressCallback progressCallback;
+    const EmbeddedAsset* embeddedAssets = nullptr;
+    size_t embeddedCount = 0;
+    ProgressCallback cb = nullptr;
 };
