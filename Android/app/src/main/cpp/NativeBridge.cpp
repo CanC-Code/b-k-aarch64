@@ -1,46 +1,36 @@
+// NativeBridge.cpp
 #include <jni.h>
-#include <android/asset_manager_jni.h>
-#include <android/log.h>
-#include <vector>
-#include <string>
 #include "otr_generator.hpp"
+#include <vector>
 
-#define LOG_TAG "BKA_NativeBridge"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-
-static OTRGenerator g_otrGenerator;
-
-// JNI bridge
+static OTRGenerator* g_otrGenerator = nullptr;
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_nativeInit(JNIEnv* env, jclass, jobject assetManager) {
-    AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
-    g_otrGenerator.initAssetManager(mgr);
-    LOGI("NativeBridge initialized");
+Java_com_bkawrapper_NativeBridge_initOTRGenerator(JNIEnv* env, jobject thiz, jobject assetManager) {
+    if (g_otrGenerator) delete g_otrGenerator;
+    g_otrGenerator = new OTRGenerator(AAssetManager_fromJava(env, assetManager));
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_bkawrapper_NativeBridge_nativeGenerateOTR(
-        JNIEnv* env, jclass, jbyteArray romData, jstring yamlAssetPath) {
+Java_com_bkawrapper_NativeBridge_generateOTR(JNIEnv* env, jobject thiz, jbyteArray romBuffer, jstring yamlPath) {
+    if (!g_otrGenerator) return JNI_FALSE;
 
-    const char* yamlPath = env->GetStringUTFChars(yamlAssetPath, nullptr);
+    jsize size = env->GetArrayLength(romBuffer);
+    std::vector<uint8_t> buffer(size);
+    env->GetByteArrayRegion(romBuffer, 0, size, reinterpret_cast<jbyte*>(buffer.data()));
 
-    jsize romSize = env->GetArrayLength(romData);
-    std::vector<uint8_t> romBuffer(romSize);
-    env->GetByteArrayRegion(romData, 0, romSize, reinterpret_cast<jbyte*>(romBuffer.data()));
-
-    bool success = g_otrGenerator.generateOTRFromROM(romBuffer, yamlPath);
-
-    env->ReleaseStringUTFChars(yamlAssetPath, yamlPath);
+    const char* path = env->GetStringUTFChars(yamlPath, nullptr);
+    bool success = g_otrGenerator->generate(buffer, path); // must implement generate()
+    env->ReleaseStringUTFChars(yamlPath, path);
     return success ? JNI_TRUE : JNI_FALSE;
 }
 
 extern "C" JNIEXPORT jfloat JNICALL
-Java_com_bkawrapper_NativeBridge_nativeGetProgress(JNIEnv*, jclass) {
-    return g_otrGenerator.getProgress();
+Java_com_bkawrapper_NativeBridge_getOTRProgress(JNIEnv* env, jobject thiz) {
+    return g_otrGenerator ? g_otrGenerator->getProgress() : 0.0f;
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_nativeLoadOTR(JNIEnv*, jclass) {
-    g_otrGenerator.loadGeneratedOTRIntoRenderer();
+Java_com_bkawrapper_NativeBridge_loadOTRIntoRenderer(JNIEnv* env, jobject thiz) {
+    if (g_otrGenerator) g_otrGenerator->loadIntoRenderer(); // implement this
 }
