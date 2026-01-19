@@ -1,86 +1,93 @@
 #include <jni.h>
-#include <android/asset_manager_jni.h>
 #include <android/log.h>
-#include <vector>
-#include <string>
-#include <cstring>
-#include "otr_generator.hpp"
-#include "embedded_data.hpp"
+#include <android/asset_manager_jni.h>
+#include "OTRGenerator.hpp"
 
 #define LOG_TAG "NativeBridge"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-// Global OTR generator
-static OTRGenerator gOTRGenerator;
+// Store OTR generator and generated OTR globally (single instance for now)
+static OTRGenerator* gOTRGen = nullptr;
+static std::vector<uint8_t> gGeneratedOTR;
+static float gProgress = 0.0f;
 
-// JNI Helper: call Java progress callback
-void reportProgressToJava(JNIEnv* env, jobject progressCallback, float p) {
-    if (!progressCallback) return;
-
-    jclass cls = env->GetObjectClass(progressCallback);
-    if (!cls) return;
-
-    jmethodID mid = env->GetMethodID(cls, "onProgress", "(F)V");
-    if (!mid) return;
-
-    env->CallVoidMethod(progressCallback, mid, p);
+// Forward declaration for JNI helper
+static void reportProgress(float p) {
+    gProgress = p;
 }
 
-// Main JNI entry
-extern "C"
+// ------------------------------
+// JNI EXPORTS
+// ------------------------------
+
+extern "C" {
+
+// Initialize native generator with AssetManager
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeBridge_nativeInit(JNIEnv* env, jclass, jobject assetManager) {
+    if (gOTRGen) delete gOTRGen;
+
+    AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
+    gOTRGen = new OTRGenerator(mgr);
+    gOTRGen->setProgressCallback(reportProgress);
+
+    LOGI("NativeBridge initialized with AssetManager");
+}
+
+// Generate OTR from ROM + YAML asset path
 JNIEXPORT jboolean JNICALL
-Java_com_bkawrapper_NativeBridge_loadEmbeddedOTRAssets(
+Java_com_bkawrapper_NativeBridge_nativeGenerateOTR(
         JNIEnv* env,
-        jclass clazz,
-        jobject context,
-        jobject assetManager,
-        jobject progressCallback
+        jclass,
+        jbyteArray romData,
+        jstring yamlAssetPath
 ) {
-    (void)clazz;
-    (void)context;
-
-    try {
-        // Select YAML based on embedded ROM version
-        OTRGenerator::RomInfo info;
-        if (!OTRGenerator::detectRomVersion(embedded_rom, embedded_rom_size, info)) {
-            LOGE("Failed to detect embedded ROM version");
-            return JNI_FALSE;
-        }
-
-        const uint8_t* yamlData = nullptr;
-        size_t yamlSize = 0;
-
-        if (info.version.find("US") != std::string::npos) {
-            yamlData = embedded_us_yaml;
-            yamlSize = embedded_us_yaml_size;
-        } else {
-            yamlData = embedded_pal_yaml;
-            yamlSize = embedded_pal_yaml_size;
-        }
-
-        std::vector<uint8_t> outOTR;
-        gOTRGenerator.setProgressCallback([env, progressCallback](float p) {
-            reportProgressToJava(env, progressCallback, p);
-        });
-
-        if (!gOTRGenerator.generateOTR(embedded_rom, embedded_rom_size, 
-                                       reinterpret_cast<const char*>(yamlData), yamlSize,
-                                       outOTR)) {
-            LOGE("OTR generation failed");
-            return JNI_FALSE;
-        }
-
-        LOGI("OTR generated successfully: %zu bytes", outOTR.size());
-
-        // TODO: optionally write outOTR to file if you want to load later
-        return JNI_TRUE;
-
-    } catch (const std::exception& e) {
-        LOGE("Exception: %s", e.what());
-        return JNI_FALSE;
-    } catch (...) {
-        LOGE("Unknown error during OTR generation");
+    if (!gOTRGen) {
+        LOGE("OTRGenerator not initialized!");
         return JNI_FALSE;
     }
+
+    // Convert Java byte array to C++ vector
+    jsize romSize = env->GetArrayLength(romData);
+    std::vector<uint8_t> romBuffer(romSize);
+    env->GetByteArrayRegion(romData, 0, romSize, reinterpret_cast<jbyte*>(romBuffer.data()));
+
+    // Convert Java string to C string
+    const char* yamlPathC = env->GetStringUTFChars(yamlAssetPath, nullptr);
+
+    LOGI("Generating OTR from ROM (%d bytes) and YAML: %s", romSize, yamlPathC);
+
+    bool success = gOTRGen->generateOTR(romBuffer.data(), romBuffer.size(), yamlPathC);
+    gGeneratedOTR = gOTRGen->getOTR();
+
+    env->ReleaseStringUTFChars(yamlAssetPath, yamlPathC);
+
+    LOGI("OTR generation %s, size: %zu", success ? "succeeded" : "failed", gGeneratedOTR.size());
+
+    return success ? JNI_TRUE : JNI_FALSE;
 }
+
+// Return progress [0.0 – 1.0]
+JNIEXPORT jfloat JNICALL
+Java_com_bkawrapper_NativeBridge_nativeGetProgress(JNIEnv*, jclass) {
+    return gProgress;
+}
+
+// Load generated OTR into renderer
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeBridge_nativeLoadOTR(JNIEnv*, jclass) {
+    if (gGeneratedOTR.empty()) {
+        LOGE("No OTR generated to load!");
+        return;
+    }
+
+    // TODO: pass gGeneratedOTR.data() and gGeneratedOTR.size() to your renderer
+    // This depends on how your OpenGL renderer or emulator reads the OTR
+    LOGI("OTR ready to load into renderer, size: %zu bytes", gGeneratedOTR.size());
+
+    // Example:
+    // Renderer::get()->loadOTR(gGeneratedOTR.data(), gGeneratedOTR.size());
+}
+
+} // extern "C"
