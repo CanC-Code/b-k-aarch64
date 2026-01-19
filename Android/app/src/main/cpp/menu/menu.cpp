@@ -1,12 +1,18 @@
 #include "menu.hpp"
 #include <android/log.h>
+#include <atomic>
+#include <unistd.h>
 
 #define LOG_TAG "MENU_HANDLER"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
-MenuHandler::MenuHandler(JavaVM* vm, jobject activity)
-    : vm_(vm) {
+// ------------------------------------------------------------
+// Global state (menu)
+static std::atomic<bool> g_paused{false};
+static std::atomic<bool> g_menuVisible{false};
 
+// ------------------------------------------------------------
+MenuHandler::MenuHandler(JavaVM* vm, jobject activity) : vm_(vm) {
     JNIEnv* env = nullptr;
     vm_->GetEnv((void**)&env, JNI_VERSION_1_6);
 
@@ -35,14 +41,13 @@ void MenuHandler::setVisibility(bool visible) {
     vm_->AttachCurrentThread(&env, nullptr);
 
     jclass viewCls = env->GetObjectClass(menuOverlayGlobal_);
-    jmethodID setVis =
-        env->GetMethodID(viewCls, "setVisibility", "(I)V");
+    jmethodID setVis = env->GetMethodID(viewCls, "setVisibility", "(I)V");
 
-    env->CallVoidMethod(
-        menuOverlayGlobal_,
-        setVis,
-        visible ? 0 /* View.VISIBLE */ : 8 /* View.GONE */
-    );
+    env->CallVoidMethod(menuOverlayGlobal_, setVis, visible ? 0 /* VISIBLE */ : 8 /* GONE */);
+
+    visible_ = visible;
+    g_menuVisible.store(visible);
+    g_paused.store(visible);
 }
 
 void MenuHandler::showMenu() {
@@ -54,3 +59,40 @@ void MenuHandler::hideMenu() {
     LOGI("hideMenu()");
     setVisibility(false);
 }
+
+bool MenuHandler::isVisible() const {
+    return visible_;
+}
+
+// ------------------------------------------------------------
+// JNI hooks
+extern "C" {
+
+static MenuHandler* g_menu = nullptr;
+static JavaVM* g_vm = nullptr;
+
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeBridge_nativeInitMenu(JNIEnv* env, jclass, jobject activity) {
+    if (!g_menu)
+        g_menu = new MenuHandler(g_vm, activity);
+}
+
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeBridge_nativeOnBackPressed(JNIEnv*, jclass) {
+    if (!g_menu) return;
+    if (!g_menu->isVisible()) {
+        g_menu->showMenu();
+        LOGI("Menu shown, emulator paused");
+    } else {
+        g_menu->hideMenu();
+        LOGI("Menu hidden, emulator resumed");
+    }
+}
+
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*) {
+    g_vm = vm;
+    LOGI("JNI_OnLoad called");
+    return JNI_VERSION_1_6;
+}
+
+} // extern "C"
