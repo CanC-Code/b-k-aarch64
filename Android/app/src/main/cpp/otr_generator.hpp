@@ -1,22 +1,31 @@
 #pragma once
-#include <vector>
-#include <cstdint>
+
 #include <android/asset_manager.h>
 #include <android/asset_manager_jni.h>
+#include <vector>
+#include <string>
+#include <unordered_map>
 
 class OTRGenerator {
 public:
     explicit OTRGenerator(AAssetManager* mgr) : assetManager(mgr) {}
-    ~OTRGenerator() = default;
 
-    bool generateOTR(const std::vector<uint8_t>& romData);
+    // Load YAML data from memory buffer
+    void loadYAML(const std::string& name, const uint8_t* data, size_t size) {
+        yamlData[name] = std::vector<uint8_t>(data, data + size);
+    }
 
-    const std::vector<uint8_t>& getOTRBuffer() const { return otrBuffer; }
-    void clear() { otrBuffer.clear(); }
+    // Generate OTR in-memory representation (stub example)
+    bool generate(const std::string& name, std::vector<uint8_t>& outData) {
+        auto it = yamlData.find(name);
+        if (it == yamlData.end()) return false;
+
+        // TODO: replace this with real OTR generation logic
+        outData = it->second;
+        return true;
+    }
 
 private:
     AAssetManager* assetManager;
-    std::vector<uint8_t> otrBuffer;
-
-    std::vector<uint8_t> loadYAMLAsset(const char* assetName);
+    std::unordered_map<std::string, std::vector<uint8_t>> yamlData;
 };
