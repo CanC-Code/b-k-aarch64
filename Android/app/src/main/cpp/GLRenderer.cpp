@@ -1,27 +1,22 @@
-#include <vector>
-#include <GLES/gl.h>
+#include "GLRenderer.hpp"
+#include <android/log.h>
 
-static std::vector<uint8_t> gOTRData;
+#define LOG_TAG "GLRenderer"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
 void GLRenderer::setOTRData(const std::vector<uint8_t>& data) {
-    gOTRData = data;
+    otrData = data;
+    LOGI("OTR data set (%zu bytes)", data.size());
 }
 
 void GLRenderer::draw() {
-    if (gOTRData.empty()) return;
+    if (otrData.empty()) return;
 
-    // Example: simple quad render
-    GLfloat vertices[] = {
-        -1.f, -1.f, 0.f, 0.f,
-         1.f, -1.f, 1.f, 0.f,
-        -1.f,  1.f, 0.f, 1.f,
-         1.f,  1.f, 1.f, 1.f
-    };
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    glVertexPointer(2, GL_FLOAT, 4 * sizeof(GLfloat), vertices);
-    glTexCoordPointer(2, GL_FLOAT, 4 * sizeof(GLfloat), vertices + 2);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    glDisableClientState(GL_VERTEX_ARRAY);
-    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    // Placeholder: implement actual OpenGL rendering using otrData
+    LOGI("Drawing OTR data (%zu bytes)", otrData.size());
+}
+
+void GLRenderer::clear() {
+    otrData.clear();
+    LOGI("Cleared OTR data");
 }
