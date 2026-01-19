@@ -2,89 +2,120 @@ package com.bkawrapper;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.res.AssetManager;
 import android.net.Uri;
 import android.os.Bundle;
-import android.view.View;
-import android.widget.Button;
-import android.widget.FrameLayout;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.widget.ProgressBar;
-import android.widget.TextView;
 import android.widget.Toast;
-import android.opengl.GLSurfaceView;
+
+import java.io.IOException;
 
 public class MainActivity extends Activity {
 
-    private GLSurfaceView glSurfaceView;
-    private GLRenderer glRenderer;
+    private static final String TAG = "BKAWrapper";
+    private static final int REQUEST_ROM_FILE = 1;
 
-    private FrameLayout progressOverlay;
+    private SurfaceView glSurfaceView;
     private ProgressBar progressBar;
-    private TextView progressText;
-    private Button loadButton;
-
-    private static final int PICK_ROM_REQUEST = 1;
+    private Handler mainHandler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Set AssetManager for native use
-        NativeBridge.setAssetManager(getAssets());
+        glSurfaceView = findViewById(R.id.gl_surface);
+        progressBar = findViewById(R.id.progress_bar);
 
-        glSurfaceView   = findViewById(R.id.surface_gl);
-        progressOverlay = findViewById(R.id.progressOverlay);
-        progressBar     = findViewById(R.id.otrProgressBar);
-        progressText    = findViewById(R.id.otrProgressText);
-        loadButton      = findViewById(R.id.button_load_game);
+        mainHandler = new Handler(Looper.getMainLooper());
 
-        glRenderer = new GLRenderer(this);
-        glSurfaceView.setEGLContextClientVersion(2);
-        glSurfaceView.setRenderer(glRenderer);
-        glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
-
-        loadButton.setOnClickListener(v -> pickRom());
+        // Launch file picker on start (or you can trigger with a button)
+        pickRomFile();
     }
 
-    private void pickRom() {
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        intent.setType("*/*");
-        startActivityForResult(Intent.createChooser(intent, "Select ROM"), PICK_ROM_REQUEST);
+    private void pickRomFile() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*"); // optionally filter by extension
+        startActivityForResult(intent, REQUEST_ROM_FILE);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == PICK_ROM_REQUEST && resultCode == RESULT_OK && data != null) {
-            Uri uri = data.getData();
-            if (uri == null) return;
-
-            progressOverlay.setVisibility(View.VISIBLE);
-            progressBar.setProgress(0);
-            progressText.setText("0%");
-
-            NativeBridge.loadRomFromUri(getContentResolver(), uri);
-            NativeBridge.processRom();
-
-            // Progress updater thread
-            new Thread(() -> {
-                while (NativeBridge.getOTRProgress() < 1.0f) {
-                    float prog = NativeBridge.getOTRProgress();
-                    runOnUiThread(() -> {
-                        progressBar.setProgress((int)(prog*100));
-                        progressText.setText((int)(prog*100) + "%");
-                    });
-                    try { Thread.sleep(50); } catch (InterruptedException ignored) {}
-                }
-
-                runOnUiThread(() -> progressOverlay.setVisibility(View.GONE));
-
-                // Get OTR data and update GLRenderer on GL thread
-                byte[] otrData = NativeBridge.getOTR();
-                glSurfaceView.queueEvent(() -> glRenderer.setOTRData(otrData));
-
-            }).start();
+        if (requestCode == REQUEST_ROM_FILE && resultCode == RESULT_OK && data != null) {
+            Uri romUri = data.getData();
+            if (romUri != null) {
+                loadAndProcessRom(romUri);
+            }
         }
+    }
+
+    private void loadAndProcessRom(Uri romUri) {
+        new Thread(() -> {
+            try {
+                byte[] romData = NativeBridge.loadRomFromUri(getContentResolver(), romUri);
+
+                mainHandler.post(() -> {
+                    Toast.makeText(this, "ROM loaded, generating OTR...", Toast.LENGTH_SHORT).show();
+                    progressBar.setProgress(0);
+                });
+
+                // Start OTR generation in native
+                NativeBridge.processRom(getAssets(), romData);
+
+                // Poll progress
+                pollProgress();
+
+            } catch (IOException e) {
+                Log.e(TAG, "Failed to load ROM", e);
+                mainHandler.post(() -> Toast.makeText(this, "Failed to load ROM: " + e.getMessage(), Toast.LENGTH_LONG).show());
+            }
+        }).start();
+    }
+
+    private void pollProgress() {
+        mainHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                float progress = NativeBridge.getOTRProgress();
+                progressBar.setProgress((int)(progress * 100));
+
+                if (progress < 1.0f) {
+                    mainHandler.postDelayed(this, 100);
+                } else {
+                    byte[] otrData = NativeBridge.getOTR();
+                    Toast.makeText(MainActivity.this, "OTR generation complete, size: " + otrData.length + " bytes", Toast.LENGTH_LONG).show();
+
+                    // TODO: Initialize GLRenderer with OTR data
+                    initGLRenderer(otrData);
+                }
+            }
+        }, 100);
+    }
+
+    private void initGLRenderer(byte[] otrData) {
+        // Example: set up OpenGL rendering using your existing GLRenderer
+        glSurfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
+            @Override
+            public void surfaceCreated(SurfaceHolder holder) {
+                // Pass otrData to native renderer if needed
+                Log.i(TAG, "GL surface created, ready to render OTR");
+            }
+
+            @Override
+            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+            }
+
+            @Override
+            public void surfaceDestroyed(SurfaceHolder holder) {
+            }
+        });
     }
 }
