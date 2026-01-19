@@ -27,6 +27,7 @@ static std::atomic<bool> g_building{false};
 // ------------------------------
 extern "C" JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_loadRomFromUri(JNIEnv* env, jclass, jobject resolver, jobject uri) {
+    // Clear previous ROM data and reset progress
     g_otrData.clear();
     g_progress = 0.0f;
     g_building = true;
@@ -40,23 +41,18 @@ Java_com_bkawrapper_NativeBridge_processRom(JNIEnv* env, jclass) {
         try {
             g_progress = 0.0f;
 
-            // Initialize generator
-            OTRGenerator otrGen;
+            // Initialize generator with embedded YAML assets
+            OTRGenerator otrGen(&embedded_assets); // embedded_assets is from otr_assets.hpp
 
-            // Load embedded YAMLs
-            otrGen.loadEmbeddedYAML("pal", embedded_pal_yaml, embedded_pal_size);
-            otrGen.loadEmbeddedYAML("us.v10", embedded_us_yaml, embedded_us_size);
-
-            // Generate OTR with progress callback
-            otrGen.generate([&](float progress){
+            // Build OTR data with progress callback
+            g_otrData = otrGen.buildOTR([&](float progress){
                 g_progress = progress;
             });
 
-            // Copy generated data
-            g_otrData = otrGen.getData();
-
-            // Write cache
+            // Ensure cache directory exists
             mkdir("/data/data/com.bkawrapper/files", 0755);
+
+            // Write OTR cache file
             std::ofstream out("/data/data/com.bkawrapper/files/otr_cache.bin", std::ios::binary);
             if(out) out.write(reinterpret_cast<char*>(g_otrData.data()), g_otrData.size());
             out.close();
@@ -66,6 +62,7 @@ Java_com_bkawrapper_NativeBridge_processRom(JNIEnv* env, jclass) {
         } catch (const std::exception& e) {
             LOGE("OTR generation failed: %s", e.what());
         }
+
         g_building = false;
     }).detach();
 }
