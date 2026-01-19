@@ -1,6 +1,5 @@
 #pragma once
 #include <jni.h>
-#include <atomic>
 
 class MenuHandler {
 public:
@@ -14,5 +13,6 @@ private:
     JavaVM* vm_;
     jobject activityGlobal_;
     jobject menuOverlayGlobal_;
+
     void setVisibility(bool visible);
 };
