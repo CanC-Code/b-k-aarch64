@@ -3,18 +3,15 @@
 
 class MenuHandler {
 public:
-    MenuHandler(JNIEnv* env, jobject activity);
+    MenuHandler(JavaVM* vm, jobject activity);
     ~MenuHandler();
 
     void showMenu();
     void hideMenu();
-    bool isMenuVisible() const;
 
 private:
-    JNIEnv* env_;
-    jobject activity_;
-    jclass activityClass_;
-    jobject menuOverlay_;
+    JavaVM* vm_;
+    jobject activityGlobal_;
 
-    void callJavaVisibility(bool visible);
+    void callJava(const char* methodName);
 };
