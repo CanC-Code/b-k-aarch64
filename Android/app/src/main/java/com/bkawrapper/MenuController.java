@@ -3,46 +3,48 @@ package com.bkawrapper;
 import android.app.Activity;
 import android.view.MotionEvent;
 import android.view.View;
-import androidx.activity.OnBackPressedCallback;
 
-public class MenuController {
+public class MenuController implements View.OnTouchListener {
+
+    private static final int SWIPE_THRESHOLD = 120;
+
+    private float startX;
+    private float startY;
 
     private final Activity activity;
-    private float swipeStartX = -1;
-    private float swipeStartY = -1;
 
-    public MenuController(Activity activity, View menuOverlay) {
+    public MenuController(Activity activity) {
         this.activity = activity;
-
-        // Initialize native menu
-        NativeMenu.nativeInitMenu(menuOverlay);
-
-        // Attach back button callback
-        activity.getOnBackPressedDispatcher().addCallback(activity, new OnBackPressedCallback(true) {
-            @Override
-            public void handleOnBackPressed() {
-                NativeMenu.nativeOnBackPressed();
-            }
-        });
-
-        // Forward touch events for swipe
-        menuOverlay.setOnTouchListener((v, event) -> onTouchEvent(event));
     }
 
-    private boolean onTouchEvent(MotionEvent event) {
-        switch (event.getAction()) {
+    public static void attach(Activity activity, MenuController controller) {
+        View decorView = activity.getWindow().getDecorView();
+        decorView.setOnTouchListener(controller);
+    }
+
+    /**
+     * Called from MainActivity.onBackPressed()
+     */
+    public void onBackPressed() {
+        NativeMenu.nativeOnBackPressed();
+    }
+
+    @Override
+    public boolean onTouch(View v, MotionEvent event) {
+        switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
-                swipeStartX = event.getX();
-                swipeStartY = event.getY();
+                startX = event.getX();
+                startY = event.getY();
                 break;
 
             case MotionEvent.ACTION_UP:
-                if (swipeStartX < 200 && swipeStartY < 200) { // top-left corner
-                    float dy = event.getY() - swipeStartY;
-                    if (dy > 150) { // swipe down threshold
-                        NativeMenu.nativeOnBackPressed();
-                        return true;
-                    }
+                float dx = event.getX() - startX;
+                float dy = event.getY() - startY;
+
+                // Swipe down from top-left corner
+                if (startX < 200 && startY < 200 && dy > SWIPE_THRESHOLD) {
+                    NativeMenu.nativeOnBackPressed();
+                    return true;
                 }
                 break;
         }
