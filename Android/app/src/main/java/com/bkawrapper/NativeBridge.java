@@ -1,13 +1,19 @@
 package com.bkawrapper;
 
-import android.app.Activity;
+import android.content.ContentResolver;
+import android.net.Uri;
 
 public class NativeBridge {
 
     static {
-        System.loadLibrary("bkawrapper");
+        System.loadLibrary("emulator_native");
     }
 
-    public static native void nativeInit(Activity activity);
-    public static native void stopGameLoop();
+    public static native void loadRomFromUri(ContentResolver cr, Uri uri);
+    public static native float getOTRProgress();
+    public static native void initTexture();
+    public static native void startGameLoop();
+    public static native void pauseGameLoop();
+    public static native void resumeGameLoop();
+    public static native void cleanupGame();
 }
