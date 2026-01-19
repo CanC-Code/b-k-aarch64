@@ -1,17 +1,22 @@
-// otr_generator.hpp
 #pragma once
 #include <vector>
+#include <cstdint>
 #include <android/asset_manager.h>
+#include <android/asset_manager_jni.h>
 
 class OTRGenerator {
-    AAssetManager* assetManager;
-    std::vector<uint8_t> generatedData;
-    float progress;
-
 public:
-    explicit OTRGenerator(AAssetManager* mgr) : assetManager(mgr), progress(0.0f) {}
+    explicit OTRGenerator(AAssetManager* mgr) : assetManager(mgr) {}
+    ~OTRGenerator() = default;
 
-    bool generate(const std::vector<uint8_t>& romData, const char* yamlPath);
-    float getProgress() const { return progress; }
-    void loadIntoRenderer(); // push generatedData to GLRenderer
+    bool generateOTR(const std::vector<uint8_t>& romData);
+
+    const std::vector<uint8_t>& getOTRBuffer() const { return otrBuffer; }
+    void clear() { otrBuffer.clear(); }
+
+private:
+    AAssetManager* assetManager;
+    std::vector<uint8_t> otrBuffer;
+
+    std::vector<uint8_t> loadYAMLAsset(const char* assetName);
 };
