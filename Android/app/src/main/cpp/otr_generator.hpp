@@ -1,19 +1,30 @@
-// File: Android/app/src/main/cpp/otr_generator.hpp
-// Purpose: OTR generation logic (header)
-
 #pragma once
-
 #include <vector>
 #include <cstdint>
+#include <string>
+#include <unordered_map>
 
 class OTRGenerator {
 public:
     OTRGenerator() = default;
-    ~OTRGenerator() = default;
 
-    // Generate OTR data from palette and US YAML
-    void generateOTR(const std::vector<uint8_t>& palData,
-                     const std::vector<uint8_t>& usData);
+    // Load YAML bytes for a given version key
+    void loadYAML(const char* key, const uint8_t* data, size_t size);
 
-    // Any other OTRGenerator methods...
+    // Generate the OTR array for a given version key
+    bool generate(const char* key, std::vector<uint8_t>& out);
+
+    // Optional: get progress [0.0, 1.0]
+    float getProgress() const;
+
+private:
+    struct YAMLData {
+        std::vector<uint8_t> bytes;
+    };
+
+    std::unordered_map<std::string, YAMLData> yamlMap_;
+    std::unordered_map<std::string, std::vector<uint8_t>> generatedOTR_;
+    mutable float progress_ = 0.0f;
+
+    void generateInternal(const YAMLData& yaml, std::vector<uint8_t>& out);
 };
