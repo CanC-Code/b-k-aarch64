@@ -3,13 +3,11 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- GLSurfaceView for OpenGL rendering -->
     <android.opengl.GLSurfaceView
         android:id="@+id/gl_surface"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- Load ROM button -->
     <Button
         android:id="@+id/button_load_game"
         android:layout_width="wrap_content"
@@ -17,7 +15,6 @@
         android:text="Load ROM"
         android:layout_gravity="center" />
 
-    <!-- Progress overlay (hidden by default) -->
     <LinearLayout
         android:id="@+id/progress_overlay"
         android:layout_width="match_parent"
@@ -45,5 +42,4 @@
             android:textSize="18sp" />
 
     </LinearLayout>
-
 </FrameLayout>
