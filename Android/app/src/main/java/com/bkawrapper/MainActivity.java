@@ -31,28 +31,29 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Bind views
-        glSurfaceView = findViewById(R.id.surface_gl);
-        progressOverlay = findViewById(R.id.progressOverlay);
-        progressBar = findViewById(R.id.otrProgressBar);
-        progressText = findViewById(R.id.otrProgressText);
-        loadButton = findViewById(R.id.button_load_game);
+        // --- Set AssetManager for native YAML access ---
+        NativeBridge.setAssetManager(getAssets());
 
-        // Setup GLSurfaceView
+        // --- Bind views (IDs must match activity_main.xml) ---
+        glSurfaceView   = findViewById(R.id.surface_gl);
+        progressOverlay = findViewById(R.id.progressOverlay);
+        progressBar     = findViewById(R.id.otrProgressBar);
+        progressText    = findViewById(R.id.otrProgressText);
+        loadButton      = findViewById(R.id.button_load_game);
+
+        // --- Setup GLSurfaceView ---
         glRenderer = new GLRenderer(this);
         glSurfaceView.setEGLContextClientVersion(2);
         glSurfaceView.setRenderer(glRenderer);
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
-        // Required: set AssetManager for YAML loading
-        NativeBridge.setAssetManager(getAssets());
-
+        // --- Button click: pick ROM ---
         loadButton.setOnClickListener(v -> pickRom());
     }
 
     private void pickRom() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        intent.setType("*/*");
+        intent.setType("*/*"); // Accept all files
         startActivityForResult(Intent.createChooser(intent, "Select ROM"), PICK_ROM_REQUEST);
     }
 
@@ -60,26 +61,54 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode != PICK_ROM_REQUEST || resultCode != RESULT_OK || data == null) return;
+        if (requestCode == PICK_ROM_REQUEST && resultCode == RESULT_OK && data != null) {
+            Uri uri = data.getData();
+            if (uri == null) return;
 
-        Uri uri = data.getData();
-        if (uri == null) return;
+            progressOverlay.setVisibility(View.VISIBLE);
+            progressBar.setProgress(0);
+            progressText.setText("0%");
 
-        try {
-            NativeBridge.loadRomFromUri(getContentResolver(), uri);
+            new Thread(() -> {
+                try {
+                    NativeBridge.loadRomFromUri(getContentResolver(), uri);
 
-            NativeBridge.generateOTRWithProgress(
-                    progressOverlay,
-                    progressBar,
-                    progressText,
-                    () -> {
-                        byte[] otrData = NativeBridge.getOTR();
-                        glRenderer.setOTRData(otrData);
-                    }
-            );
+                    // Start OTR generation with progress callback
+                    NativeBridge.generateOTRWithCallback(glRenderer, 50); // poll every 50ms
 
-        } catch (IOException e) {
-            Toast.makeText(this, "Failed to load ROM: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    // Poll progress on UI thread
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            updateProgressLoop();
+                        }
+                    });
+
+                } catch (IOException e) {
+                    runOnUiThread(() -> {
+                        progressOverlay.setVisibility(View.GONE);
+                        Toast.makeText(
+                                MainActivity.this,
+                                "Failed to load ROM: " + e.getMessage(),
+                                Toast.LENGTH_LONG
+                        ).show();
+                    });
+                }
+            }).start();
+        }
+    }
+
+    private void updateProgressLoop() {
+        float progress = NativeBridge.getOTRProgress();
+        progressBar.setProgress((int)(progress * 100));
+        progressText.setText((int)(progress * 100) + "%");
+
+        if (progress < 1.0f) {
+            // Continue polling
+            progressBar.postDelayed(this::updateProgressLoop, 50);
+        } else {
+            // Done
+            progressOverlay.setVisibility(View.GONE);
         }
     }
 }
