@@ -3,59 +3,46 @@ package com.bkawrapper;
 import android.app.Activity;
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.Button;
-import android.widget.LinearLayout;
 
+/**
+ * Handles menu toggle via back button or top-left swipe-down gesture.
+ */
 public class MenuController {
 
     private final Activity activity;
-    private final LinearLayout menuOverlay;
-
     private float swipeStartX = -1;
     private float swipeStartY = -1;
 
-    public MenuController(Activity activity, LinearLayout menuOverlay) {
+    public MenuController(Activity activity) {
         this.activity = activity;
-        this.menuOverlay = menuOverlay;
 
-        // init native
+        // Initialize native menu
         NativeBridge.nativeInitMenu(activity);
-
-        setupButtons();
     }
 
-    private void setupButtons() {
-        menuOverlay.findViewById(R.id.button_resume).setOnClickListener(v -> toggleMenu());
-        menuOverlay.findViewById(R.id.button_exit).setOnClickListener(v -> activity.finish());
-        menuOverlay.findViewById(R.id.button_settings).setOnClickListener(v -> {});
-        menuOverlay.findViewById(R.id.button_controller).setOnClickListener(v -> {});
+    /** Call this from Activity.onBackPressed() */
+    public void onBackPressed() {
+        NativeBridge.nativeOnBackPressed();
     }
 
-    public boolean onBackPressed() {
-        toggleMenu();
-        return true; // menu handled
-    }
-
+    /** Call this from Activity.onTouchEvent() */
     public boolean onTouchEvent(MotionEvent event) {
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 swipeStartX = event.getX();
                 swipeStartY = event.getY();
                 break;
+
             case MotionEvent.ACTION_UP:
-                if (swipeStartX < 200 && swipeStartY < 200) {
+                if (swipeStartX < 200 && swipeStartY < 200) { // top-left corner
                     float dy = event.getY() - swipeStartY;
-                    if (dy > 150) {
-                        toggleMenu();
+                    if (dy > 150) { // swipe down threshold
+                        NativeBridge.nativeOnBackPressed(); // toggle menu
                         return true;
                     }
                 }
                 break;
         }
         return false;
-    }
-
-    private void toggleMenu() {
-        NativeBridge.nativeOnBackPressed();
     }
 }
