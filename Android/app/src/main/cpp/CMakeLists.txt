@@ -10,39 +10,37 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # ------------------------------
-# Source files: cpp/, ultra/, emulator/
+# Source files
 # ------------------------------
-file(GLOB_RECURSE WRAPPER_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/ultra/*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/emulator/*.cpp"
+set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+
+set(WRAPPER_SOURCES
+    ${SRC_DIR}/NativeBridge.cpp
+    ${SRC_DIR}/GLRenderer.cpp
+    ${SRC_DIR}/otr_generator.cpp
 )
+
+# Include emulator/ and ultra/ sources if needed
+file(GLOB_RECURSE EXTRA_SOURCES
+    ${SRC_DIR}/emulator/*.cpp
+    ${SRC_DIR}/ultra/*.cpp
+)
+list(APPEND WRAPPER_SOURCES ${EXTRA_SOURCES})
 
 # ------------------------------
 # Include directories
 # ------------------------------
 include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/ultra
-    ${CMAKE_CURRENT_SOURCE_DIR}/emulator
-    ${CMAKE_CURRENT_SOURCE_DIR}/otr_generator
+    ${SRC_DIR}
+    ${SRC_DIR}/ultra
+    ${SRC_DIR}/emulator
+    ${SRC_DIR}/otr_generator
     ${ANDROID_NDK}/sources/android/native_app_glue
     ${ANDROID_NDK}/sysroot/usr/include
 )
 
-# Ensure Android macro for conditional compilation
+# Android macro
 add_definitions(-DANDROID)
-
-# ------------------------------
-# Embed OTR YAMLs at build time
-# ------------------------------
-set(OTR_PAL_YAML   ${CMAKE_CURRENT_SOURCE_DIR}/ultra/otr_yaml/decompressed.pal.yaml)
-set(OTR_US_YAML    ${CMAKE_CURRENT_SOURCE_DIR}/ultra/otr_yaml/decompressed.us.v10.yaml)
-set(EMBED_CPP      ${CMAKE_CURRENT_BINARY_DIR}/otr_assets.cpp)
-set(EMBED_HPP      ${CMAKE_CURRENT_SOURCE_DIR}/ultra/otr_assets.hpp)
-
-# Add the preexisting ultra/otr_assets.cpp to sources
-list(APPEND WRAPPER_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/ultra/otr_assets.cpp)
 
 # ------------------------------
 # Create shared library
