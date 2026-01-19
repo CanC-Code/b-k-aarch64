@@ -2,63 +2,50 @@ package com.bkawrapper;
 
 import android.app.Activity;
 import android.view.MotionEvent;
+import android.view.View;
+import android.widget.Button;
 import android.widget.LinearLayout;
-import android.util.Log;
 
 public class MenuController {
-
-    private static final String TAG = "MENU_CONTROLLER";
 
     private final Activity activity;
     private final LinearLayout menuOverlay;
 
-    // swipe tracking
     private float swipeStartX = -1;
     private float swipeStartY = -1;
-
-    private boolean menuVisible = false;
 
     public MenuController(Activity activity, LinearLayout menuOverlay) {
         this.activity = activity;
         this.menuOverlay = menuOverlay;
 
-        // Initialize native menu
+        // init native
         NativeBridge.nativeInitMenu(activity);
-        Log.i(TAG, "MenuController initialized");
 
-        // Setup menu buttons (resume/exit/settings/controller)
-        setupMenuButtons();
+        setupButtons();
     }
 
-    private void setupMenuButtons() {
-        menuOverlay.findViewById(R.id.button_resume).setOnClickListener(v -> hideMenu());
+    private void setupButtons() {
+        menuOverlay.findViewById(R.id.button_resume).setOnClickListener(v -> toggleMenu());
         menuOverlay.findViewById(R.id.button_exit).setOnClickListener(v -> activity.finish());
-        menuOverlay.findViewById(R.id.button_settings).setOnClickListener(v ->
-                Log.i(TAG, "Settings clicked (stub)")
-        );
-        menuOverlay.findViewById(R.id.button_controller).setOnClickListener(v ->
-                Log.i(TAG, "Controller layout clicked (stub)")
-        );
+        menuOverlay.findViewById(R.id.button_settings).setOnClickListener(v -> {});
+        menuOverlay.findViewById(R.id.button_controller).setOnClickListener(v -> {});
     }
 
-    // Back button override
     public boolean onBackPressed() {
         toggleMenu();
-        return true; // handled
+        return true; // menu handled
     }
 
-    // Touch event forwarding (swipe top-left down)
     public boolean onTouchEvent(MotionEvent event) {
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 swipeStartX = event.getX();
                 swipeStartY = event.getY();
                 break;
-
             case MotionEvent.ACTION_UP:
-                if (swipeStartX < 200 && swipeStartY < 200) { // top-left corner
+                if (swipeStartX < 200 && swipeStartY < 200) {
                     float dy = event.getY() - swipeStartY;
-                    if (dy > 150) { // swipe down threshold
+                    if (dy > 150) {
                         toggleMenu();
                         return true;
                     }
@@ -69,22 +56,6 @@ public class MenuController {
     }
 
     private void toggleMenu() {
-        if (!menuVisible) {
-            menuVisible = true;
-            NativeBridge.nativeOnBackPressed();
-            Log.i(TAG, "Menu shown");
-        } else {
-            menuVisible = false;
-            NativeBridge.nativeOnBackPressed();
-            Log.i(TAG, "Menu hidden");
-        }
-    }
-
-    public void showMenu() {
-        if (!menuVisible) toggleMenu();
-    }
-
-    public void hideMenu() {
-        if (menuVisible) toggleMenu();
+        NativeBridge.nativeOnBackPressed();
     }
 }
