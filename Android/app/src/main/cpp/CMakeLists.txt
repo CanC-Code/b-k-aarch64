@@ -24,6 +24,7 @@ add_library(wrapper SHARED ${WRAPPER_SOURCES})
 # ------------------------------
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/menu
     ${CMAKE_CURRENT_SOURCE_DIR}/ultra
     ${CMAKE_CURRENT_SOURCE_DIR}/emulator
 )
