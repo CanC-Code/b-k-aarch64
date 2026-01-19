@@ -1,27 +1,30 @@
 package com.bkawrapper;
 
-import android.app.Activity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.LinearLayout;
+import androidx.appcompat.app.AppCompatActivity;
 
 public class MenuController {
 
-    private final Activity activity;
+    private final AppCompatActivity activity;
+    private final LinearLayout menuOverlay;
 
     // Swipe detection
     private float swipeStartX = -1;
     private float swipeStartY = -1;
 
-    public MenuController(Activity activity) {
+    public MenuController(AppCompatActivity activity, LinearLayout menuOverlay) {
         this.activity = activity;
+        this.menuOverlay = menuOverlay;
 
-        // Initialize native menu
-        NativeBridge.nativeInitMenu(activity);
+        // Initialize native menu overlay
+        NativeMenu.nativeInitMenu(menuOverlay);
     }
 
     /** Call from MainActivity.onBackPressed() */
     public void onBackPressed() {
-        NativeBridge.nativeOnBackPressed();
+        NativeMenu.nativeOnBackPressed();
     }
 
     /** Call from MainActivity.onTouchEvent() */
@@ -36,7 +39,7 @@ public class MenuController {
                 if (swipeStartX < 200 && swipeStartY < 200) { // top-left corner
                     float dy = event.getY() - swipeStartY;
                     if (dy > 150) { // swipe down threshold
-                        NativeBridge.nativeOnBackPressed();
+                        NativeMenu.nativeOnBackPressed();
                         return true;
                     }
                 }
@@ -45,18 +48,18 @@ public class MenuController {
         return false;
     }
 
-    /** Helper to attach gesture + back override to an Activity */
-    public static void attach(Activity activity, MenuController menuController) {
+    /** Attach controller: back button + touch forwarding */
+    public static void attach(AppCompatActivity activity, MenuController controller) {
         // Override back button
         activity.getOnBackPressedDispatcher().addCallback(activity, new androidx.activity.OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                menuController.onBackPressed();
+                controller.onBackPressed();
             }
         });
 
-        // Forward touch events automatically
+        // Forward touch events
         View root = activity.getWindow().getDecorView();
-        root.setOnTouchListener((v, event) -> menuController.onTouchEvent(event));
+        root.setOnTouchListener((v, event) -> controller.onTouchEvent(event));
     }
 }
