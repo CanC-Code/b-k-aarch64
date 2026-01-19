@@ -8,12 +8,13 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
-import android.widget.TextView;
+
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+
 import android.opengl.GLSurfaceView;
+import android.view.MotionEvent;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -27,8 +28,8 @@ public class MainActivity extends AppCompatActivity {
     private Button loadButton;
     private LinearLayout menuOverlay;
     private LinearLayout progressOverlay;
-    private ProgressBar otrProgressBar;
-    private TextView otrProgressText;
+    private OTRProgressBar otrProgressBar;
+    private OTRProgressText otrProgressText;
 
     private boolean romReady = false;
     private boolean gameInitialized = false;
@@ -38,7 +39,10 @@ public class MainActivity extends AppCompatActivity {
     private Handler progressHandler;
     private boolean generatingOTR = false;
 
-    private Menu menu;
+    // ========================
+    // Menu system
+    // ========================
+    private MenuController menuController;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,10 +52,8 @@ public class MainActivity extends AppCompatActivity {
         bindViews();
         setupGL();
         setupRomPicker();
-        setupMenuButtons();
+        setupMenuController();
         setupOTRProgressThread();
-
-        menu = new Menu(this);
 
         Log.i(TAG, "App started – waiting for ROM");
     }
@@ -75,7 +77,9 @@ public class MainActivity extends AppCompatActivity {
     private void setupRomPicker() {
         romPickerLauncher = registerForActivityResult(
                 new ActivityResultContracts.OpenDocument(),
-                uri -> loadRom(uri)
+                uri -> {
+                    if (uri != null) loadRom(uri);
+                }
         );
 
         loadButton.setOnClickListener(v ->
@@ -83,15 +87,8 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
-    private void setupMenuButtons() {
-        findViewById(R.id.button_resume).setOnClickListener(v -> menu.toggleMenu());
-        findViewById(R.id.button_exit).setOnClickListener(v -> finish());
-        findViewById(R.id.button_settings).setOnClickListener(v ->
-                Log.i(TAG, "Settings clicked (stub)")
-        );
-        findViewById(R.id.button_controller).setOnClickListener(v ->
-                Log.i(TAG, "Controller layout clicked (stub)")
-        );
+    private void setupMenuController() {
+        menuController = new MenuController(this, menuOverlay);
     }
 
     private void setupOTRProgressThread() {
@@ -100,21 +97,28 @@ public class MainActivity extends AppCompatActivity {
         progressHandler = new Handler(progressThread.getLooper());
     }
 
-    /* =======================
-       ROM + OTR FLOW
-       ======================= */
+    // ========================
+    // ROM + OTR FLOW
+    // ========================
     private void loadRom(Uri uri) {
         try {
             Log.i(TAG, "Loading ROM");
             NativeBridge.loadRomFromUri(getContentResolver(), uri);
 
             showOTRProgress();
-
             generatingOTR = true;
             progressHandler.post(this::pollOTRProgress);
         } catch (Exception e) {
-            Log.e(TAG, "ROM load failed", e);
+            Log.e(TAG, "Failed to load ROM", e);
         }
+    }
+
+    private void showOTRProgress() {
+        runOnUiThread(() -> progressOverlay.setVisibility(View.VISIBLE));
+    }
+
+    private void hideOTRProgress() {
+        runOnUiThread(() -> progressOverlay.setVisibility(View.GONE));
     }
 
     private void pollOTRProgress() {
@@ -141,55 +145,46 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void showOTRProgress() {
-        runOnUiThread(() -> progressOverlay.setVisibility(View.VISIBLE));
+    // ========================
+    // GAME BOOT
+    // ========================
+    void onSurfaceReady() {
+        glSurfaceView.queueEvent(() -> {
+            NativeBridge.initTexture();
+            gameInitialized = true;
+            NativeBridge.startGameLoop();
+            gameRunning = true;
+            Log.i(TAG, "Game running");
+        });
     }
 
-    private void hideOTRProgress() {
-        runOnUiThread(() -> progressOverlay.setVisibility(View.GONE));
-    }
-
-    /* =======================
-       GAME BOOT
-       ======================= */
-    public void onSurfaceReady() {
-        NativeBridge.initTexture();
-
-        gameInitialized = true;
-        NativeBridge.startGameLoop();
-        gameRunning = true;
-
-        Log.i(TAG, "Game running");
-    }
-
-    /* =======================
-       BACK BUTTON / MENU
-       ======================= */
+    // ========================
+    // MENU CONTROL (FORWARD EVENTS)
+    // ========================
     @Override
     public void onBackPressed() {
-        if (!romReady) {
-            super.onBackPressed();
-            return;
-        }
-        menu.toggleMenu();
+        if (menuController != null && menuController.onBackPressed()) return;
+        super.onBackPressed();
     }
 
-    /* =======================
-       LIFECYCLE
-       ======================= */
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        if (menuController != null && menuController.onTouchEvent(event)) return true;
+        return super.onTouchEvent(event);
+    }
+
+    // ========================
+    // LIFECYCLE
+    // ========================
     @Override
     protected void onPause() {
         super.onPause();
-        if (gameRunning) {
-            NativeBridge.stopGameLoop();
-        }
+        // Possibly pause GL / emulation
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (gameInitialized && !gameRunning) {
-            NativeBridge.startGameLoop();
-        }
+        // Possibly resume GL / emulation
     }
 }
