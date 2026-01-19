@@ -1,22 +1,31 @@
+// File: Android/app/src/main/java/com/bkawrapper/Menu.java
+
 package com.bkawrapper;
 
 import android.app.Activity;
+import android.widget.LinearLayout;
 
-public class Menu {
+public final class Menu {
 
-    public Menu(Activity activity) {
-        MenuNative.nativeInitMenu(activity);
+    private final Activity activity;
+    private final LinearLayout menuOverlay;
+
+    public Menu(Activity activity, LinearLayout menuOverlay) {
+        this.activity = activity;
+        this.menuOverlay = menuOverlay;
+
+        NativeMenu.nativeInitMenu(activity, menuOverlay);
     }
 
-    public void toggleMenu() {
-        MenuNative.nativeToggleMenu();
+    public void toggle() {
+        NativeMenu.nativeToggleMenu();
     }
 
     public void pauseEmulator() {
-        MenuNative.nativePauseEmulator();
+        NativeMenu.nativePauseEmulator();
     }
 
     public void resumeEmulator() {
-        MenuNative.nativeResumeEmulator();
+        NativeMenu.nativeResumeEmulator();
     }
 }
