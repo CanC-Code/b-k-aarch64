@@ -1,28 +1,12 @@
 #include "otr_assets.hpp"
-#include <cstddef>
-#include <cstdint>
 
-// ------------------------------
-// Embedded YAML data
-// ------------------------------
-
-// ------------------------------
-// decompressed.pal.yaml
-// ------------------------------
+// Replace these with the actual .inc generated arrays
 const uint8_t embedded_pal_yaml[] = {
-    0x23,0x20,0x50,0x41,0x4C,0x20,0x44,0x61,0x74,0x61,0x0A,0x23,0x20,0x54,0x68,0x69,
-    0x73,0x20,0x69,0x73,0x20,0x61,0x20,0x73,0x6D,0x61,0x6C,0x6C,0x20,0x73,0x61,0x6D,
-    0x70,0x6C,0x65,0x0A
-    // … continue with full byte dump of decompressed.pal.yaml …
+    // ... your decompressed.pal.yaml data ...
 };
-const size_t embedded_pal_size = sizeof(embedded_pal_yaml);
+const size_t embedded_pal_yaml_size = sizeof(embedded_pal_yaml);
 
-// ------------------------------
-// decompressed.us.v10.yaml
-// ------------------------------
 const uint8_t embedded_us_yaml[] = {
-    0x23,0x20,0x55,0x53,0x20,0x44,0x61,0x74,0x61,0x0A,0x23,0x20,0x56,0x65,0x72,0x73,
-    0x69,0x6F,0x6E,0x20,0x31,0x30,0x0A
-    // … continue with full byte dump of decompressed.us.v10.yaml …
+    // ... your decompressed.us.v10.yaml data ...
 };
-const size_t embedded_us_size = sizeof(embedded_us_yaml);
+const size_t embedded_us_yaml_size = sizeof(embedded_us_yaml);
