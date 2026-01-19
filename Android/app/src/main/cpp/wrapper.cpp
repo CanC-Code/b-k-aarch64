@@ -1,22 +1,25 @@
+// File: Android/app/src/main/cpp/wrapper.cpp
+// Purpose: JNI wrapper to expose OTR generation to Java/Kotlin
+
 #include "otr_generator.hpp"
-#include <android/asset_manager.h>
-#include <android/log.h>
+#include "NativeBridge.hpp"
+#include <android/asset_manager_jni.h>
+#include <jni.h>
+#include <vector>
+#include <cstdint>
 
-#define LOG_TAG "WRAPPER"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+extern "C" {
 
-extern "C" void generateOTRWrapper(AAssetManager* assetManager) {
-    OTRGenerator generator(assetManager);
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeWrapper_generateOTR(JNIEnv* env, jobject thiz, jobject assetManager) {
+    AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
+    OTRGenerator generator;
 
-    auto palData = generator.readAsset(assetManager, "otr_yaml/decompressed.pal.yaml");
-    auto usData  = generator.readAsset(assetManager, "otr_yaml/decompressed.us.v10.yaml");
+    // Load assets via readAsset
+    auto palData = readAsset(mgr, "otr_yaml/decompressed.pal.yaml");
+    auto usData  = readAsset(mgr, "otr_yaml/decompressed.us.v10.yaml");
 
-    generator.loadYAML("pal", palData.data(), palData.size());
-    generator.loadYAML("us.v10", usData.data(), usData.size());
+    generator.generateOTR(palData, usData);
+}
 
-    std::vector<uint8_t> outPal, outUS;
-    if (generator.generate("pal", outPal))
-        LOGI("PAL OTR generated, size: %zu", outPal.size());
-    if (generator.generate("us.v10", outUS))
-        LOGI("US OTR generated, size: %zu", outUS.size());
 }
