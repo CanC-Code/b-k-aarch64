@@ -1,42 +1,33 @@
 package com.bkawrapper;
 
-import android.content.Context;
 import android.opengl.GLSurfaceView;
-import android.util.AttributeSet;
+import android.content.Context;
+import android.opengl.GLES20;
 
-public class GLRenderer extends GLSurfaceView {
+import javax.microedition.khronos.opengles.GL10;
+import javax.microedition.khronos.egl.EGLConfig;
 
-    public GLRenderer(Context context) {
-        super(context);
-        init();
+public class GLRenderer implements GLSurfaceView.Renderer {
+
+    static {
+        System.loadLibrary("wrapper");
     }
 
-    public GLRenderer(Context context, AttributeSet attrs) {
-        super(context, attrs);
-        init();
+    @Override
+    public void onSurfaceCreated(GL10 gl, EGLConfig config) {
+        GLES20.glClearColor(0f, 0f, 0f, 1f);
     }
 
-    private void init() {
-        setEGLContextClientVersion(2);
-        setRenderer(new Renderer());
-        setRenderMode(RENDERMODE_CONTINUOUSLY);
+    @Override
+    public void onDrawFrame(GL10 gl) {
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
+        // Draw using in-memory OTR
+        // All rendering handled in C++ side
+        NativeBridge.nativeLoadOTR(); // ensures the renderer has OTR
     }
 
-    private static class Renderer implements GLSurfaceView.Renderer {
-
-        @Override
-        public void onSurfaceCreated(javax.microedition.khronos.opengles.GL10 gl, javax.microedition.khronos.egl.EGLConfig config) {
-            NativeBridge.nativeInit(null); // AssetManager not needed here
-        }
-
-        @Override
-        public void onSurfaceChanged(javax.microedition.khronos.opengles.GL10 gl, int width, int height) {
-            gl.glViewport(0, 0, width, height);
-        }
-
-        @Override
-        public void onDrawFrame(javax.microedition.khronos.opengles.GL10 gl) {
-            NativeBridge.nativeRender();
-        }
+    @Override
+    public void onSurfaceChanged(GL10 gl, int width, int height) {
+        GLES20.glViewport(0, 0, width, height);
     }
 }
