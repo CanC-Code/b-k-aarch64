@@ -13,9 +13,7 @@ MenuHandler::MenuHandler(JavaVM* vm, jobject activity)
     activityGlobal_ = env->NewGlobalRef(activity);
 
     jclass activityCls = env->GetObjectClass(activity);
-    jfieldID menuField =
-        env->GetFieldID(activityCls, "menuOverlay", "Landroid/widget/LinearLayout;");
-
+    jfieldID menuField = env->GetFieldID(activityCls, "menuOverlay", "Landroid/widget/LinearLayout;");
     jobject menuLocal = env->GetObjectField(activity, menuField);
     menuOverlayGlobal_ = env->NewGlobalRef(menuLocal);
 
@@ -35,14 +33,15 @@ void MenuHandler::setVisibility(bool visible) {
     vm_->AttachCurrentThread(&env, nullptr);
 
     jclass viewCls = env->GetObjectClass(menuOverlayGlobal_);
-    jmethodID setVis =
-        env->GetMethodID(viewCls, "setVisibility", "(I)V");
+    jmethodID setVis = env->GetMethodID(viewCls, "setVisibility", "(I)V");
 
     env->CallVoidMethod(
         menuOverlayGlobal_,
         setVis,
         visible ? 0 /* View.VISIBLE */ : 8 /* View.GONE */
     );
+
+    visible_ = visible;
 }
 
 void MenuHandler::showMenu() {
@@ -53,4 +52,13 @@ void MenuHandler::showMenu() {
 void MenuHandler::hideMenu() {
     LOGI("hideMenu()");
     setVisibility(false);
+}
+
+// NEW: toggles menu state
+void MenuHandler::toggleMenu() {
+    if (visible_) {
+        hideMenu();
+    } else {
+        showMenu();
+    }
 }
