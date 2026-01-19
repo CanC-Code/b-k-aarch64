@@ -1,57 +1,63 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.18.1)
 
-project(bkawrapper LANGUAGES C CXX)
+project(BKA_N64 LANGUAGES C CXX)
 
-# ------------------------------
-# Set C++ standard
-# ------------------------------
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# ------------------------------
+# ---------------------------------------------------
+# NDK / Android specific
+# ---------------------------------------------------
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -O2")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -O2 -std=c++17 -fexceptions -frtti")
+
+# ---------------------------------------------------
+# Include directories
+# ---------------------------------------------------
+include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/ultra
+    ${CMAKE_CURRENT_SOURCE_DIR}/emulator
+)
+
+# ---------------------------------------------------
 # Source files
-# ------------------------------
-file(GLOB_RECURSE WRAPPER_SOURCES
+# ---------------------------------------------------
+file(GLOB_RECURSE CPP_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ultra/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/emulator/*.cpp"
 )
 
-# ------------------------------
-# Include directories
-# ------------------------------
-include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/ultra
-    ${CMAKE_CURRENT_SOURCE_DIR}/emulator
-    ${CMAKE_CURRENT_SOURCE_DIR}/otr_generator
-    ${ANDROID_NDK}/sources/android/native_app_glue
-    ${ANDROID_NDK}/sysroot/usr/include
+file(GLOB_RECURSE CPP_HEADERS
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ultra/*.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/emulator/*.hpp"
 )
 
-# ------------------------------
-# Ensure Android macro for conditional compilation
-# ------------------------------
-add_definitions(-DANDROID)
+# ---------------------------------------------------
+# Shared library
+# ---------------------------------------------------
+add_library(
+    bka_native
+    SHARED
+    ${CPP_SOURCES}
+    ${CPP_HEADERS}
+)
 
-# ------------------------------
-# Create shared library
-# ------------------------------
-add_library(wrapper SHARED ${WRAPPER_SOURCES})
-
-# ------------------------------
-# Find required Android libraries
-# ------------------------------
+# ---------------------------------------------------
+# Link libraries
+# ---------------------------------------------------
 find_library(log-lib log)
 find_library(android-lib android)
-find_library(glesv2-lib GLESv2)
+find_library(EGL-lib EGL)
+find_library(GLESv2-lib GLESv2)
 
-# ------------------------------
-# Link libraries
-# ------------------------------
-target_link_libraries(wrapper
+target_link_libraries(
+    bka_native
     ${log-lib}
     ${android-lib}
-    ${glesv2-lib}
+    ${EGL-lib}
+    ${GLESv2-lib}
 )
