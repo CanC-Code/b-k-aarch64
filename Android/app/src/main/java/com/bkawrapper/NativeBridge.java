@@ -1,34 +1,26 @@
 package com.bkawrapper;
 
 import android.app.Activity;
-import android.view.View;
+import android.content.ContentResolver;
+import android.net.Uri;
 
-public class Menu {
+public class NativeBridge {
 
-    private final Activity activity;
+    // ------------------------------------------------------------
+    // ROM / OTR
+    // ------------------------------------------------------------
+    public static native void loadRomFromUri(ContentResolver resolver, Uri uri);
+    public static native void initTexture();
+    public static native void startGameLoop();
+    public static native void stopGameLoop();
+    public static native void cleanupGame();
+    public static native float getOTRProgress();
 
-    public Menu(Activity activity) {
-        this.activity = activity;
-        NativeBridge.nativeInitMenu(activity);
-    }
-
-    public void toggleMenu() {
-        NativeBridge.nativeOnBackPressed();
-    }
-
-    public void pauseEmulator() {
-        NativeBridge.nativePauseEmulator();
-    }
-
-    public void resumeEmulator() {
-        NativeBridge.nativeResumeEmulator();
-    }
-
-    public void showMenu() {
-        NativeBridge.nativeOnBackPressed(); // ensures menu is visible
-    }
-
-    public void hideMenu() {
-        NativeBridge.nativeOnBackPressed(); // toggles menu hidden
-    }
+    // ------------------------------------------------------------
+    // Menu / Emulator control
+    // ------------------------------------------------------------
+    public static native void nativeInitMenu(Activity activity);
+    public static native void nativeOnBackPressed();
+    public static native void nativePauseEmulator();
+    public static native void nativeResumeEmulator();
 }
