@@ -1,20 +1,17 @@
-// File: Android/app/src/main/cpp/ultra/otr_builder.cpp
-// Purpose: Builds OTR data using assets loaded via NativeBridge
-
-#include "otr_builder.hpp"
 #include "otr_generator.hpp"
-#include "NativeBridge.hpp" // Provides readAsset
-#include <android/asset_manager_jni.h>
 #include <vector>
 #include <cstdint>
 
-void buildOTR(AAssetManager* assetManager) {
+bool buildOTR(const std::vector<uint8_t>& palData, const std::vector<uint8_t>& usData,
+              std::vector<uint8_t>& outPal, std::vector<uint8_t>& outUS)
+{
     OTRGenerator generator;
 
-    // Load palettes and YAML data using the global readAsset function
-    auto palData = readAsset(assetManager, "otr_yaml/decompressed.pal.yaml");
-    auto usData  = readAsset(assetManager, "otr_yaml/decompressed.us.v10.yaml");
+    generator.loadYAML("pal", palData.data(), palData.size());
+    generator.loadYAML("us.v10", usData.data(), usData.size());
 
-    // Pass loaded data to the generator
-    generator.generateOTR(palData, usData);
+    bool success1 = generator.generate("pal", outPal);
+    bool success2 = generator.generate("us.v10", outUS);
+
+    return success1 && success2;
 }
