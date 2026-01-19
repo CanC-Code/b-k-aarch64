@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <android/log.h>
 
-#include "menu/menu.hpp"
+#include "menu.hpp"
 
 #define LOG_TAG "BK_WRAPPER"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
