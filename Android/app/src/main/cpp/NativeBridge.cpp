@@ -7,7 +7,8 @@
 #define LOG_TAG "NATIVE_BRIDGE"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
-// Remove readAsset from extern "C"
+extern "C" {
+
 std::vector<uint8_t> readAsset(AAssetManager* mgr, const char* path) {
     AAsset* asset = AAssetManager_open(mgr, path, AASSET_MODE_BUFFER);
     if (!asset) {
@@ -21,14 +22,12 @@ std::vector<uint8_t> readAsset(AAssetManager* mgr, const char* path) {
     return buffer;
 }
 
-extern "C" {
-
 JNIEXPORT jboolean JNICALL
 Java_com_bkawrapper_NativeBridge_generateOTR(JNIEnv* env, jobject thiz, jobject assetManager) {
     AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
     if (!mgr) return JNI_FALSE;
 
-    OTRGenerator generator; // default constructor
+    OTRGenerator generator;
 
     auto palData = readAsset(mgr, "otr_yaml/decompressed.pal.yaml");
     auto usData  = readAsset(mgr, "otr_yaml/decompressed.us.v10.yaml");
@@ -45,4 +44,4 @@ Java_com_bkawrapper_NativeBridge_generateOTR(JNIEnv* env, jobject thiz, jobject 
     return (success1 && success2) ? JNI_TRUE : JNI_FALSE;
 }
 
-}
+} // extern "C"
