@@ -5,9 +5,9 @@
 // Menu system
 #include "menu/menu.hpp"
 
-// Emulator stubs (Android-specific)
-#include "emulator/stubs.h"
-#include "emulator/texture_stubs.h"
+// Emulator stubs (include path already points at /emulator)
+#include "stubs.h"
+#include "texture_stubs.h"
 
 // Ultra / OTR
 #include "ultra/otr_builder.h"
