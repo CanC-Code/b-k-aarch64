@@ -8,22 +8,20 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
-
 import android.opengl.GLSurfaceView;
 
 public class MainActivity extends AppCompatActivity {
-
-    private static final String TAG = "MAIN_ACTIVITY";
 
     private GLSurfaceView glSurfaceView;
     private GLRenderer glRenderer;
 
     private ActivityResultLauncher<String[]> romPickerLauncher;
-
     private Button loadButton;
     private LinearLayout menuOverlay;
     private LinearLayout progressOverlay;
@@ -37,7 +35,6 @@ public class MainActivity extends AppCompatActivity {
     private HandlerThread progressThread;
     private Handler progressHandler;
 
-    // MenuController encapsulates swipe + back button
     private MenuController menuController;
 
     @Override
@@ -45,24 +42,20 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        bindViews();
+        menuOverlay = findViewById(R.id.menu_overlay);
+        menuController = new MenuController(this, menuOverlay);
+
+        glSurfaceView = findViewById(R.id.surface_gl);
+        loadButton = findViewById(R.id.button_load_game);
+        progressOverlay = findViewById(R.id.progress_overlay);
+        otrProgressBar = findViewById(R.id.otr_progress_bar);
+        otrProgressText = findViewById(R.id.otr_progress_text);
+
         setupGL();
         setupRomPicker();
         setupOTRProgressThread();
 
-        // Initialize MenuController
-        menuController = new MenuController(this, menuOverlay);
-
-        Log.i(TAG, "App started – waiting for ROM");
-    }
-
-    private void bindViews() {
-        glSurfaceView = findViewById(R.id.surface_gl);
-        loadButton = findViewById(R.id.button_load_game);
-        menuOverlay = findViewById(R.id.menu_overlay);
-        progressOverlay = findViewById(R.id.progress_overlay);
-        otrProgressBar = findViewById(R.id.otr_progress_bar);
-        otrProgressText = findViewById(R.id.otr_progress_text);
+        Log.i("MAIN_ACTIVITY", "App started – waiting for ROM");
     }
 
     private void setupGL() {
@@ -75,9 +68,8 @@ public class MainActivity extends AppCompatActivity {
     private void setupRomPicker() {
         romPickerLauncher = registerForActivityResult(
                 new ActivityResultContracts.OpenDocument(),
-                uri -> loadRom(uri)
+                this::loadRom
         );
-
         loadButton.setOnClickListener(v ->
                 romPickerLauncher.launch(new String[]{"*/*"})
         );
@@ -89,21 +81,11 @@ public class MainActivity extends AppCompatActivity {
         progressHandler = new Handler(progressThread.getLooper());
     }
 
-    /* =======================
-       ROM + OTR FLOW
-       ======================= */
     private void loadRom(Uri uri) {
-        try {
-            Log.i(TAG, "Loading ROM");
-            NativeBridge.loadRomFromUri(getContentResolver(), uri);
-            showOTRProgress();
-
-            generatingOTR = true;
-            progressHandler.post(this::pollOTRProgress);
-
-        } catch (Exception e) {
-            Log.e(TAG, "ROM load failed", e);
-        }
+        NativeBridge.loadRomFromUri(getContentResolver(), uri);
+        showOTRProgress();
+        generatingOTR = true;
+        progressHandler.post(this::pollOTRProgress);
     }
 
     private void pollOTRProgress() {
@@ -137,49 +119,21 @@ public class MainActivity extends AppCompatActivity {
         runOnUiThread(() -> progressOverlay.setVisibility(View.GONE));
     }
 
-    /* =======================
-       GAME BOOT
-       ======================= */
     void onSurfaceReady() {
         surfaceReady = true;
-        Log.i(TAG, "GL surface ready");
-
         NativeBridge.initTexture();
         NativeBridge.startGameLoop();
-        Log.i(TAG, "Game running");
     }
 
-    /* =======================
-       MENU FORWARDING
-       ======================= */
     @Override
     public void onBackPressed() {
-        if (menuController != null && menuController.onBackPressed()) {
-            return;
-        }
+        if (menuController != null && menuController.onBackPressed()) return;
         super.onBackPressed();
     }
 
     @Override
     public boolean onTouchEvent(android.view.MotionEvent event) {
-        if (menuController != null && menuController.onTouchEvent(event)) {
-            return true;
-        }
+        if (menuController != null && menuController.onTouchEvent(event)) return true;
         return super.onTouchEvent(event);
-    }
-
-    /* =======================
-       LIFECYCLE
-       ======================= */
-    @Override
-    protected void onPause() {
-        super.onPause();
-        glSurfaceView.onPause();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        glSurfaceView.onResume();
     }
 }
