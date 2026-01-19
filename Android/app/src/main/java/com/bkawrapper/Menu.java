@@ -42,20 +42,22 @@ public class Menu {
         );
     }
 
-    /** Show the menu overlay and pause the emulator */
+    /** Show the menu overlay and pause the emulator via native call */
     public void showMenu() {
-        menuOverlay.setVisibility(View.VISIBLE);
-        NativeBridge.nativeOnBackPressed(); // ensures native pause logic sync
+        if (menuVisible) return;
         menuVisible = true;
-        Log.i(TAG, "Menu shown");
+        menuOverlay.setVisibility(View.VISIBLE);
+        NativeBridge.nativePauseEmulator();
+        Log.i(TAG, "Menu shown, emulator paused");
     }
 
-    /** Hide the menu overlay and resume the emulator */
+    /** Hide the menu overlay and resume the emulator via native call */
     public void hideMenu() {
-        menuOverlay.setVisibility(View.GONE);
-        NativeBridge.nativeOnBackPressed(); // ensures native resume logic sync
+        if (!menuVisible) return;
         menuVisible = false;
-        Log.i(TAG, "Menu hidden");
+        menuOverlay.setVisibility(View.GONE);
+        NativeBridge.nativeResumeEmulator();
+        Log.i(TAG, "Menu hidden, emulator resumed");
     }
 
     /** Called from Activity onBackPressed() */
