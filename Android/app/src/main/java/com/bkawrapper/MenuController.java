@@ -2,7 +2,6 @@ package com.bkawrapper;
 
 import android.app.Activity;
 import android.view.MotionEvent;
-import android.view.View;
 import android.widget.LinearLayout;
 import android.util.Log;
 
@@ -79,5 +78,13 @@ public class MenuController {
             NativeBridge.nativeOnBackPressed();
             Log.i(TAG, "Menu hidden");
         }
+    }
+
+    public void showMenu() {
+        if (!menuVisible) toggleMenu();
+    }
+
+    public void hideMenu() {
+        if (menuVisible) toggleMenu();
     }
 }
