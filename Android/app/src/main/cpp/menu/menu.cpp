@@ -14,7 +14,11 @@ MenuHandler::MenuHandler(JavaVM* vm, jobject activity)
 
     jclass activityCls = env->GetObjectClass(activity);
     jfieldID menuField =
-        env->GetFieldID(activityCls, "menuOverlay", "Landroid/widget/LinearLayout;");
+        env->GetFieldID(
+            activityCls,
+            "menuOverlay",
+            "Landroid/widget/LinearLayout;"
+        );
 
     jobject menuLocal = env->GetObjectField(activity, menuField);
     menuOverlayGlobal_ = env->NewGlobalRef(menuLocal);
@@ -30,27 +34,39 @@ MenuHandler::~MenuHandler() {
     env->DeleteGlobalRef(activityGlobal_);
 }
 
-void MenuHandler::setVisibility(bool visible) {
+void MenuHandler::setVisibilityOnUiThread(bool visible) {
     JNIEnv* env = nullptr;
     vm_->AttachCurrentThread(&env, nullptr);
+
+    jclass activityCls = env->GetObjectClass(activityGlobal_);
+    jmethodID runOnUiThread =
+        env->GetMethodID(
+            activityCls,
+            "runOnUiThread",
+            "(Ljava/lang/Runnable;)V"
+        );
+
+    jclass runnableCls = env->FindClass("java/lang/Runnable");
+
+    jobject runnable = env->NewObject(
+        runnableCls,
+        env->GetMethodID(runnableCls, "<init>", "()V")
+    );
 
     jclass viewCls = env->GetObjectClass(menuOverlayGlobal_);
     jmethodID setVis =
         env->GetMethodID(viewCls, "setVisibility", "(I)V");
 
-    env->CallVoidMethod(
-        menuOverlayGlobal_,
-        setVis,
-        visible ? 0 /* View.VISIBLE */ : 8 /* View.GONE */
-    );
+    jint visibility = visible ? 0 : 8; // VISIBLE / GONE
+    env->CallVoidMethod(menuOverlayGlobal_, setVis, visibility);
 }
 
 void MenuHandler::showMenu() {
     LOGI("showMenu()");
-    setVisibility(true);
+    setVisibilityOnUiThread(true);
 }
 
 void MenuHandler::hideMenu() {
     LOGI("hideMenu()");
-    setVisibility(false);
+    setVisibilityOnUiThread(false);
 }
