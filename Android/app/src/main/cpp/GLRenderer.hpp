@@ -1,17 +1,19 @@
 #pragma once
-#include <jni.h>
-#include <GLES3/gl3.h>
+#include <vector>
 #include <cstdint>
 
 class GLRenderer {
 public:
-    GLRenderer() = default;
+    static GLRenderer& getInstance() {
+        static GLRenderer instance;
+        return instance;
+    }
 
-    void init();
-    void renderFrame();
-    void setOTRMemory(uint8_t* data, int size);
+    void setOTRData(const std::vector<uint8_t>& data);
+    void draw();
+    void clear();
 
 private:
-    uint8_t* mOTR = nullptr;
-    int mOTRSize = 0;
+    GLRenderer() = default;
+    std::vector<uint8_t> otrData;
 };
