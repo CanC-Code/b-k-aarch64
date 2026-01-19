@@ -1,12 +1,9 @@
 #include <jni.h>
 #include <android/log.h>
-#include <GLES2/gl2.h>
 #include <thread>
 #include <atomic>
 #include <vector>
-#include <string>
 #include <fstream>
-#include <sys/stat.h>
 
 #include "otr_generator.hpp"
 #include "otr_assets.hpp"
@@ -21,50 +18,56 @@
 static std::vector<uint8_t> g_otrData;
 static std::atomic<float> g_progress{0.0f};
 static std::atomic<bool> g_building{false};
+static AAssetManager* g_assetMgr = nullptr;
 
 // ------------------------------
 // JNI functions
 // ------------------------------
 extern "C" JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_loadRomFromUri(JNIEnv* env, jclass, jobject resolver, jobject uri) {
-    // Clear previous ROM data and reset progress
-    g_otrData.clear();
-    g_progress = 0.0f;
-    g_building = true;
+Java_com_bkawrapper_NativeBridge_setAssetManager(JNIEnv* env, jclass, jobject mgr) {
+    g_assetMgr = AAssetManager_fromJava(env, mgr);
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_processRom(JNIEnv* env, jclass) {
-    if (!g_building) return;
+Java_com_bkawrapper_NativeBridge_processRom(JNIEnv*, jclass) {
+    if (!g_building && g_assetMgr) {
+        g_building = true;
+        g_progress = 0.0f;
 
-    std::thread([](){
-        try {
-            g_progress = 0.0f;
+        std::thread([](){
+            try {
+                g_otrData.clear();
 
-            // Initialize generator with embedded YAML assets
-            OTRGenerator otrGen(&embedded_assets); // embedded_assets is from otr_assets.hpp
+                OTRGenerator otrGen;
+                otrGen.setProgressCallback([](float p){ g_progress = p; });
 
-            // Build OTR data with progress callback
-            g_otrData = otrGen.buildOTR([&](float progress){
-                g_progress = progress;
-            });
+                // Load dynamic assets
+                auto assets = loadEmbeddedOTRAssets(g_assetMgr);
+                for (auto& asset : assets) {
+                    otrGen.loadEmbeddedYAML(asset.name.c_str(), asset.data.data(), asset.data.size());
+                }
 
-            // Ensure cache directory exists
-            mkdir("/data/data/com.bkawrapper/files", 0755);
+                // Generate OTR
+                otrGen.generate([&](float progress){ g_progress = progress; });
 
-            // Write OTR cache file
-            std::ofstream out("/data/data/com.bkawrapper/files/otr_cache.bin", std::ios::binary);
-            if(out) out.write(reinterpret_cast<char*>(g_otrData.data()), g_otrData.size());
-            out.close();
+                g_otrData = otrGen.getData();
 
-            LOGI("OTR generation complete, size: %zu bytes", g_otrData.size());
+                // Write cache
+                mkdir("/data/data/com.bkawrapper/files", 0755);
+                std::ofstream out("/data/data/com.bkawrapper/files/otr_cache.bin", std::ios::binary);
+                if(out) out.write(reinterpret_cast<char*>(g_otrData.data()), g_otrData.size());
+                out.close();
 
-        } catch (const std::exception& e) {
-            LOGE("OTR generation failed: %s", e.what());
-        }
+                LOGI("OTR generation complete, size: %zu bytes", g_otrData.size());
 
-        g_building = false;
-    }).detach();
+            } catch (const std::exception& e) {
+                LOGE("OTR generation failed: %s", e.what());
+            } catch (...) {
+                LOGE("OTR generation unknown failure");
+            }
+            g_building = false;
+        }).detach();
+    }
 }
 
 extern "C" JNIEXPORT jfloat JNICALL
