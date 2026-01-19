@@ -1,38 +1,69 @@
 #include "otr_generator.hpp"
-#include <android/log.h>
 #include <stdexcept>
+#include <cstring>
 
-#define LOG_TAG "OTR_GEN"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+bool OTRGenerator::detectRomVersion(const uint8_t* romData, size_t romSize, RomInfo& outInfo) {
+    if (!romData || romSize < 4) return false;
 
-std::vector<uint8_t> OTRGenerator::buildOTR(ProgressCallback callback) {
-    cb = callback;
-    std::vector<uint8_t> out;
+    if (romData[0] == 'U') {
+        outInfo.version = "USv1.0";
+        LOGI("Detected ROM version: USv1.0");
+    } else if (romData[0] == 'P') {
+        outInfo.version = "PAL";
+        LOGI("Detected ROM version: PAL");
+    } else {
+        LOGE("Unknown ROM version");
+        return false;
+    }
+    return true;
+}
 
-    if (!embeddedAssets || embeddedCount == 0) {
-        LOGE("No embedded assets provided");
-        return out;
+bool OTRGenerator::generate(
+        const uint8_t* romData,
+        size_t romSize,
+        const std::vector<std::pair<std::string, std::vector<uint8_t>>>& yamlAssets
+) {
+    if (!romData || romSize == 0 || yamlAssets.empty()) {
+        LOGE("Invalid ROM or YAML assets");
+        return false;
     }
 
     try {
-        size_t totalSteps = embeddedCount;
-        for (size_t i = 0; i < embeddedCount; ++i) {
-            const EmbeddedAsset& asset = embeddedAssets[i];
-            out.insert(out.end(), asset.data, asset.data + asset.size);
+        outOTR.clear();
+        size_t totalSteps = 100 * yamlAssets.size(); // more granular progress
+        size_t stepCounter = 0;
 
-            // Report progress
-            reportProgress(static_cast<float>(i + 1) / static_cast<float>(totalSteps));
+        for (const auto& assetPair : yamlAssets) {
+            const auto& yamlData = assetPair.second;
+            if (yamlData.empty()) continue;
+
+            size_t chunkROM = romSize / 100;
+            size_t chunkYAML = yamlData.size() / 100;
+
+            for (size_t i = 0; i < 100; ++i) {
+                // ROM chunk
+                size_t romStart = i * chunkROM;
+                size_t romEnd = (i == 99) ? romSize : romStart + chunkROM;
+                outOTR.insert(outOTR.end(), romData + romStart, romData + romEnd);
+
+                // YAML chunk
+                size_t yamlStart = i * chunkYAML;
+                size_t yamlEnd = (i == 99) ? yamlData.size() : yamlStart + chunkYAML;
+                outOTR.insert(outOTR.end(), yamlData.data() + yamlStart, yamlData.data() + yamlEnd);
+
+                reportProgress(static_cast<float>(++stepCounter) / static_cast<float>(totalSteps));
+            }
         }
 
         reportProgress(1.0f);
-        LOGI("OTR build completed: %zu bytes", out.size());
+        LOGI("OTR generation complete: %zu bytes", outOTR.size());
+        return true;
 
     } catch (const std::exception& e) {
-        LOGE("Exception during OTR build: %s", e.what());
+        LOGE("Exception during OTR generation: %s", e.what());
+        return false;
     } catch (...) {
-        LOGE("Unknown exception during OTR build");
+        LOGE("Unknown exception during OTR generation");
+        return false;
     }
-
-    return out;
 }
