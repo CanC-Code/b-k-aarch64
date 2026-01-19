@@ -3,22 +3,25 @@
 #include <string>
 #include <cstdint>
 #include <android/asset_manager.h>
-#include <android/asset_manager_jni.h>
 #include <android/log.h>
 
 #define LOG_TAG "OTR_ASSETS"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
+// A simple struct representing a loaded asset
 struct EmbeddedAsset {
-    const char* name;
+    std::string name;
     std::vector<uint8_t> data;
 };
 
-// Load a YAML asset from Android assets folder
+// Load a YAML file from APK assets
 inline std::vector<uint8_t> loadAsset(AAssetManager* mgr, const char* assetPath) {
     std::vector<uint8_t> buffer;
-    if (!mgr || !assetPath) return buffer;
+    if (!mgr || !assetPath) {
+        LOGE("Invalid asset manager or path");
+        return buffer;
+    }
 
     AAsset* asset = AAssetManager_open(mgr, assetPath, AASSET_MODE_STREAMING);
     if (!asset) {
@@ -44,7 +47,7 @@ inline std::vector<uint8_t> loadAsset(AAssetManager* mgr, const char* assetPath)
     return buffer;
 }
 
-// Convenience function to load all OTR YAMLs
+// Load all OTR YAMLs from assets folder
 inline std::vector<EmbeddedAsset> loadEmbeddedOTRAssets(AAssetManager* mgr) {
     return {
         {"pal", loadAsset(mgr, "otr_yaml/decompressed.pal.yaml")},
