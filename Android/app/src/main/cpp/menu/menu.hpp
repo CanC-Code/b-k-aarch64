@@ -1,15 +1,18 @@
 #pragma once
 #include <jni.h>
+#include <atomic>
 
 class MenuHandler {
 public:
-    MenuHandler(JNIEnv* env, jobject menuOverlay);
+    MenuHandler(JavaVM* vm, jobject activity);
     ~MenuHandler();
 
-    void show();
-    void hide();
+    void showMenu();
+    void hideMenu();
 
 private:
+    JavaVM* vm_;
+    jobject activityGlobal_;
     jobject menuOverlayGlobal_;
-    jmethodID setVisibility_;
+    void setVisibility(bool visible);
 };
