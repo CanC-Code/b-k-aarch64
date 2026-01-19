@@ -1,78 +1,36 @@
 #include <jni.h>
 #include <android/asset_manager_jni.h>
-#include <android/log.h>
 #include <vector>
-#include <string>
-
+#include <cstdint>
 #include "otr_generator.hpp"
+#include "otr_assets.hpp" // your embedded ROM/YAML headers
 
-#define LOG_TAG "BKA"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+extern "C" {
 
-static AAssetManager* g_assetManager = nullptr;
-static float g_progress = 0.0f;
+// JNI: Load embedded ROM and YAML assets and generate OTR
+JNIEXPORT jboolean JNICALL
+Java_com_bkawrapper_NativeBridge_loadEmbeddedOTRAssets(JNIEnv* env, jclass clazz,
+                                                      jobject activity,
+                                                      jobject assetManager,
+                                                      jobject progressCallback) {
+    AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
+    if (!mgr) return JNI_FALSE;
 
-extern "C" JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_nativeInit(
-        JNIEnv* env,
-        jclass,
-        jobject assetManager) {
+    OTRGenerator generator;
+    generator.setProgressCallback([env, progressCallback](float p) {
+        jclass cls = env->GetObjectClass(progressCallback);
+        jmethodID mid = env->GetMethodID(cls, "onProgress", "(F)V");
+        if (mid) env->CallVoidMethod(progressCallback, mid, p);
+    });
 
-    g_assetManager = AAssetManager_fromJava(env, assetManager);
-    LOGI("AssetManager initialized");
-}
-
-extern "C" JNIEXPORT jboolean JNICALL
-Java_com_bkawrapper_NativeBridge_nativeGenerateOTR(
-        JNIEnv* env,
-        jclass,
-        jbyteArray romData,
-        jstring yamlAssetPath,
-        jstring outputDir) {
-
-    if (!g_assetManager) {
-        LOGE("AssetManager not initialized");
-        return JNI_FALSE;
-    }
-
-    const jsize romSize = env->GetArrayLength(romData);
-    std::vector<uint8_t> romBuffer(romSize);
-    env->GetByteArrayRegion(romData, 0, romSize,
-                            reinterpret_cast<jbyte*>(romBuffer.data()));
-
-    const char* yamlPath = env->GetStringUTFChars(yamlAssetPath, nullptr);
-    const char* outDir   = env->GetStringUTFChars(outputDir, nullptr);
-
-    bool success = GenerateOTR(
-            romBuffer.data(),
-            romBuffer.size(),
-            g_assetManager,
-            yamlPath,
-            outDir,
-            [](float p) { g_progress = p; }
+    std::vector<uint8_t> outOTR;
+    bool success = generator.generateOTR(
+            embedded_rom, embedded_rom_size,
+            reinterpret_cast<const char*>(embedded_us_yaml),
+            embedded_us_yaml_size,
+            outOTR
     );
-
-    env->ReleaseStringUTFChars(yamlAssetPath, yamlPath);
-    env->ReleaseStringUTFChars(outputDir, outDir);
 
     return success ? JNI_TRUE : JNI_FALSE;
 }
-
-extern "C" JNIEXPORT jfloat JNICALL
-Java_com_bkawrapper_NativeBridge_nativeGetProgress(
-        JNIEnv*, jclass) {
-    return g_progress;
-}
-
-extern "C" JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_nativeLoadOTR(
-        JNIEnv* env,
-        jclass,
-        jstring otrPath) {
-
-    const char* path = env->GetStringUTFChars(otrPath, nullptr);
-    // Hook into renderer / OTR loader here
-    LOGI("Loading OTR from %s", path);
-    env->ReleaseStringUTFChars(otrPath, path);
 }
