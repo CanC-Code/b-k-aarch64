@@ -2,113 +2,173 @@ package com.bkawrapper;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.res.AssetManager;
 import android.net.Uri;
+import android.opengl.GLSurfaceView;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.provider.OpenableColumns;
 import android.view.View;
 import android.widget.Button;
-import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
-import android.opengl.GLSurfaceView;
+import android.database.Cursor;
 
-import java.io.IOException;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 
 public class MainActivity extends Activity {
 
-    private GLSurfaceView glSurfaceView;
-    private GLRenderer glRenderer;
+    private static final int REQUEST_LOAD_ROM = 1001;
 
-    private FrameLayout progressOverlay;
+    private GLSurfaceView glSurfaceView;
+    private LinearLayout progressOverlay;
     private ProgressBar progressBar;
     private TextView progressText;
     private Button loadButton;
 
-    private static final int PICK_ROM_REQUEST = 1;
+    private final Handler uiHandler = new Handler(Looper.getMainLooper());
+    private volatile boolean buildingOTR = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // --- Set AssetManager for native YAML access ---
-        NativeBridge.setAssetManager(getAssets());
+        glSurfaceView = findViewById(R.id.gl_surface);
+        progressOverlay = findViewById(R.id.progress_overlay);
+        progressBar = findViewById(R.id.progress_bar);
+        progressText = findViewById(R.id.progress_text);
+        loadButton = findViewById(R.id.button_load_game);
 
-        // --- Bind views (IDs must match activity_main.xml) ---
-        glSurfaceView   = findViewById(R.id.surface_gl);
-        progressOverlay = findViewById(R.id.progressOverlay);
-        progressBar     = findViewById(R.id.otrProgressBar);
-        progressText    = findViewById(R.id.otrProgressText);
-        loadButton      = findViewById(R.id.button_load_game);
-
-        // --- Setup GLSurfaceView ---
-        glRenderer = new GLRenderer(this);
+        // OpenGL setup (renderer can be swapped later)
         glSurfaceView.setEGLContextClientVersion(2);
-        glSurfaceView.setRenderer(glRenderer);
+        glSurfaceView.setRenderer(new GLRenderer());
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
-        // --- Button click: pick ROM ---
-        loadButton.setOnClickListener(v -> pickRom());
+        // Initialize native side
+        AssetManager assetManager = getAssets();
+        NativeBridge.nativeInit(assetManager);
+
+        loadButton.setOnClickListener(v -> openRomPicker());
     }
 
-    private void pickRom() {
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        intent.setType("*/*"); // Accept all files
-        startActivityForResult(Intent.createChooser(intent, "Select ROM"), PICK_ROM_REQUEST);
+    private void openRomPicker() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.setType("*/*");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        startActivityForResult(intent, REQUEST_LOAD_ROM);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == PICK_ROM_REQUEST && resultCode == RESULT_OK && data != null) {
-            Uri uri = data.getData();
-            if (uri == null) return;
+        if (requestCode == REQUEST_LOAD_ROM && resultCode == RESULT_OK && data != null) {
+            Uri romUri = data.getData();
+            if (romUri != null) {
+                loadAndProcessRom(romUri);
+            }
+        }
+    }
+
+    private void loadAndProcessRom(Uri romUri) {
+        try {
+            byte[] romData = readAllBytes(romUri);
+            String yamlPath = selectYamlForRom(romData);
 
             progressOverlay.setVisibility(View.VISIBLE);
             progressBar.setProgress(0);
             progressText.setText("0%");
+            buildingOTR = true;
+
+            String outputDir = getFilesDir().getAbsolutePath();
 
             new Thread(() -> {
-                try {
-                    NativeBridge.loadRomFromUri(getContentResolver(), uri);
+                boolean success = NativeBridge.nativeGenerateOTR(
+                        romData,
+                        yamlPath,
+                        outputDir
+                );
 
-                    // Start OTR generation with progress callback
-                    NativeBridge.generateOTRWithCallback(glRenderer, 50); // poll every 50ms
-
-                    // Poll progress on UI thread
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            updateProgressLoop();
-                        }
-                    });
-
-                } catch (IOException e) {
-                    runOnUiThread(() -> {
-                        progressOverlay.setVisibility(View.GONE);
-                        Toast.makeText(
-                                MainActivity.this,
-                                "Failed to load ROM: " + e.getMessage(),
-                                Toast.LENGTH_LONG
-                        ).show();
-                    });
+                if (!success) {
+                    buildingOTR = false;
+                    uiHandler.post(() -> progressText.setText("Failed"));
+                    return;
                 }
+
+                // Poll progress
+                while (buildingOTR) {
+                    float p = NativeBridge.nativeGetProgress();
+                    int percent = (int) (p * 100f);
+
+                    uiHandler.post(() -> {
+                        progressBar.setProgress(percent);
+                        progressText.setText(percent + "%");
+                    });
+
+                    if (p >= 1.0f) {
+                        buildingOTR = false;
+                        break;
+                    }
+
+                    try {
+                        Thread.sleep(50);
+                    } catch (InterruptedException ignored) {}
+                }
+
+                uiHandler.post(() -> {
+                    progressOverlay.setVisibility(View.GONE);
+                    String otrPath = outputDir + "/game.otr";
+                    NativeBridge.nativeLoadOTR(otrPath);
+                });
+
             }).start();
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
-    private void updateProgressLoop() {
-        float progress = NativeBridge.getOTRProgress();
-        progressBar.setProgress((int)(progress * 100));
-        progressText.setText((int)(progress * 100) + "%");
+    private byte[] readAllBytes(Uri uri) throws Exception {
+        try (InputStream in = getContentResolver().openInputStream(uri);
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 
-        if (progress < 1.0f) {
-            // Continue polling
-            progressBar.postDelayed(this::updateProgressLoop, 50);
-        } else {
-            // Done
-            progressOverlay.setVisibility(View.GONE);
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+            }
+            return out.toByteArray();
         }
+    }
+
+    /**
+     * Minimal, deterministic ROM region check.
+     * You can replace this with CRC/MD5 later.
+     */
+    private String selectYamlForRom(byte[] rom) {
+        // N64 ROM country byte is at 0x3E
+        if (rom.length > 0x3E) {
+            byte region = rom[0x3E];
+            if (region == 'P') {
+                return "otr_yaml/decompressed.pal.yaml";
+            }
+        }
+        return "otr_yaml/decompressed.us.v10.yaml";
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        glSurfaceView.onPause();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        glSurfaceView.onResume();
     }
 }
