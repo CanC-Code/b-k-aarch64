@@ -1,36 +1,86 @@
 #include <jni.h>
 #include <android/asset_manager_jni.h>
+#include <android/log.h>
 #include <vector>
-#include <cstdint>
+#include <string>
+#include <cstring>
 #include "otr_generator.hpp"
-#include "otr_assets.hpp" // your embedded ROM/YAML headers
+#include "embedded_data.hpp"
 
-extern "C" {
+#define LOG_TAG "NativeBridge"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-// JNI: Load embedded ROM and YAML assets and generate OTR
-JNIEXPORT jboolean JNICALL
-Java_com_bkawrapper_NativeBridge_loadEmbeddedOTRAssets(JNIEnv* env, jclass clazz,
-                                                      jobject activity,
-                                                      jobject assetManager,
-                                                      jobject progressCallback) {
-    AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
-    if (!mgr) return JNI_FALSE;
+// Global OTR generator
+static OTRGenerator gOTRGenerator;
 
-    OTRGenerator generator;
-    generator.setProgressCallback([env, progressCallback](float p) {
-        jclass cls = env->GetObjectClass(progressCallback);
-        jmethodID mid = env->GetMethodID(cls, "onProgress", "(F)V");
-        if (mid) env->CallVoidMethod(progressCallback, mid, p);
-    });
+// JNI Helper: call Java progress callback
+void reportProgressToJava(JNIEnv* env, jobject progressCallback, float p) {
+    if (!progressCallback) return;
 
-    std::vector<uint8_t> outOTR;
-    bool success = generator.generateOTR(
-            embedded_rom, embedded_rom_size,
-            reinterpret_cast<const char*>(embedded_us_yaml),
-            embedded_us_yaml_size,
-            outOTR
-    );
+    jclass cls = env->GetObjectClass(progressCallback);
+    if (!cls) return;
 
-    return success ? JNI_TRUE : JNI_FALSE;
+    jmethodID mid = env->GetMethodID(cls, "onProgress", "(F)V");
+    if (!mid) return;
+
+    env->CallVoidMethod(progressCallback, mid, p);
 }
+
+// Main JNI entry
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_bkawrapper_NativeBridge_loadEmbeddedOTRAssets(
+        JNIEnv* env,
+        jclass clazz,
+        jobject context,
+        jobject assetManager,
+        jobject progressCallback
+) {
+    (void)clazz;
+    (void)context;
+
+    try {
+        // Select YAML based on embedded ROM version
+        OTRGenerator::RomInfo info;
+        if (!OTRGenerator::detectRomVersion(embedded_rom, embedded_rom_size, info)) {
+            LOGE("Failed to detect embedded ROM version");
+            return JNI_FALSE;
+        }
+
+        const uint8_t* yamlData = nullptr;
+        size_t yamlSize = 0;
+
+        if (info.version.find("US") != std::string::npos) {
+            yamlData = embedded_us_yaml;
+            yamlSize = embedded_us_yaml_size;
+        } else {
+            yamlData = embedded_pal_yaml;
+            yamlSize = embedded_pal_yaml_size;
+        }
+
+        std::vector<uint8_t> outOTR;
+        gOTRGenerator.setProgressCallback([env, progressCallback](float p) {
+            reportProgressToJava(env, progressCallback, p);
+        });
+
+        if (!gOTRGenerator.generateOTR(embedded_rom, embedded_rom_size, 
+                                       reinterpret_cast<const char*>(yamlData), yamlSize,
+                                       outOTR)) {
+            LOGE("OTR generation failed");
+            return JNI_FALSE;
+        }
+
+        LOGI("OTR generated successfully: %zu bytes", outOTR.size());
+
+        // TODO: optionally write outOTR to file if you want to load later
+        return JNI_TRUE;
+
+    } catch (const std::exception& e) {
+        LOGE("Exception: %s", e.what());
+        return JNI_FALSE;
+    } catch (...) {
+        LOGE("Unknown error during OTR generation");
+        return JNI_FALSE;
+    }
 }
