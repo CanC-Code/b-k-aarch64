@@ -1,12 +1,10 @@
 #include <jni.h>
-#include <cstdint>
+#include <vector>
 #include <thread>
 #include <atomic>
-#include <android/log.h>
-#include <unistd.h>
-#include <vector>
 #include <mutex>
-#include <cstdio>
+#include <unistd.h>
+#include <android/log.h>
 
 #include "menu/menu.hpp"
 
@@ -14,24 +12,17 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
 // ------------------------------------------------------------
-// External core symbols
+// External core symbols (real or stubbed elsewhere)
 // ------------------------------------------------------------
 extern "C" {
     void core1_reset(uint8_t* ram);
-    void core1_stepCPU(uint8_t* ram);
-    void core2_stepFrame(uint8_t* ram, uint32_t* framebuffer, int w, int h);
-
-    void n_audioInit();
     void n_audioStep();
-
-    void core1_loadOTR(uint8_t* romData, size_t romSize);
 }
 
 // ------------------------------------------------------------
 // Global emulator state
 // ------------------------------------------------------------
 static constexpr size_t RAM_SIZE = 8 * 1024 * 1024;
-
 static std::vector<uint8_t> g_ram(RAM_SIZE);
 static std::vector<uint32_t> g_framebuffer;
 static int g_fbWidth  = 320;
@@ -39,6 +30,7 @@ static int g_fbHeight = 240;
 
 static std::atomic<bool> g_running{false};
 static std::atomic<bool> g_paused{false};
+
 static std::thread g_emulationThread;
 static std::mutex g_stateMutex;
 
@@ -56,13 +48,9 @@ static std::atomic<bool> g_menuVisible{false};
 // Emulation loop
 // ------------------------------------------------------------
 static void emulation_loop() {
-    LOGI("Emulation thread started");
-
-    n_audioInit();
     core1_reset(g_ram.data());
 
     while (g_running.load()) {
-
         if (g_paused.load()) {
             usleep(16 * 1000);
             continue;
@@ -70,18 +58,7 @@ static void emulation_loop() {
 
         {
             std::lock_guard<std::mutex> lock(g_stateMutex);
-
-            core1_stepCPU(g_ram.data());
-
-            if (!g_framebuffer.empty()) {
-                core2_stepFrame(
-                    g_ram.data(),
-                    g_framebuffer.data(),
-                    g_fbWidth,
-                    g_fbHeight
-                );
-            }
-
+            // TODO: step CPU, update framebuffer, etc.
             n_audioStep();
         }
 
@@ -92,33 +69,41 @@ static void emulation_loop() {
 }
 
 // ------------------------------------------------------------
-// JNI API
+// JNI Exports
 // ------------------------------------------------------------
 extern "C" {
 
+// ---------------- ROM / OTR ----------------
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_loadRomFromUri(
-        JNIEnv* env, jclass, jobject /* resolver */, jobject uri) {
-    // stub: user will implement ContentResolver reading
-    // For now assume g_ram is preloaded externally
-    LOGI("loadRomFromUri stub called");
+        JNIEnv*, jclass, jobject resolver, jobject uri) {
+    LOGI("ROM load requested (stub)");
+}
+
+JNIEXPORT jfloat JNICALL
+Java_com_bkawrapper_NativeBridge_getOTRProgress(
+        JNIEnv*, jclass) {
+    if (g_OTR.empty()) return 1.0f;
+    return 1.0f; // stub, assume done
 }
 
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_initTexture(
-        JNIEnv*, jclass) {
-    LOGI("initTexture called");
+Java_com_bkawrapper_NativeBridge_saveOTRToFile(
+        JNIEnv* env, jclass, jstring path) {
+    const char* cpath = env->GetStringUTFChars(path, nullptr);
+    FILE* f = fopen(cpath, "wb");
+    if (f) {
+        fwrite(g_OTR.data(), 1, g_OTR.size(), f);
+        fclose(f);
+        LOGI("Saved BK.OTR: %zu bytes", g_OTR.size());
+    }
+    env->ReleaseStringUTFChars(path, cpath);
 }
 
+// ---------------- Game loop ----------------
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_startGameLoop(
         JNIEnv*, jclass) {
-
-    if (g_running.load()) {
-        LOGI("Game loop already running");
-        return;
-    }
-
     g_running.store(true);
     g_paused.store(false);
     g_emulationThread = std::thread(emulation_loop);
@@ -126,48 +111,18 @@ Java_com_bkawrapper_NativeBridge_startGameLoop(
 }
 
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_stopGameLoop(
-        JNIEnv*, jclass) {
-
-    if (!g_running.load()) return;
-
-    g_running.store(false);
-
-    if (g_emulationThread.joinable()) {
-        g_emulationThread.join();
-    }
-
-    LOGI("Game loop stopped");
-}
-
-JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_cleanupGame(
         JNIEnv*, jclass) {
-
-    Java_com_bkawrapper_NativeBridge_stopGameLoop(nullptr, nullptr);
-
-    std::lock_guard<std::mutex> lock(g_stateMutex);
-    g_framebuffer.clear();
-
+    g_running.store(false);
+    if (g_emulationThread.joinable()) g_emulationThread.join();
     LOGI("Game cleaned up");
 }
 
-JNIEXPORT jfloat JNICALL
-Java_com_bkawrapper_NativeBridge_getOTRProgress(
-        JNIEnv*, jclass) {
-    // stub: return dummy progress
-    return 1.0f;
-}
-
-// ------------------------------------------------------------
-// Menu JNI hooks
-// ------------------------------------------------------------
+// ---------------- Menu ----------------
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_nativeInitMenu(
         JNIEnv* env, jclass, jobject activity) {
-
     if (g_menu) return;
-
     g_menu = new MenuHandler(g_vm, activity);
     LOGI("Native menu initialized");
 }
@@ -175,7 +130,6 @@ Java_com_bkawrapper_NativeBridge_nativeInitMenu(
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_nativeOnBackPressed(
         JNIEnv*, jclass) {
-
     if (!g_menu) return;
 
     if (!g_menuVisible.load()) {
@@ -191,24 +145,25 @@ Java_com_bkawrapper_NativeBridge_nativeOnBackPressed(
     }
 }
 
+// ---------------- GL Renderer ----------------
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_nativePauseEmulator(JNIEnv*, jclass) {
-    g_paused.store(true);
+Java_com_bkawrapper_NativeBridge_initTexture(
+        JNIEnv*, jclass) {
+    LOGI("initTexture called (stub)");
 }
 
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_nativeResumeEmulator(JNIEnv*, jclass) {
-    g_paused.store(false);
+Java_com_bkawrapper_NativeBridge_updateTexture(
+        JNIEnv*, jclass, jint textureId) {
+    LOGI("updateTexture called: %d", textureId);
 }
 
-} // extern "C"
-
-// ------------------------------------------------------------
-// JNI load
-// ------------------------------------------------------------
+// ---------------- JNI Load ----------------
 JNIEXPORT jint JNICALL
 JNI_OnLoad(JavaVM* vm, void*) {
     g_vm = vm;
     LOGI("JNI_OnLoad called");
     return JNI_VERSION_1_6;
 }
+
+} // extern "C"
