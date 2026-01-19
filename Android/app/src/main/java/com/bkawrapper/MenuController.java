@@ -3,6 +3,7 @@ package com.bkawrapper;
 import android.app.Activity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.util.Log;
 
 public final class MenuController {
 
@@ -18,14 +19,15 @@ public final class MenuController {
         NativeMenu.nativeInitMenu(menuOverlay);
     }
 
-    /** Back button entry point */
-    public boolean onBackPressed() {
+    /** Called by MainActivity.onBackPressed() */
+    public boolean handleBack() {
+        Log.i("MenuController", "Back pressed detected, toggling menu");
         NativeMenu.nativeToggleMenu();
-        return true; // consume
+        return true;
     }
 
-    /** Gesture detector */
-    public boolean onTouchEvent(MotionEvent event) {
+    /** Called by MainActivity.onTouchEvent() */
+    public boolean handleTouch(MotionEvent event) {
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 startX = event.getX();
@@ -39,6 +41,7 @@ public final class MenuController {
 
                     float dy = event.getY() - startY;
                     if (dy > SWIPE_THRESHOLD) {
+                        Log.i("MenuController", "Swipe down detected, toggling menu");
                         NativeMenu.nativeToggleMenu();
                         reset();
                         return true;
