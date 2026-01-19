@@ -2,21 +2,28 @@ package com.bkawrapper;
 
 import android.view.View;
 
-public class NativeMenu {
+public final class NativeMenu {
 
     static {
-        System.loadLibrary("wrapper"); // your JNI library
+        System.loadLibrary("bkawrapper");
     }
 
-    /** Initialize menu (called from MenuController) */
+    private NativeMenu() {}
+
+    /**
+     * Initialize menu system with the menu overlay view.
+     * Called once from MainActivity after layout inflation.
+     */
     public static native void nativeInitMenu(View menuOverlay);
 
-    /** Called on back button or swipe gesture */
+    /**
+     * Toggle menu visibility (used for back press & gestures).
+     */
     public static native void nativeOnBackPressed();
 
-    /** Pause emulator loop */
+    /**
+     * Explicit pause/resume hooks used by menu buttons.
+     */
     public static native void nativePauseEmulator();
-
-    /** Resume emulator loop */
     public static native void nativeResumeEmulator();
 }
