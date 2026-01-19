@@ -3,41 +3,42 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- GLSurfaceView for OpenGL rendering -->
+    <!-- OpenGL Surface -->
     <android.opengl.GLSurfaceView
-        android:id="@+id/gl_surface"
+        android:id="@+id/surface_gl"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- Load ROM button -->
+    <!-- Load ROM Button -->
     <Button
         android:id="@+id/button_load_game"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Load ROM"
-        android:layout_gravity="center" />
+        android:layout_gravity="center"
+        android:elevation="6dp" />
 
-    <!-- Progress overlay (hidden by default) -->
+    <!-- OTR Generation Progress Overlay -->
     <LinearLayout
-        android:id="@+id/progress_overlay"
+        android:id="@+id/progressOverlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:gravity="center"
         android:visibility="gone"
-        android:background="#88000000">
+        android:background="#AA000000">
 
         <ProgressBar
-            android:id="@+id/progress_bar"
+            android:id="@+id/otrProgressBar"
             style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="250dp"
+            android:layout_width="280dp"
             android:layout_height="wrap_content"
             android:max="100"
             android:progress="0"
             android:layout_marginBottom="16dp" />
 
         <TextView
-            android:id="@+id/progress_text"
+            android:id="@+id/otrProgressText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="0%"
