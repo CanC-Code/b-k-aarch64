@@ -1,47 +1,30 @@
-#include <jni.h>
-#include "otr_generator.hpp"
-#include <vector>
-#include <android/asset_manager_jni.h>
-#include <android/log.h>
+// File: NativeBridge.cpp
+// Author: CCVO
+// Purpose: JNI bridge for generating OTR content
+// Copyright: CanC-code - CCVO
 
-#define LOG_TAG "NATIVE_BRIDGE"
+#include <jni.h>
+#include <android/log.h>
+#include <android/asset_manager_jni.h>
+#include "AssetUtils.hpp" // << include the shared readAsset
+
+#define LOG_TAG "NativeBridge"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
-extern "C" {
-
-std::vector<uint8_t> readAsset(AAssetManager* mgr, const char* path) {
-    AAsset* asset = AAssetManager_open(mgr, path, AASSET_MODE_BUFFER);
-    if (!asset) {
-        LOGI("Failed to open asset: %s", path);
-        return {};
-    }
-    size_t size = AAsset_getLength(asset);
-    std::vector<uint8_t> buffer(size);
-    AAsset_read(asset, buffer.data(), size);
-    AAsset_close(asset);
-    return buffer;
-}
-
-JNIEXPORT jboolean JNICALL
+// JNI method to generate OTR content
+extern "C" JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_generateOTR(JNIEnv* env, jobject thiz, jobject assetManager) {
     AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
-    if (!mgr) return JNI_FALSE;
+    if (!mgr) {
+        LOGI("Failed to get AAssetManager from Java");
+        return;
+    }
 
-    OTRGenerator generator;
+    // Example usage of readAsset (now from AssetUtils.hpp)
+    std::vector<uint8_t> palData = readAsset(mgr, "embedded_pal.yaml");
+    std::vector<uint8_t> usData  = readAsset(mgr, "embedded_us.yaml");
 
-    auto palData = readAsset(mgr, "otr_yaml/decompressed.pal.yaml");
-    auto usData  = readAsset(mgr, "otr_yaml/decompressed.us.v10.yaml");
+    LOGI("OTR asset sizes: PAL=%zu, US=%zu", palData.size(), usData.size());
 
-    generator.loadYAML("pal", palData.data(), palData.size());
-    generator.loadYAML("us.v10", usData.data(), usData.size());
-
-    std::vector<uint8_t> outPal;
-    std::vector<uint8_t> outUS;
-
-    bool success1 = generator.generate("pal", outPal);
-    bool success2 = generator.generate("us.v10", outUS);
-
-    return (success1 && success2) ? JNI_TRUE : JNI_FALSE;
+    // TODO: actual OTR generation logic here
 }
-
-} // extern "C"
