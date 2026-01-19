@@ -11,6 +11,7 @@ import android.widget.LinearLayout;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import android.opengl.GLSurfaceView;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -24,8 +25,8 @@ public class MainActivity extends AppCompatActivity {
     private Button loadButton;
     private LinearLayout menuOverlay;
     private LinearLayout progressOverlay;
-    private ProgressBar otrProgressBar;
-    private TextView otrProgressText;
+    private android.widget.ProgressBar otrProgressBar;
+    private android.widget.TextView otrProgressText;
 
     private boolean gameInitialized = false;
     private boolean gameRunning = false;
@@ -67,10 +68,15 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupRomPicker() {
         romPickerLauncher = registerForActivityResult(
-            new ActivityResultContracts.OpenDocument(),
-            uri -> loadRom(uri)
+                new ActivityResultContracts.OpenDocument(),
+                uri -> {
+                    loadRom(uri);
+                }
         );
-        loadButton.setOnClickListener(v -> romPickerLauncher.launch(new String[]{"*/*"}));
+
+        loadButton.setOnClickListener(v ->
+                romPickerLauncher.launch(new String[]{"*/*"})
+        );
     }
 
     private void setupMenuButtons() {
@@ -90,11 +96,16 @@ public class MainActivity extends AppCompatActivity {
         progressHandler = new Handler(progressThread.getLooper());
     }
 
+    /* =======================
+       ROM + OTR FLOW
+       ======================= */
     private void loadRom(Uri uri) {
         try {
             Log.i(TAG, "Loading ROM");
             NativeBridge.loadRomFromUri(getContentResolver(), uri);
+
             showOTRProgress();
+
             generatingOTR = true;
             progressHandler.post(this::pollOTRProgress);
         } catch (Exception e) {
@@ -102,19 +113,11 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void showOTRProgress() {
-        runOnUiThread(() -> progressOverlay.setVisibility(View.VISIBLE));
-    }
-
-    private void hideOTRProgress() {
-        runOnUiThread(() -> progressOverlay.setVisibility(View.GONE));
-    }
-
     private void pollOTRProgress() {
         if (!generatingOTR) return;
 
         float progress = NativeBridge.getOTRProgress();
-        int percent = Math.min(100, Math.max(0, (int)(progress * 100)));
+        int percent = Math.min(100, Math.max(0, (int) (progress * 100)));
 
         runOnUiThread(() -> {
             otrProgressBar.setProgress(percent);
@@ -124,6 +127,7 @@ public class MainActivity extends AppCompatActivity {
         if (progress >= 1.0f) {
             generatingOTR = false;
             hideOTRProgress();
+
             runOnUiThread(() -> {
                 loadButton.setVisibility(View.GONE);
             });
@@ -132,18 +136,35 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    void onSurfaceReady() {
-        surfaceReady = true;
-        Log.i(TAG, "GL surface ready");
+    private void showOTRProgress() {
+        runOnUiThread(() ->
+                progressOverlay.setVisibility(View.VISIBLE)
+        );
+    }
 
+    private void hideOTRProgress() {
+        runOnUiThread(() ->
+                progressOverlay.setVisibility(View.GONE)
+        );
+    }
+
+    /* =======================
+       GAME BOOT
+       ======================= */
+    void onSurfaceReady() {
         NativeBridge.initTexture();
+
         gameInitialized = true;
 
         NativeBridge.startGameLoop();
         gameRunning = true;
+
         Log.i(TAG, "Game running");
     }
 
+    /* =======================
+       MENU CONTROL (LOCKED)
+       ======================= */
     private void showMenu() {
         menuOverlay.setVisibility(View.VISIBLE);
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
@@ -152,5 +173,24 @@ public class MainActivity extends AppCompatActivity {
     private void hideMenu() {
         menuOverlay.setVisibility(View.GONE);
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+    }
+
+    /* =======================
+       LIFECYCLE
+       ======================= */
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (gameRunning) {
+            NativeBridge.stopGameLoop();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (gameInitialized && !gameRunning) {
+            NativeBridge.startGameLoop();
+        }
     }
 }
