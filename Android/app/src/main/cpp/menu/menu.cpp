@@ -4,41 +4,48 @@
 #define LOG_TAG "MENU_HANDLER"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
-MenuHandler::MenuHandler(JNIEnv* env, jobject activity)
-    : env_(env), activity_(activity) {
+MenuHandler::MenuHandler(JavaVM* vm, jobject activity)
+    : vm_(vm) {
 
-    activityClass_ = env_->GetObjectClass(activity_);
+    JNIEnv* env = nullptr;
+    vm_->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
 
-    jfieldID menuId = env_->GetFieldID(activityClass_, "menuOverlay", "Landroid/widget/LinearLayout;");
-    menuOverlay_ = env_->GetObjectField(activity_, menuId);
-
+    activityGlobal_ = env->NewGlobalRef(activity);
     LOGI("MenuHandler initialized");
 }
 
 MenuHandler::~MenuHandler() {
-    menuOverlay_ = nullptr;
-    activityClass_ = nullptr;
+    JNIEnv* env = nullptr;
+    vm_->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+
+    if (activityGlobal_) {
+        env->DeleteGlobalRef(activityGlobal_);
+        activityGlobal_ = nullptr;
+    }
 }
 
-void MenuHandler::callJavaVisibility(bool visible) {
-    if (!menuOverlay_) return;
+void MenuHandler::callJava(const char* methodName) {
+    JNIEnv* env = nullptr;
+    vm_->AttachCurrentThread(&env, nullptr);
 
-    jclass cls = env_->GetObjectClass(menuOverlay_);
-    jmethodID setVis = env_->GetMethodID(cls, "setVisibility", "(I)V");
+    jclass cls = env->GetObjectClass(activityGlobal_);
+    jmethodID mid = env->GetMethodID(cls, methodName, "()V");
 
-    env_->CallVoidMethod(menuOverlay_, setVis, visible ? 0 /*View.VISIBLE*/ : 8 /*View.GONE*/);
+    if (mid) {
+        env->CallVoidMethod(activityGlobal_, mid);
+    } else {
+        LOGI("Method not found: %s", methodName);
+    }
+
+    env->DeleteLocalRef(cls);
 }
 
 void MenuHandler::showMenu() {
-    LOGI("Showing menu");
-    callJavaVisibility(true);
+    LOGI("Request show menu");
+    callJava("showMenuFromNative");
 }
 
 void MenuHandler::hideMenu() {
-    LOGI("Hiding menu");
-    callJavaVisibility(false);
-}
-
-bool MenuHandler::isMenuVisible() const {
-    return false; // Optional: can implement via JNI if needed
+    LOGI("Request hide menu");
+    callJava("hideMenuFromNative");
 }
