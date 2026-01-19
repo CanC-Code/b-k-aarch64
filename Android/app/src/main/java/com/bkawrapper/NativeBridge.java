@@ -1,19 +1,32 @@
 package com.bkawrapper;
 
-import android.content.ContentResolver;
-import android.net.Uri;
+import com.bkawrapper.menu.MenuController;
 
 public class NativeBridge {
 
     static {
-        System.loadLibrary("emulator_native");
+        System.loadLibrary("bk_native");
     }
 
-    public static native void loadRomFromUri(ContentResolver cr, Uri uri);
-    public static native float getOTRProgress();
-    public static native void initTexture();
-    public static native void startGameLoop();
-    public static native void pauseGameLoop();
-    public static native void resumeGameLoop();
-    public static native void cleanupGame();
+    private static MenuController menuController;
+
+    public static void setMenuController(MenuController controller) {
+        menuController = controller;
+    }
+
+    // Called from native
+    public static void showMenu() {
+        if (menuController != null) {
+            menuController.show();
+        }
+    }
+
+    public static void hideMenu() {
+        if (menuController != null) {
+            menuController.hide();
+        }
+    }
+
+    public static native void nativeResumeGame();
+    public static native void nativeQuitGame();
 }
