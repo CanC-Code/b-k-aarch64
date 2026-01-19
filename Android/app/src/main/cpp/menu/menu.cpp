@@ -4,33 +4,50 @@
 #define LOG_TAG "MENU_HANDLER"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
-MenuHandler::MenuHandler(JNIEnv* env, jobject menuOverlay) {
-    menuOverlayGlobal_ = env->NewGlobalRef(menuOverlay);
+MenuHandler::MenuHandler(JavaVM* vm, jobject activity)
+    : vm_(vm) 
+{
+    JNIEnv* env = nullptr;
+    vm_->GetEnv((void**)&env, JNI_VERSION_1_6);
 
-    jclass viewCls = env->GetObjectClass(menuOverlayGlobal_);
-    setVisibility_ = env->GetMethodID(viewCls, "setVisibility", "(I)V");
+    activityGlobal_ = env->NewGlobalRef(activity);
+
+    jclass activityCls = env->GetObjectClass(activity);
+    jfieldID menuField = env->GetFieldID(activityCls, "menuOverlay", "Landroid/view/View;");
+
+    jobject menuLocal = env->GetObjectField(activity, menuField);
+    menuOverlayGlobal_ = env->NewGlobalRef(menuLocal);
 
     LOGI("MenuHandler initialized");
 }
 
 MenuHandler::~MenuHandler() {
-    // JVM owns thread here; safe
+    JNIEnv* env = nullptr;
+    vm_->GetEnv((void**)&env, JNI_VERSION_1_6);
+    env->DeleteGlobalRef(menuOverlayGlobal_);
+    env->DeleteGlobalRef(activityGlobal_);
 }
 
-void MenuHandler::show() {
-    JNIEnv* env;
-    JavaVM* vm;
-    env->GetJavaVM(&vm);
-    vm->GetEnv((void**)&env, JNI_VERSION_1_6);
+void MenuHandler::setVisibility(bool visible) {
+    JNIEnv* env = nullptr;
+    vm_->AttachCurrentThread(&env, nullptr);
 
-    env->CallVoidMethod(menuOverlayGlobal_, setVisibility_, 0); // VISIBLE
+    jclass viewCls = env->GetObjectClass(menuOverlayGlobal_);
+    jmethodID setVis = env->GetMethodID(viewCls, "setVisibility", "(I)V");
+
+    env->CallVoidMethod(
+        menuOverlayGlobal_,
+        setVis,
+        visible ? 0 /* View.VISIBLE */ : 8 /* View.GONE */
+    );
 }
 
-void MenuHandler::hide() {
-    JNIEnv* env;
-    JavaVM* vm;
-    env->GetJavaVM(&vm);
-    vm->GetEnv((void**)&env, JNI_VERSION_1_6);
+void MenuHandler::showMenu() {
+    LOGI("showMenu()");
+    setVisibility(true);
+}
 
-    env->CallVoidMethod(menuOverlayGlobal_, setVisibility_, 8); // GONE
+void MenuHandler::hideMenu() {
+    LOGI("hideMenu()");
+    setVisibility(false);
 }
