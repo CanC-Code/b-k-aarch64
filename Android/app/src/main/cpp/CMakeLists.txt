@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.18)
 project(bkawrapper LANGUAGES C CXX)
 
 # ------------------------------
-# C++ standard
+# Set C++ standard
 # ------------------------------
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -30,7 +30,9 @@ include_directories(
     ${ANDROID_NDK}/sysroot/usr/include
 )
 
-# Android macro
+# ------------------------------
+# Ensure Android macro for conditional compilation
+# ------------------------------
 add_definitions(-DANDROID)
 
 # ------------------------------
@@ -39,7 +41,7 @@ add_definitions(-DANDROID)
 add_library(wrapper SHARED ${WRAPPER_SOURCES})
 
 # ------------------------------
-# Required Android libraries
+# Find required Android libraries
 # ------------------------------
 find_library(log-lib log)
 find_library(android-lib android)
