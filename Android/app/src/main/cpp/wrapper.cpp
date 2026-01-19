@@ -1,3 +1,4 @@
+#include <jni.h>
 #include <vector>
 #include <atomic>
 #include <thread>
@@ -23,7 +24,6 @@ extern "C" {
 // Global emulator state
 // ------------------------------------------------------------
 static constexpr size_t RAM_SIZE = 8 * 1024 * 1024;
-
 static std::vector<uint8_t> g_ram(RAM_SIZE);
 static std::vector<uint32_t> g_framebuffer;
 static int g_fbWidth  = 320;
@@ -33,7 +33,7 @@ static std::atomic<bool> g_running{false};
 static std::thread g_emulationThread;
 static std::mutex g_stateMutex;
 
-// In-memory OTR (NOTE: builder currently owns real data)
+// In-memory OTR (builder owns real data)
 static std::vector<uint8_t> g_OTR;
 
 // ------------------------------------------------------------
@@ -49,15 +49,14 @@ static void emulation_loop() {
     core1_reset(g_ram.data());
 
     while (g_running.load()) {
-        // Pause emulation while menu is visible
+
+        // Pause automatically if menu is visible
         if (g_menu) {
-            // Attach thread for JNI check
             JNIEnv* env = nullptr;
             g_vm->AttachCurrentThread(&env, nullptr);
-
-            jclass menuCls = env->GetObjectClass(g_menu);
-            jmethodID isVisibleMethod = env->GetMethodID(menuCls, "isVisible", "()Z");
-            jboolean menuVisible = env->CallBooleanMethod(reinterpret_cast<jobject>(g_menu), isVisibleMethod);
+            jclass menuCls = env->GetObjectClass(g_menu->getOverlay());
+            jmethodID isVis = env->GetMethodID(menuCls, "isShown", "()Z");
+            jboolean menuVisible = env->CallBooleanMethod(g_menu->getOverlay(), isVis);
             if (menuVisible) {
                 usleep(16 * 1000);
                 continue;
@@ -66,28 +65,31 @@ static void emulation_loop() {
 
         {
             std::lock_guard<std::mutex> lock(g_stateMutex);
-            // Main emulation step
+
+            // Core emulation step
             n_audioStep();
         }
 
-        // ~60Hz pacing
-        usleep(16 * 1000);
+        usleep(16 * 1000); // ~60Hz
     }
 
     LOGI("Emulation thread exiting");
 }
 
 // ------------------------------------------------------------
-// JNI Exports
+// JNI functions
 // ------------------------------------------------------------
 extern "C" {
 
 JNIEXPORT jbyteArray JNICALL
-Java_com_bkawrapper_NativeBridge_getOTRData(JNIEnv* env, jclass) {
+Java_com_bkawrapper_NativeBridge_getOTRData(
+        JNIEnv* env, jclass) {
+
     jbyteArray out = env->NewByteArray(static_cast<jsize>(g_OTR.size()));
     if (!out || g_OTR.empty()) return out;
 
-    env->SetByteArrayRegion(out, 0,
+    env->SetByteArrayRegion(
+        out, 0,
         static_cast<jsize>(g_OTR.size()),
         reinterpret_cast<jbyte*>(g_OTR.data())
     );
@@ -96,12 +98,14 @@ Java_com_bkawrapper_NativeBridge_getOTRData(JNIEnv* env, jclass) {
 }
 
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_saveOTRToFile(JNIEnv* env, jclass, jstring path) {
+Java_com_bkawrapper_NativeBridge_saveOTRToFile(
+        JNIEnv* env, jclass, jstring path) {
+
     const char* cpath = env->GetStringUTFChars(path, nullptr);
     FILE* f = fopen(cpath, "wb");
     if (!f) {
+        LOGI("Failed to open file: %s", cpath);
         env->ReleaseStringUTFChars(path, cpath);
-        LOGI("Failed to save BK.OTR: cannot open file");
         return;
     }
 
@@ -113,16 +117,22 @@ Java_com_bkawrapper_NativeBridge_saveOTRToFile(JNIEnv* env, jclass, jstring path
 }
 
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_startGameLoop(JNIEnv*, jclass) {
+Java_com_bkawrapper_NativeBridge_startGameLoop(
+        JNIEnv*, jclass) {
+
     g_running.store(true);
     g_emulationThread = std::thread(emulation_loop);
+
     LOGI("Game loop started");
 }
 
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_cleanupGame(JNIEnv*, jclass) {
+Java_com_bkawrapper_NativeBridge_cleanupGame(
+        JNIEnv*, jclass) {
+
     g_running.store(false);
     if (g_emulationThread.joinable()) g_emulationThread.join();
+
     LOGI("Game cleaned up");
 }
 
@@ -130,7 +140,9 @@ Java_com_bkawrapper_NativeBridge_cleanupGame(JNIEnv*, jclass) {
 // Menu JNI hooks
 // ------------------------------------------------------------
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_nativeInitMenu(JNIEnv* env, jclass, jobject activity) {
+Java_com_bkawrapper_NativeBridge_nativeInitMenu(
+        JNIEnv* env, jclass, jobject activity) {
+
     if (g_menu) return;
 
     g_menu = new MenuHandler(g_vm, activity);
@@ -138,12 +150,13 @@ Java_com_bkawrapper_NativeBridge_nativeInitMenu(JNIEnv* env, jclass, jobject act
 }
 
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_nativeOnBackPressed(JNIEnv*, jclass) {
+Java_com_bkawrapper_NativeBridge_nativeOnBackPressed(
+        JNIEnv*, jclass) {
+
     if (!g_menu) return;
 
-    // Simply toggle menu visibility
-    // Emulation pause/resume is managed in emulation loop based on visibility
-    g_menu->showMenu();  // or hideMenu() can be called via Java swipe/back logic
+    // toggle menu visibility
+    g_menu->toggleVisibility();
 }
 
 } // extern "C"
