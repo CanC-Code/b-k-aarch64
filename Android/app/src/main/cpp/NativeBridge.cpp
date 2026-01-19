@@ -1,89 +1,126 @@
-#include <jni.h>
+#include "NativeBridge.hpp"
+#include "otr_generator.hpp"
 #include <android/asset_manager_jni.h>
-#include <android/asset_manager.h>
-#include <vector>
-#include <string>
+#include <android/log.h>
+#include <fstream>
 #include <mutex>
 
-#include "OTRGenerator.hpp"
+#define LOG_TAG "NativeBridge"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-// Single in-memory buffer for generated OTR
-static std::vector<uint8_t> gOTRBuffer;
-static std::mutex gOTRMutex;
+static std::vector<uint8_t> sOTRMemory;
+static std::mutex sOTRMutex;
+static OTRGenerator sOTRGenerator;
 
-static AAssetManager* gAssetManager = nullptr;
+// Progress callback
+static float sProgress = 0.0f;
 
-// ---- JNI EXPORTS ----
+extern "C" {
 
-extern "C" JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_nativeInit(JNIEnv* env, jclass, jobject assetManager) {
-    gAssetManager = AAssetManager_fromJava(env, assetManager);
+// Initialize native system (if needed)
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeBridge_nativeInit(JNIEnv* env, jclass clazz, jobject assetManager) {
+    AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
+    if (!mgr) {
+        LOGE("Failed to get AAssetManager");
+        return;
+    }
+    // Nothing else needed at init for now
 }
 
-// Load YAML asset into memory
-static std::vector<uint8_t> loadYAMLAsset(const char* assetPath) {
-    std::vector<uint8_t> data;
-
-    if (!gAssetManager) return data;
-
-    AAsset* asset = AAssetManager_open(gAssetManager, assetPath, AASSET_MODE_BUFFER);
-    if (!asset) return data;
-
-    size_t size = AAsset_getLength(asset);
-    data.resize(size);
-    AAsset_read(asset, data.data(), size);
-    AAsset_close(asset);
-
-    return data;
-}
-
-extern "C" JNIEXPORT jboolean JNICALL
+// Generate OTR: ROM bytes + YAML from assets
+JNIEXPORT jboolean JNICALL
 Java_com_bkawrapper_NativeBridge_nativeGenerateOTR(
-        JNIEnv* env,
-        jclass,
+        JNIEnv* env, jclass clazz,
         jbyteArray romData,
         jstring yamlAssetPath,
-        jstring outputDir) {
+        jstring outputPath
+) {
+    if (!romData || !yamlAssetPath || !outputPath) return JNI_FALSE;
 
-    if (!romData || !yamlAssetPath) return JNI_FALSE;
+    jsize romSize = env->GetArrayLength(romData);
+    std::vector<uint8_t> romBuffer(romSize);
+    env->GetByteArrayRegion(romData, 0, romSize, reinterpret_cast<jbyte*>(romBuffer.data()));
 
-    const char* yamlPath = env->GetStringUTFChars(yamlAssetPath, nullptr);
+    const char* yamlPathC = env->GetStringUTFChars(yamlAssetPath, nullptr);
+    const char* outputPathC = env->GetStringUTFChars(outputPath, nullptr);
 
     // Load YAML from APK assets
-    std::vector<uint8_t> yamlData = loadYAMLAsset(yamlPath);
-    env->ReleaseStringUTFChars(yamlAssetPath, yamlPath);
-
-    if (yamlData.empty()) return JNI_FALSE;
-
-    // Load ROM bytes from JVM array
-    jsize romSize = env->GetArrayLength(romData);
-    std::vector<uint8_t> romBytes(romSize);
-    env->GetByteArrayRegion(romData, 0, romSize, reinterpret_cast<jbyte*>(romBytes.data()));
-
-    // Generate OTR into gOTRBuffer
-    {
-        std::lock_guard<std::mutex> lock(gOTRMutex);
-        gOTRBuffer.clear();
-        bool ok = OTRGenerator::generateOTR(romBytes.data(), romBytes.size(),
-                                             yamlData.data(), yamlData.size(),
-                                             gOTRBuffer);
-        return ok ? JNI_TRUE : JNI_FALSE;
+    AAssetManager* mgr = AAssetManager_fromJava(env, env->CallObjectMethod(clazz, env->GetMethodID(clazz, "getAssetManager", "()Landroid/content/res/AssetManager;")));
+    if (!mgr) {
+        LOGE("Invalid AssetManager");
+        env->ReleaseStringUTFChars(yamlAssetPath, yamlPathC);
+        env->ReleaseStringUTFChars(outputPath, outputPathC);
+        return JNI_FALSE;
     }
+
+    std::vector<uint8_t> yamlBuffer = OTRGenerator::loadYAMLAsset(mgr, yamlPathC);
+    if (yamlBuffer.empty()) {
+        LOGE("Failed to load YAML asset");
+        env->ReleaseStringUTFChars(yamlAssetPath, yamlPathC);
+        env->ReleaseStringUTFChars(outputPath, outputPathC);
+        return JNI_FALSE;
+    }
+
+    sOTRGenerator.setProgressCallback([](float p) {
+        std::lock_guard<std::mutex> lock(sOTRMutex);
+        sProgress = p;
+    });
+
+    std::vector<uint8_t> localOTR;
+    bool success = sOTRGenerator.generateOTR(
+            romBuffer.data(), romBuffer.size(),
+            reinterpret_cast<const char*>(yamlBuffer.data()), yamlBuffer.size(),
+            localOTR
+    );
+
+    if (!success) {
+        env->ReleaseStringUTFChars(yamlAssetPath, yamlPathC);
+        env->ReleaseStringUTFChars(outputPath, outputPathC);
+        LOGE("OTR generation failed");
+        return JNI_FALSE;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(sOTRMutex);
+        sOTRMemory = std::move(localOTR);
+    }
+
+    // Save generated OTR to persistent storage
+    std::ofstream ofs(outputPathC, std::ios::binary);
+    if (!ofs.is_open()) {
+        LOGE("Failed to open output path: %s", outputPathC);
+    } else {
+        ofs.write(reinterpret_cast<const char*>(sOTRMemory.data()), sOTRMemory.size());
+        ofs.close();
+        LOGI("OTR saved to %s (%zu bytes)", outputPathC, sOTRMemory.size());
+    }
+
+    env->ReleaseStringUTFChars(yamlAssetPath, yamlPathC);
+    env->ReleaseStringUTFChars(outputPath, outputPathC);
+    return success ? JNI_TRUE : JNI_FALSE;
 }
 
-extern "C" JNIEXPORT jfloat JNICALL
+// Return current progress [0.0f – 1.0f]
+JNIEXPORT jfloat JNICALL
 Java_com_bkawrapper_NativeBridge_nativeGetProgress(JNIEnv*, jclass) {
-    return OTRGenerator::getProgress(); // returns 0.0f–1.0f
+    std::lock_guard<std::mutex> lock(sOTRMutex);
+    return sProgress;
 }
 
-extern "C" JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_nativeLoadOTR(JNIEnv*, jclass, jstring) {
-    // No disk path needed; GLRenderer reads gOTRBuffer directly
+// Provide pointer to in-memory OTR for rendering
+JNIEXPORT jlong JNICALL
+Java_com_bkawrapper_NativeBridge_nativeGetOTRPointer(JNIEnv*, jclass) {
+    std::lock_guard<std::mutex> lock(sOTRMutex);
+    return reinterpret_cast<jlong>(sOTRMemory.data());
 }
-    
-// Provide access to in-memory OTR for GLRenderer
-const uint8_t* getGeneratedOTR(size_t& outSize) {
-    std::lock_guard<std::mutex> lock(gOTRMutex);
-    outSize = gOTRBuffer.size();
-    return gOTRBuffer.data();
+
+// Get size of in-memory OTR
+JNIEXPORT jint JNICALL
+Java_com_bkawrapper_NativeBridge_nativeGetOTRSize(JNIEnv*, jclass) {
+    std::lock_guard<std::mutex> lock(sOTRMutex);
+    return static_cast<jint>(sOTRMemory.size());
 }
+
+} // extern "C"
