@@ -14,5 +14,5 @@ private:
     jobject activityGlobal_;
     jobject menuOverlayGlobal_;
 
-    void setVisibilityOnUiThread(bool visible);
+    void setVisibility(bool visible);
 };
