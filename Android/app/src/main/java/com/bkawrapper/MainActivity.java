@@ -1,82 +1,86 @@
 package com.bkawrapper;
 
 import android.app.Activity;
-import android.content.res.AssetManager;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
-import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.opengl.GLSurfaceView;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.io.InputStream;
 
-public class MainActivity extends Activity {
+public class MainActivity extends AppCompatActivity {
 
-    private GLSurfaceView glSurfaceView;
-    private Button loadButton;
-    private LinearLayout progressOverlay;
+    private static final int REQUEST_ROM_FILE = 1001;
+
     private ProgressBar progressBar;
     private TextView progressText;
-    private ExecutorService executor;
-
-    static {
-        System.loadLibrary("wrapper");
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        glSurfaceView = findViewById(R.id.gl_surface);
-        loadButton = findViewById(R.id.button_load_game);
-        progressOverlay = findViewById(R.id.progress_overlay);
         progressBar = findViewById(R.id.progress_bar);
         progressText = findViewById(R.id.progress_text);
 
-        glSurfaceView.setEGLContextClientVersion(2);
-        glSurfaceView.setRenderer(new GLRenderer(this));
-
-        executor = Executors.newSingleThreadExecutor();
-
-        loadButton.setOnClickListener(v -> loadGame());
+        Button loadButton = findViewById(R.id.button_load_game);
+        loadButton.setOnClickListener(v -> openRomPicker());
     }
 
-    private void loadGame() {
-        progressOverlay.setVisibility(View.VISIBLE);
-        progressBar.setProgress(0);
-        progressText.setText("0%");
-
-        executor.submit(() -> {
-            try {
-                AssetManager assets = getAssets();
-                boolean success = NativeBridge.loadEmbeddedOTRAssets(this, assets, progress -> runOnUiThread(() -> {
-                    progressBar.setProgress((int)(progress * 100));
-                    progressText.setText((int)(progress * 100) + "%");
-                }));
-
-                runOnUiThread(() -> {
-                    progressOverlay.setVisibility(View.GONE);
-                    if (!success) {
-                        progressText.setText("Failed to load OTR");
-                    }
-                });
-            } catch (Exception e) {
-                e.printStackTrace();
-                runOnUiThread(() -> {
-                    progressOverlay.setVisibility(View.GONE);
-                    progressText.setText("Error: " + e.getMessage());
-                });
-            }
-        });
+    private void openRomPicker() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*"); // ROM files
+        startActivityForResult(intent, REQUEST_ROM_FILE);
     }
 
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        executor.shutdownNow();
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == REQUEST_ROM_FILE && resultCode == Activity.RESULT_OK) {
+            if (data != null && data.getData() != null) {
+                Uri romUri = data.getData();
+                loadRomAndGenerateOTR(romUri);
+            }
+        }
+    }
+
+    private void loadRomAndGenerateOTR(Uri romUri) {
+        try (InputStream is = getContentResolver().openInputStream(romUri)) {
+            byte[] romData = new byte[is.available()];
+            is.read(romData);
+
+            new Thread(() -> {
+                // Initialize native with AssetManager
+                NativeBridge.nativeInit(getAssets());
+
+                // Generate OTR from ROM + YAML asset (user selects US/PAL)
+                boolean success = NativeBridge.nativeGenerateOTR(
+                        romData,
+                        "otr_yaml/decompressed.us.v10.yaml"
+                );
+
+                runOnUiThread(() -> {
+                    if (success) {
+                        progressBar.setProgress(100);
+                        progressText.setText("100%");
+                        // Load into renderer
+                        NativeBridge.nativeLoadOTR();
+                    } else {
+                        progressText.setText("OTR generation failed");
+                    }
+                });
+            }).start();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            progressText.setText("Failed to read ROM");
+        }
     }
 }
