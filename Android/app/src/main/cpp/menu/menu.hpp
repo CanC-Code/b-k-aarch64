@@ -12,6 +12,7 @@ public:
 private:
     JavaVM* vm_;
     jobject activityGlobal_;
+    jobject menuOverlayGlobal_;
 
-    void callJava(const char* methodName);
+    void setVisibility(bool visible);
 };
