@@ -1,14 +1,11 @@
 package com.bkawrapper;
 
+import android.app.Activity;
 import android.os.Bundle;
-import android.opengl.GLSurfaceView;
+import android.view.View;
+import android.widget.FrameLayout;
 
-import androidx.appcompat.app.AppCompatActivity;
-
-import com.bkawrapper.menu.MenuController;
-import com.bkawrapper.menu.MenuOverlayView;
-
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity {
 
     private MenuController menuController;
 
@@ -17,19 +14,19 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        GLSurfaceView glView = findViewById(R.id.surface_gl);
-        glView.setEGLContextClientVersion(2);
-        glView.setRenderer(new GLRenderer(this));
+        FrameLayout root = findViewById(R.id.root_container);
+        View menuOverlay = getLayoutInflater()
+                .inflate(R.layout.menu_overlay, root, false);
 
-        MenuOverlayView menuOverlay =
-                findViewById(R.id.menu_overlay);
+        root.addView(menuOverlay);
 
         menuController = new MenuController(menuOverlay);
-        NativeBridge.setMenuController(menuController);
     }
 
     @Override
     public void onBackPressed() {
-        menuController.toggle();
+        if (!menuController.onBackPressed()) {
+            super.onBackPressed();
+        }
     }
 }
