@@ -14,14 +14,11 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
 // ------------------------------------------------------------
-// External emulator symbols (DEFINED ELSEWHERE)
+// External emulator symbols (stubs for now)
 // ------------------------------------------------------------
 extern "C" {
-
-// Defined in emulator/stubs.cpp
 void core1_reset(void* ram);
 void n_audioStep(void);
-
 }
 
 // ------------------------------------------------------------
@@ -35,10 +32,9 @@ static std::thread g_emulationThread;
 static std::mutex g_stateMutex;
 
 // ------------------------------------------------------------
-// Menu
+// Menu (DEFINED in menu.cpp)
 // ------------------------------------------------------------
-JavaVM* g_vm = nullptr;
-MenuHandler* g_menu = nullptr;
+extern MenuHandler* g_menu;
 
 // ------------------------------------------------------------
 // Emulation loop
@@ -114,7 +110,6 @@ Java_com_bkawrapper_NativeBridge_nativeOnBackPressed(JNIEnv*, jclass) {
 // JNI_OnLoad
 // ----------------------
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*) {
-    g_vm = vm;
     LOGI("JNI_OnLoad bk_wrapper");
     return JNI_VERSION_1_6;
 }
