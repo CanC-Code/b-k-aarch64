@@ -7,17 +7,12 @@
 #define LOG_TAG "MENU_HANDLER"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
-// Global JNI references
-static MenuHandler* g_menu = nullptr;
-static JavaVM* g_vm = nullptr;
+// Global JNI reference from wrapper.cpp
+extern JavaVM* g_vm;
 
 // --------------------------
-MenuHandler::MenuHandler(JavaVM* vm, jobject activity)
-    : vm_(vm)
+MenuHandler::MenuHandler(JNIEnv* env, jobject activity)
 {
-    JNIEnv* env = nullptr;
-    vm_->GetEnv((void**)&env, JNI_VERSION_1_6);
-
     activityGlobal_ = env->NewGlobalRef(activity);
     jclass cls = env->GetObjectClass(activity);
     jfieldID fid = env->GetFieldID(cls, "menuOverlay", "Landroid/widget/LinearLayout;");
@@ -27,11 +22,22 @@ MenuHandler::MenuHandler(JavaVM* vm, jobject activity)
     LOGI("MenuHandler initialized");
 }
 
-MenuHandler::~MenuHandler() {}
+MenuHandler::~MenuHandler() {
+    if (activityGlobal_) {
+        JNIEnv* env = nullptr;
+        g_vm->AttachCurrentThread(&env, nullptr);
+        env->DeleteGlobalRef(activityGlobal_);
+    }
+    if (menuOverlayGlobal_) {
+        JNIEnv* env = nullptr;
+        g_vm->AttachCurrentThread(&env, nullptr);
+        env->DeleteGlobalRef(menuOverlayGlobal_);
+    }
+}
 
 void MenuHandler::setVisibility(bool visible) {
     JNIEnv* env = nullptr;
-    vm_->AttachCurrentThread(&env, nullptr);
+    g_vm->AttachCurrentThread(&env, nullptr);
 
     jclass cls = env->GetObjectClass(menuOverlayGlobal_);
     jmethodID setVis = env->GetMethodID(cls, "setVisibility", "(I)V");
@@ -69,13 +75,7 @@ Java_com_bkawrapper_NativeMenu_nativeResumeEmulator(JNIEnv*, jclass) {
 
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_nativeInitMenu(JNIEnv* env, jclass, jobject activity) {
-    if (!g_menu) g_menu = new MenuHandler(g_vm, activity);
-}
-
-JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*) {
-    g_vm = vm;
-    LOGI("JNI_OnLoad bk_wrapper");
-    return JNI_VERSION_1_6;
+    if (!g_menu) g_menu = new MenuHandler(env, activity);
 }
 
 } // extern "C"
