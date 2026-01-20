@@ -1,20 +1,28 @@
+// File: Android/app/src/main/java/com/bkawrapper/NativeBridge.java
 package com.bkawrapper;
 
-public final class NativeBridge {
+import android.app.Activity;
+import android.content.ContentResolver;
+import android.net.Uri;
+
+public class NativeBridge {
 
     static {
-        System.loadLibrary("bk_native");
+        System.loadLibrary("bk_wrapper"); // Must match your built lib name
     }
 
-    // Menu control
-    public static native void pauseGameLoop();
-    public static native void resumeGameLoop();
+    // -------------------------
+    // Menu / UI
+    // -------------------------
+    public static native void nativeInitMenu(Activity activity);
+    public static native void nativeOnBackPressed();
 
-    // Renderer hooks (required by GLRenderer)
-    public static native void updateTexture(int textureId);
-
-    // Optional quit hook (safe stub)
-    public static void nativeQuitGame() {
-        android.os.Process.killProcess(android.os.Process.myPid());
-    }
+    // -------------------------
+    // ROM / Game management
+    // -------------------------
+    public static native void loadRomFromUri(ContentResolver resolver, Uri uri);
+    public static native float getOTRProgress();
+    public static native void initTexture();
+    public static native void startGameLoop();
+    public static native void cleanupGame();
 }
