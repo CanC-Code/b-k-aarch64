@@ -1,19 +1,21 @@
-// File: Android/app/src/main/cpp/menu/menu.hpp
 #pragma once
-
 #include <jni.h>
 
 class MenuHandler {
 public:
-    MenuHandler(JavaVM* vm, jobject activity);
+    MenuHandler(JavaVM* vm, JNIEnv* env, jobject activity);
     ~MenuHandler();
 
+    void showMenu();
+    void hideMenu();
     void toggleVisibility();
+    bool isVisible() const;
 
 private:
-    JavaVM* m_vm;
-    jobject m_activity;
-};
+    JavaVM* vm_;
+    jobject activityGlobal_;
+    jobject menuOverlayGlobal_;
+    bool visible_ = false;
 
-// Global menu instance
-extern MenuHandler* g_menu;
+    void setVisibility(bool visible);
+};
