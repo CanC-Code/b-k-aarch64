@@ -1,34 +1,39 @@
+// File: Android/app/src/main/java/com/bkawrapper/MenuController.java
 package com.bkawrapper;
 
-import android.os.Bundle;
-import android.view.KeyEvent;
-import androidx.activity.ComponentActivity;
+import android.app.Activity;
+import android.view.MotionEvent;
+import android.view.View;
 import androidx.activity.OnBackPressedCallback;
 
 public class MenuController {
 
-    private final ComponentActivity activity;
+    private final Activity activity;
 
-    public MenuController(ComponentActivity activity) {
+    public MenuController(Activity activity) {
         this.activity = activity;
-        setupBackHandler();
+        NativeBridge.nativeInitMenu(activity);
     }
 
-    private void setupBackHandler() {
-        activity.getOnBackPressedDispatcher().addCallback(activity, new OnBackPressedCallback(true) {
-            @Override
-            public void handleOnBackPressed() {
-                boolean handled = NativeBridge.nativeOnBackPressed();
-                if (!handled) {
-                    setEnabled(false);
-                    activity.onBackPressed();
-                    setEnabled(true);
-                }
-            }
-        });
+    public void onBackPressed() {
+        NativeMenu.nativeToggleMenu();
     }
 
-    public void initMenu() {
-        NativeBridge.nativeInitMenu();
+    public boolean onTouchEvent(MotionEvent event) {
+        // optional swipe detection
+        return false;
+    }
+
+    public static void attach(Activity activity, MenuController menuController) {
+        activity.getOnBackPressedDispatcher().addCallback(activity,
+                new OnBackPressedCallback(true) {
+                    @Override
+                    public void handleOnBackPressed() {
+                        menuController.onBackPressed();
+                    }
+                });
+
+        View root = activity.getWindow().getDecorView();
+        root.setOnTouchListener((v, event) -> menuController.onTouchEvent(event));
     }
 }
