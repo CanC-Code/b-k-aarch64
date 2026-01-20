@@ -4,10 +4,14 @@ package com.bkawrapper;
 import android.app.Activity;
 
 public class NativeBridge {
+
     static {
-        System.loadLibrary("wrapper"); // matches your CMake target
+        System.loadLibrary("wrapper");
     }
 
-    /** Initialize the native menu (passes activity to JNI) */
+    // Menu init (used by MainActivity / MenuController)
     public static native void nativeInitMenu(Activity activity);
+
+    // Renderer hook (used by GLRenderer)
+    public static native void updateTexture(int textureId);
 }
