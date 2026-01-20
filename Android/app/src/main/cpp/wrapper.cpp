@@ -4,7 +4,6 @@
 #include <thread>
 #include <vector>
 #include <mutex>
-#include <cstdio>
 #include <unistd.h>
 
 #define LOG_TAG "BK_WRAPPER"
@@ -23,18 +22,12 @@ static std::atomic<bool> g_running{false};
 static std::thread g_emulationThread;
 static std::mutex g_stateMutex;
 
-static JavaVM* g_vm = nullptr;
-static MenuHandler* g_menu = nullptr;
-
-// ------------------------------------------------------------
-// Stubs (extern only!)
 extern "C" {
     void core1_reset(uint8_t* ram);
-    void core2_stepFrame(uint8_t* ram, uint32_t* framebuffer, int w, int h);
-    void n_audioInit();
     void n_audioStep();
-    void core1_loadOTR(uint8_t* romData, size_t romSize);
 }
+
+static MenuHandler* g_menu = nullptr;
 
 // ------------------------------------------------------------
 // Emulation loop
@@ -42,6 +35,7 @@ static void emulation_loop() {
     core1_reset(g_ram.data());
 
     while (g_running.load()) {
+        // pause if menu visible
         if (g_menu && g_menu->isVisible()) {
             usleep(16 * 1000);
             continue;
@@ -54,7 +48,7 @@ static void emulation_loop() {
 }
 
 // ------------------------------------------------------------
-// JNI functions
+// JNI API
 extern "C" {
 
 JNIEXPORT void JNICALL
