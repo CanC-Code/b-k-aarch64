@@ -1,30 +1,35 @@
 // File: Android/app/src/main/java/com/bkawrapper/Menu.java
 package com.bkawrapper;
 
-import android.app.Activity;
+import android.view.View;
 import android.widget.LinearLayout;
 
-public final class Menu {
+public class Menu {
 
-    private final Activity activity;
     private final LinearLayout menuOverlay;
+    private boolean visible = false;
 
-    public Menu(Activity activity, LinearLayout menuOverlay) {
-        this.activity = activity;
-        this.menuOverlay = menuOverlay;
+    public Menu(LinearLayout overlay) {
+        this.menuOverlay = overlay;
+        hide();
+    }
 
-        NativeMenu.nativeInitMenu(menuOverlay);
+    public void show() {
+        menuOverlay.setVisibility(View.VISIBLE);
+        visible = true;
+    }
+
+    public void hide() {
+        menuOverlay.setVisibility(View.GONE);
+        visible = false;
     }
 
     public void toggle() {
-        NativeMenu.nativeToggleMenu();
+        if (visible) hide();
+        else show();
     }
 
-    public void pauseEmulator() {
-        NativeMenu.nativePauseEmulator();
-    }
-
-    public void resumeEmulator() {
-        NativeMenu.nativeResumeEmulator();
+    public boolean isVisible() {
+        return visible;
     }
 }
