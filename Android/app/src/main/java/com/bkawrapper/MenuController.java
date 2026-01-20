@@ -2,38 +2,31 @@
 package com.bkawrapper;
 
 import android.app.Activity;
-import android.view.MotionEvent;
-import android.view.View;
-import androidx.activity.OnBackPressedCallback;
 
 public class MenuController {
 
-    private final Activity activity;
+    private boolean menuVisible = false;
 
-    public MenuController(Activity activity) {
-        this.activity = activity;
+    public MenuController() {
+    }
+
+    /** Initialize native menu with activity reference */
+    public void initMenu(Activity activity) {
         NativeBridge.nativeInitMenu(activity);
     }
 
-    public void onBackPressed() {
+    /** Toggle menu visibility from Java side */
+    public void toggleMenu() {
         NativeMenu.nativeToggleMenu();
+        menuVisible = !menuVisible;
     }
 
-    public boolean onTouchEvent(MotionEvent event) {
-        // optional swipe detection
-        return false;
-    }
-
-    public static void attach(Activity activity, MenuController menuController) {
-        activity.getOnBackPressedDispatcher().addCallback(activity,
-                new OnBackPressedCallback(true) {
-                    @Override
-                    public void handleOnBackPressed() {
-                        menuController.onBackPressed();
-                    }
-                });
-
-        View root = activity.getWindow().getDecorView();
-        root.setOnTouchListener((v, event) -> menuController.onTouchEvent(event));
+    /** Called by MainActivity on back press */
+    public boolean onBackPressed() {
+        if (menuVisible) {
+            toggleMenu();
+            return true; // handled
+        }
+        return false; // not handled
     }
 }
