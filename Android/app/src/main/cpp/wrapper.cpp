@@ -41,29 +41,23 @@ JavaVM* g_vm = nullptr;
 MenuHandler* g_menu = nullptr;
 
 // ------------------------------------------------------------
-// Emulation loop (stub for now)
+// Emulation loop
 // ------------------------------------------------------------
 static void emulation_loop() {
     core1_reset(g_ram.data());
 
     while (g_running.load()) {
-        // Pause automatically if menu is visible
-        if (g_menu && g_menu->isVisible()) {
-            usleep(16 * 1000);
-            continue;
-        }
-
         {
             std::lock_guard<std::mutex> lock(g_stateMutex);
             n_audioStep();
         }
 
-        usleep(16 * 1000); // ~60fps
+        usleep(16 * 1000); // ~60fps pacing
     }
 }
 
 // ------------------------------------------------------------
-// JNI functions (OWNED HERE)
+// JNI functions
 // ------------------------------------------------------------
 extern "C" {
 
@@ -107,8 +101,7 @@ Java_com_bkawrapper_NativeBridge_cleanupGame(JNIEnv*, jclass) {
 }
 
 // ----------------------
-// Menu toggle only
-// (nativeInitMenu is implemented in menu.cpp)
+// Menu interaction
 // ----------------------
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_nativeOnBackPressed(JNIEnv*, jclass) {
