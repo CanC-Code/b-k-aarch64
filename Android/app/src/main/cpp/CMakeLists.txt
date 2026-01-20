@@ -10,7 +10,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(WRAPPER_SOURCES
     wrapper.cpp
     menu/menu.cpp
-    ultra/ultra.cpp
     emulator/emulator.cpp
 )
 
