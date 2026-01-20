@@ -1,15 +1,19 @@
 #pragma once
+
 #include <jni.h>
+#include <atomic>
 
 class MenuHandler {
 public:
-    MenuHandler(JavaVM* vm, JNIEnv* env, jobject activity);
+    MenuHandler(JavaVM* vm, jobject activity);
     ~MenuHandler();
 
-    void showMenu();
-    void hideMenu();
+    void showMenu();      // show menu and pause emulator
+    void hideMenu();      // hide menu and resume emulator
     void toggleVisibility();
     bool isVisible() const;
+
+    jobject getOverlay() const { return menuOverlayGlobal_; }
 
 private:
     JavaVM* vm_;
