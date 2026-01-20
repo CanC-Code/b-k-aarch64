@@ -5,28 +5,19 @@ import android.app.Activity;
 
 public class MenuController {
 
-    private boolean menuVisible = false;
+    private Activity activity;
 
-    public MenuController() {
-    }
-
-    /** Initialize native menu with activity reference */
-    public void initMenu(Activity activity) {
+    public MenuController(Activity activity) {
+        this.activity = activity;
         NativeBridge.nativeInitMenu(activity);
     }
 
-    /** Toggle menu visibility from Java side */
-    public void toggleMenu() {
-        NativeMenu.nativeToggleMenu();
-        menuVisible = !menuVisible;
+    public void toggle() {
+        NativeBridge.nativeOnBackPressed();
     }
 
-    /** Called by MainActivity on back press */
-    public boolean onBackPressed() {
-        if (menuVisible) {
-            toggleMenu();
-            return true; // handled
-        }
-        return false; // not handled
+    // Optional attach helper if needed
+    public static void attach(Activity activity, MenuController controller) {
+        // Currently unused, could register activity callbacks
     }
 }
