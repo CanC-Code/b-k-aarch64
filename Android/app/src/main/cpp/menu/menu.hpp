@@ -1,5 +1,4 @@
 #pragma once
-
 #include <jni.h>
 #include <atomic>
 
@@ -8,18 +7,16 @@ public:
     MenuHandler(JavaVM* vm, jobject activity);
     ~MenuHandler();
 
-    void showMenu();      // show menu and pause emulator
-    void hideMenu();      // hide menu and resume emulator
+    void showMenu();   // show menu and pause emulator
+    void hideMenu();   // hide menu and resume emulator
     void toggleVisibility();
     bool isVisible() const;
-
-    jobject getOverlay() const { return menuOverlayGlobal_; }
 
 private:
     JavaVM* vm_;
     jobject activityGlobal_;
     jobject menuOverlayGlobal_;
-    bool visible_ = false;
+    std::atomic<bool> visible_{false};
 
     void setVisibility(bool visible);
 };
