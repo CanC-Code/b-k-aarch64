@@ -22,7 +22,9 @@ public class MainActivity extends Activity {
 
         menuController = new MenuController(menuOverlay);
     }
-
+    public void onSurfaceReady() {
+    // Renderer callback — no-op for now
+    }
     @Override
     public void onBackPressed() {
         if (!menuController.onBackPressed()) {
