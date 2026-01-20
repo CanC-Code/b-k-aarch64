@@ -1,3 +1,4 @@
+// File: Android/app/src/main/java/com/bkawrapper/MainActivity.java
 package com.bkawrapper;
 
 import android.os.Bundle;
@@ -5,30 +6,27 @@ import androidx.activity.ComponentActivity;
 
 public class MainActivity extends ComponentActivity {
 
-    private boolean gameRunning = false;
+    private MenuController menuController;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
 
-        // Initialize core/game
-        NativeBridge.nativeInitCore();
-        gameRunning = true;
-
-        // Initialize menu
-        MenuController menu = new MenuController(this);
-        menu.initMenu();
+        // Initialize menu controller and native menu
+        menuController = new MenuController();
+        menuController.initMenu(this);
     }
 
     @Override
-    protected void onPause() {
-        super.onPause();
-        if (gameRunning) NativeBridge.pauseGameLoop();
+    public void onBackPressed() {
+        if (!menuController.onBackPressed()) {
+            super.onBackPressed();
+        }
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (gameRunning) NativeBridge.resumeGameLoop();
+    // Optional callback from renderer if needed
+    public void onSurfaceReady() {
+        // no-op for now
     }
 }
