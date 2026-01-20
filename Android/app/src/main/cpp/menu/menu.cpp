@@ -1,3 +1,4 @@
+// File: Android/app/src/main/cpp/menu/menu.cpp
 #include "menu.hpp"
 #include <android/log.h>
 #include <atomic>
@@ -7,7 +8,6 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
 // ------------------------------------------------------------
-// Global state (menu)
 static std::atomic<bool> g_paused{false};
 static std::atomic<bool> g_menuVisible{false};
 
@@ -19,9 +19,7 @@ MenuHandler::MenuHandler(JavaVM* vm, jobject activity) : vm_(vm) {
     activityGlobal_ = env->NewGlobalRef(activity);
 
     jclass activityCls = env->GetObjectClass(activity);
-    jfieldID menuField =
-        env->GetFieldID(activityCls, "menuOverlay", "Landroid/widget/LinearLayout;");
-
+    jfieldID menuField = env->GetFieldID(activityCls, "menuOverlay", "Landroid/widget/LinearLayout;");
     jobject menuLocal = env->GetObjectField(activity, menuField);
     menuOverlayGlobal_ = env->NewGlobalRef(menuLocal);
 
@@ -31,7 +29,6 @@ MenuHandler::MenuHandler(JavaVM* vm, jobject activity) : vm_(vm) {
 MenuHandler::~MenuHandler() {
     JNIEnv* env = nullptr;
     vm_->GetEnv((void**)&env, JNI_VERSION_1_6);
-
     env->DeleteGlobalRef(menuOverlayGlobal_);
     env->DeleteGlobalRef(activityGlobal_);
 }
@@ -42,30 +39,22 @@ void MenuHandler::setVisibility(bool visible) {
 
     jclass viewCls = env->GetObjectClass(menuOverlayGlobal_);
     jmethodID setVis = env->GetMethodID(viewCls, "setVisibility", "(I)V");
-
-    env->CallVoidMethod(menuOverlayGlobal_, setVis, visible ? 0 /* VISIBLE */ : 8 /* GONE */);
+    env->CallVoidMethod(menuOverlayGlobal_, setVis, visible ? 0 : 8); // VISIBLE / GONE
 
     visible_ = visible;
     g_menuVisible.store(visible);
     g_paused.store(visible);
 }
 
-void MenuHandler::showMenu() {
-    LOGI("showMenu()");
-    setVisibility(true);
-}
-
-void MenuHandler::hideMenu() {
-    LOGI("hideMenu()");
-    setVisibility(false);
-}
-
-bool MenuHandler::isVisible() const {
-    return visible_;
-}
+void MenuHandler::showMenu() { setVisibility(true); }
+void MenuHandler::hideMenu() { setVisibility(false); }
+void MenuHandler::toggleVisibility() { visible_ ? hideMenu() : showMenu(); }
+bool MenuHandler::isVisible() const { return visible_; }
+jobject MenuHandler::getOverlay() const { return menuOverlayGlobal_; }
 
 // ------------------------------------------------------------
-// JNI hooks
+// JNI
+// ------------------------------------------------------------
 extern "C" {
 
 static MenuHandler* g_menu = nullptr;
@@ -80,13 +69,7 @@ Java_com_bkawrapper_NativeBridge_nativeInitMenu(JNIEnv* env, jclass, jobject act
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_nativeOnBackPressed(JNIEnv*, jclass) {
     if (!g_menu) return;
-    if (!g_menu->isVisible()) {
-        g_menu->showMenu();
-        LOGI("Menu shown, emulator paused");
-    } else {
-        g_menu->hideMenu();
-        LOGI("Menu hidden, emulator resumed");
-    }
+    g_menu->toggleVisibility();
 }
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*) {
