@@ -1,21 +1,24 @@
+// File: Android/app/src/main/java/com/bkawrapper/NativeBridge.java
 package com.bkawrapper;
 
 import android.app.Activity;
-import android.net.Uri;
 
 public class NativeBridge {
 
     static {
-        System.loadLibrary("bkawrapper");
+        System.loadLibrary("bk_wrapper");
     }
 
-    public static native void nativeInit(Activity activity);
-    public static native void loadRomFromUri(Object resolver, Uri uri);
-    public static native float getOTRProgress();
+    // Game loop control
     public static native void startGameLoop();
     public static native void pauseGameLoop();
     public static native void resumeGameLoop();
     public static native void cleanupGame();
-    public static native void initTexture();
+
+    // Menu
+    public static native void nativeInitMenu(Activity activity);
     public static native void nativeOnBackPressed();
+
+    // Texture update (stub)
+    public static native void updateTexture(int textureId);
 }
