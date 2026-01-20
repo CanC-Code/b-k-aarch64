@@ -1,32 +1,32 @@
+// File: Android/app/src/main/java/com/bkawrapper/GLRenderer.java
 package com.bkawrapper;
 
-import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
+import android.content.Context;
+
 import javax.microedition.khronos.opengles.GL10;
+import javax.microedition.khronos.egl.EGLConfig;
 
 public class GLRenderer implements GLSurfaceView.Renderer {
 
-    private int textureId;
+    private Context context;
 
-    @Override
-    public void onSurfaceCreated(GL10 gl, javax.microedition.khronos.egl.EGLConfig config) {
-        // setup texture
-        textureId = createTexture();
+    public GLRenderer(Context context) {
+        this.context = context;
     }
 
     @Override
-    public void onDrawFrame(GL10 gl) {
-        NativeBridge.updateTexture(textureId);
+    public void onSurfaceCreated(GL10 gl, EGLConfig config) {
+        // TODO: initialize GL textures if needed
     }
 
     @Override
     public void onSurfaceChanged(GL10 gl, int width, int height) {
-        GLES20.glViewport(0, 0, width, height);
+        gl.glViewport(0, 0, width, height);
     }
 
-    private int createTexture() {
-        int[] textures = new int[1];
-        GLES20.glGenTextures(1, textures, 0);
-        return textures[0];
+    @Override
+    public void onDrawFrame(GL10 gl) {
+        NativeBridge.updateTexture(0); // stub
     }
 }
