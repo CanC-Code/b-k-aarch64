@@ -1,33 +1,43 @@
-package com.bkawrapper.menu;
+package com.bkawrapper;
 
-public class MenuController {
+import android.view.View;
+import android.widget.Button;
 
-    private final MenuOverlayView menuView;
+public final class MenuController {
+
+    private final View menuView;
     private boolean visible = false;
 
-    public MenuController(MenuOverlayView menuView) {
+    public MenuController(View menuView) {
         this.menuView = menuView;
+        this.menuView.setVisibility(View.GONE);
+
+        Button resume = menuView.findViewById(R.id.menu_resume);
+        Button quit   = menuView.findViewById(R.id.menu_quit);
+
+        resume.setOnClickListener(v -> hide());
+        quit.setOnClickListener(v -> android.os.Process.killProcess(android.os.Process.myPid()));
     }
 
-    public void toggle() {
+    public boolean onBackPressed() {
         if (visible) {
             hide();
+            return true;
         } else {
             show();
+            return true;
         }
     }
 
-    public void show() {
+    private void show() {
         visible = true;
-        menuView.show();
+        menuView.setVisibility(View.VISIBLE);
+        NativeBridge.pauseGameLoop();
     }
 
-    public void hide() {
+    private void hide() {
         visible = false;
-        menuView.hide();
-    }
-
-    public boolean isVisible() {
-        return visible;
+        menuView.setVisibility(View.GONE);
+        NativeBridge.resumeGameLoop();
     }
 }
