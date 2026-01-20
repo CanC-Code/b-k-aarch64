@@ -1,28 +1,23 @@
-// File: Android/app/src/main/java/com/bkawrapper/NativeBridge.java
 package com.bkawrapper;
-
-import android.app.Activity;
-import android.content.ContentResolver;
-import android.net.Uri;
 
 public class NativeBridge {
 
     static {
-        System.loadLibrary("bk_wrapper"); // Must match your built lib name
+        System.loadLibrary("bk_wrapper"); // matches your CMake target
     }
 
-    // -------------------------
-    // Menu / UI
-    // -------------------------
-    public static native void nativeInitMenu(Activity activity);
-    public static native void nativeOnBackPressed();
+    // Core/game methods
+    public static native void nativeInitCore();
+    public static native void nativeOnCoreStep();
 
-    // -------------------------
-    // ROM / Game management
-    // -------------------------
-    public static native void loadRomFromUri(ContentResolver resolver, Uri uri);
-    public static native float getOTRProgress();
-    public static native void initTexture();
-    public static native void startGameLoop();
-    public static native void cleanupGame();
+    // Menu methods
+    public static native void nativeInitMenu();
+    public static native boolean nativeOnBackPressed();
+
+    // New JNI hooks for MainActivity
+    public static native void pauseGameLoop();
+    public static native void resumeGameLoop();
+
+    // Called from GLRenderer
+    public static native void updateTexture(int textureId);
 }
