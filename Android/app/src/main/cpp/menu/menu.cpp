@@ -1,47 +1,44 @@
-// File: Android/app/src/main/cpp/menu/menu.cpp
 #include "menu.hpp"
 #include <android/log.h>
 
-#define LOG_TAG "MenuHandler"
+#define LOG_TAG "MENU_HANDLER"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
-MenuHandler* g_menu = nullptr;
-
-MenuHandler::MenuHandler(JavaVM* vm, jobject activity)
-    : m_vm(vm)
+MenuHandler::MenuHandler(JavaVM* vm, JNIEnv* env, jobject activity)
+    : vm_(vm)
 {
-    JNIEnv* env = nullptr;
-    vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
-    m_activity = env->NewGlobalRef(activity);
+    activityGlobal_ = env->NewGlobalRef(activity);
 
-    LOGI("MenuHandler created");
+    jclass activityCls = env->GetObjectClass(activity);
+    jmethodID getMenuOverlay = env->GetMethodID(activityCls, "getMenuOverlay", "()Landroid/widget/LinearLayout;");
+    jobject menuLocal = env->CallObjectMethod(activity, getMenuOverlay);
+    menuOverlayGlobal_ = env->NewGlobalRef(menuLocal);
+
+    LOGI("MenuHandler initialized");
 }
 
 MenuHandler::~MenuHandler() {
     JNIEnv* env = nullptr;
-    m_vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
-    env->DeleteGlobalRef(m_activity);
+    vm_->GetEnv((void**)&env, JNI_VERSION_1_6);
+    env->DeleteGlobalRef(menuOverlayGlobal_);
+    env->DeleteGlobalRef(activityGlobal_);
 }
 
+void MenuHandler::setVisibility(bool visible) {
+    JNIEnv* env = nullptr;
+    vm_->AttachCurrentThread(&env, nullptr);
+
+    jclass viewCls = env->GetObjectClass(menuOverlayGlobal_);
+    jmethodID setVis = env->GetMethodID(viewCls, "setVisibility", "(I)V");
+    env->CallVoidMethod(menuOverlayGlobal_, setVis, visible ? 0 /*VISIBLE*/ : 8 /*GONE*/);
+
+    visible_ = visible;
+}
+
+void MenuHandler::showMenu() { setVisibility(true); }
+void MenuHandler::hideMenu() { setVisibility(false); }
 void MenuHandler::toggleVisibility() {
-    LOGI("Menu toggle requested (UI side handles actual visibility)");
+    if (isVisible()) hideMenu();
+    else showMenu();
 }
-
-// JNI entry points
-
-extern "C" JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeMenu_nativeToggleMenu(JNIEnv*, jclass) {
-    if (g_menu) {
-        g_menu->toggleVisibility();
-    }
-}
-
-extern "C" JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_nativeInitMenu(JNIEnv* env, jclass, jobject activity) {
-    JavaVM* vm = nullptr;
-    env->GetJavaVM(&vm);
-
-    if (!g_menu) {
-        g_menu = new MenuHandler(vm, activity);
-    }
-}
+bool MenuHandler::isVisible() const { return visible_; }
