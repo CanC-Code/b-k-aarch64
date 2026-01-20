@@ -27,10 +27,13 @@ static JavaVM* g_vm = nullptr;
 static MenuHandler* g_menu = nullptr;
 
 // ------------------------------------------------------------
-// Stubs
+// Stubs (extern only!)
 extern "C" {
-    void core1_reset(uint8_t* ram) {}
-    void n_audioStep() {}
+    void core1_reset(uint8_t* ram);
+    void core2_stepFrame(uint8_t* ram, uint32_t* framebuffer, int w, int h);
+    void n_audioInit();
+    void n_audioStep();
+    void core1_loadOTR(uint8_t* romData, size_t romSize);
 }
 
 // ------------------------------------------------------------
