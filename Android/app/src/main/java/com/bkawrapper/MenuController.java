@@ -1,43 +1,53 @@
 package com.bkawrapper;
 
+import android.app.Activity;
+import android.view.MotionEvent;
 import android.view.View;
-import android.widget.Button;
+import androidx.activity.OnBackPressedCallback;
 
-public final class MenuController {
+public class MenuController {
 
-    private final View menuView;
-    private boolean visible = false;
+    private final Activity activity;
+    private float swipeStartX = -1;
+    private float swipeStartY = -1;
 
-    public MenuController(View menuView) {
-        this.menuView = menuView;
-        this.menuView.setVisibility(View.GONE);
-
-        Button resume = menuView.findViewById(R.id.menu_resume);
-        Button quit   = menuView.findViewById(R.id.menu_quit);
-
-        resume.setOnClickListener(v -> hide());
-        quit.setOnClickListener(v -> android.os.Process.killProcess(android.os.Process.myPid()));
+    public MenuController(Activity activity) {
+        this.activity = activity;
+        NativeBridge.nativeInitMenu(activity);
     }
 
-    public boolean onBackPressed() {
-        if (visible) {
-            hide();
-            return true;
-        } else {
-            show();
-            return true;
+    public void onBackPressed() {
+        NativeBridge.nativeOnBackPressed();
+    }
+
+    public boolean onTouchEvent(MotionEvent event) {
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                swipeStartX = event.getX();
+                swipeStartY = event.getY();
+                break;
+            case MotionEvent.ACTION_UP:
+                if (swipeStartX < 200 && swipeStartY < 200) {
+                    float dy = event.getY() - swipeStartY;
+                    if (dy > 150) {
+                        NativeBridge.nativeOnBackPressed();
+                        return true;
+                    }
+                }
+                break;
         }
+        return false;
     }
 
-    private void show() {
-        visible = true;
-        menuView.setVisibility(View.VISIBLE);
-        NativeBridge.pauseGameLoop();
-    }
+    public static void attach(Activity activity, MenuController menuController) {
+        activity.getOnBackPressedDispatcher().addCallback(activity, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                menuController.onBackPressed();
+            }
+        });
 
-    private void hide() {
-        visible = false;
-        menuView.setVisibility(View.GONE);
-        NativeBridge.resumeGameLoop();
+        View root = activity.getWindow().getDecorView();
+        root.setOnTouchListener((v, event) -> menuController.onTouchEvent(event));
     }
 }
