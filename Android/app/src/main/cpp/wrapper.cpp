@@ -14,10 +14,15 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
 // ------------------------------------------------------------
-// Emulator stub symbols (until real core is wired)
+// External emulator symbols (DEFINED ELSEWHERE)
 // ------------------------------------------------------------
-extern "C" void core1_reset(void*) {}
-extern "C" void n_audioStep() {}
+extern "C" {
+
+// Defined in emulator/stubs.cpp
+void core1_reset(void* ram);
+void n_audioStep(void);
+
+}
 
 // ------------------------------------------------------------
 // Global emulator state
@@ -30,29 +35,35 @@ static std::thread g_emulationThread;
 static std::mutex g_stateMutex;
 
 // ------------------------------------------------------------
-// Menu (owned by menu.cpp)
+// Menu
 // ------------------------------------------------------------
-extern MenuHandler* g_menu;
-static JavaVM* g_vm = nullptr;
+JavaVM* g_vm = nullptr;
+MenuHandler* g_menu = nullptr;
 
 // ------------------------------------------------------------
-// Emulation loop (stub)
+// Emulation loop (stub for now)
 // ------------------------------------------------------------
 static void emulation_loop() {
     core1_reset(g_ram.data());
 
     while (g_running.load()) {
+        // Pause automatically if menu is visible
+        if (g_menu && g_menu->isVisible()) {
+            usleep(16 * 1000);
+            continue;
+        }
+
         {
             std::lock_guard<std::mutex> lock(g_stateMutex);
             n_audioStep();
         }
 
-        usleep(16 * 1000); // ~60 FPS stub
+        usleep(16 * 1000); // ~60fps
     }
 }
 
 // ------------------------------------------------------------
-// JNI functions
+// JNI functions (OWNED HERE)
 // ------------------------------------------------------------
 extern "C" {
 
@@ -71,9 +82,9 @@ Java_com_bkawrapper_NativeBridge_startGameLoop(JNIEnv*, jclass) {
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_pauseGameLoop(JNIEnv*, jclass) {
     g_running.store(false);
-    if (g_emulationThread.joinable())
+    if (g_emulationThread.joinable()) {
         g_emulationThread.join();
-
+    }
     LOGI("Game loop paused");
 }
 
@@ -89,32 +100,21 @@ Java_com_bkawrapper_NativeBridge_resumeGameLoop(JNIEnv*, jclass) {
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_cleanupGame(JNIEnv*, jclass) {
     g_running.store(false);
-    if (g_emulationThread.joinable())
+    if (g_emulationThread.joinable()) {
         g_emulationThread.join();
-
+    }
     LOGI("Game cleaned up");
 }
 
 // ----------------------
-// Menu initialization
-// ----------------------
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_nativeInitMenu(JNIEnv* env, jclass, jobject activity) {
-    if (!g_menu) {
-        JavaVM* vm = nullptr;
-        env->GetJavaVM(&vm);
-        g_menu = new MenuHandler(vm, activity);
-        LOGI("Menu initialized from NativeBridge");
-    }
-}
-
-// ----------------------
-// Back button → toggle menu
+// Menu toggle only
+// (nativeInitMenu is implemented in menu.cpp)
 // ----------------------
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_nativeOnBackPressed(JNIEnv*, jclass) {
-    if (g_menu)
+    if (g_menu) {
         g_menu->toggleVisibility();
+    }
 }
 
 // ----------------------
