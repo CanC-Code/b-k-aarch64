@@ -30,7 +30,7 @@ public class MainActivity extends ComponentActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // 1. Inflate the layout from XML
+        // 1. Inflate the layout from XML FIRST
         setContentView(R.layout.activity_main);
 
         // 2. Find the GLSurfaceView defined in XML
@@ -40,7 +40,7 @@ public class MainActivity extends ComponentActivity {
         glSurfaceView.setRenderer(glRenderer);
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
-        // 3. Initialize Menu (does NOT call setContentView again)
+        // 3. Initialize Menu (this now just finds views, no longer calls setContentView)
         menuController = new MenuController(this);
 
         // 4. Initialize Native side
