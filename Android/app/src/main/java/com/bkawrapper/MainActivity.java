@@ -2,20 +2,36 @@
 package com.bkawrapper;
 
 import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.opengl.GLSurfaceView;
+import androidx.activity.ComponentActivity;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 
-public class MainActivity extends Activity {
+public class MainActivity extends ComponentActivity {
 
     private GLSurfaceView glSurfaceView;
     private GLRenderer glRenderer;
     private MenuController menuController;
 
+    private final ActivityResultLauncher<Intent> filePickerLauncher =
+        registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+            if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                Uri uri = result.getData().getData();
+                if (uri != null) {
+                    // Grant persistent access and pass to JNI
+                    getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    NativeBridge.loadRomFromUri(getContentResolver(), uri);
+                }
+            }
+        });
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Setup GLSurfaceView
         glSurfaceView = new GLSurfaceView(this);
         glSurfaceView.setEGLContextClientVersion(2);
         glRenderer = new GLRenderer(this);
@@ -24,12 +40,18 @@ public class MainActivity extends Activity {
 
         setContentView(glSurfaceView);
 
-        // Menu
         menuController = new MenuController(this);
         MenuController.attach(this, menuController);
 
-        // Start emulator loop
+        NativeBridge.nativeInit(this); // Pass activity for MenuHandler
         NativeBridge.startGameLoop();
+    }
+
+    public void openFilePicker() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*"); // You can restrict this to .z64 or .otr if preferred
+        filePickerLauncher.launch(intent);
     }
 
     @Override
