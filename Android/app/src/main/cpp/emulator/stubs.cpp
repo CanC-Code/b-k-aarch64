@@ -7,12 +7,15 @@
 
 extern "C" {
 
-// ... keep existing stubs (core1_reset, etc) ...
+// New stub to fix the current linker error
+void n_audioStep() {
+    // Stub implementation: This would normally handle audio buffer processing
+    // For now, we just provide the symbol so the app compiles.
+}
 
 void core1_loadOTR(uint8_t* data, size_t size) {
     if (!data) return;
-    LOGI("core1_loadOTR: Loading OTR data into core (Size: %zu bytes)", size);
-    // Real implementation would pass this buffer to the internal emulator engine
+    LOGI("core1_loadOTR: Loading OTR data (Size: %zu bytes)", size);
 }
 
 void core1_reset() {
