@@ -18,19 +18,22 @@ static std::thread g_thread;
 extern "C" {
     void n_audioStep();
     void core1_reset(uint8_t*);
-    void core1_loadOTR(int fd); 
+    void core1_loadOTR(int fd);
 }
 
-static std::vector<uint8_t> g_ram(8 * 1024 * 1024);
+static std::vector<uint8_t> g_ram(8 * 1024 * 1024, 0);
 
 static void emuLoop() {
+    LOGI("Starting Emulator Loop...");
     core1_reset(g_ram.data());
+
     while (g_running.load()) {
         if (!g_menu || !g_menu->isVisible()) {
             n_audioStep();
         }
-        usleep(16000);
+        usleep(16000); // Target 60fps
     }
+    LOGI("Emulator Loop Stopped.");
 }
 
 extern "C" {
@@ -39,7 +42,15 @@ JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_nativeInit(JNIEnv* env, jclass, jobject activity) {
     if (!g_menu) {
         g_menu = new MenuHandler(g_vm, activity);
-        LOGI("Menu initialized");
+        LOGI("Native Menu System Initialized");
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeBridge_startGameLoop(JNIEnv*, jclass) {
+    if (!g_running.load()) {
+        g_running.store(true);
+        g_thread = std::thread(emuLoop);
     }
 }
 
@@ -54,15 +65,8 @@ Java_com_bkawrapper_NativeBridge_loadRomFromUri(JNIEnv* env, jclass, jobject res
         jclass pfdCls = env->GetObjectClass(pfd);
         jmethodID getFd = env->GetMethodID(pfdCls, "getFd", "()I");
         int fd = env->CallIntMethod(pfd, getFd);
+        LOGI("Passing FD %d to OTR loader", fd);
         core1_loadOTR(fd);
-    }
-}
-
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_startGameLoop(JNIEnv*, jclass) {
-    if (!g_running.load()) {
-        g_running.store(true);
-        g_thread = std::thread(emuLoop);
     }
 }
 
@@ -72,8 +76,7 @@ Java_com_bkawrapper_NativeBridge_cleanupGame(JNIEnv*, jclass) {
     if (g_thread.joinable()) g_thread.join();
 }
 
-JNIEXPORT jint JNICALL
-JNI_OnLoad(JavaVM* vm, void*) {
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*) {
     g_vm = vm;
     return JNI_VERSION_1_6;
 }
