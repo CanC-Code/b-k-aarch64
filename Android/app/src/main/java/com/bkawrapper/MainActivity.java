@@ -10,24 +10,23 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 
 public class MainActivity extends ComponentActivity {
-
     private GLSurfaceView glSurfaceView;
     private MenuController menuController;
-    private boolean isGameRunning = false;
+    private boolean gameStarted = false;
 
     private final ActivityResultLauncher<Intent> filePickerLauncher =
         registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
             if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                 Uri uri = result.getData().getData();
                 if (uri != null) {
-                    // 1. Grant persistent access
+                    // Grant persistent access and load ROM
                     getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                    // 2. Load the ROM into the native side
                     NativeBridge.loadRomFromUri(getContentResolver(), uri);
-                    // 3. Start the game loop ONLY after ROM is selected
-                    if (!isGameRunning) {
+                    
+                    // Start game loop now that we have data
+                    if (!gameStarted) {
                         NativeBridge.startGameLoop();
-                        isGameRunning = true;
+                        gameStarted = true;
                         if (menuController != null) menuController.hide();
                     }
                 }
@@ -37,19 +36,21 @@ public class MainActivity extends ComponentActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        // Standard layout inflation
+        
+        // 1. Inflate standard XML
         setContentView(R.layout.activity_main);
 
+        // 2. Reference existing GLSurfaceView
         glSurfaceView = findViewById(R.id.gl_surface_view);
         glSurfaceView.setEGLContextClientVersion(2);
         glSurfaceView.setRenderer(new GLRenderer(this));
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
+        // 3. Setup Menu logic
         menuController = new MenuController(this);
         
-        // Initialize native context but DO NOT start the game loop yet
-        NativeBridge.nativeInit(this); 
+        // 4. Init Native context
+        NativeBridge.nativeInit(this);
     }
 
     public void openFilePicker() {
@@ -63,25 +64,5 @@ public class MainActivity extends ComponentActivity {
     public void onBackPressed() {
         if (menuController != null) menuController.toggle();
         else super.onBackPressed();
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        if (glSurfaceView != null) glSurfaceView.onPause();
-        if (isGameRunning) NativeBridge.pauseGameLoop();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (glSurfaceView != null) glSurfaceView.onResume();
-        if (isGameRunning) NativeBridge.resumeGameLoop();
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        NativeBridge.cleanupGame();
     }
 }
