@@ -1,4 +1,3 @@
-// File: Android/app/src/main/java/com/bkawrapper/MenuController.java
 package com.bkawrapper;
 
 import android.view.View;
@@ -15,23 +14,19 @@ public class MenuController {
     }
 
     private void setupUI() {
-        // Find your existing layout components
-        activity.setContentView(R.layout.activity_main);
+        // UI is already inflated by MainActivity.onCreate
         menuOverlay = activity.findViewById(R.id.menu_overlay);
         
         Button selectRomBtn = activity.findViewById(R.id.btn_select_rom);
-        selectRomBtn.setOnClickListener(v -> activity.openFilePicker());
-    }
-
-    public static void attach(MainActivity activity, MenuController controller) {
-        // Logic to link with NativeBridge if necessary
+        if (selectRomBtn != null) {
+            selectRomBtn.setOnClickListener(v -> activity.openFilePicker());
+        }
     }
 
     public void toggle() {
-        if (menuOverlay.getVisibility() == View.VISIBLE) {
-            menuOverlay.setVisibility(View.GONE);
-        } else {
-            menuOverlay.setVisibility(View.VISIBLE);
+        if (menuOverlay != null) {
+            int visibility = (menuOverlay.getVisibility() == View.VISIBLE) ? View.GONE : View.VISIBLE;
+            menuOverlay.setVisibility(visibility);
         }
     }
 }
