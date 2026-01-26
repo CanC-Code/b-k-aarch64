@@ -27,7 +27,7 @@ jobs:
         with:
           api-level: 34
           build-tools: "34.0.0"
-          ndk: "27.3.10554745"
+          ndk: "25.1.8937393" # Matching your log version
 
       # ---------- Pre-processing Step ----------
       - name: Set up Python
@@ -35,18 +35,18 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install PyYAML
+      - name: Install dependencies
         run: pip install PyYAML
 
-      # NEW: Ensure assets.yaml exists so the script doesn't fail
-      - name: Ensure Assets Config Exists
+      - name: Prepare Assets for APK Embedding
         run: |
-          if [ ! -f "assets.yaml" ]; then
-            echo "Creating dummy assets.yaml..."
-            echo "files: [{uid: 0, name: 'dummy', size: 0, type: 'none'}]" > assets.yaml
-          fi
+          mkdir -p Android/app/src/main/assets/
+          # Copy the manifests so they are available at runtime inside the APK
+          cp decompressed.pal.yaml Android/app/src/main/assets/ || true
+          cp decompressed.us.v10.yaml Android/app/src/main/assets/ || true
 
-      - name: Generate Asset Manifest Header
+      - name: Generate Structural Header
+        # We run the script to create assets_manifest.h structure for C++
         run: python runtime/generate_assets_header.py
 
       # ---------- Native Build Tools ----------
@@ -70,13 +70,9 @@ jobs:
           ICON_DIR=Android/app/src/main/res
           BASE_ICON=/tmp/ic_launcher.png
           ROUND_ICON=/tmp/ic_launcher_round.png
-          # Ensure directories exist
           mkdir -p $ICON_DIR/mipmap-mdpi $ICON_DIR/mipmap-hdpi $ICON_DIR/mipmap-xhdpi $ICON_DIR/mipmap-xxhdpi $ICON_DIR/mipmap-xxxhdpi
-          
-          # Generate Icons
           convert -size 1024x1024 xc:"#4B0082" -gravity center -fill "#FFD700" -font DejaVu-Sans-Bold -pointsize 160 -annotate +0+0 "B.K.A" "$BASE_ICON"
           convert "$BASE_ICON" \( -size 1024x1024 xc:none -fill white -draw "circle 512,512 512,0" \) -compose copyopacity -composite "$ROUND_ICON"
-          
           for SIZE in 48 72 96 144 192; do
             DENSITY=$(echo $SIZE | awk '{print ($1==48?"mdpi":($1==72?"hdpi":($1==96?"xhdpi":($1==144?"xxhdpi":"xxxhdpi"))))}')
             convert "$BASE_ICON" -resize ${SIZE}x${SIZE} $ICON_DIR/mipmap-$DENSITY/ic_launcher.png
@@ -91,7 +87,6 @@ jobs:
             ~/.gradle/caches
             ~/.gradle/wrapper
             Android/app/build
-            Android/app/.cxx
           key: gradle-${{ runner.os }}-${{ hashFiles('Android/**/*.gradle*', 'gradle-wrapper.properties') }}
 
       - name: Make gradlew executable
