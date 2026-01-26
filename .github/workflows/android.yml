@@ -26,7 +26,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12' # Using a stable 3.12 to ensure PyYAML compatibility
+          python-version: '3.12'
 
       - name: Install Dependencies
         run: |
@@ -34,7 +34,7 @@ jobs:
           sudo apt-get install -y imagemagick
           pip install PyYAML
 
-      # ---------- Step 1: Generate C++ Asset Headers ----------
+      # Step 1: Generate C++ Asset Headers from assets.yaml
       - name: Generate C++ Asset Headers
         run: |
           if [ -f "assets.yaml" ]; then
@@ -43,11 +43,10 @@ jobs:
             echo "assets.yaml not found, skipping header generation."
           fi
 
-      # ---------- Step 2: Generate Launcher Icons ----------
+      # Step 2: Generate Launcher Icons using your runtime script
       - name: Generate Android launcher icons
         run: |
           # Create a square 1024x1024 master if it doesn't exist
-          # Using standard 'convert' which is available on Ubuntu runners
           if [ ! -f "master_icon.png" ]; then
             convert -size 1024x1024 xc:"#4B0082" \
               -gravity center \
@@ -58,10 +57,9 @@ jobs:
               master_icon.png
           fi
           
-          # Run your custom generation script
           python3 runtime/generate_icons.py master_icon.png
 
-      # ---------- Step 3: Build Application ----------
+      # Step 3: Execute Android Build
       - name: Build with Gradle
         run: |
           GRADLEW_PATH=$(find . -name gradlew)
@@ -73,10 +71,8 @@ jobs:
           cd $(dirname "$GRADLEW_PATH")
           ./gradlew :app:assembleDebug --no-daemon --stacktrace
 
-      # ---------- Step 4: Upload Artifact ----------
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: BKA-debug-apk
-          # Using a wildcard search for the APK to avoid path errors
           path: "Android/app/build/outputs/apk/debug/*.apk"
