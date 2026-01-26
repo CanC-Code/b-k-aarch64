@@ -1,101 +1,37 @@
 name: Android Build
-
 on:
   workflow_dispatch:
 
 jobs:
   build-android:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Initialize git submodules
-        run: git submodule update --init --recursive
-
-      - name: Set up JDK 17
+      - name: Set up Environment
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          api-level: 34
-          build-tools: "34.0.0"
-          ndk: "25.1.8937393" # Matching your log version
-
-      # ---------- Pre-processing Step ----------
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-
-      - name: Install dependencies
-        run: pip install PyYAML
-
-      - name: Prepare Assets for APK Embedding
+      - name: Prepare Assets for Embedding
         run: |
           mkdir -p Android/app/src/main/assets/
-          # Copy the manifests so they are available at runtime inside the APK
-          cp decompressed.pal.yaml Android/app/src/main/assets/ || true
-          cp decompressed.us.v10.yaml Android/app/src/main/assets/ || true
+          # Ensure manifests exist and move them to assets
+          cp decompressed.pal.yaml Android/app/src/main/assets/ || echo "PAL manifest missing"
+          cp decompressed.us.v10.yaml Android/app/src/main/assets/ || echo "US manifest missing"
 
       - name: Generate Structural Header
-        # We run the script to create assets_manifest.h structure for C++
         run: python runtime/generate_assets_header.py
 
-      # ---------- Native Build Tools ----------
-      - name: Install CMake 3.24.1
-        run: |
-          CMAKE_VERSION=3.24.1
-          CMAKE_DIR=$HOME/cmake-$CMAKE_VERSION
-          mkdir -p $CMAKE_DIR
-          curl -L -o /tmp/cmake.tar.gz https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION-linux-x86_64.tar.gz
-          tar -xzf /tmp/cmake.tar.gz --strip-components=1 -C $CMAKE_DIR
-          echo "$CMAKE_DIR/bin" >> $GITHUB_PATH
-
-      - name: Install ImageMagick
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y imagemagick
-
-      # ---------- Generate Launcher Icons ----------
-      - name: Generate Android launcher icons
-        run: |
-          ICON_DIR=Android/app/src/main/res
-          BASE_ICON=/tmp/ic_launcher.png
-          ROUND_ICON=/tmp/ic_launcher_round.png
-          mkdir -p $ICON_DIR/mipmap-mdpi $ICON_DIR/mipmap-hdpi $ICON_DIR/mipmap-xhdpi $ICON_DIR/mipmap-xxhdpi $ICON_DIR/mipmap-xxxhdpi
-          convert -size 1024x1024 xc:"#4B0082" -gravity center -fill "#FFD700" -font DejaVu-Sans-Bold -pointsize 160 -annotate +0+0 "B.K.A" "$BASE_ICON"
-          convert "$BASE_ICON" \( -size 1024x1024 xc:none -fill white -draw "circle 512,512 512,0" \) -compose copyopacity -composite "$ROUND_ICON"
-          for SIZE in 48 72 96 144 192; do
-            DENSITY=$(echo $SIZE | awk '{print ($1==48?"mdpi":($1==72?"hdpi":($1==96?"xhdpi":($1==144?"xxhdpi":"xxxhdpi"))))}')
-            convert "$BASE_ICON" -resize ${SIZE}x${SIZE} $ICON_DIR/mipmap-$DENSITY/ic_launcher.png
-            convert "$ROUND_ICON" -resize ${SIZE}x${SIZE} $ICON_DIR/mipmap-$DENSITY/ic_launcher_round.png
-          done
-
-      # ---------- Gradle Build ----------
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            Android/app/build
-          key: gradle-${{ runner.os }}-${{ hashFiles('Android/**/*.gradle*', 'gradle-wrapper.properties') }}
-
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
-
       - name: Build Debug APK
-        run: ./gradlew :Android:app:assembleDebug --no-daemon --no-build-cache --stacktrace
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :Android:app:assembleDebug --no-daemon --stacktrace
 
-      - name: Upload Debug APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: BKA-debug-apk
