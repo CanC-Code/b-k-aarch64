@@ -34,15 +34,16 @@ jobs:
           sudo apt-get install -y imagemagick
           pip install PyYAML
 
-      # Step 1: Generate C++ Asset Headers
-      - name: Generate C++ Asset Headers
+      # Step 1: Generate Binary Asset Manifests
+      # This script now creates manifest_us.bin and manifest_pal.bin in the assets folder
+      - name: Generate Binary Asset Manifests
         run: |
           python3 runtime/generate_assets_header.py
-          # Verify the file was actually created
-          if [ -f "Android/app/src/main/cpp/ultra/assets_manifest.h" ]; then
-            echo "Success: assets_manifest.h generated."
+          # Verify binary manifests exist in the Android assets directory
+          if [ -f "Android/app/src/main/assets/manifest_us.bin" ]; then
+            echo "Success: manifest_us.bin generated."
           else
-            echo "Error: assets_manifest.h was NOT generated!"
+            echo "Error: manifest_us.bin was NOT generated!"
             exit 1
           fi
 
