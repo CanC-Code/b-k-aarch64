@@ -40,7 +40,7 @@ public class MainActivity extends ComponentActivity {
         glSurfaceView.setRenderer(glRenderer);
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
-        // 3. Initialize Menu (this now just finds views, no longer calls setContentView)
+        // 3. Initialize Menu (does NOT call setContentView)
         menuController = new MenuController(this);
 
         // 4. Initialize Native side
