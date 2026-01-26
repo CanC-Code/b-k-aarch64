@@ -1,0 +1,42 @@
+# Asset Manifest for BKA Wrapper
+# This file is parsed by runtime/generate_assets_header.py 
+# to generate the C++ assets_manifest.h
+
+files:
+  # Base System Assets
+  - uid: 1001
+    size: 2048
+    name: "font_main"
+    type: "font"
+
+  - uid: 1002
+    size: 512
+    name: "ui_atlas"
+    type: "texture"
+
+  # Game Specific Assets (Examples)
+  - uid: 2001
+    size: 65536
+    name: "player_model"
+    type: "mesh"
+
+  - uid: 2002
+    size: 32768
+    name: "player_anim_idle"
+    type: "animation"
+
+  - uid: 2003
+    size: 16384
+    name: "level_01_map"
+    type: "binary"
+
+  # Audio Assets
+  - uid: 3001
+    size: 102400
+    name: "bgm_main_theme"
+    type: "audio"
+
+  - uid: 3002
+    size: 5120
+    name: "sfx_click"
+    type: "audio"
