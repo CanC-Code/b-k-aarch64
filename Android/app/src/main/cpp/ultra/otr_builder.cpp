@@ -1,74 +1,51 @@
+#include "otr_builder.h"
 #include "assets_manifest.h"
-#include <iostream>
+#include <android/log.h>
+#include <android/asset_manager.h>
+#include <android/asset_manager_jni.h>
 #include <vector>
 #include <string>
-#include <fstream>
-#include <android/log.h>
 
-#define LOG_TAG "OTR_BUILDER"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+#define TAG "BKA_OTR"
 
-// Global manifest state
-std::vector<AssetEntry> g_active_manifest;
-int g_rom_version = ROM_VERSION_UNKNOWN;
-
-/**
- * Detects the ROM version based on the N64 header.
- * Offset 0x3E: Region (P = PAL, E = US)
- * Offset 0x3B: Version (0x00, 0x01, etc)
- */
+// Detects region from ROM Header offset 0x3E
 int detect_rom_version(const uint8_t* rom_data, size_t size) {
     if (size < 0x40) return ROM_VERSION_UNKNOWN;
-
+    
     char region = (char)rom_data[0x3E];
-    uint8_t version = rom_data[0x3B];
+    __android_log_print(ANDROID_LOG_INFO, TAG, "Detected ROM Region Code: %c", region);
 
-    LOGI("Detecting ROM: Region %c, Version %d", region, version);
-
-    if (region == 'E' || region == 'J') {
-        // Typically US/JP are similar in many decomp projects
-        return ROM_VERSION_US;
-    } else if (region == 'P') {
-        return ROM_VERSION_PAL;
-    }
-
+    if (region == 'E') return ROM_VERSION_US;
+    if (region == 'P') return ROM_VERSION_PAL;
+    
     return ROM_VERSION_UNKNOWN;
 }
 
-/**
- * In a real implementation, you would use a YAML parser (like mini-yaml)
- * to load the assets from the Android AssetManager.
- */
-bool load_manifest_for_version(int version) {
-    g_active_manifest.clear();
-    std::string manifest_path;
+void extract_assets_to_otr(AAssetManager* mgr, uint8_t* rom_data, size_t rom_size) {
+    int version = detect_rom_version(rom_data, rom_size);
+    const char* manifest_path = (version == ROM_VERSION_PAL) ? "manifest_pal.bin" : "manifest_us.bin";
 
-    if (version == ROM_VERSION_US) {
-        manifest_path = "decompressed.us.v10.yaml";
-    } else if (version == ROM_VERSION_PAL) {
-        manifest_path = "decompressed.pal.yaml";
-    } else {
-        LOGE("Unsupported ROM version for manifest loading");
-        return false;
+    AAsset* asset = AAssetManager_open(mgr, manifest_path, AASSET_MODE_BUFFER);
+    if (!asset) {
+        __android_log_print(ANDROID_LOG_ERROR, TAG, "Could not open manifest: %s", manifest_path);
+        return;
     }
 
-    LOGI("Loading manifest: %s", manifest_path.c_str());
+    uint32_t entryCount = 0;
+    AAsset_read(asset, &entryCount, sizeof(uint32_t));
     
-    // Placeholder: Logic to call AssetManager and parse YAML goes here
-    // For now, we assume the manifest is loaded into g_active_manifest
-    return true;
-}
+    // Pointer to the start of entries in the asset buffer
+    const AssetEntry* entries = (const AssetEntry*)((const uint8_t*)AAsset_getBuffer(asset) + sizeof(uint32_t));
 
-extern "C" void build_otr_from_rom(uint8_t* rom_data, size_t size) {
-    g_rom_version = detect_rom_version(rom_data, size);
-    
-    if (load_manifest_for_version(g_rom_version)) {
-        LOGI("Manifest loaded successfully. Starting OTR build...");
-        
-        // Example usage of g_active_manifest
-        // for (const auto& asset : g_active_manifest) { ... }
-    } else {
-        LOGE("Failed to load manifest. Cannot build OTR.");
+    __android_log_print(ANDROID_LOG_INFO, TAG, "Starting extraction of %u assets", entryCount);
+
+    for (uint32_t i = 0; i < entryCount; i++) {
+        // Logic for decompress_rare_asset will go here in the next step
+        // For now, we just validate the manifest reading
+        if (i % 500 == 0) {
+            __android_log_print(ANDROID_LOG_DEBUG, TAG, "Verified Asset %u: %s at 0x%08X", i, entries[i].name, entries[i].offset);
+        }
     }
+
+    AAsset_close(asset);
 }
