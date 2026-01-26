@@ -1,4 +1,3 @@
-// File: Android/app/src/main/java/com/bkawrapper/MainActivity.java
 package com.bkawrapper;
 
 import android.app.Activity;
@@ -13,7 +12,6 @@ import androidx.activity.result.contract.ActivityResultContracts;
 public class MainActivity extends ComponentActivity {
 
     private GLSurfaceView glSurfaceView;
-    private GLRenderer glRenderer;
     private MenuController menuController;
 
     private final ActivityResultLauncher<Intent> filePickerLauncher =
@@ -21,7 +19,6 @@ public class MainActivity extends ComponentActivity {
             if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                 Uri uri = result.getData().getData();
                 if (uri != null) {
-                    // Grant persistent access and pass to JNI
                     getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
                     NativeBridge.loadRomFromUri(getContentResolver(), uri);
                 }
@@ -31,49 +28,48 @@ public class MainActivity extends ComponentActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        // Load the XML layout FIRST
+        setContentView(R.layout.activity_main);
 
-        glSurfaceView = new GLSurfaceView(this);
+        // Retrieve the GL view from the inflated layout
+        glSurfaceView = findViewById(R.id.gl_surface_view);
         glSurfaceView.setEGLContextClientVersion(2);
-        glRenderer = new GLRenderer(this);
+        GLRenderer glRenderer = new GLRenderer(this);
         glSurfaceView.setRenderer(glRenderer);
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
-        setContentView(glSurfaceView);
-
+        // Initialize MenuController WITHOUT calling setContentView again
         menuController = new MenuController(this);
-        MenuController.attach(this, menuController);
-
-        NativeBridge.nativeInit(this); // Pass activity for MenuHandler
+        
+        NativeBridge.nativeInit(this);
         NativeBridge.startGameLoop();
     }
 
     public void openFilePicker() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType("*/*"); // You can restrict this to .z64 or .otr if preferred
+        intent.setType("*/*");
         filePickerLauncher.launch(intent);
     }
 
     @Override
     public void onBackPressed() {
-        if (menuController != null) {
-            menuController.toggle();
-        } else {
-            super.onBackPressed();
-        }
+        if (menuController != null) menuController.toggle();
+        else super.onBackPressed();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        glSurfaceView.onPause();
+        if (glSurfaceView != null) glSurfaceView.onPause();
         NativeBridge.pauseGameLoop();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        glSurfaceView.onResume();
+        if (glSurfaceView != null) glSurfaceView.onResume();
         NativeBridge.resumeGameLoop();
     }
 
