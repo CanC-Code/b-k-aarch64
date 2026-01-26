@@ -5,49 +5,38 @@
 #include <android/log.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include "menu/menu.hpp"
 
 #define LOG_TAG "BK_WRAPPER"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
-static JavaVM* g_vm = nullptr;
-static MenuHandler* g_menu = nullptr;
 static std::atomic<bool> g_running{false};
 static std::thread g_thread;
 
 extern "C" {
-    void n_audioStep();
-    void core1_reset(uint8_t*);
+    void core1_reset(uint8_t* ram);
     void core1_loadOTR(int fd);
+    void n_audioStep();
 }
 
 static std::vector<uint8_t> g_ram(8 * 1024 * 1024, 0);
 
-static void emuLoop() {
-    LOGI("Starting Emulator Loop...");
+void emuLoop() {
     core1_reset(g_ram.data());
-
     while (g_running.load()) {
-        if (!g_menu || !g_menu->isVisible()) {
-            n_audioStep();
-        }
-        usleep(16000); // Target 60fps
+        n_audioStep();
+        usleep(16000);
     }
-    LOGI("Emulator Loop Stopped.");
 }
 
 extern "C" {
 
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_nativeInit(JNIEnv* env, jclass, jobject activity) {
-    if (!g_menu) {
-        g_menu = new MenuHandler(g_vm, activity);
-        LOGI("Native Menu System Initialized");
-    }
+Java_com_bkawrapper_NativeBridge_nativeInit(JNIEnv* env, jclass clazz, jobject activity) {
+    LOGI("Native Bridge Initialized");
 }
 
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_startGameLoop(JNIEnv*, jclass) {
+Java_com_bkawrapper_NativeBridge_startGameLoop(JNIEnv* env, jclass clazz) {
     if (!g_running.load()) {
         g_running.store(true);
         g_thread = std::thread(emuLoop);
@@ -55,7 +44,7 @@ Java_com_bkawrapper_NativeBridge_startGameLoop(JNIEnv*, jclass) {
 }
 
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_loadRomFromUri(JNIEnv* env, jclass, jobject resolver, jobject uri) {
+Java_com_bkawrapper_NativeBridge_loadRomFromUri(JNIEnv* env, jclass clazz, jobject resolver, jobject uri) {
     jclass resCls = env->GetObjectClass(resolver);
     jmethodID openDoc = env->GetMethodID(resCls, "openFileDescriptor", "(Landroid/net/Uri;Ljava/lang/String;)Landroid/os/ParcelFileDescriptor;");
     jstring mode = env->NewStringUTF("r");
@@ -65,20 +54,15 @@ Java_com_bkawrapper_NativeBridge_loadRomFromUri(JNIEnv* env, jclass, jobject res
         jclass pfdCls = env->GetObjectClass(pfd);
         jmethodID getFd = env->GetMethodID(pfdCls, "getFd", "()I");
         int fd = env->CallIntMethod(pfd, getFd);
-        LOGI("Passing FD %d to OTR loader", fd);
         core1_loadOTR(fd);
     }
 }
 
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_cleanupGame(JNIEnv*, jclass) {
+JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_pauseGameLoop(JNIEnv*, jclass) { g_running.store(false); }
+JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_resumeGameLoop(JNIEnv*, jclass) { /* Not implemented */ }
+JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_cleanupGame(JNIEnv*, jclass) {
     g_running.store(false);
-    if (g_thread.joinable()) g_thread.join();
-}
-
-JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*) {
-    g_vm = vm;
-    return JNI_VERSION_1_6;
+    if(g_thread.joinable()) g_thread.join();
 }
 
 }
