@@ -14,7 +14,7 @@ public class MenuController {
     }
 
     private void setupUI() {
-        // UI is already inflated by MainActivity, just find the views
+        // Find views in the already-inflated layout
         menuOverlay = activity.findViewById(R.id.menu_overlay);
         
         Button selectRomBtn = activity.findViewById(R.id.btn_select_rom);
