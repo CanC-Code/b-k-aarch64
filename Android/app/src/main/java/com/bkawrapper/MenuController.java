@@ -23,10 +23,6 @@ public class MenuController {
         }
     }
 
-    public static void attach(MainActivity activity, MenuController controller) {
-        // Interface for future expansion
-    }
-
     public void toggle() {
         if (menuOverlay != null) {
             int visibility = (menuOverlay.getVisibility() == View.VISIBLE) ? View.GONE : View.VISIBLE;
