@@ -6,7 +6,7 @@ def run_magick(args):
     """Try calling 'magick' (v7+) then 'convert' (v6) fallback."""
     try:
         subprocess.run(["magick"] + args, check=True)
-    except FileNotFoundError:
+    except (FileNotFoundError, subprocess.CalledProcessError):
         subprocess.run(["convert"] + args, check=True)
 
 def generate_icons(source_path):
@@ -30,19 +30,17 @@ def generate_icons(source_path):
         os.makedirs(target_dir, exist_ok=True)
 
         # Standard ic_launcher.png
-        # Workflow: Square crop -> Resize -> Sharpen -> Save
         standard_path = os.path.join(target_dir, "ic_launcher.png")
         run_magick([
             source_path,
             "-gravity", "center", 
-            "-extent", "%[fx:w<h?w:h]x%[fx:w<h?w:h]", # Force square crop
+            "-extent", "%[fx:w<h?w:h]x%[fx:w<h?w:h]", # Force square
             "-resize", f"{size}x{size}",
-            "-unsharp", "0x1", # Subtle sharpening for small icons
+            "-unsharp", "0x1",
             standard_path
         ])
 
         # Round ic_launcher_round.png
-        # Workflow: Create circular mask -> Apply to resized image
         round_path = os.path.join(target_dir, "ic_launcher_round.png")
         run_magick([
             source_path,
