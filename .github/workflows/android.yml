@@ -32,14 +32,13 @@ jobs:
           sudo apt-get install -y imagemagick
 
       # ---------- Generate Launcher Icons ----------
-      # This ensures resources exist before AAPT attempts to link them
       - name: Generate Android launcher icons
         run: |
+          # Use the path verified from your file dump
           RES_DIR=Android/app/src/main/res
           BASE_ICON=/tmp/ic_launcher.png
           ROUND_ICON=/tmp/ic_launcher_round.png
 
-          # 1. Create the base canvas with text
           convert -size 1024x1024 xc:"#4B0082" \
             -gravity center \
             -fill "#FFD700" \
@@ -48,14 +47,11 @@ jobs:
             -annotate +0+0 "B.K.A" \
             "$BASE_ICON"
 
-          # 2. Create the round version
           convert "$BASE_ICON" \
             \( -size 1024x1024 xc:none -fill white -draw "circle 512,512 512,0" \) \
             -compose copyopacity -composite \
             "$ROUND_ICON"
 
-          # 3. Generate the specific density folders and icons
-          # Sizes: mdpi:48, hdpi:72, xhdpi:96, xxhdpi:144, xxxhdpi:192
           declare -A DENSITIES=( ["mipmap-mdpi"]=48 ["mipmap-hdpi"]=72 ["mipmap-xhdpi"]=96 ["mipmap-xxhdpi"]=144 ["mipmap-xxxhdpi"]=192 )
 
           for DIR in "${!DENSITIES[@]}"; do
@@ -65,15 +61,21 @@ jobs:
             convert "$ROUND_ICON" -resize ${SIZE}x${SIZE} "$RES_DIR/$DIR/ic_launcher_round.png"
           done
 
-      # ---------- Permissions ----------
-      - name: Make gradlew executable
-        run: chmod +x Android/gradlew
-
-      # ---------- Build ----------
-      # We run from the Android/ directory where gradlew resides
-      - name: Build Debug APK
-        working-directory: ./Android
-        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+      # ---------- Fix Permissions & Build ----------
+      - name: Build with Gradle
+        run: |
+          # Find where gradlew actually is and run it from there
+          GRADLEW_PATH=$(find . -name gradlew)
+          if [ -z "$GRADLEW_PATH" ]; then
+            echo "Error: gradlew not found in the repository!"
+            ls -R
+            exit 1
+          fi
+          chmod +x "$GRADLEW_PATH"
+          
+          # Move to the directory containing gradlew and build
+          cd $(dirname "$GRADLEW_PATH")
+          ./gradlew :app:assembleDebug --no-daemon --stacktrace
 
       # ---------- Upload ----------
       - name: Upload Debug APK
