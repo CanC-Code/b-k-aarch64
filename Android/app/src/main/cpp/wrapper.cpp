@@ -3,6 +3,7 @@
 #include <atomic>
 #include <vector>
 #include <android/log.h>
+#include <unistd.h>
 #include "menu/menu.hpp"
 
 #define LOG_TAG "BK_WRAPPER"
