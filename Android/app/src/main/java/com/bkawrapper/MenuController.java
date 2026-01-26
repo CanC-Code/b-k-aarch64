@@ -10,21 +10,19 @@ public class MenuController {
 
     public MenuController(MainActivity activity) {
         this.activity = activity;
+        // Reference the overlay already in the layout
         this.menuOverlay = activity.findViewById(R.id.menu_overlay);
-        setupUI();
-    }
-
-    private void setupUI() {
-        Button selectRomBtn = activity.findViewById(R.id.btn_select_rom);
-        if (selectRomBtn != null) {
-            selectRomBtn.setOnClickListener(v -> activity.openFilePicker());
+        
+        Button selectBtn = activity.findViewById(R.id.btn_select_rom);
+        if (selectBtn != null) {
+            selectBtn.setOnClickListener(v -> activity.openFilePicker());
         }
     }
 
     public void toggle() {
         if (menuOverlay != null) {
-            int visibility = (menuOverlay.getVisibility() == View.VISIBLE) ? View.GONE : View.VISIBLE;
-            menuOverlay.setVisibility(visibility);
+            int vis = (menuOverlay.getVisibility() == View.VISIBLE) ? View.GONE : View.VISIBLE;
+            menuOverlay.setVisibility(vis);
         }
     }
 
