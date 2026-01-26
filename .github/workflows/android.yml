@@ -45,17 +45,24 @@ jobs:
             echo "assets.yaml not found, using existing headers if present."
           fi
 
-      # ---------- Step 2: Use runtime/generate_icons.py ----------
-      - name: Generate Launcher Icons
+      # ---------- Generate Launcher Icons ----------
+      - name: Generate Android launcher icons
         run: |
-          # We use your dedicated script instead of manual convert commands.
-          # First, we create a temporary master icon if one doesn't exist.
+          # 1. Create a clean 1024x1024 master if missing
           if [ ! -f "master_icon.png" ]; then
-            convert -size 1024x1024 xc:"#4B0082" -gravity center -fill "#FFD700" \
-            -font DejaVu-Sans-Bold -pointsize 160 -annotate +0+0 "B.K.A" master_icon.png
+            convert -size 1024x1024 xc:"#4B0082" \
+              -gravity center \
+              -fill "#FFD700" \
+              -font DejaVu-Sans-Bold \
+              -pointsize 160 \
+              -annotate +0+0 "B.K.A" \
+              master_icon.png
           fi
           
+          # 2. Run the updated script
           python3 runtime/generate_icons.py master_icon.png
+
+
 
       # ---------- Step 3: Build Application ----------
       - name: Build with Gradle
