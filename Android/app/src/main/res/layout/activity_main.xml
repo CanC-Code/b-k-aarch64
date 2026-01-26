@@ -12,7 +12,7 @@
         android:id="@+id/menu_overlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#99000000"
+        android:background="#DD000000"
         android:gravity="center"
         android:orientation="vertical"
         android:visibility="visible">
@@ -22,12 +22,13 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Select ROM" />
-
+        
         <TextView
             android:id="@+id/otr_progress_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Waiting for ROM..."
-            android:textColor="#FFFFFF" />
+            android:textColor="#FFFFFF"
+            android:text="First Launch: Choose Z64 ROM"
+            android:layout_marginTop="10dp"/>
     </LinearLayout>
 </FrameLayout>
