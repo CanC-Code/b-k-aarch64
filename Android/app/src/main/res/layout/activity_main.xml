@@ -12,7 +12,7 @@
         android:id="@+id/menu_overlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#CC000000"
+        android:background="#99000000"
         android:gravity="center"
         android:orientation="vertical"
         android:visibility="visible">
@@ -21,21 +21,13 @@
             android:id="@+id/btn_select_rom"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Select ROM (.z64)" />
-
-        <ProgressBar
-            android:id="@+id/otr_progress_bar"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="200dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:max="100" />
+            android:text="Select ROM" />
 
         <TextView
             android:id="@+id/otr_progress_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="0%"
+            android:text="Waiting for ROM..."
             android:textColor="#FFFFFF" />
     </LinearLayout>
 </FrameLayout>
