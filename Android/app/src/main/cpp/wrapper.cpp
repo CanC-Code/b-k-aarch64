@@ -1,10 +1,9 @@
-// File: Android/app/src/main/cpp/wrapper.cpp
 #include <jni.h>
 #include <thread>
 #include <atomic>
 #include <vector>
 #include <android/log.h>
-#include <unistd.h> // Fixed: Required for usleep
+#include <unistd.h>
 #include <fcntl.h>
 #include "menu/menu.hpp"
 
@@ -19,7 +18,7 @@ static std::thread g_thread;
 extern "C" {
     void n_audioStep();
     void core1_reset(uint8_t*);
-    void core1_loadOTR(int fd); // Assumed signature for asset loading
+    void core1_loadOTR(int fd); 
 }
 
 static std::vector<uint8_t> g_ram(8 * 1024 * 1024);
