@@ -14,13 +14,17 @@ public class MenuController {
     }
 
     private void setupUI() {
-        // UI is already inflated by MainActivity.onCreate
+        // UI is already inflated by MainActivity, just find the views
         menuOverlay = activity.findViewById(R.id.menu_overlay);
         
         Button selectRomBtn = activity.findViewById(R.id.btn_select_rom);
         if (selectRomBtn != null) {
             selectRomBtn.setOnClickListener(v -> activity.openFilePicker());
         }
+    }
+
+    public static void attach(MainActivity activity, MenuController controller) {
+        // Interface for future expansion
     }
 
     public void toggle() {
