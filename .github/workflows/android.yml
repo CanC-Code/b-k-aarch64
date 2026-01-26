@@ -26,29 +26,28 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: '3.12' # Using a stable 3.12 to ensure PyYAML compatibility
 
       - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y imagemagick
-          pip install PyYAML  # Required for your asset scripts
+          pip install PyYAML
 
-      # ---------- Step 1: Use runtime/generate_assets_header.py ----------
+      # ---------- Step 1: Generate C++ Asset Headers ----------
       - name: Generate C++ Asset Headers
         run: |
-          # This script populates Android/app/src/main/cpp/ultra/assets_manifest.h
-          # It requires an assets.yaml to exist in the root.
           if [ -f "assets.yaml" ]; then
             python3 runtime/generate_assets_header.py
           else
-            echo "assets.yaml not found, using existing headers if present."
+            echo "assets.yaml not found, skipping header generation."
           fi
 
-      # ---------- Generate Launcher Icons ----------
+      # ---------- Step 2: Generate Launcher Icons ----------
       - name: Generate Android launcher icons
         run: |
-          # 1. Create a clean 1024x1024 master if missing
+          # Create a square 1024x1024 master if it doesn't exist
+          # Using standard 'convert' which is available on Ubuntu runners
           if [ ! -f "master_icon.png" ]; then
             convert -size 1024x1024 xc:"#4B0082" \
               -gravity center \
@@ -59,22 +58,25 @@ jobs:
               master_icon.png
           fi
           
-          # 2. Run the updated script
+          # Run your custom generation script
           python3 runtime/generate_icons.py master_icon.png
-
-
 
       # ---------- Step 3: Build Application ----------
       - name: Build with Gradle
         run: |
-          # Dynamically find gradlew in case of path shifts
           GRADLEW_PATH=$(find . -name gradlew)
+          if [ -z "$GRADLEW_PATH" ]; then
+            echo "Error: gradlew not found!"
+            exit 1
+          fi
           chmod +x "$GRADLEW_PATH"
           cd $(dirname "$GRADLEW_PATH")
           ./gradlew :app:assembleDebug --no-daemon --stacktrace
 
+      # ---------- Step 4: Upload Artifact ----------
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: BKA-debug-apk
-          path: Android/app/build/outputs/apk/debug/*.apk
+          # Using a wildcard search for the APK to avoid path errors
+          path: "Android/app/build/outputs/apk/debug/*.apk"
