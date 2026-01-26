@@ -6,7 +6,6 @@
 
 extern "C" {
 
-// GLRenderer expects these two functions
 JNIEXPORT jint JNICALL
 Java_com_bkawrapper_NativeBridge_initTexture(JNIEnv*, jclass) {
     LOGI("initTexture stub called");
@@ -15,7 +14,7 @@ Java_com_bkawrapper_NativeBridge_initTexture(JNIEnv*, jclass) {
 
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv*, jclass, jint) {
-    // no-op
+    // no-op stub
 }
 
 }
