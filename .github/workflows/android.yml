@@ -34,7 +34,7 @@ jobs:
           sudo apt-get install -y imagemagick
           pip install PyYAML
 
-      # Step 1: Generate C++ Asset Headers from assets.yaml
+      # Step 1: Generate C++ Asset Headers
       - name: Generate C++ Asset Headers
         run: |
           if [ -f "assets.yaml" ]; then
@@ -43,10 +43,9 @@ jobs:
             echo "assets.yaml not found, skipping header generation."
           fi
 
-      # Step 2: Generate Launcher Icons using your runtime script
+      # Step 2: Generate Launcher Icons using runtime script
       - name: Generate Android launcher icons
         run: |
-          # Create a square 1024x1024 master if it doesn't exist
           if [ ! -f "master_icon.png" ]; then
             convert -size 1024x1024 xc:"#4B0082" \
               -gravity center \
@@ -56,21 +55,28 @@ jobs:
               -annotate +0+0 "B.K.A" \
               master_icon.png
           fi
-          
           python3 runtime/generate_icons.py master_icon.png
 
-      # Step 3: Execute Android Build
+      # Step 3: Fixed Build Application
       - name: Build with Gradle
         run: |
+          # 1. Find where the gradlew executable is located
           GRADLEW_PATH=$(find . -name gradlew)
           if [ -z "$GRADLEW_PATH" ]; then
             echo "Error: gradlew not found!"
             exit 1
           fi
           chmod +x "$GRADLEW_PATH"
+          
+          # 2. Change directory to the Android project root
           cd $(dirname "$GRADLEW_PATH")
-          ./gradlew :app:assembleDebug --no-daemon --stacktrace
+          
+          # 3. Run assembleDebug directly. 
+          # Because we are inside the folder containing settings.gradle, 
+          # Gradle will identify the ':app' project automatically.
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
+      # Step 4: Upload Artifact
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
