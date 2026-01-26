@@ -19,6 +19,7 @@ public class MainActivity extends ComponentActivity {
             if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                 Uri uri = result.getData().getData();
                 if (uri != null) {
+                    // Grant persistent access for the Native side
                     getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
                     NativeBridge.loadRomFromUri(getContentResolver(), uri);
                 }
@@ -28,20 +29,21 @@ public class MainActivity extends ComponentActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
-        // Load the XML layout FIRST
+
+        // 1. Inflate the layout from XML
         setContentView(R.layout.activity_main);
 
-        // Retrieve the GL view from the inflated layout
+        // 2. Find the GLSurfaceView defined in XML
         glSurfaceView = findViewById(R.id.gl_surface_view);
         glSurfaceView.setEGLContextClientVersion(2);
         GLRenderer glRenderer = new GLRenderer(this);
         glSurfaceView.setRenderer(glRenderer);
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
-        // Initialize MenuController WITHOUT calling setContentView again
+        // 3. Initialize Menu (does NOT call setContentView again)
         menuController = new MenuController(this);
-        
+
+        // 4. Initialize Native side
         NativeBridge.nativeInit(this);
         NativeBridge.startGameLoop();
     }
@@ -55,8 +57,11 @@ public class MainActivity extends ComponentActivity {
 
     @Override
     public void onBackPressed() {
-        if (menuController != null) menuController.toggle();
-        else super.onBackPressed();
+        if (menuController != null) {
+            menuController.toggle();
+        } else {
+            super.onBackPressed();
+        }
     }
 
     @Override
