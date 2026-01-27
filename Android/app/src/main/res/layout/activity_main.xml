@@ -9,6 +9,20 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <RelativeLayout
+        android:id="@+id/menu_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#88000000">
+
+        <Button
+            android:id="@+id/btn_select_rom"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="Select ROM" />
+    </RelativeLayout>
+
     <LinearLayout
         android:id="@+id/otr_ui_container"
         android:layout_width="wrap_content"
@@ -36,7 +50,6 @@
             android:layout_height="wrap_content"
             android:max="100"
             android:progress="0" />
-            
     </LinearLayout>
 
 </FrameLayout>
