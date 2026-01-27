@@ -11,6 +11,8 @@ static jmethodID g_updateProgressMid = nullptr;
 
 extern "C" {
 
+// Keep nativeInit if it's not defined in wrapper.cpp. 
+// If the linker still complains, remove this and use the one in wrapper.cpp.
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_nativeInit(JNIEnv* env, jclass clazz, jobject activity) {
     g_mainActivityObj = env->NewGlobalRef(activity);
@@ -18,38 +20,12 @@ Java_com_bkawrapper_NativeBridge_nativeInit(JNIEnv* env, jclass clazz, jobject a
     g_updateProgressMid = env->GetMethodID(activityClass, "updateOtrProgress", "(ILjava/lang/String;)V");
 }
 
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_runOtrGeneration(JNIEnv* env, jclass clazz, 
-                                                jint romFd, 
-                                                jobject assetManager, 
-                                                jstring outputDir) {
-    const char* outDir = env->GetStringUTFChars(outputDir, nullptr);
-    AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
+/* REMOVED: Java_com_bkawrapper_NativeBridge_runOtrGeneration 
+   [span_5](start_span)Reason: Duplicate symbol; implemented in OtrBridge.cpp[span_5](end_span)
+*/
 
-    // Load the binary manifest generated from your assets.yaml
-    AAsset* asset = AAssetManager_open(mgr, "manifest_us.bin", AASSET_MODE_BUFFER);
-    
-    if (asset) {
-        uint8_t* manifestBuffer = (uint8_t*)AAsset_getBuffer(asset);
-        
-        // Call the orchestrator in otr_builder.cpp
-        run_native_otr_generation_with_callback(env, g_mainActivityObj, g_updateProgressMid, 
-                                              romFd, manifestBuffer, outDir);
-        
-        AAsset_close(asset);
-    } else {
-        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Could not find manifest_us.bin in assets");
-    }
-
-    env->ReleaseStringUTFChars(outputDir, outDir);
-}
-
-// Game Loop and Texture Stubs
-JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_startGameLoop(JNIEnv* env, jclass clazz) { /* ... */ }
-JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_pauseGameLoop(JNIEnv* env, jclass clazz) { /* ... */ }
-JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_resumeGameLoop(JNIEnv* env, jclass clazz) { /* ... */ }
-JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_cleanupGame(JNIEnv* env, jclass clazz) { /* ... */ }
-JNIEXPORT jint JNICALL Java_com_bkawrapper_NativeBridge_initTexture(JNIEnv* env, jclass clazz) { return 0; }
-JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass clazz, jint tid) { /* ... */ }
+/* REMOVED: Game Loop and Texture Stubs 
+   [span_6](start_span)Reason: Duplicate symbols; implemented in wrapper.cpp[span_6](end_span)
+*/
 
 } // extern "C"
