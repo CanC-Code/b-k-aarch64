@@ -9,19 +9,21 @@
 extern "C" {
 #endif
 
+// Defined versions
+#define ROM_VERSION_UNKNOWN 0
+#define ROM_VERSION_US      1
+#define ROM_VERSION_PAL     2
+
 /**
  * Detects the ROM version based on the region code in the header.
- * @param rom_data Pointer to the raw ROM bytes
- * @param size Size of the ROM buffer
- * @return ROM_VERSION_US, ROM_VERSION_PAL, or ROM_VERSION_UNKNOWN
  */
 int detect_rom_version(const uint8_t* rom_data, size_t size);
 
 /**
  * Main entry point for asset extraction. 
- * Reads the manifest from assets and prepares decompression.
+ * Now includes the output_path where files will be saved.
  */
-void extract_assets_to_otr(AAssetManager* mgr, uint8_t* rom_data, size_t rom_size);
+void extract_assets_to_otr(AAssetManager* mgr, uint8_t* rom_data, size_t rom_size, const char* output_path);
 
 #ifdef __cplusplus
 }
