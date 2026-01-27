@@ -25,22 +25,17 @@ public class OtrService extends Service {
         isRunning = true;
 
         createNotificationChannel();
-        
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("Generating OTR Files")
-                .setContentText("Processing ROM assets in background...")
+                .setContentTitle("Generating Assets")
+                .setContentText("Please wait while we process the ROM...")
                 .setSmallIcon(android.R.drawable.stat_notify_sync)
                 .setOngoing(true)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
                 .build();
-
         startForeground(1, notification);
 
-        PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        if (powerManager != null) {
-            wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "BKAWrapper:OTRGenLock");
-            wakeLock.acquire(30*60*1000L);
-        }
+        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "BKA:OTR_Lock");
+        wakeLock.acquire(10*60*1000L);
 
         String uriString = intent.getStringExtra("uri");
         String outDir = intent.getStringExtra("outDir");
@@ -50,42 +45,27 @@ public class OtrService extends Service {
                 Uri romUri = Uri.parse(uriString);
                 try (ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(romUri, "r")) {
                     if (pfd != null) {
-                        Log.d(TAG, "Starting NDK OTR Generation...");
                         NativeBridge.runOtrGeneration(pfd.getFd(), getAssets(), outDir);
                     }
                 }
             } catch (Exception e) {
-                Log.e(TAG, "Error during OTR generation", e);
+                Log.e(TAG, "Extraction failed", e);
             } finally {
                 NativeBridge.notifyFinished(); 
-                cleanup();
+                if (wakeLock.isHeld()) wakeLock.release();
+                stopForeground(true);
+                stopSelf();
             }
         }).start();
 
         return START_NOT_STICKY;
     }
 
-    private void cleanup() {
-        if (wakeLock != null && wakeLock.isHeld()) {
-            wakeLock.release();
-        }
-        stopForeground(true);
-        stopSelf();
-        isRunning = false;
-    }
-
     private void createNotificationChannel() {
-        NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "OTR Generation", NotificationManager.IMPORTANCE_LOW);
+        NotificationChannel serviceChannel = new NotificationChannel(CHANNEL_ID, "OTR Generation", NotificationManager.IMPORTANCE_LOW);
         NotificationManager manager = getSystemService(NotificationManager.class);
-        if (manager != null) manager.createNotificationChannel(channel);
+        if (manager != null) manager.createNotificationChannel(serviceChannel);
     }
 
-    @Override
-    public IBinder onBind(Intent intent) { return null; }
-
-    @Override
-    public void onDestroy() {
-        cleanup();
-        super.onDestroy();
-    }
+    @Override public IBinder onBind(Intent intent) { return null; }
 }
