@@ -5,7 +5,6 @@
 #include <android/log.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include "ultra/otr_builder.h"
 
 #define LOG_TAG "BK_WRAPPER"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -13,12 +12,14 @@
 static std::atomic<bool> g_running{false};
 static std::atomic<bool> g_rom_loaded{false};
 static std::thread g_thread;
-static jobject g_mainActivityObj = nullptr; // Global ref to call UI updates
+static jobject g_activityObj = nullptr; // For callbacks
 
 extern "C" {
     void core1_reset(uint8_t* ram);
     void core1_loadOTR(int fd);
     void n_audioStep();
+    // Assuming this is your extraction function in your builder code
+    void run_otr_extraction(JNIEnv* env, jobject activity, int romFd);
 }
 
 static std::vector<uint8_t> g_ram(8 * 1024 * 1024, 0);
@@ -33,7 +34,7 @@ void emuLoop() {
         LOGI("Emulator Loop Active");
         while (g_running.load()) {
             n_audioStep();
-            usleep(16000); // ~60fps
+            usleep(16000);
         }
     }
 }
@@ -42,14 +43,12 @@ extern "C" {
 
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_nativeInit(JNIEnv* env, jclass, jobject activity) {
-    // Store a global reference to the MainActivity so we can call UI updates later
-    g_mainActivityObj = env->NewGlobalRef(activity);
-    LOGI("Native Bridge Ready with Activity Context");
+    g_activityObj = env->NewGlobalRef(activity);
+    LOGI("Native Bridge Initialized with Activity Ref");
 }
 
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_loadRomFromUri(JNIEnv* env, jclass, jobject resolver, jobject uri) {
-    // 1. Get File Descriptor from URI
     jclass resCls = env->GetObjectClass(resolver);
     jmethodID openDoc = env->GetMethodID(resCls, "openFileDescriptor", "(Landroid/net/Uri;Ljava/lang/String;)Landroid/os/ParcelFileDescriptor;");
     jstring mode = env->NewStringUTF("r");
@@ -60,18 +59,12 @@ Java_com_bkawrapper_NativeBridge_loadRomFromUri(JNIEnv* env, jclass, jobject res
         jmethodID getFd = env->GetMethodID(pfdCls, "getFd", "()I");
         int fd = env->CallIntMethod(pfd, getFd);
 
-        // 2. Read ROM into memory for processing
-        off_t size = lseek(fd, 0, SEEK_END);
-        lseek(fd, 0, SEEK_SET);
-        std::vector<uint8_t> romData(size);
-        read(fd, romData.data(), size);
+        // 1. Run the actual asset extraction logic
+        // Ensure this function uses the activity reference to call updateOtrProgress
+        run_otr_extraction(env, g_activityObj, fd);
 
-        // 3. Trigger Asset Extraction with UI Feedback
-        // This calls the logic in otr_builder.cpp
-        extract_assets_to_otr(env, g_mainActivityObj, romData.data(), size);
-
-        // 4. Load the resulting OTR into the core
-        core1_loadOTR(fd); 
+        // 2. Load the final OTR into the emulator core
+        core1_loadOTR(fd);
         g_rom_loaded.store(true);
     }
 }
@@ -87,9 +80,9 @@ Java_com_bkawrapper_NativeBridge_startGameLoop(JNIEnv*, jclass) {
 JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_cleanupGame(JNIEnv* env, jclass) {
     g_running.store(false);
     if(g_thread.joinable()) g_thread.join();
-    if(g_mainActivityObj) {
-        env->DeleteGlobalRef(g_mainActivityObj);
-        g_mainActivityObj = nullptr;
+    if(g_activityObj) {
+        env->DeleteGlobalRef(g_activityObj);
+        g_activityObj = nullptr;
     }
 }
 
