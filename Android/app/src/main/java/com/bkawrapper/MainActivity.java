@@ -1,25 +1,10 @@
-package com.bkawrapper;
-
-import android.app.Activity;
-import android.content.Intent;
-import android.net.Uri;
-import android.os.Bundle;
-import android.opengl.GLSurfaceView;
-import android.os.ParcelFileDescriptor;
-import android.view.View;
-import android.widget.ProgressBar;
-import android.widget.TextView;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
-import java.io.IOException;
-
 public class MainActivity extends AppCompatActivity {
     private GLSurfaceView glSurfaceView;
     private MenuController menuController;
     private boolean isGameStarted = false;
 
     private View otrUiContainer;
+    private View menuOverlay; // Added reference
     private ProgressBar progressBar;
     private TextView progressText;
 
@@ -30,27 +15,20 @@ public class MainActivity extends AppCompatActivity {
                 if (uri != null) {
                     getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
-                    // Show Progress UI
+                    // FIX: Hide the Select ROM button/menu and show Progress
+                    if (menuOverlay != null) menuOverlay.setVisibility(View.GONE);
                     if (otrUiContainer != null) otrUiContainer.setVisibility(View.VISIBLE);
 
-                    // Run in background thread to prevent UI freeze
                     new Thread(() -> {
                         try (ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "r")) {
                             if (pfd != null) {
                                 String outDir = getFilesDir().getAbsolutePath();
-                                
-                                // Call the NativeBridge method with correct assets
-                                NativeBridge.runOtrGeneration(
-                                    pfd.getFd(), 
-                                    this.getAssets(), 
-                                    outDir
-                                );
+                                NativeBridge.runOtrGeneration(pfd.getFd(), this.getAssets(), outDir);
                             }
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
 
-                        // Once extraction is done, hide UI and start game on Main Thread
                         runOnUiThread(() -> {
                             if (otrUiContainer != null) otrUiContainer.setVisibility(View.GONE);
                             if (!isGameStarted) {
@@ -71,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
 
         glSurfaceView = findViewById(R.id.gl_surface_view);
         otrUiContainer = findViewById(R.id.otr_ui_container);
+        menuOverlay = findViewById(R.id.menu_overlay); // Initialize
         progressBar = findViewById(R.id.otr_progress_bar);
         progressText = findViewById(R.id.otr_progress_text);
 
@@ -80,27 +59,21 @@ public class MainActivity extends AppCompatActivity {
 
         menuController = new MenuController(this);
 
-        // Pass 'this' so C++ can save a reference for callbacks
+        // This allows button click if MenuController doesn't handle it
+        findViewById(R.id.btn_select_rom).setOnClickListener(v -> openFilePicker());
+
         NativeBridge.nativeInit(this); 
     }
 
     public void updateOtrProgress(int percent, String fileName) {
         runOnUiThread(() -> {
             if (progressBar != null) progressBar.setProgress(percent);
-            if (progressText != null) progressText.setText("Extracting: " + fileName + " (" + percent + "%)");
+            if (progressText != null) {
+                // Shorten filename if it's too long for the UI
+                String displayLabel = fileName.length() > 20 ? "..." + fileName.substring(fileName.length()-17) : fileName;
+                progressText.setText("Extracting: " + displayLabel + " (" + percent + "%)");
+            }
         });
     }
-
-    public void openFilePicker() {
-        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType("*/*");
-        filePickerLauncher.launch(intent);
-    }
-
-    @Override
-    public void onBackPressed() {
-        if (menuController != null) menuController.toggle();
-        else super.onBackPressed();
-    }
+    // ... rest of your methods
 }
