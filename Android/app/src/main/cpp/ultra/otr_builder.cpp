@@ -12,33 +12,29 @@
 #define LOG_TAG "OTR_BUILDER"
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 
-// Using a mutex to ensure thread-safe access to the ROM file descriptor if needed,
-// though pread is generally thread-safe on Android/Linux.
-std::mutex file_mutex;
+// We need the Global JavaVM to attach threads
+JavaVM* g_jvm = nullptr;
+
+// Add this to capture the JVM when the library loads or init is called
+JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
+    g_jvm = vm;
+    return JNI_VERSION_1_6;
+}
 
 void process_asset(int romFd, AssetEntry& asset, const char* outDirPath) {
     char path[512];
     snprintf(path, sizeof(path), "%s/%s", outDirPath, asset.name);
 
-    // 1. RESUME LOGIC: Extremely fast check
     struct stat st;
-    if (stat(path, &st) == 0 && st.st_size > 0) {
-        return; 
-    }
+    if (stat(path, &st) == 0 && st.st_size > 0) return; 
 
-    // 2. Read compressed data (Thread-safe read)
     std::vector<uint8_t> comp(asset.compSize);
-    ssize_t bytesRead = pread(romFd, comp.data(), asset.compSize, asset.romOffset);
-    
-    if (bytesRead < (ssize_t)asset.compSize) return;
+    pread(romFd, comp.data(), asset.compSize, asset.romOffset);
 
-    // 3. Decompress
     uint32_t outSize = 0;
     uint8_t* decomp = decompress_rare_asset(comp.data(), asset.compSize, &outSize);
 
     if (decomp) {
-        // Ensure directory structure exists for the file if necessary
-        // (Assuming flat structure or pre-created dirs for this manifest)
         int out = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0666);
         if (out != -1) {
             write(out, decomp, outSize);
@@ -50,43 +46,44 @@ void process_asset(int romFd, AssetEntry& asset, const char* outDirPath) {
 
 void run_native_otr_generation_with_callback(JNIEnv* env, jobject activity, jmethodID progressMid,
                                            int romFd, uint8_t* manifestPtr, const char* outDirPath) {
-    // Ensure root output dir exists
     mkdir(outDirPath, 0777);
     
     ManifestHeader* header = (ManifestHeader*)manifestPtr;
     AssetEntry* entries = (AssetEntry*)(manifestPtr + sizeof(ManifestHeader));
 
-    LOGD("Starting Multithreaded OTR generation: %u entries", header->entryCount);
+    // Make activity a global ref so worker threads can see it
+    jobject globalActivity = env->NewGlobalRef(activity);
 
-    // We process in batches of 4 to maximize CPU without overwhelming I/O
     const int batchSize = 4;
-    
     for (uint32_t i = 0; i < header->entryCount; i += batchSize) {
         std::vector<std::thread> workers;
 
         for (int t = 0; t < batchSize && (i + t) < header->entryCount; t++) {
-            AssetEntry& asset = entries[i + t];
-            
-            if (asset.type == ASSET_TYPE_SKIP) continue;
-
-            workers.emplace_back(process_asset, romFd, std::ref(asset), outDirPath);
+            if (entries[i + t].type == ASSET_TYPE_SKIP) continue;
+            workers.emplace_back(process_asset, romFd, std::ref(entries[i + t]), outDirPath);
         }
 
-        // Wait for this batch of 4 to finish
         for (auto& w : workers) {
             if (w.joinable()) w.join();
         }
 
-        // 4. UI UPDATE: Done on the calling thread (safe for JNIEnv)
-        if (env && activity && progressMid) {
-            int percent = (int)((float)(i + 1) / header->entryCount * 100.0f);
-            
-            // Show the name of the last file in the batch
-            jstring jName = env->NewStringUTF(entries[i].name);
-            env->CallVoidMethod(activity, progressMid, percent, jName);
-            env->DeleteLocalRef(jName);
+        // --- CRITICAL FIX: Ensure we are attached to the JVM for the callback ---
+        JNIEnv* localEnv;
+        bool attached = false;
+        if (g_jvm->GetEnv((void**)&localEnv, JNI_VERSION_1_6) == JNI_EDETACHED) {
+            g_jvm->AttachCurrentThread(&localEnv, NULL);
+            attached = true;
         }
+
+        if (localEnv && globalActivity && progressMid) {
+            int percent = (int)((float)(i + 1) / header->entryCount * 100.0f);
+            jstring jName = localEnv->NewStringUTF(entries[i].name);
+            localEnv->CallVoidMethod(globalActivity, progressMid, percent, jName);
+            localEnv->DeleteLocalRef(jName);
+        }
+
+        if (attached) g_jvm->DetachCurrentThread();
     }
 
-    LOGD("OTR Generation Complete.");
+    env->DeleteGlobalRef(globalActivity);
 }
