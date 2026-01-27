@@ -13,43 +13,42 @@ extern "C" {
 
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_nativeInit(JNIEnv* env, jclass clazz, jobject activity) {
+    if (g_mainActivityObj != nullptr) {
+        env->DeleteGlobalRef(g_mainActivityObj);
+    }
     g_mainActivityObj = env->NewGlobalRef(activity);
     jclass activityClass = env->GetObjectClass(g_mainActivityObj);
+    // Matches the Java-side method updateOtrProgress(int, String)
     g_updateProgressMid = env->GetMethodID(activityClass, "updateOtrProgress", "(ILjava/lang/String;)V");
 }
 
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_runOtrGeneration(JNIEnv* env, jclass clazz, 
                                                 jint romFd, 
-                                                jobject assetManager,
+                                                jobject assetManager, 
                                                 jstring outputDir) {
     const char* outDir = env->GetStringUTFChars(outputDir, nullptr);
     AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
 
-    // Load the binary manifest generated from your assets.yaml
     AAsset* asset = AAssetManager_open(mgr, "manifest_us.bin", AASSET_MODE_BUFFER);
-    
     if (asset) {
         uint8_t* manifestBuffer = (uint8_t*)AAsset_getBuffer(asset);
-        
-        // Call the orchestrator in otr_builder.cpp
         run_native_otr_generation_with_callback(env, g_mainActivityObj, g_updateProgressMid, 
                                               romFd, manifestBuffer, outDir);
-        
         AAsset_close(asset);
     } else {
-        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Could not find manifest_us.bin in assets");
+        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Could not find manifest_us.bin");
     }
 
     env->ReleaseStringUTFChars(outputDir, outDir);
 }
 
-// Game Loop and Texture Stubs
-JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_startGameLoop(JNIEnv* env, jclass clazz) { /* ... */ }
-JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_pauseGameLoop(JNIEnv* env, jclass clazz) { /* ... */ }
-JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_resumeGameLoop(JNIEnv* env, jclass clazz) { /* ... */ }
-JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_cleanupGame(JNIEnv* env, jclass clazz) { /* ... */ }
+// Game Loop and Texture Implementations
+JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_startGameLoop(JNIEnv* env, jclass clazz) { }
+JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_pauseGameLoop(JNIEnv* env, jclass clazz) { }
+JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_resumeGameLoop(JNIEnv* env, jclass clazz) { }
+JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_cleanupGame(JNIEnv* env, jclass clazz) { }
 JNIEXPORT jint JNICALL Java_com_bkawrapper_NativeBridge_initTexture(JNIEnv* env, jclass clazz) { return 0; }
-JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass clazz, jint tid) { /* ... */ }
+JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass clazz, jint tid) { }
 
 } // extern "C"
