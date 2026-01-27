@@ -7,7 +7,6 @@
 extern "C" {
 #endif
 
-// Ensure the binary layout is exact to avoid crashes when reading from disk
 #pragma pack(push, 1)
 
 enum AssetType {
@@ -17,17 +16,17 @@ enum AssetType {
 };
 
 struct AssetEntry {
-    uint32_t romOffset;     // Offset in the ROM file
-    uint32_t compSize;      // Size of data in ROM
-    uint32_t decompSize;    // Expected size after decompression
-    uint32_t type;          // Maps to AssetType
-    char name[128];         // Increased to 128 to match common path lengths
+    uint32_t romOffset;
+    uint32_t compSize;
+    uint32_t decompSize;
+    uint32_t type;
+    char name[128]; // Ensure this matches your Python struct.pack size
 };
 
 struct ManifestHeader {
-    uint32_t magic;         // 'BKAM' (0x424B414D)
-    uint32_t entryCount;    // Total number of AssetEntry structs following header
-    uint32_t version;       // Versioning for future-proofing
+    uint32_t magic;      // 0x424B414D ('BKAM')
+    uint32_t entryCount;
+    uint32_t version;
 };
 
 #pragma pack(pop)
@@ -36,4 +35,4 @@ struct ManifestHeader {
 }
 #endif
 
-#endif // ASSETS_MANIFEST_H
+#endif
