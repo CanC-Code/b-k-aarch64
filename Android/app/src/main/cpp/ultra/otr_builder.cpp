@@ -1,44 +1,37 @@
 #include <jni.h>
-#include <vector>
-#include <cstdint>
+#include <android/log.h>
 #include <string>
-#include "otr_builder.h"
+
+#define LOG_TAG "OTR_BUILDER"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
 extern "C" {
 
-void extract_assets_to_otr(JNIEnv* env, jobject activity, const uint8_t* romData, size_t size) {
-    // 1. Get the Java class and the method ID for the callback
-    jclass clazz = env->GetObjectClass(activity);
-    jmethodID updateMethod = env->GetMethodID(clazz, "updateOtrProgress", "(ILjava/lang/String;)V");
+void run_otr_extraction(JNIEnv* env, jobject activity, int romFd) {
+    LOGI("Starting OTR Extraction from ROM FD: %d", romFd);
 
-    int version = detect_rom_version(romData, size);
-    if (version == -1) return;
+    // Get reference to the Java progress update method
+    jclass activityClass = env->GetObjectClass(activity);
+    jmethodID updateMethod = env->GetMethodID(activityClass, "updateOtrProgress", "(ILjava/lang/String;)V");
 
-    // 2. Simulated extraction loop
-    // In your real code, this would loop through your manifest entries
-    int totalFiles = 500; 
-    for (int i = 0; i <= totalFiles; i++) {
+    // --- PSEUDO EXTRACTION LOOP ---
+    // You will replace this with your actual manifest-based extraction logic.
+    // This loop demonstrates how the UI updates work.
+    const int totalAssets = 100;
+    for (int i = 1; i <= totalAssets; i++) {
+        std::string fileName = "asset_" + std::to_string(i) + ".bin";
+        jstring jFileName = env->NewStringUTF(fileName.c_str());
+
+        // Update the Progress Bar in Java
+        env->CallVoidMethod(activity, updateMethod, i, jFileName);
         
-        // --- REAL EXTRACTION LOGIC GOES HERE ---
-        // Example: decompress_rare_asset(input, output);
-        
-        // 3. Update the UI every 5 files
-        if (i % 5 == 0 || i == totalFiles) {
-            int percentage = (i * 100) / totalFiles;
-            jstring fileName = env->NewStringUTF("Asset_Chunk.bin");
-            
-            env->CallVoidMethod(activity, updateMethod, percentage, fileName);
-            
-            env->DeleteLocalRef(fileName); // Clean up local JNI references
-        }
+        env->DeleteLocalRef(jFileName);
+
+        // Simulate work (Replace with actual decompression/writing)
+        usleep(50000); // 50ms per asset
     }
+
+    LOGI("OTR Extraction Complete");
 }
 
-int detect_rom_version(const uint8_t* romData, size_t size) {
-    if (size < 0x40) return -1;
-    if (romData[0x3B] == 'E') return 0; // US
-    if (romData[0x3B] == 'P') return 1; // PAL
-    return -1;
 }
-
-} // extern "C"
