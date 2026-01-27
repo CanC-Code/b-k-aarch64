@@ -6,36 +6,50 @@
 
 #define LOG_TAG "NativeBridge"
 
-// Use extern variables defined in wrapper.cpp instead of redefining them
-extern jobject g_mainActivityObj;
-extern jmethodID g_updateProgressMid;
+static jobject g_mainActivityObj = nullptr;
+[span_0](start_span)static jmethodID g_updateProgressMid = nullptr;[span_0](end_span)
 
 extern "C" {
 
-// REMOVED: Java_com_bkawrapper_NativeBridge_nativeInit 
-// (Keep the definition in wrapper.cpp instead)
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeBridge_nativeInit(JNIEnv* env, jclass clazz, jobject activity) {
+    [span_1](start_span)g_mainActivityObj = env->NewGlobalRef(activity);[span_1](end_span)
+    [span_2](start_span)jclass activityClass = env->GetObjectClass(g_mainActivityObj);[span_2](end_span)
+    [span_3](start_span)g_updateProgressMid = env->GetMethodID(activityClass, "updateOtrProgress", "(ILjava/lang/String;)V");[span_3](end_span)
+}
 
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_runOtrGeneration(JNIEnv* env, jclass clazz, 
-                                                jint romFd, jobject assetManager, jstring outputDir) {
-    [span_3](start_span)const char* outDir = env->GetStringUTFChars(outputDir, nullptr);[span_3](end_span)
-    [span_4](start_span)AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);[span_4](end_span)
+                                                jint romFd, 
+                                                [span_4](start_span)jobject assetManager,[span_4](end_span)
+                                                jstring outputDir) {
+    [span_5](start_span)const char* outDir = env->GetStringUTFChars(outputDir, nullptr);[span_5](end_span)
+    [span_6](start_span)AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);[span_6](end_span)
 
-    [span_5](start_span)AAsset* asset = AAssetManager_open(mgr, "manifest_us.bin", AASSET_MODE_BUFFER);[span_5](end_span)
-    if (asset) {
-        [span_6](start_span)uint8_t* manifestBuffer = (uint8_t*)AAsset_getBuffer(asset);[span_6](end_span)
+    // Load the binary manifest generated from your assets.yaml
+    [span_7](start_span)AAsset* asset = AAssetManager_open(mgr, "manifest_us.bin", AASSET_MODE_BUFFER);[span_7](end_span)
+    
+    [span_8](start_span)if (asset) {[span_8](end_span)
+        [span_9](start_span)uint8_t* manifestBuffer = (uint8_t*)AAsset_getBuffer(asset);[span_9](end_span)
         
-        // Call the orchestrator
+        // Call the orchestrator in otr_builder.cpp
         run_native_otr_generation_with_callback(env, g_mainActivityObj, g_updateProgressMid, 
-                                              [span_7](start_span)romFd, manifestBuffer, outDir);[span_7](end_span)
-        [span_8](start_span)AAsset_close(asset);[span_8](end_span)
+                                              [span_10](start_span)romFd, manifestBuffer, outDir);[span_10](end_span)
+        
+        [span_11](start_span)AAsset_close(asset);[span_11](end_span)
     } else {
-        _[span_9](start_span)_android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Could not find manifest_us.bin");[span_9](end_span)
-    }
-    [span_10](start_span)env->ReleaseStringUTFChars(outputDir, outDir);[span_10](end_span)
+        _[span_12](start_span)_android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Could not find manifest_us.bin in assets");[span_12](end_span)
+    [span_13](start_span)}
+
+    env->ReleaseStringUTFChars(outputDir, outDir);[span_13](end_span)
 }
 
-// REMOVED: Game Loop and Texture Stubs
-// (These should stay in wrapper.cpp to avoid duplication)
+// Game Loop and Texture Stubs
+[span_14](start_span)JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_startGameLoop(JNIEnv* env, jclass clazz) { /* ... */ }[span_14](end_span)
+[span_15](start_span)JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_pauseGameLoop(JNIEnv* env, jclass clazz) { /* ... */ }[span_15](end_span)
+[span_16](start_span)JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_resumeGameLoop(JNIEnv* env, jclass clazz) { /* ... */ }[span_16](end_span)
+[span_17](start_span)JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_cleanupGame(JNIEnv* env, jclass clazz) { /* ... */ }[span_17](end_span)
+JNIEXPORT jint JNICALL Java_com_bkawrapper_NativeBridge_initTexture(JNIEnv* env, jclass clazz) { return 0; [span_18](start_span)}
+JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass clazz, jint tid) { /* ... */ }[span_18](end_span)
 
 } // extern "C"
