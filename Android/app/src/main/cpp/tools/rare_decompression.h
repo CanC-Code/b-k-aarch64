@@ -10,12 +10,12 @@ extern "C" {
 
 /**
  * Decompresses a Rare asset starting with the 0x1172 header.
- * * @param src Pointer to the start of the compressed data in the ROM
- * @param out_size Pointer to a uint32_t where the resulting size will be stored
- * @return Pointer to the newly allocated decompressed buffer. 
- * The caller is responsible for calling free() on this pointer.
+ * * @param src Pointer to the start of the compressed data.
+ * @param src_size Size of the input buffer (needed for bounds checking).
+ * @param out_size Pointer to store the resulting decompressed size.
+ * @return Pointer to the decompressed buffer (caller must free()).
  */
-uint8_t* decompress_rare_asset(const uint8_t* src, uint32_t* out_size);
+uint8_t* decompress_rare_asset(const uint8_t* src, uint32_t src_size, uint32_t* out_size);
 
 #ifdef __cplusplus
 }
