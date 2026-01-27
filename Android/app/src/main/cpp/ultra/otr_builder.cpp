@@ -1,43 +1,49 @@
-#include <jni.h>
+// Android/app/src/main/cpp/ultra/otr_builder.cpp
+#include "otr_builder.h"
+#include "assets_manifest.h"
+#include "rare_decompression.h"
+#include <vector>
+#include <fcntl.h>
+#include <unistd.h>
 #include <android/log.h>
-#include <unistd.h>  // Added this to fix the 'usleep' error
-#include <string>
 
-#define LOG_TAG "OTR_BUILDER"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+void run_native_otr_extraction(JNIEnv* env, jobject activity, int romFd, 
+                               uint8_t* manifestPtr, size_t manifestSize, 
+                               const char* outDirPath) {
+    
+    ManifestHeader* header = (ManifestHeader*)manifestPtr;
+    AssetEntry* entries = (AssetEntry*)(manifestPtr + sizeof(ManifestHeader));
 
-extern "C" {
-
-void run_otr_extraction(JNIEnv* env, jobject activity, int romFd) {
-    LOGI("Starting OTR Extraction from ROM FD: %d", romFd);
-
-    // Get reference to the Java progress update method
     jclass activityClass = env->GetObjectClass(activity);
     jmethodID updateMethod = env->GetMethodID(activityClass, "updateOtrProgress", "(ILjava/lang/String;)V");
 
-    if (updateMethod == nullptr) {
-        LOGI("Error: Could not find updateOtrProgress method in MainActivity");
-        return;
-    }
-
-    // --- PSEUDO EXTRACTION LOOP ---
-    // This loop updates the UI for testing. 
-    // Replace the internal logic with your actual manifest extraction code later.
-    const int totalAssets = 100;
-    for (int i = 1; i <= totalAssets; i++) {
-        std::string fileName = "asset_" + std::to_string(i) + ".bin";
-        jstring jFileName = env->NewStringUTF(fileName.c_str());
-
-        // Call back to Java to update the ProgressBar and TextView
-        env->CallVoidMethod(activity, updateMethod, i, jFileName);
+    for (uint32_t i = 0; i < header->entryCount; i++) {
+        AssetEntry& asset = entries[i];
         
-        env->DeleteLocalRef(jFileName);
+        // Skip metadata/midis if defined in manifest as skip
+        if (asset.type == ASSET_TYPE_SKIP) continue;
 
-        // Simulate work (Replace with actual decompression/writing)
-        usleep(50000); // 50ms per asset = 5 seconds total for 100 assets
+        // 1. Seek and Read from ROM
+        lseek(romFd, asset.romOffset, SEEK_SET);
+        std::vector<uint8_t> compBuffer(asset.compSize);
+        read(romFd, compBuffer.data(), asset.compSize);
+
+        // 2. Decompress (Ported from rareunzip.py logic)
+        uint32_t actualDecompSize = 0;
+        uint8_t* decompData = decompress_rare_asset(compBuffer.data(), &actualDecompSize);
+
+        if (decompData) {
+            // 3. Write to Android Internal Storage
+            std::string outPath = std::string(outDirPath) + "/" + asset.name;
+            int outFd = open(outPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
+            write(outFd, decompData, actualDecompSize);
+            close(outFd);
+            free(decompData);
+        }
+
+        // Update UI
+        jstring jName = env->NewStringUTF(asset.name);
+        env->CallVoidMethod(activity, updateMethod, i, jName);
+        env->DeleteLocalRef(jName);
     }
-
-    LOGI("OTR Extraction Complete");
-}
-
 }
