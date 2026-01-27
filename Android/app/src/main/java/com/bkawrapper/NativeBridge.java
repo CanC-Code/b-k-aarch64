@@ -9,7 +9,6 @@ public class NativeBridge {
         System.loadLibrary("bkawrapper");
     }
 
-    // Interface to notify the UI when the Service is done
     public interface OtrCompletionListener {
         void onOtrComplete();
     }
@@ -27,7 +26,10 @@ public class NativeBridge {
     public static native void resumeGameLoop();
     public static native void cleanupGame();
     
-    // Called by the Service when the C++ loop finishes
+    // ADD THESE TWO METHODS BACK:
+    public static native int initTexture();
+    public static native void updateTexture(int tid);
+
     public static void notifyFinished() {
         if (completionListener != null) {
             completionListener.onOtrComplete();
