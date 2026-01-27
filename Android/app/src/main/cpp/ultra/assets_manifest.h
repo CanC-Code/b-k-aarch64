@@ -6,28 +6,27 @@
 
 #pragma pack(push, 1)
 
-// Asset types mirrored from generate_assets_enums.py
+// Maps to the 'file_type_to_asset_type' logic in generate_asset_enums.py
 enum AssetType : uint8_t {
     ASSET_TYPE_ANIM   = 0,
     ASSET_TYPE_MODEL  = 1,
     ASSET_TYPE_SPRITE = 2,
     ASSET_TYPE_DIALOG = 3,
-    ASSET_TYPE_SKIP   = 255
+    ASSET_TYPE_SKIP   = 255 
 };
 
 struct AssetEntry {
     uint32_t uid;           // Asset ID (e.g. 0x1516)
-    uint32_t romOffset;     // Exact byte start in ROM
-    uint32_t compSize;      // Size in ROM (to read)
-    uint32_t decompSize;    // Expected size (for buffer allocation)
-    uint8_t  type;          // AssetType
-    char name[32];          // Human-readable name: "ASSET_0001_MODEL.bin"
+    uint32_t romOffset;     [span_1](start_span)// Calculated offset in the ROM[span_1](end_span)
+    uint32_t compSize;      // Size to read from ROM
+    uint32_t decompSize;    // Expected output size
+    uint8_t  type;          // AssetType enum
+    char name[32];          [span_2](start_span)// Human-readable name[span_2](end_span)
 };
 
 struct ManifestHeader {
-    uint32_t magic;         // 0x424B4152 ("BKAR" for Banjo-Kazooie Archive)
-    uint32_t version;       // Version of the manifest format
-    uint32_t entryCount;    // Number of entries to follow
+    uint32_t magic;         // 'BKAR'
+    uint32_t entryCount;    [span_3](start_span)//[span_3](end_span)
 };
 
 #pragma pack(pop)
