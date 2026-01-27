@@ -14,7 +14,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:background="#BB000000"
+        android:background="#DD000000"
+        android:elevation="10dp"
         android:orientation="vertical"
         android:padding="32dp"
         android:visibility="gone">
@@ -24,7 +25,8 @@
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="240dp"
             android:layout_height="wrap_content"
-            android:max="100" />
+            android:max="100"
+            android:progressDrawable="@android:drawable/progress_horizontal" />
 
         <TextView
             android:id="@+id/otr_progress_text"
@@ -33,7 +35,8 @@
             android:layout_gravity="center_horizontal"
             android:paddingTop="12dp"
             android:text="Processing ROM..."
-            android:textColor="#FFFFFF" />
+            android:textColor="#FFFFFF"
+            android:textSize="14sp" />
     </LinearLayout>
 
     <RelativeLayout
@@ -48,6 +51,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
+            android:padding="16dp"
             android:text="Select ROM (.z64)" />
     </RelativeLayout>
 
