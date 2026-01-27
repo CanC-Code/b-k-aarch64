@@ -16,6 +16,7 @@ void otr_builder_set_jvm(JavaVM* vm) {
     g_jvm = vm;
 }
 
+// Changed AssetEntry& to AssetEntry to prevent reference issues in std::thread
 void process_asset(int romFd, AssetEntry asset, const char* outDirPath) {
     char path[512];
     snprintf(path, sizeof(path), "%s/%s", outDirPath, asset.name);
@@ -24,7 +25,6 @@ void process_asset(int romFd, AssetEntry asset, const char* outDirPath) {
     if (stat(path, &st) == 0 && st.st_size > 0) return; 
 
     std::vector<uint8_t> comp(asset.compSize);
-    // pread is essential here as multiple threads share the same romFd
     if (pread(romFd, comp.data(), asset.compSize, asset.romOffset) < (ssize_t)asset.compSize) return;
 
     uint32_t outSize = 0;
@@ -52,21 +52,28 @@ void run_native_otr_generation_with_callback(JNIEnv* env, jobject activity, jmet
         std::vector<std::thread> workers;
         for (int t = 0; t < batchSize && (i + t) < header->entryCount; t++) {
             if (entries[i + t].type == ASSET_TYPE_SKIP) continue;
-            // Pass by value to avoid reference issues across threads
+            // Pass by value to the thread
             workers.emplace_back(process_asset, romFd, entries[i + t], outDirPath);
         }
 
         for (auto& w : workers) if (w.joinable()) w.join();
 
-        // Callback to Java UI
         JNIEnv* myEnv;
-        if (g_jvm && g_jvm->GetEnv((void**)&myEnv, JNI_VERSION_1_6) == JNI_OK) {
-            int percent = (int)((float)(i + 1) / header->entryCount * 100.0f);
-            jstring jName = myEnv->NewStringUTF(entries[i].name);
-            myEnv->CallVoidMethod(globalActivity, progressMid, percent, jName);
-            myEnv->DeleteLocalRef(jName);
+        bool attached = false;
+        if (g_jvm) {
+            int res = g_jvm->GetEnv((void**)&myEnv, JNI_VERSION_1_6);
+            if (res == JNI_EDETACHED) {
+                if (g_jvm->AttachCurrentThread(&myEnv, NULL) == JNI_OK) attached = true;
+            }
+
+            if (myEnv && globalActivity && progressMid) {
+                int percent = (int)((float)(i + 1) / header->entryCount * 100.0f);
+                jstring jName = myEnv->NewStringUTF(entries[i].name);
+                myEnv->CallVoidMethod(globalActivity, progressMid, percent, jName);
+                myEnv->DeleteLocalRef(jName);
+            }
+            if (attached) g_jvm->DetachCurrentThread();
         }
     }
-    
     env->DeleteGlobalRef(globalActivity);
 }
