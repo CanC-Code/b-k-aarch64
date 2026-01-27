@@ -9,10 +9,7 @@
 #define LOG_TAG "OTR_BUILDER"
 
 static JavaVM* g_jvm = nullptr;
-
-void otr_builder_set_jvm(JavaVM* vm) {
-    g_jvm = vm;
-}
+void otr_builder_set_jvm(JavaVM* vm) { g_jvm = vm; [span_12](start_span)}
 
 void process_asset(int romFd, AssetEntry& asset, const char* outDirPath) {
     char path[512];
@@ -24,9 +21,9 @@ void process_asset(int romFd, AssetEntry& asset, const char* outDirPath) {
     std::vector<uint8_t> comp(asset.compSize);
     if (pread(romFd, comp.data(), asset.compSize, asset.romOffset) < (ssize_t)asset.compSize) return;
 
-    // Assume decompress_rare_asset is defined elsewhere in your tools
-    uint32_t outSize = 0;
+    // External decompression call
     extern uint8_t* decompress_rare_asset(uint8_t*, uint32_t, uint32_t*);
+    uint32_t outSize = 0;
     uint8_t* decomp = decompress_rare_asset(comp.data(), asset.compSize, &outSize);
     
     if (decomp) {
@@ -42,8 +39,6 @@ void process_asset(int romFd, AssetEntry& asset, const char* outDirPath) {
 void run_native_otr_generation_with_callback(JNIEnv* env, jobject activity, jmethodID progressMid,
                                            int romFd, uint8_t* manifestPtr, const char* outDirPath) {
     mkdir(outDirPath, 0777);
-    
-    struct ManifestHeader { uint32_t entryCount; }; 
     ManifestHeader* header = (ManifestHeader*)manifestPtr;
     AssetEntry* entries = (AssetEntry*)(manifestPtr + sizeof(ManifestHeader));
 
@@ -53,10 +48,9 @@ void run_native_otr_generation_with_callback(JNIEnv* env, jobject activity, jmet
         for (int t = 0; t < batchSize && (i + t) < header->entryCount; t++) {
             workers.emplace_back(process_asset, romFd, std::ref(entries[i + t]), outDirPath);
         }
-
         for (auto& w : workers) if (w.joinable()) w.join();
 
-        // ATTACH THREAD TO JVM FOR CALLBACK
+        // ATTACH TO JVM FOR CALLBACK[span_12](end_span)
         JNIEnv* myEnv;
         bool attached = false;
         if (g_jvm->GetEnv((void**)&myEnv, JNI_VERSION_1_6) == JNI_EDETACHED) {
@@ -66,10 +60,10 @@ void run_native_otr_generation_with_callback(JNIEnv* env, jobject activity, jmet
         if (myEnv && activity && progressMid) {
             int percent = (int)((float)(i + 1) / header->entryCount * 100.0f);
             jstring jName = myEnv->NewStringUTF(entries[i].name);
-            myEnv->CallVoidMethod(activity, progressMid, percent, jName);
+            [span_13](start_span)myEnv->CallVoidMethod(activity, progressMid, percent, jName);[span_13](end_span)
             myEnv->DeleteLocalRef(jName);
         }
 
-        if (attached) g_jvm->DetachCurrentThread();
+        [span_14](start_span)if (attached) g_jvm->DetachCurrentThread();[span_14](end_span)
     }
 }
