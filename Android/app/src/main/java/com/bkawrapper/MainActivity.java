@@ -35,12 +35,11 @@ public class MainActivity extends AppCompatActivity {
 
                     // Run in background thread to prevent UI freeze
                     new Thread(() -> {
-                        // Open the file descriptor for the ROM
                         try (ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "r")) {
                             if (pfd != null) {
                                 String outDir = getFilesDir().getAbsolutePath();
                                 
-                                [span_3](start_span)// FIX: Pass the FD and the correct AssetManager[span_3](end_span)
+                                // Call the NativeBridge method with correct assets
                                 NativeBridge.runOtrGeneration(
                                     pfd.getFd(), 
                                     this.getAssets(), 
@@ -81,11 +80,10 @@ public class MainActivity extends AppCompatActivity {
 
         menuController = new MenuController(this);
 
-        [span_4](start_span)// Pass 'this' so C++ can save a reference for callbacks[span_4](end_span)
+        // Pass 'this' so C++ can save a reference for callbacks
         NativeBridge.nativeInit(this); 
     }
 
-    [span_5](start_span)[span_6](start_span)// Called by C++ JNI to update the UI[span_5](end_span)[span_6](end_span)
     public void updateOtrProgress(int percent, String fileName) {
         runOnUiThread(() -> {
             if (progressBar != null) progressBar.setProgress(percent);
