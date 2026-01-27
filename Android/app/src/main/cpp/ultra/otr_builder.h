@@ -4,7 +4,7 @@
 #include <jni.h>
 #include <stdint.h>
 
-[span_3](start_span)// Define the structures missing in your previous build[span_3](end_span)
+// Define the structures missing in your previous build[span_3](end_span)
 struct AssetEntry {
     char name[256];
     uint32_t romOffset;
