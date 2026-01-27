@@ -9,13 +9,9 @@
 static jobject g_mainActivityObj = nullptr;
 static jmethodID g_updateProgressMid = nullptr;
 
-// ONLY ONE JNI_OnLoad is allowed in the entire project
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
-    __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "JNI_OnLoad: Library Loading...");
-    
-    // Pass the VM pointer to the builder so it can attach background threads
+    __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "JNI_OnLoad: Initializing JVM Link");
     otr_builder_set_jvm(vm);
-    
     return JNI_VERSION_1_6;
 }
 
@@ -23,8 +19,6 @@ extern "C" {
 
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_nativeInit(JNIEnv* env, jclass clazz, jobject activity) {
-    __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Native Bridge Initialized");
-    
     if (g_mainActivityObj != nullptr) {
         env->DeleteGlobalRef(g_mainActivityObj);
     }
@@ -32,6 +26,7 @@ Java_com_bkawrapper_NativeBridge_nativeInit(JNIEnv* env, jclass clazz, jobject a
     
     jclass activityClass = env->GetObjectClass(g_mainActivityObj);
     g_updateProgressMid = env->GetMethodID(activityClass, "updateOtrProgress", "(ILjava/lang/String;)V");
+    __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Native Bridge Ready");
 }
 
 JNIEXPORT void JNICALL
@@ -48,6 +43,8 @@ Java_com_bkawrapper_NativeBridge_runOtrGeneration(JNIEnv* env, jclass clazz,
         run_native_otr_generation_with_callback(env, g_mainActivityObj, g_updateProgressMid,
                                               romFd, manifestBuffer, outDir);
         AAsset_close(asset);
+    } else {
+        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Failed to open manifest_us.bin from assets!");
     }
 
     env->ReleaseStringUTFChars(outputDir, outDir);
