@@ -1,29 +1,21 @@
 #ifndef OTR_BUILDER_H
 #define OTR_BUILDER_H
 
-#include <stdint.h>
-#include <stddef.h>
-#include <android/asset_manager.h>
+#include <vector>
+#include <cstdint>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// Defined versions
-#define ROM_VERSION_UNKNOWN 0
-#define ROM_VERSION_US      1
-#define ROM_VERSION_PAL     2
+// Detects 0 for US, 1 for PAL
+int detect_rom_version(const uint8_t* romData, size_t size);
 
-/**
- * Detects the ROM version based on the region code in the header.
- */
-int detect_rom_version(const uint8_t* rom_data, size_t size);
+// Handles Rare-specific asset decompression
+void decompress_rare_asset(const std::vector<uint8_t>& input, std::vector<uint8_t>& output);
 
-/**
- * Main entry point for asset extraction. 
- * Now includes the output_path where files will be saved.
- */
-void extract_assets_to_otr(AAssetManager* mgr, uint8_t* rom_data, size_t rom_size, const char* output_path);
+// Main entry point for OTR generation
+void extract_assets_to_otr(const uint8_t* romData, size_t size, const char* outPath);
 
 #ifdef __cplusplus
 }
