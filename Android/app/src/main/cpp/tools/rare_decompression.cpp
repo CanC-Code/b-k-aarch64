@@ -1,34 +1,34 @@
-#include <vector>
-#include <cstdint>
+// Android/app/src/main/cpp/tools/rare_decompression.cpp
+#include "rare_decompression.h"
 #include <zlib.h>
+#include <stdlib.h>
 
-extern "C" {
+uint8_t* decompress_rare_asset(const uint8_t* src, uint32_t* out_size) {
+    // Rare Magic Header check (0x1172)
+    if (src[0] != 0x11 || src[1] != 0x72) return nullptr;
 
-void decompress_rare_asset(const std::vector<uint8_t>& input, std::vector<uint8_t>& output) {
-    if (input.size() < 2) return;
+    // Grab decompressed size from the Rare header (Big Endian)
+    uint32_t decompLen = (src[2] << 24) | (src[3] << 16) | (src[4] << 8) | src[5];
+    *out_size = decompLen;
 
-    // Rare compression often uses a custom header (0x1172)
-    // and raw deflate (wbits -15)
-    z_stream strm;
-    strm.zalloc = Z_NULL;
-    strm.zfree = Z_NULL;
-    strm.opaque = Z_NULL;
-    strm.avail_in = input.size();
-    strm.next_in = (Bytef*)input.data();
+    uint8_t* outBuf = (uint8_t*)malloc(decompLen);
+    
+    z_stream strm = {0};
+    strm.next_in = (Bytef*)(src + 6); // Skip the 6-byte Rare header
+    strm.avail_in = 0xFFFFFF;        // Large enough to cover the compressed chunk
+    strm.next_out = (Bytef*)outBuf;
+    strm.avail_out = decompLen;
 
-    // -15 for raw deflate without zlib/gzip headers
-    if (inflateInit2(&strm, -15) != Z_OK) return;
-
-    output.resize(input.size() * 4); // Initial guess
-    strm.avail_out = output.size();
-    strm.next_out = (Bytef*)output.data();
-
+    // -15 is the "Perfect" window bit for raw deflate (no headers) used in BK
+    if (inflateInit2(&strm, -15) != Z_OK) return nullptr;
+    
     int ret = inflate(&strm, Z_FINISH);
-    if (ret == Z_STREAM_END || ret == Z_OK) {
-        output.resize(strm.total_out);
+    inflateEnd(&strm);
+
+    if (ret != Z_STREAM_END && ret != Z_OK) {
+        free(outBuf);
+        return nullptr;
     }
 
-    inflateEnd(&strm);
+    return outBuf;
 }
-
-} // extern "C"
