@@ -3,11 +3,14 @@
 
 #define LOG_TAG "NativeBridge"
 
-// JNI_OnLoad removed from this file to resolve conflict with wrapper.cpp
+extern "C" {
 
-extern "C"
+// Matches: com.bkawrapper.NativeBridge.processFrame()
+// This is the ONLY definition of this function in the whole project.
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_processFrame(JNIEnv* env, jobject thiz, jbyteArray data) {
-    // Original logic preserved
-    __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, "NativeBridge: processing frame");
+    // Logic for frame processing
+    __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, "Processing frame in NativeBridge.cpp");
 }
+
+} // extern "C"
