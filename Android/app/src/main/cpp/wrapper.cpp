@@ -4,7 +4,6 @@
 #include <vector>
 #include <android/log.h>
 #include <unistd.h>
-#include <fcntl.h>
 
 #define LOG_TAG "BK_WRAPPER"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -12,19 +11,19 @@
 static std::atomic<bool> g_running{false};
 static std::atomic<bool> g_rom_loaded{false};
 static std::thread g_thread;
-static jobject g_activityObj = nullptr; // For callbacks
+static jobject g_activityObj = nullptr;
 
+// External functions implemented in your emulator core or OTR builder
 extern "C" {
     void core1_reset(uint8_t* ram);
-    void core1_loadOTR(int fd);
     void n_audioStep();
-    // Assuming this is your extraction function in your builder code
-    void run_otr_extraction(JNIEnv* env, jobject activity, int romFd);
+    void core1_loadOTR(int fd); 
 }
 
 static std::vector<uint8_t> g_ram(8 * 1024 * 1024, 0);
 
 void emuLoop() {
+    // Wait until the OTR generation in NativeBridge.cpp signals it is done
     while(!g_rom_loaded.load() && g_running.load()) {
         usleep(100000); 
     }
@@ -34,59 +33,63 @@ void emuLoop() {
         LOGI("Emulator Loop Active");
         while (g_running.load()) {
             n_audioStep();
-            usleep(16000);
+            usleep(16000); // ~60fps target
         }
     }
 }
 
 extern "C" {
 
+// FIX: This is the ONLY definition of nativeInit in the project
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_nativeInit(JNIEnv* env, jclass, jobject activity) {
+Java_com_bkawrapper_NativeBridge_nativeInit(JNIEnv* env, jclass clazz, jobject activity) {
+    if (g_activityObj != nullptr) {
+        env->DeleteGlobalRef(g_activityObj);
+    }
     g_activityObj = env->NewGlobalRef(activity);
     LOGI("Native Bridge Initialized with Activity Ref");
 }
 
 JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_loadRomFromUri(JNIEnv* env, jclass, jobject resolver, jobject uri) {
-    jclass resCls = env->GetObjectClass(resolver);
-    jmethodID openDoc = env->GetMethodID(resCls, "openFileDescriptor", "(Landroid/net/Uri;Ljava/lang/String;)Landroid/os/ParcelFileDescriptor;");
-    jstring mode = env->NewStringUTF("r");
-    jobject pfd = env->CallObjectMethod(resolver, openDoc, uri, mode);
-
-    if (pfd) {
-        jclass pfdCls = env->GetObjectClass(pfd);
-        jmethodID getFd = env->GetMethodID(pfdCls, "getFd", "()I");
-        int fd = env->CallIntMethod(pfd, getFd);
-
-        // 1. Run the actual asset extraction logic
-        // Ensure this function uses the activity reference to call updateOtrProgress
-        run_otr_extraction(env, g_activityObj, fd);
-
-        // 2. Load the final OTR into the emulator core
-        core1_loadOTR(fd);
-        g_rom_loaded.store(true);
-    }
-}
-
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_startGameLoop(JNIEnv*, jclass) {
+Java_com_bkawrapper_NativeBridge_startGameLoop(JNIEnv* env, jclass clazz) {
     if (!g_running.load()) {
         g_running.store(true);
+        // We assume the ROM is ready once this is called from Java
+        g_rom_loaded.store(true); 
         g_thread = std::thread(emuLoop);
     }
 }
 
-JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_cleanupGame(JNIEnv* env, jclass) {
+JNIEXPORT void JNICALL 
+Java_com_bkawrapper_NativeBridge_pauseGameLoop(JNIEnv* env, jclass clazz) {
+    // Implement pause logic if needed
+}
+
+JNIEXPORT void JNICALL 
+Java_com_bkawrapper_NativeBridge_resumeGameLoop(JNIEnv* env, jclass clazz) {
+    // Implement resume logic if needed
+}
+
+JNIEXPORT void JNICALL 
+Java_com_bkawrapper_NativeBridge_cleanupGame(JNIEnv* env, jclass clazz) {
     g_running.store(false);
     if(g_thread.joinable()) g_thread.join();
     if(g_activityObj) {
         env->DeleteGlobalRef(g_activityObj);
         g_activityObj = nullptr;
     }
+    LOGI("Native Bridge Cleaned Up");
 }
 
-JNIEXPORT jint JNICALL Java_com_bkawrapper_NativeBridge_initTexture(JNIEnv*, jclass) { return 1; }
-JNIEXPORT void JNICALL Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv*, jclass, jint) {}
-
+// Graphics Stubs (implemented here to satisfy NativeBridge.java)
+JNIEXPORT jint JNICALL 
+Java_com_bkawrapper_NativeBridge_initTexture(JNIEnv* env, jclass clazz) { 
+    return 1; 
 }
+
+JNIEXPORT void JNICALL 
+Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass clazz, jint tid) {
+    // Texture update logic
+}
+
+} // extern "C"
