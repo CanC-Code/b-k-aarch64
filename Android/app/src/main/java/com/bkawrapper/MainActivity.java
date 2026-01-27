@@ -29,14 +29,15 @@ public class MainActivity extends AppCompatActivity {
                     getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
                     
                     // Show Progress UI
-                    otrUiContainer.setVisibility(View.VISIBLE);
+                    if (otrUiContainer != null) otrUiContainer.setVisibility(View.VISIBLE);
 
-                    // Run in background so UI doesn't freeze (Black Screen)
+                    // Run in background thread to prevent UI freeze/Black Screen
                     new Thread(() -> {
                         NativeBridge.loadRomFromUri(getContentResolver(), uri);
 
+                        // Once extraction is done, hide UI and start game on Main Thread
                         runOnUiThread(() -> {
-                            otrUiContainer.setVisibility(View.GONE);
+                            if (otrUiContainer != null) otrUiContainer.setVisibility(View.GONE);
                             if (!isGameStarted) {
                                 NativeBridge.startGameLoop();
                                 isGameStarted = true;
@@ -63,14 +64,16 @@ public class MainActivity extends AppCompatActivity {
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
         menuController = new MenuController(this);
+        
+        // Pass 'this' so C++ can save a reference for callbacks
         NativeBridge.nativeInit(this); 
     }
 
-    // Called by wrapper.cpp via JNI during extract_assets_to_otr
+    // Called by C++ JNI to update the UI
     public void updateOtrProgress(int percent, String fileName) {
         runOnUiThread(() -> {
             if (progressBar != null) progressBar.setProgress(percent);
-            if (progressText != null) progressText.setText("Extracting: " + fileName);
+            if (progressText != null) progressText.setText("Extracting: " + fileName + " (" + percent + "%)");
         });
     }
 
@@ -79,5 +82,11 @@ public class MainActivity extends AppCompatActivity {
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType("*/*");
         filePickerLauncher.launch(intent);
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (menuController != null) menuController.toggle();
+        else super.onBackPressed();
     }
 }
