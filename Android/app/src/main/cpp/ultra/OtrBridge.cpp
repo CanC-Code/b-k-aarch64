@@ -1,42 +1,33 @@
-// Android/app/src/main/cpp/ultra/OtrBridge.cpp
 #include <jni.h>
 #include <android/asset_manager.h>
 #include <android/asset_manager_jni.h>
-#include <android/log.h>
 #include "otr_builder.h"
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_yourproject_app_OtrBridge_runExtraction(JNIEnv* env, jobject thiz, 
+Java_com_bkawrapper_NativeBridge_runOtrGeneration(JNIEnv* env, jclass clazz, 
                                                 jint romFd, 
                                                 jobject assetManager, 
-                                                jstring manifestPath, 
                                                 jstring outputDir) {
     
-    // 1. Convert Java Strings to C Strings
-    const char* mPath = env->GetStringUTFChars(manifestPath, nullptr);
     const char* oDir = env->GetStringUTFChars(outputDir, nullptr);
-
-    // 2. Load the Binary Manifest from APK Assets
     AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
-    AAsset* asset = AAssetManager_open(mgr, mPath, AASSET_MODE_BUFFER);
+    
+    // Using manifest_us.bin as a default
+    AAsset* asset = AAssetManager_open(mgr, "manifest_us.bin", AASSET_MODE_BUFFER);
     
     if (!asset) {
-        env->ReleaseStringUTFChars(manifestPath, mPath);
         env->ReleaseStringUTFChars(outputDir, oDir);
         return JNI_FALSE;
     }
 
     uint8_t* manifestBuffer = (uint8_t*)AAsset_getBuffer(asset);
-    size_t manifestSize = AAsset_getLength(asset);
 
-    // 3. Call your native OTR generator
-    // (Ensure run_otr_generation is declared in otr_builder.h)
-    run_otr_generation(romFd, manifestBuffer, oDir);
+    // We need the method ID here if we aren't using the cached one from nativeInit
+    // For simplicity, let's assume nativeInit was called, or pass nulls
+    run_native_otr_generation_with_callback(env, nullptr, nullptr, romFd, manifestBuffer, oDir);
 
-    // 4. Cleanup
     AAsset_close(asset);
-    env->ReleaseStringUTFChars(manifestPath, mPath);
     env->ReleaseStringUTFChars(outputDir, oDir);
 
     return JNI_TRUE;
