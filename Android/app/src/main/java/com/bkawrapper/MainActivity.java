@@ -5,16 +5,14 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.opengl.GLSurfaceView;
-import android.os.ParcelFileDescriptor;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import java.io.IOException;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements NativeBridge.OtrCompletionListener {
     private GLSurfaceView glSurfaceView;
     private MenuController menuController;
     private boolean isGameStarted = false;
@@ -23,41 +21,24 @@ public class MainActivity extends AppCompatActivity {
     private View menuOverlay; 
     private ProgressBar progressBar;
     private TextView progressText;
-    private TextView artifactText; // Added reference
+    private TextView artifactText;
 
     private final ActivityResultLauncher<Intent> filePickerLauncher =
         registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
             if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                 Uri uri = result.getData().getData();
                 if (uri != null) {
+                    // Grant permanent permission to the ROM file
                     getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
                     if (menuOverlay != null) menuOverlay.setVisibility(View.GONE);
                     if (otrUiContainer != null) otrUiContainer.setVisibility(View.VISIBLE);
 
-                    new Thread(() -> {
-                        try (ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "r")) {
-                            if (pfd != null) {
-                                String outDir = getFilesDir().getAbsolutePath();
-                                NativeBridge.runOtrGeneration(
-                                    pfd.getFd(), 
-                                    this.getAssets(), 
-                                    outDir
-                                );
-                            }
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-
-                        runOnUiThread(() -> {
-                            if (otrUiContainer != null) otrUiContainer.setVisibility(View.GONE);
-                            if (!isGameStarted) {
-                                NativeBridge.startGameLoop();
-                                isGameStarted = true;
-                                if (menuController != null) menuController.hide();
-                            }
-                        });
-                    }).start();
+                    // START THE FOREGROUND SERVICE
+                    Intent serviceIntent = new Intent(this, OtrService.class);
+                    serviceIntent.putExtra("uri", uri.toString());
+                    serviceIntent.putExtra("outDir", getFilesDir().getAbsolutePath());
+                    startForegroundService(serviceIntent);
                 }
             }
         });
@@ -72,13 +53,16 @@ public class MainActivity extends AppCompatActivity {
         menuOverlay = findViewById(R.id.menu_overlay);
         progressBar = findViewById(R.id.otr_progress_bar);
         progressText = findViewById(R.id.otr_progress_text);
-        artifactText = findViewById(R.id.otr_current_artifact); // Initialize
+        artifactText = findViewById(R.id.otr_current_artifact);
 
         glSurfaceView.setEGLContextClientVersion(2);
         glSurfaceView.setRenderer(new GLRenderer(this));
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
         menuController = new MenuController(this);
+
+        // Register this Activity as the listener for OTR completion
+        NativeBridge.setOtrCompletionListener(this);
 
         View selectBtn = findViewById(R.id.btn_select_rom);
         if (selectBtn != null) {
@@ -88,19 +72,24 @@ public class MainActivity extends AppCompatActivity {
         NativeBridge.nativeInit(this); 
     }
 
+    // This is called automatically when the Service finishes the C++ loop
+    @Override
+    public void onOtrComplete() {
+        runOnUiThread(() -> {
+            if (otrUiContainer != null) otrUiContainer.setVisibility(View.GONE);
+            if (!isGameStarted) {
+                NativeBridge.startGameLoop();
+                isGameStarted = true;
+                if (menuController != null) menuController.hide();
+            }
+        });
+    }
+
     public void updateOtrProgress(int percent, String fileName) {
         runOnUiThread(() -> {
             if (progressBar != null) progressBar.setProgress(percent);
-            
-            // Show the file being processed currently
-            if (artifactText != null) {
-                artifactText.setText(fileName);
-            }
-
-            // Show the percentage below
-            if (progressText != null) {
-                progressText.setText("Generating OTR: " + percent + "%");
-            }
+            if (artifactText != null) artifactText.setText(fileName);
+            if (progressText != null) progressText.setText("Generating OTR: " + percent + "%");
         });
     }
 
