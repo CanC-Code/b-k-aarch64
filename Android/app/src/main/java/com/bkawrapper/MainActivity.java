@@ -5,18 +5,20 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.opengl.GLSurfaceView;
+import android.os.ParcelFileDescriptor;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import java.io.IOException;
 
 public class MainActivity extends AppCompatActivity {
     private GLSurfaceView glSurfaceView;
     private MenuController menuController;
     private boolean isGameStarted = false;
-    
+
     private View otrUiContainer;
     private ProgressBar progressBar;
     private TextView progressText;
@@ -27,13 +29,27 @@ public class MainActivity extends AppCompatActivity {
                 Uri uri = result.getData().getData();
                 if (uri != null) {
                     getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                    
+
                     // Show Progress UI
                     if (otrUiContainer != null) otrUiContainer.setVisibility(View.VISIBLE);
 
-                    // Run in background thread to prevent UI freeze/Black Screen
+                    // Run in background thread to prevent UI freeze
                     new Thread(() -> {
-                        NativeBridge.loadRomFromUri(getContentResolver(), uri);
+                        // Open the file descriptor for the ROM
+                        try (ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "r")) {
+                            if (pfd != null) {
+                                String outDir = getFilesDir().getAbsolutePath();
+                                
+                                [span_3](start_span)// FIX: Pass the FD and the correct AssetManager[span_3](end_span)
+                                NativeBridge.runOtrGeneration(
+                                    pfd.getFd(), 
+                                    this.getAssets(), 
+                                    outDir
+                                );
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
 
                         // Once extraction is done, hide UI and start game on Main Thread
                         runOnUiThread(() -> {
@@ -64,12 +80,12 @@ public class MainActivity extends AppCompatActivity {
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
         menuController = new MenuController(this);
-        
-        // Pass 'this' so C++ can save a reference for callbacks
+
+        [span_4](start_span)// Pass 'this' so C++ can save a reference for callbacks[span_4](end_span)
         NativeBridge.nativeInit(this); 
     }
 
-    // Called by C++ JNI to update the UI
+    [span_5](start_span)[span_6](start_span)// Called by C++ JNI to update the UI[span_5](end_span)[span_6](end_span)
     public void updateOtrProgress(int percent, String fileName) {
         runOnUiThread(() -> {
             if (progressBar != null) progressBar.setProgress(percent);
