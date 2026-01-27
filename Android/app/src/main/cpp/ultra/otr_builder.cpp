@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <android/log.h> // Added for debugging
+#include <android/log.h>
 
 #define LOG_TAG "OTR_BUILDER"
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
@@ -25,6 +25,15 @@ void run_native_otr_generation_with_callback(JNIEnv* env, jobject activity, jmet
     for (uint32_t i = 0; i < header->entryCount; i++) {
         AssetEntry& asset = entries[i];
         if (asset.type == ASSET_TYPE_SKIP) continue;
+
+        // --- UI UPDATE: Send current filename before starting work ---
+        // This ensures the UI tells us exactly what it's trying to do
+        if (env && activity && progressMid) {
+            int percent = (int)((float)(i) / header->entryCount * 100.0f);
+            jstring jName = env->NewStringUTF(asset.name);
+            env->CallVoidMethod(activity, progressMid, percent, jName);
+            env->DeleteLocalRef(jName);
+        }
 
         lseek(romFd, asset.romOffset, SEEK_SET);
         std::vector<uint8_t> comp(asset.compSize);
@@ -49,17 +58,18 @@ void run_native_otr_generation_with_callback(JNIEnv* env, jobject activity, jmet
             }
             free(decomp);
         } else {
-            // This is likely where your 25% hang is hiding
-            LOGE("Decompression failed for: %s (Type: %d)", asset.name, asset.type);
-        }
-
-        // Progress Callback - Throttle updates to avoid flooding UI thread
-        if (env && activity && progressMid && (i % 5 == 0 || i == header->entryCount - 1)) {
-            int percent = (int)((float)(i + 1) / header->entryCount * 100.0f);
-            jstring jName = env->NewStringUTF(asset.name);
-            env->CallVoidMethod(activity, progressMid, percent, jName);
-            env->DeleteLocalRef(jName);
+            // Log the failure clearly in Logcat
+            LOGE("Decompression failed for: %s (Offset: 0x%X, Size: %u)", 
+                 asset.name, asset.romOffset, asset.compSize);
         }
     }
+    
+    // Final 100% callback
+    if (env && activity && progressMid) {
+        jstring finishedMsg = env->NewStringUTF("Complete");
+        env->CallVoidMethod(activity, progressMid, 100, finishedMsg);
+        env->DeleteLocalRef(finishedMsg);
+    }
+    
     LOGD("OTR Generation Complete");
 }
