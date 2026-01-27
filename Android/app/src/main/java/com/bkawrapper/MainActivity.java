@@ -14,7 +14,6 @@ import androidx.activity.result.contract.ActivityResultContracts;
 
 public class MainActivity extends AppCompatActivity implements NativeBridge.OtrCompletionListener {
     private GLSurfaceView glSurfaceView;
-    private MenuController menuController;
     private boolean isGameStarted = false;
 
     private View otrUiContainer;
@@ -28,13 +27,13 @@ public class MainActivity extends AppCompatActivity implements NativeBridge.OtrC
             if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                 Uri uri = result.getData().getData();
                 if (uri != null) {
-                    // Grant permanent permission to the ROM file
+                    // Grant permission to keep the file accessible in the background service
                     getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
                     if (menuOverlay != null) menuOverlay.setVisibility(View.GONE);
                     if (otrUiContainer != null) otrUiContainer.setVisibility(View.VISIBLE);
 
-                    // START THE FOREGROUND SERVICE
+                    // Launch the Service to handle the heavy extraction
                     Intent serviceIntent = new Intent(this, OtrService.class);
                     serviceIntent.putExtra("uri", uri.toString());
                     serviceIntent.putExtra("outDir", getFilesDir().getAbsolutePath());
@@ -48,6 +47,7 @@ public class MainActivity extends AppCompatActivity implements NativeBridge.OtrC
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // UI Binding with null-safety
         glSurfaceView = findViewById(R.id.gl_surface_view);
         otrUiContainer = findViewById(R.id.otr_ui_container);
         menuOverlay = findViewById(R.id.menu_overlay);
@@ -55,24 +55,22 @@ public class MainActivity extends AppCompatActivity implements NativeBridge.OtrC
         progressText = findViewById(R.id.otr_progress_text);
         artifactText = findViewById(R.id.otr_current_artifact);
 
-        glSurfaceView.setEGLContextClientVersion(2);
-        glSurfaceView.setRenderer(new GLRenderer(this));
-        glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+        if (glSurfaceView != null) {
+            glSurfaceView.setEGLContextClientVersion(2);
+            glSurfaceView.setRenderer(new GLRenderer(this));
+            glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+        }
 
-        menuController = new MenuController(this);
-
-        // Register this Activity as the listener for OTR completion
+        // Register for native callbacks
         NativeBridge.setOtrCompletionListener(this);
+        NativeBridge.nativeInit(this); 
 
         View selectBtn = findViewById(R.id.btn_select_rom);
         if (selectBtn != null) {
             selectBtn.setOnClickListener(v -> openFilePicker());
         }
-
-        NativeBridge.nativeInit(this); 
     }
 
-    // This is called automatically when the Service finishes the C++ loop
     @Override
     public void onOtrComplete() {
         runOnUiThread(() -> {
@@ -80,11 +78,11 @@ public class MainActivity extends AppCompatActivity implements NativeBridge.OtrC
             if (!isGameStarted) {
                 NativeBridge.startGameLoop();
                 isGameStarted = true;
-                if (menuController != null) menuController.hide();
             }
         });
     }
 
+    // This method is called by C++ via JNI
     public void updateOtrProgress(int percent, String fileName) {
         runOnUiThread(() -> {
             if (progressBar != null) progressBar.setProgress(percent);
@@ -98,11 +96,5 @@ public class MainActivity extends AppCompatActivity implements NativeBridge.OtrC
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType("*/*");
         filePickerLauncher.launch(intent);
-    }
-
-    @Override
-    public void onBackPressed() {
-        if (menuController != null) menuController.toggle();
-        else super.onBackPressed();
     }
 }
