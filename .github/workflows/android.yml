@@ -35,11 +35,9 @@ jobs:
           pip install PyYAML
 
       # Step 1: Generate Binary Asset Manifests
-      # This script now creates manifest_us.bin and manifest_pal.bin in the assets folder
       - name: Generate Binary Asset Manifests
         run: |
           python3 runtime/generate_assets_header.py
-          # Verify binary manifests exist in the Android assets directory
           if [ -f "Android/app/src/main/assets/manifest_us.bin" ]; then
             echo "Success: manifest_us.bin generated."
           else
@@ -56,17 +54,32 @@ jobs:
           fi
           python3 runtime/generate_icons.py master_icon.png
 
+      # Step 3: Prepare Source and Force CMake Refresh
       - name: Prepare C++ Source for Build
         run: |
           python3 runtime/prepare_source.py
+          # Touching CMakeLists.txt forces the NDK to re-scan for the injected .c files
+          touch Android/app/src/main/cpp/CMakeLists.txt
 
-      # Step 3: Build Application
+      # Step 4: Build Application
       - name: Build with Gradle
         run: |
           GRADLEW_PATH=$(find . -name gradlew)
           chmod +x "$GRADLEW_PATH"
           cd $(dirname "$GRADLEW_PATH")
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          # Clean is recommended once after source injection to ensure no stale objects
+          ./gradlew clean assembleDebug --no-daemon --stacktrace
+
+      # Step 5: Verification of Binary
+      - name: Verify Shared Library
+        run: |
+          SO_FILE=$(find Android/app/build -name "libbkawrapper.so" | head -n 1)
+          if [ -f "$SO_FILE" ]; then
+            echo "Final Binary Size:"
+            ls -lh "$SO_FILE"
+          else
+            echo "Warning: libbkawrapper.so not found!"
+          fi
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
