@@ -28,6 +28,7 @@ def update_include_references(directory, rename_map):
                 content = file_path.read_text(encoding='utf-8', errors='ignore')
                 original = content
                 for old_name, new_name in rename_map.items():
+                    # Handle both quoted and angle bracket includes
                     content = content.replace(f'"{old_name}"', f'"{new_name}"')
                     content = content.replace(f'<{old_name}>', f'<{new_name}>')
                 if content != original:
@@ -49,7 +50,7 @@ def inject_cpp_fixes(file_path):
         "#include <stdio.h>\n",
         "#include <string.h>\n",
         "#include <stdlib.h>\n",
-        "#include <sched.h>\n\n"
+        "#include <sched.h>\n\n" # Critical for sched_yield
     ]
 
     for line in lines:
@@ -72,23 +73,29 @@ def setup_build_dir():
     include_origin = root_dir / "decomp-files" / "include"
 
     # 1. SYNC
-    print("--- Syncing Source Files ---")
+    print("--- Syncing Source ---")
     for source, target_name in [(src_origin, "game_src"), (include_origin, "include")]:
         target = cpp_root / target_name
         if target.exists(): shutil.rmtree(target)
         shutil.copytree(source, target)
 
-    # 2. RENAME SHADOW HEADERS
-    # This creates 'game_stdlib.h', 'game_string.h', etc.
-    shadow_map = {"string.h": "game_string.h", "time.h": "game_time.h", "stdlib.h": "game_stdlib.h"}
+    # 2. RENAME SHADOW HEADERS (Critical for stdlib conflict)
+    # We rename the game's headers so they don't block the system ones.
+    shadow_map = {
+        "string.h": "game_string.h", 
+        "time.h": "game_time.h", 
+        "stdlib.h": "game_stdlib.h",
+        "sched.h": "game_sched.h" # Added to fix sched_yield conflict
+    }
     for old_name, new_name in shadow_map.items():
         old_path = cpp_root / "include" / old_name
         if old_path.exists():
             old_path.rename(cpp_root / "include" / new_name)
+            print(f"  [→] Renamed: {old_name} to {new_name}")
 
     update_include_references(cpp_root, shadow_map)
 
-    # 3. FIX ULTRATYPES.H (The "Force Include" Killer)
+    # 3. FIX ULTRATYPES.H
     ultratypes = cpp_root / "include" / "2.0L" / "PR" / "ultratypes.h"
     patch_file(ultratypes, {
         "#ifndef _ULTRATYPES_H_": "#ifndef _ULTRATYPES_H_\n#include <stddef.h>\n#include <stdint.h>",
@@ -98,25 +105,29 @@ def setup_build_dir():
         "typedef unsigned int size_t;": "/* size_t from stddef.h */"
     })
 
-    # 4. FIX GBI.H (The other Force Include)
+    # 4. FIX OS_LIBC.H (The bcopy/bzero killer)
+    # We #undef the Android macros before the game tries to declare them
+    os_libc = cpp_root / "include" / "2.0L" / "PR" / "os_libc.h"
+    patch_file(os_libc, {
+        "extern void\tbcopy(const void *, void *, int);": "#undef bcopy\nextern void bcopy(const void *, void *, int);",
+        "extern void\tbzero(void *, int);": "#undef bzero\nextern void bzero(void *, int);",
+        "extern int\tbcmp(const void *, const void *, int);": "#undef bcmp\nextern int bcmp(const void *, const void *, int);"
+    })
+
+    # 5. FIX GBI.H
     gbi = cpp_root / "include" / "2.0L" / "PR" / "gbi.h"
     patch_file(gbi, {
         "#ifndef _GBI_H_": "#ifndef _GBI_H_\n#ifdef __cplusplus\nextern \"C\" {\n#endif",
         "#endif /* _GBI_H_ */": "#ifdef __cplusplus\n}\n#endif\n#endif"
     })
 
-    # 5. INJECT INTO WRAPPERS
-    for target in [cpp_root / "emulator" / "stubs.cpp", cpp_root / "emulator" / "resource_mgr.cpp", cpp_root / "ultra" / "NativeBridge.cpp"]:
+    # 6. INJECT INTO WRAPPERS
+    for target in [
+        cpp_root / "emulator" / "stubs.cpp", 
+        cpp_root / "emulator" / "resource_mgr.cpp", 
+        cpp_root / "ultra" / "NativeBridge.cpp"
+    ]:
         inject_cpp_fixes(target)
-
-    # 6. FIX LIBC CONFLICTS (bcopy, bzero, bcmp)
-    # These legacy functions in os_libc.h clash with Android's <strings.h>
-    os_libc = cpp_root / "include" / "2.0L" / "PR" / "os_libc.h"
-    patch_file(os_libc, {
-        "extern void bcopy(const void *, void *, int);": "#ifndef bcopy\nextern void bcopy(const void *, void *, int);\n#endif",
-        "extern void bzero(void *, int);": "#ifndef bzero\nextern void bzero(void *, int);\n#endif",
-        "extern int  bcmp(const void *, const void *, int);": "#ifndef bcmp\nextern int  bcmp(const void *, const void *, int);\n#endif"
-    })
 
     print("--- Preparation Complete ---")
 
