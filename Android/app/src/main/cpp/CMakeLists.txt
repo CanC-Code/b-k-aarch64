@@ -3,11 +3,11 @@ project(bkawrapper LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# This ensures -std=gnu++17 instead of -std=c++17, exposing POSIX headers
+set(CMAKE_CXX_EXTENSIONS ON)
 set(CMAKE_C_STANDARD 99)
 
 # 1. Global Definitions
-# -D_GNU_SOURCE: Fixes "undeclared identifier 'sched_yield'" in NDK 25+
-# -D__BOOL_H__: prevents conflicts with modern C++ bool types in old headers
 add_definitions(
     -D_GNU_SOURCE 
     -DVERSION_US=1 
@@ -56,6 +56,7 @@ target_compile_options(bkawrapper PRIVATE
     -w
     -fsigned-char
     -Wno-invalid-source-encoding
+    -D_GNU_SOURCE
     "SHELL:-include ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h"
     "SHELL:-include ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/gbi.h"
 )
