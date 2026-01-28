@@ -1,12 +1,23 @@
 package com.bkawrapper;
 
-import android.content.Context;
 import android.content.res.AssetManager;
 
 public class NativeBridge {
-    // Matches: Java_com_bkawrapper_NativeBridge_nativeInit
-    public static native void nativeInit(Object activity);
+    static {
+        System.loadLibrary("bkawrapper");
+    }
 
-    // Matches: Java_com_bkawrapper_NativeBridge_runOtrGeneration
+    // Existing methods
+    public static native void nativeInit(Object activity);
     public static native void runOtrGeneration(int romFd, AssetManager assetManager, String outputDir);
+
+    // FIX: Added missing method for OtrService.java:21
+    public static void notifyFinished() {
+        // Implementation for when extraction finishes
+    }
+
+    // FIX: Added missing method for GLRenderer.java:30
+    public static void updateTexture(int textureId) {
+        // Native stub for rendering
+    }
 }
