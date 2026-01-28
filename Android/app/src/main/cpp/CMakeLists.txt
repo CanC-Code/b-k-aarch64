@@ -1,21 +1,21 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(bkawrapper)
 
-# CPP_ROOT points to .../Android/app/src/main/cpp
 set(CPP_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
-# Automatically collect all source files recursively
+# Automatically collect all source files
 file(GLOB_RECURSE LIB_SOURCES 
     "${CPP_ROOT}/emulator/*.cpp"
     "${CPP_ROOT}/ultra/*.cpp"
     "${CPP_ROOT}/game_src/*.c"
     "${CPP_ROOT}/tools/*.cpp"
+    "${CPP_ROOT}/tools/*.c"
 )
 
 add_library(bkawrapper SHARED ${LIB_SOURCES})
 
 # Include Directories
-# We include all possible locations where game_*.h might end up
+# Added ${CPP_ROOT}/tools to the list to resolve rare_decompression.h
 target_include_directories(bkawrapper PRIVATE
     ${CPP_ROOT}
     ${CPP_ROOT}/tools
@@ -29,9 +29,9 @@ target_include_directories(bkawrapper PRIVATE
 
 # Compile Flags for N64 Porting
 target_compile_options(bkawrapper PRIVATE 
-    -fcommon            # Necessary for global variable definitions in C
-    -w                  # Suppress legacy warnings to keep logs clean
-    -fno-builtin        # Prevents Clang from "optimizing" game functions into Bionic ones
+    -fcommon            # Allows multiple definitions of global variables
+    -w                  # Suppress legacy warnings
+    -fno-builtin        # Don't let Clang replace game functions with built-ins
     -DN_AUDIO=1
     -DVERSION_US=1
     -D_LANGUAGE_C
