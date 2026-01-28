@@ -9,7 +9,6 @@
 
 #define LOG_TAG "OtrBuilder"
 
-// Helper to create directories for nested assets
 void ensure_directories(const char* path) {
     char tmp[512];
     char* p = NULL;
@@ -31,20 +30,34 @@ void run_native_otr_generation_with_callback(JNIEnv* env, jobject callbackObj, j
                                            int romFd, uint8_t* manifestPtr, uint32_t manifestSize, 
                                            const char* outDirPath) {
 
-    uint32_t entryCount = manifestSize / 48;
+    // 1. Read the Entry Count from the first 4 bytes (Little Endian)
+    uint32_t entryCount = *(uint32_t*)manifestPtr;
+    
+    // 2. The records start AFTER the 4-byte header
+    uint8_t* recordStart = manifestPtr + 4;
+
+    __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Manifest loaded. Entries: %u", entryCount);
 
     for (uint32_t i = 0; i < entryCount; i++) {
         if (env->PushLocalFrame(10) < 0) return;
 
-        uint8_t* record = manifestPtr + (i * 48);
+        // Each record is 48 bytes
+        uint8_t* record = recordStart + (i * 48);
         
-        // Convert Big Endian offsets from manifest
-        uint32_t romOffset = __builtin_bswap32(*(uint32_t*)(record + 0));
-        uint32_t fileSize  = __builtin_bswap32(*(uint32_t*)(record + 4));
+        // Offset and Size are Little Endian (as per struct.pack '<II...')
+        uint32_t romOffset = *(uint32_t*)(record + 0);
+        uint32_t fileSize  = *(uint32_t*)(record + 4);
         
+        // Name is 32 bytes
         char fileName[33];
         memcpy(fileName, record + 8, 32);
         fileName[32] = '\0';
+
+        // Filter out records with 0 size (like the last entry in your script)
+        if (fileSize == 0) {
+            env->PopLocalFrame(NULL);
+            continue;
+        }
 
         char fullPath[512];
         snprintf(fullPath, sizeof(fullPath), "%s/%s", outDirPath, fileName);
@@ -54,6 +67,8 @@ void run_native_otr_generation_with_callback(JNIEnv* env, jobject callbackObj, j
         if (compressedBuffer) {
             if (pread(romFd, compressedBuffer, fileSize, romOffset) == (ssize_t)fileSize) {
                 uint32_t decompressedSize = 0;
+                
+                // Check for Rare Magic 0x1172 inside decompress_rare_asset
                 uint8_t* finalBuffer = decompress_rare_asset(compressedBuffer, fileSize, &decompressedSize);
                 
                 uint8_t* writePtr = (finalBuffer != nullptr) ? finalBuffer : compressedBuffer;
@@ -69,14 +84,15 @@ void run_native_otr_generation_with_callback(JNIEnv* env, jobject callbackObj, j
             free(compressedBuffer);
         }
 
+        // Update Progress
         int percentage = (int)((i * 100) / entryCount);
         jstring jName = env->NewStringUTF(fileName);
         env->CallVoidMethod(callbackObj, progressMid, percentage, jName);
+        
         env->PopLocalFrame(NULL);
     }
-    
-    // Final progress update
-    jstring doneMsg = env->NewStringUTF("Extraction Finished");
+
+    jstring doneMsg = env->NewStringUTF("Extraction Complete");
     env->CallVoidMethod(callbackObj, progressMid, 100, doneMsg);
 }
 }
