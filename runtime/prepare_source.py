@@ -4,10 +4,10 @@ import shutil
 def prepare_source():
     print("--- Syncing & Patching Source ---")
     
-    # This path is relative to the root of your repo
+    # Path relative to repo root
     base_path = "Android/app/src/main/cpp"
     
-    # Relative paths from base_path for patching
+    # Files needing the Android Bionic macro fix
     bridge_files = [
         "emulator/stubs.cpp",
         "emulator/resource_mgr.cpp",
@@ -15,6 +15,7 @@ def prepare_source():
         "ultra/otr_builder.cpp"
     ]
     
+    # Collision mapping
     renames = {
         "string.h": "game_string.h",
         "time.h": "game_time.h",
@@ -31,35 +32,35 @@ def prepare_source():
 #endif
 """
 
-    # 1. Physical Rename Phase
-    pr_path = os.path.join(base_path, "include/2.0L/PR")
-    if os.path.exists(pr_path):
-        for old, new in renames.items():
-            old_file = os.path.join(pr_path, old)
-            new_file = os.path.join(pr_path, new)
-            if os.path.exists(old_file):
-                if os.path.exists(new_file): os.remove(new_file)
+    # 1. Recursive Rename Phase
+    # This finds the files wherever they are under base_path/include
+    for root, dirs, files in os.walk(os.path.join(base_path, "include")):
+        for filename in files:
+            if filename in renames:
+                old_file = os.path.join(root, filename)
+                new_file = os.path.join(root, renames[filename])
+                if os.path.exists(new_file):
+                    os.remove(new_file)
                 shutil.move(old_file, new_file)
-                print(f"  [→] Renamed: {old} to {new}")
+                print(f"  [→] Renamed: {filename} to {renames[filename]}")
 
-    # 2. Search and Patch Phase
+    # 2. Patching Phase
     for root, dirs, files in os.walk(base_path):
         for filename in files:
             if filename.endswith(('.c', '.cpp', '.h', '.hpp')):
                 file_path = os.path.join(root, filename)
                 
-                # Read content
                 with open(file_path, 'r', errors='ignore') as f:
                     content = f.read()
                 
                 original_content = content
 
-                # Update includes
+                # Replace include references globally
                 for old_h, new_h in renames.items():
                     content = content.replace(f'#include <{old_h}>', f'#include <{new_h}>')
                     content = content.replace(f'#include "{old_h}"', f'#include "{new_h}"')
 
-                # Inject Android fix if file is in bridge_files
+                # Inject Android fix
                 rel_path = os.path.relpath(file_path, base_path).replace("\\", "/")
                 if rel_path in bridge_files:
                     if "#ifdef __ANDROID__" not in content:
