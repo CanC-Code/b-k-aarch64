@@ -4,18 +4,10 @@ import shutil
 def prepare_source():
     print("--- Syncing & Patching Source ---")
     
-    # Base path relative to repo root
+    # Root path for Android C++ files
     base_path = "Android/app/src/main/cpp"
     
-    # Specific files needing the Android Bionic macro fix
-    bridge_files = [
-        "emulator/stubs.cpp",
-        "emulator/resource_mgr.cpp",
-        "ultra/NativeBridge.cpp",
-        "ultra/otr_builder.cpp"
-    ]
-    
-    # Headers that conflict with Android System headers
+    # Map of N64 headers that conflict with Android System headers
     renames = {
         "string.h": "game_string.h",
         "time.h": "game_time.h",
@@ -23,6 +15,7 @@ def prepare_source():
         "sched.h": "game_sched.h"
     }
 
+    # Macro fix for Android Bionic compatibility
     android_macro_fix = """
 #ifdef __ANDROID__
   #include <strings.h>
@@ -31,24 +24,24 @@ def prepare_source():
   #undef bcmp
 #endif
 """
+    # Files that specifically need the macro fix
+    bridge_files = ["stubs.cpp", "resource_mgr.cpp", "NativeBridge.cpp", "otr_builder.cpp"]
 
-    # 1. Recursive Rename Phase
-    # This ensures we find the files even if they are in include/ or include/PR/
-    include_root = os.path.join(base_path, "include")
-    if os.path.exists(include_root):
-        for root, dirs, files in os.walk(include_root):
-            for filename in files:
-                if filename in renames:
-                    old_file = os.path.join(root, filename)
-                    new_file = os.path.join(root, renames[filename])
-                    
-                    # Clean up old renamed file if it exists, then move
-                    if os.path.exists(new_file):
-                        os.remove(new_file)
-                    shutil.move(old_file, new_file)
-                    print(f"  [→] Renamed: {filename} to {renames[filename]}")
+    # --- PHASE 1: GLOBAL SEARCH & RENAME ---
+    # We walk the entire directory tree to find these headers wherever they hide
+    for root, dirs, files in os.walk(base_path):
+        for filename in files:
+            if filename in renames:
+                old_path = os.path.join(root, filename)
+                new_path = os.path.join(root, renames[filename])
+                
+                # Perform the rename
+                if os.path.exists(new_path):
+                    os.remove(new_path)
+                shutil.move(old_path, new_path)
+                print(f"  [→] Renamed: {old_path} -> {renames[filename]}")
 
-    # 2. Patching Phase
+    # --- PHASE 2: PATCHING ---
     for root, dirs, files in os.walk(base_path):
         for filename in files:
             if filename.endswith(('.c', '.cpp', '.h', '.hpp')):
@@ -59,16 +52,14 @@ def prepare_source():
                 
                 original_content = content
 
-                # Global Search & Replace for renamed includes
+                # Replace header references
                 for old_h, new_h in renames.items():
                     content = content.replace(f'#include <{old_h}>', f'#include <{new_h}>')
                     content = content.replace(f'#include "{old_h}"', f'#include "{new_h}"')
 
-                # Inject the Android Macro Fix for Bionic compatibility
-                rel_path = os.path.relpath(file_path, base_path).replace("\\", "/")
-                if rel_path in bridge_files:
-                    if "#ifdef __ANDROID__" not in content:
-                        content = android_macro_fix + content
+                # Inject Android Bionic fix if it's a bridge file
+                if filename in bridge_files and "#ifdef __ANDROID__" not in content:
+                    content = android_macro_fix + content
 
                 if content != original_content:
                     with open(file_path, 'w') as f:
