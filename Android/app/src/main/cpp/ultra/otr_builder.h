@@ -4,12 +4,14 @@
 #include <jni.h>
 #include <stdint.h>
 
-// Removed duplicate AssetEntry and ManifestHeader structs
-// These are now exclusively defined in assets_manifest.h
+extern "C" {
+    // Set the JVM for background thread callbacks
+    void otr_builder_set_jvm(JavaVM* vm);
 
-void otr_builder_set_jvm(JavaVM* vm);
-
-void run_native_otr_generation_with_callback(JNIEnv* env, jobject activity, jmethodID progressMid,
-                                           int romFd, uint8_t* manifestPtr, const char* outDirPath);
+    // Fixed signature: Now accepts manifestSize
+    void run_native_otr_generation_with_callback(JNIEnv* env, jobject activity, jmethodID progressMid,
+                                               int romFd, uint8_t* manifestPtr, uint32_t manifestSize, 
+                                               const char* outDirPath);
+}
 
 #endif
