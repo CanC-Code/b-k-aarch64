@@ -38,14 +38,14 @@ void run_native_otr_generation_with_callback(JNIEnv* env, jobject activity, jmet
     mkdir(outDirPath, 0777);
     ManifestHeader* header = (ManifestHeader*)manifestPtr;
 
-    if (header->magic != 0x424B414D) { // 'BKAM'
+    // Verify manifest integrity
+    if (header->magic != 0x424B414D) { 
         __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Manifest Magic Mismatch!");
         return;
     }
 
     AssetEntry* entries = (AssetEntry*)(manifestPtr + sizeof(ManifestHeader));
 
-    // Parallel processing in batches of 4
     for (uint32_t i = 0; i < header->entryCount; i += 4) {
         std::vector<std::thread> workers;
         for (int t = 0; t < 4 && (i + t) < header->entryCount; t++) {
@@ -53,13 +53,13 @@ void run_native_otr_generation_with_callback(JNIEnv* env, jobject activity, jmet
         }
         for (auto& w : workers) if (w.joinable()) w.join();
 
-        // Safe JNI update from background thread
-        JNIEnv* myEnv;
-        if (g_jvm->AttachCurrentThread(&myEnv, NULL) == JNI_OK) {
+        // THREAD SAFETY: Attach the JVM to get a local env for this background update
+        JNIEnv* localEnv;
+        if (g_jvm->AttachCurrentThread(&localEnv, NULL) == JNI_OK) {
             int percent = (int)((float)(i + 1) / header->entryCount * 100.0f);
-            jstring jName = myEnv->NewStringUTF(entries[i].name);
-            myEnv->CallVoidMethod(activity, progressMid, percent, jName);
-            myEnv->DeleteLocalRef(jName);
+            jstring jName = localEnv->NewStringUTF(entries[i].name);
+            localEnv->CallVoidMethod(activity, progressMid, percent, jName);
+            localEnv->DeleteLocalRef(jName);
             g_jvm->DetachCurrentThread();
         }
     }
