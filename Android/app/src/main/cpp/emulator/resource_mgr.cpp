@@ -1,173 +1,90 @@
-import os
-import shutil
-import re
-from pathlib import Path
+#include <map>
+#include <string>
+#include <vector>
+#include <cstdio>
+#include <android/log.h>
+#include <cstdlib>
+#include <cstring>
+#include <sched.h> // Fixed: Required for C++ standard library threading/sched_yield
+#include "../rare_decompression.h" 
 
-def patch_android_compatibility(cpp_dir):
-    print("--- Applying Android Compatibility Patches ---")
+#define LOG_TAG "ResourceMgr"
 
-    # 1. Rename Shadowing Headers
-    shadow_headers = ["string.h", "stdio.h", "ctype.h", "stdlib.h", "time.h"]
-    renamed_map = {}
+struct AssetEntry {
+    uint32_t offset;
+    char type[8];
+    char name[32];
+};
 
-    include_path = cpp_dir / "include"
-    for header in shadow_headers:
-        original = include_path / header
-        if original.exists():
-            new_name = f"game_{header}"
-            target = include_path / new_name
-            os.rename(original, target)
-            renamed_map[header] = new_name
-            print(f"Renamed shadow header: {header} -> {new_name}")
+static std::map<uint32_t, AssetEntry> g_manifest;
+static std::string g_otrPath;
 
-    # 2. Global Search and Replace for Renamed Headers
-    if renamed_map:
-        print("Updating include references...")
-        for root, _, files in os.walk(cpp_dir):
-            for file in files:
-                if file.endswith((".c", ".h", ".cpp", ".hpp")):
-                    fpath = Path(root) / file
-                    try:
-                        content = fpath.read_text(errors='ignore')
-                        changed = False
-                        for old, new in renamed_map.items():
-                            if f'#include "{old}"' in content:
-                                content = content.replace(f'#include "{old}"', f'#include "{new}"')
-                                changed = True
-                        if changed:
-                            fpath.write_text(content)
-                    except Exception as e:
-                        print(f"Could not patch {file}: {e}")
+extern "C" {
 
-    # 3. Fix 'bool' redeclaration
-    bool_h = include_path / "bool.h"
-    if bool_h.exists():
-        content = bool_h.read_text()
-        if "ifndef __cplusplus" not in content:
-            patched = content.replace("typedef int bool;", "#ifndef __cplusplus\ntypedef int bool;\n#endif")
-            bool_h.write_text(patched)
-            print("Patched: bool.h")
+void ResourceMgr_Init(const char* otrPath, uint8_t* manifestBuf, uint32_t manifestSize) {
+    g_otrPath = otrPath;
+    g_manifest.clear();
 
-    # 4. Inject standard headers + sched.h (for sched_yield)
-    wrapper_files = [
-        cpp_dir / "ultra" / "NativeBridge.cpp",
-        cpp_dir / "emulator" / "stubs.cpp",
-        cpp_dir / "emulator" / "resource_mgr.cpp"
-    ]
-    for file_path in wrapper_files:
-        if file_path.exists():
-            content = file_path.read_text()
-            injection = (
-                "#include <stddef.h>\n"
-                "#include <stdint.h>\n"
-                "#include <time.h>\n"
-                "#include <sched.h>\n"   # Fixes 'sched_yield' undeclared
-                "#include <cstring>\n"
-                "#include <cstdio>\n"
-                "#undef bcopy\n"
-                "#undef bzero\n"
-            )
-            if "<stddef.h>" not in content:
-                file_path.write_text(injection + content)
-                print(f"Injected system guards into: {file_path.name}")
+    if (!manifestBuf) return;
 
-    # 5. Fix size_t and 32-bit types in ultratypes.h
-    ultratypes_h = include_path / "2.0L" / "PR" / "ultratypes.h"
-    if ultratypes_h.exists():
-        content = ultratypes_h.read_text()
-        if "include <stddef.h>" not in content:
-            content = content.replace(
-                "#if defined(_LANGUAGE_C) || defined(_LANGUAGE_C_PLUS_PLUS)",
-                "#if defined(_LANGUAGE_C) || defined(_LANGUAGE_C_PLUS_PLUS)\n#include <stddef.h>"
-            )
-            content = content.replace(
-                "#if !defined(_SIZE_T) && !defined(_SIZE_T_) && !defined(_SIZE_T_DEF)",
-                "#if !defined(_SIZE_T) && !defined(_SIZE_T_) && !defined(_SIZE_T_DEF) && defined(_MIPS_SZLONG)"
-            )
-        content = content.replace("typedef unsigned long\t\t\tu32;", "typedef unsigned int\t\t\tu32;")
-        content = content.replace("typedef signed long\t\t\ts32;", "typedef signed int\t\t\ts32;")
-        ultratypes_h.write_text(content)
-        print("Patched: ultratypes.h")
-
-    # 6. Fix bcopy/bzero conflict in os_libc.h
-    os_libc_h = include_path / "2.0L" / "PR" / "os_libc.h"
-    if os_libc_h.exists():
-        content = os_libc_h.read_text()
-        if "#undef bcopy" not in content:
-            content = "#undef bcopy\n#undef bzero\n" + content
-            os_libc_h.write_text(content)
-            print("Patched: os_libc.h guards")
-
-    # 7. Fix leafboat.c Array Initializer
-    leafboat_c = cpp_dir / "game_src" / "BGS" / "ch" / "leafboat.c"
-    if leafboat_c.exists():
-        content = leafboat_c.read_text()
-        old_code = "u8 tmp[6] = D_80390DA0;"
-        new_code = "u8 tmp[6]; memcpy(tmp, D_80390DA0, 6);"
-        if old_code in content:
-            # Add include for memcpy if not present
-            if 'include "game_string.h"' not in content and 'include <string.h>' not in content:
-                content = '#include <string.h>\n' + content
-            content = content.replace(old_code, new_code)
-            leafboat_c.write_text(content)
-            print("Patched: leafboat.c array initializer")
-
-    # 8. Update resource_mgr.cpp to use decompress_rare_asset correctly
-    res_mgr = cpp_dir / "emulator" / "resource_mgr.cpp"
-    if res_mgr.exists():
-        content = res_mgr.read_text()
-        # Fix relative path
-        content = content.replace('#include "../rare_decompression.h"', '#include "rare_decompression.h"')
-        
-        # Replace the problematic rare_decompress call with safe logic
-        old_call = "rare_decompress(compressedBuf, (uint8_t*)dramAddr, size);"
-        new_logic = (
-            "uint32_t outSize = 0;\n"
-            "        uint8_t* decomp = decompress_rare_asset(compressedBuf, size, &outSize);\n"
-            "        if (decomp) {\n"
-            "            memcpy(dramAddr, decomp, outSize);\n"
-            "            free(decomp);\n"
-            "        }"
-        )
-        if old_call in content:
-            content = content.replace(old_call, new_logic)
-            print("Patched: resource_mgr.cpp decompression logic")
-            
-        res_mgr.write_text(content)
-
-def setup_build_dir():
-    # Adjusted to point to the correct workspace root
-    root_dir = Path(__file__).parent.parent
-    cpp_dir = root_dir / "Android" / "app" / "src" / "main" / "cpp"
+    // Header: Entry Count (4 bytes)
+    // Using memcpy to avoid potential alignment issues on ARM64
+    uint32_t entryCount;
+    memcpy(&entryCount, manifestBuf, 4);
     
-    # Origins (where your clean decomp files live)
-    src_origin = root_dir / "decomp-files" / "src"
-    include_origin = root_dir / "decomp-files" / "include"
+    AssetEntry* entries = (AssetEntry*)(manifestBuf + 4);
 
-    game_src_target = cpp_dir / "game_src"
-    include_target = cpp_dir / "include"
+    for (uint32_t i = 0; i < entryCount; i++) {
+        g_manifest[entries[i].offset] = entries[i];
+    }
 
-    print(f"--- Preparing Source for Build ---")
+    __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Loaded %u asset entries from manifest", entryCount);
+}
 
-    # Clean targets
-    for folder in [game_src_target, include_target]:
-        if folder.exists():
-            shutil.rmtree(folder, ignore_errors=True)
-        folder.mkdir(parents=True, exist_ok=True)
+void ResourceMgr_HandleDma(void* dramAddr, uint32_t devAddr, uint32_t size) {
+    FILE* f = fopen(g_otrPath.c_str(), "rb");
+    if (!f) {
+        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Could not open OTR file!");
+        return;
+    }
 
-    # Copy files
-    if src_origin.exists():
-        shutil.copytree(src_origin, game_src_target, dirs_exist_ok=True)
-    else:
-        print(f"CRITICAL: {src_origin} not found!")
-        
-    if include_origin.exists():
-        shutil.copytree(include_origin, include_target, dirs_exist_ok=True)
-    else:
-        print(f"CRITICAL: {include_origin} not found!")
+    // Seek to the ROM address
+    fseek(f, devAddr, SEEK_SET);
 
-    patch_android_compatibility(cpp_dir)
-    print(f"Done!")
+    // Read magic to check for Rare compression (0x1172)
+    uint8_t magicHeader[2];
+    if (fread(magicHeader, 1, 2, f) != 2) {
+        fclose(f);
+        return;
+    }
+    uint16_t magic = (magicHeader[0] << 8) | magicHeader[1];
+    fseek(f, devAddr, SEEK_SET); // Reset pointer for full read
 
-if __name__ == "__main__":
-    setup_build_dir()
+    if (magic == 0x1172) { // RZIP / Rare Compression
+        uint8_t* compressedBuf = (uint8_t*)malloc(size);
+        if (compressedBuf) {
+            fread(compressedBuf, 1, size, f);
+
+            uint32_t outSize = 0;
+            // FIXED: Using the correct function from rare_decompression.h
+            uint8_t* decompressedData = decompress_rare_asset(compressedBuf, size, &outSize);
+
+            if (decompressedData) {
+                // Copy the decompressed data to the target DRAM address
+                // We use outSize to ensure we don't copy more than was produced
+                memcpy(dramAddr, decompressedData, outSize);
+                free(decompressedData);
+            } else {
+                __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Rare decompression failed at 0x%08X", devAddr);
+            }
+            free(compressedBuf);
+        }
+    } else {
+        // Raw Data DMA
+        fread(dramAddr, 1, size, f);
+    }
+
+    fclose(f);
+}
+
+}
