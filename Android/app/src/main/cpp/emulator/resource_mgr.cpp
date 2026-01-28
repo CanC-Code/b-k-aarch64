@@ -1,3 +1,4 @@
+#include <sched.h>
 #include <map>
 #include <string>
 #include <vector>
@@ -5,7 +6,6 @@
 #include <android/log.h>
 #include <cstdlib>
 #include <cstring>
-#include <sched.h> // Fixed: Required for C++ standard library threading/sched_yield
 #include "../rare_decompression.h" 
 
 #define LOG_TAG "ResourceMgr"
