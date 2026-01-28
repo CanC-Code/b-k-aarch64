@@ -5,30 +5,19 @@ import android.widget.Button;
 
 public class MenuController {
     private final MainActivity activity;
-    private final View menuOverlay;
 
     public MenuController(MainActivity activity) {
         this.activity = activity;
-        this.menuOverlay = activity.findViewById(R.id.menu_overlay);
-        
-        Button selectBtn = activity.findViewById(R.id.btn_select_rom);
+        setupListeners();
+    }
+
+    private void setupListeners() {
+        // Find your select button by ID (ensure this exists in your layout)
+        View selectBtn = activity.findViewById(R.id.button_select_rom);
         if (selectBtn != null) {
-            selectBtn.setOnClickListener(v -> activity.openFilePicker());
-        }
-    }
-
-    public void show() {
-        if (menuOverlay != null) menuOverlay.setVisibility(View.VISIBLE);
-    }
-
-    public void hide() {
-        if (menuOverlay != null) menuOverlay.setVisibility(View.GONE);
-    }
-
-    public void toggle() {
-        if (menuOverlay != null) {
-            if (menuOverlay.getVisibility() == View.VISIBLE) hide();
-            else show();
+            selectBtn.setOnClickListener(v -> {
+                activity.openFilePicker();
+            });
         }
     }
 }
