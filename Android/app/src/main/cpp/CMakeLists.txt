@@ -1,77 +1,36 @@
-cmake_minimum_required(VERSION 3.18)
-project(bkawrapper LANGUAGES C CXX)
+cmake_minimum_required(VERSION 3.22.1)
+project(bkawrapper)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS ON) # Enables gnu++17 for Android POSIX features
-set(CMAKE_C_STANDARD 99)
+# Define paths relative to the CMake file
+set(CPP_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/src/main/cpp)
 
-# 1. Global Definitions
-add_definitions(
-    -D_GNU_SOURCE 
-    -DVERSION_US=1 
-    -D_LANGUAGE_C 
-    -DN_AUDIO 
-    -D__BOOL_H__
+add_library(bkawrapper SHARED
+    # Add your source files here
+    ${CPP_ROOT}/emulator/stubs.cpp
+    ${CPP_ROOT}/ultra/NativeBridge.cpp
+    # ... other files
 )
 
-# 2. Source Collection
-file(GLOB_RECURSE GAME_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/game_src/*.c")
-
-set(WRAPPER_SOURCES
-    emulator/resource_mgr.cpp
-    emulator/pi_hle.cpp
-    emulator/stubs.cpp
-    ultra/exceptasm.cpp
-    ultra/NativeBridge.cpp
-    ultra/otr_builder.cpp
-    ultra/audio_helper.cpp
-    ultra/libm_vals.cpp
-    tools/rare_decompression.cpp
-)
-
-# 3. Build the shared library
-add_library(bkawrapper SHARED ${WRAPPER_SOURCES} ${GAME_SOURCES})
-
-# 4. Header Management
-# Reordered: Tools and Emulator first, N64 Includes LAST to prevent shadowing system headers
 target_include_directories(bkawrapper PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/tools
-    ${CMAKE_CURRENT_SOURCE_DIR}/emulator
-    ${CMAKE_CURRENT_SOURCE_DIR}/ultra
-    ${CMAKE_CURRENT_SOURCE_DIR}/game_src
-    # Legacy N64 headers moved to end of search path
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR
+    ${CPP_ROOT}
+    ${CPP_ROOT}/tools
+    ${CPP_ROOT}/emulator
+    ${CPP_ROOT}/ultra
+    ${CPP_ROOT}/game_src
+    ${CPP_ROOT}/include
+    ${CPP_ROOT}/include/2.0L
+    ${CPP_ROOT}/include/2.0L/PR # This is where game_stdlib.h likely lives
 )
 
-# 5. Compiler Flags
-target_compile_options(bkawrapper PRIVATE
+# Force the compiler to handle legacy 'fcommon' behavior which many N64 ports need
+target_compile_options(bkawrapper PRIVATE 
+    -fcommon 
+    -w 
     -fno-builtin
-    -fcommon
-    -w
-    -fsigned-char
-    -Wno-invalid-source-encoding
-    -fno-builtin-sprintf
-    -fno-builtin-vsprintf
-    # Force include types to ensure game structures are defined globally
-    "SHELL:-include ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h"
-    "SHELL:-include ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/gbi.h"
 )
-
-# 6. Linking
-find_library(log-lib log)
-find_library(android-lib android)
-find_library(jnigraphics-lib jnigraphics)
-find_library(z-lib z)
 
 target_link_libraries(bkawrapper
-    ${log-lib}
-    ${android-lib}
-    ${jnigraphics-lib}
-    ${z-lib}
-    atomic
-    m
+    android
+    log
+    GLESv3
 )
