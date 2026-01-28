@@ -4,7 +4,7 @@ project(bkawrapper LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# List only the specific files needed to avoid duplicate JNI_OnLoad/symbol conflicts
+# EXPLICIT FILE LIST: This prevents the launch crash by excluding wrapper.cpp
 set(WRAPPER_SOURCES
     ultra/NativeBridge.cpp
     ultra/otr_builder.cpp
