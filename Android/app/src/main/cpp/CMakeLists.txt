@@ -10,16 +10,13 @@ set(CMAKE_C_STANDARD 99)
 add_definitions(-DVERSION_US=1 -D_LANGUAGE_C -DN_AUDIO -D__BOOL_H__)
 
 # 2. Source Collection
-# This finds the 860+ files moved by the runtime/prepare_source.py script
-file(GLOB_RECURSE GAME_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/game_src/*.c")
+# CONFIGURE_DEPENDS ensures CMake re-scans if you add/remove files in game_src
+file(GLOB_RECURSE GAME_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/game_src/*.c")
 
 set(WRAPPER_SOURCES
-    # Core Emulator/HLE Logic (The "Hardware" Layer)
     emulator/resource_mgr.cpp
     emulator/pi_hle.cpp
     emulator/stubs.cpp
-    
-    # Asset/Utility Layer
     ultra/exceptasm.cpp
     ultra/NativeBridge.cpp
     ultra/otr_builder.cpp
@@ -31,14 +28,15 @@ set(WRAPPER_SOURCES
 # 3. Build the shared library
 add_library(bkawrapper SHARED ${WRAPPER_SOURCES} ${GAME_SOURCES})
 
-# 4. Header Management
-# SYSTEM PRIVATE used for libultra headers to suppress warnings within those files
-target_include_directories(bkawrapper SYSTEM PRIVATE
+# 4. Header Management (CRITICAL FIXES)
+# We use BEFORE to ensure our patched headers are checked first.
+target_include_directories(bkawrapper BEFORE PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L
     ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR
 )
 
+# Other internal search paths
 target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/ultra
@@ -48,12 +46,14 @@ target_include_directories(bkawrapper PRIVATE
 )
 
 # 5. Compiler Flags
-# SHELL: ensures -include doesn't get stripped by CMake's generator.
-# This injects N64 types into every file so they don't have to be manually edited.
+# -fcommon: Required for many legacy decomps where global variables are defined in headers
+# -Wno-invalid-source-encoding: Prevents errors if your Python script's "ignore errors" left artifacts
 target_compile_options(bkawrapper PRIVATE
     -fno-builtin
+    -fcommon
     -w
     -fsigned-char
+    -Wno-invalid-source-encoding
     "SHELL:-include ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h"
     "SHELL:-include ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/gbi.h"
 )
@@ -62,7 +62,7 @@ target_compile_options(bkawrapper PRIVATE
 find_library(log-lib log)
 find_library(android-lib android)
 find_library(jnigraphics-lib jnigraphics)
-find_library(z-lib z) # Required for rare_decompression.cpp
+find_library(z-lib z)
 
 target_link_libraries(bkawrapper
     ${log-lib}
