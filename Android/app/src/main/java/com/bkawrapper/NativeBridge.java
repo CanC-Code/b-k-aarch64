@@ -7,17 +7,16 @@ public class NativeBridge {
         System.loadLibrary("bkawrapper");
     }
 
-    // Existing methods
     public static native void nativeInit(Object activity);
     public static native void runOtrGeneration(int romFd, AssetManager assetManager, String outputDir);
 
-    // FIX: Added missing method for OtrService.java:21
+    // Required by OtrService.java
     public static void notifyFinished() {
-        // Implementation for when extraction finishes
+        android.util.Log.i("NativeBridge", "Extraction complete notification received.");
     }
 
-    // FIX: Added missing method for GLRenderer.java:30
+    // Required by GLRenderer.java
     public static void updateTexture(int textureId) {
-        // Native stub for rendering
+        // Stub for future rendering logic
     }
 }
