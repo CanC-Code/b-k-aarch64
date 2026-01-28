@@ -4,7 +4,9 @@
 #include <cstdio>
 #include <android/log.h>
 #include <cstdlib>
-#include "../rare_decompression.h" // Uses your existing decompressor
+#include <cstring>
+#include <sched.h> // Fixed: Required for C++ standard library threading/sched_yield
+#include "../rare_decompression.h" 
 
 #define LOG_TAG "ResourceMgr"
 
@@ -26,14 +28,17 @@ void ResourceMgr_Init(const char* otrPath, uint8_t* manifestBuf, uint32_t manife
     if (!manifestBuf) return;
 
     // Header: Entry Count (4 bytes)
-    uint32_t entryCount = *(uint32_t*)manifestBuf;
+    // Using memcpy to avoid potential alignment issues on ARM64
+    uint32_t entryCount;
+    memcpy(&entryCount, manifestBuf, 4);
+    
     AssetEntry* entries = (AssetEntry*)(manifestBuf + 4);
 
     for (uint32_t i = 0; i < entryCount; i++) {
         g_manifest[entries[i].offset] = entries[i];
     }
 
-    __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Loaded %d asset entries from manifest", entryCount);
+    __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Loaded %u asset entries from manifest", entryCount);
 }
 
 void ResourceMgr_HandleDma(void* dramAddr, uint32_t devAddr, uint32_t size) {
@@ -43,23 +48,37 @@ void ResourceMgr_HandleDma(void* dramAddr, uint32_t devAddr, uint32_t size) {
         return;
     }
 
-    // Seek to the ROM address (The OTR is a 1:1 binary dump of assets)
+    // Seek to the ROM address
     fseek(f, devAddr, SEEK_SET);
 
-    // Read a small header to check for Rare compression (0x1172)
-    uint16_t magic = 0;
-    fread(&magic, 2, 1, f);
-    fseek(f, devAddr, SEEK_SET); // Reset
+    // Read magic to check for Rare compression (0x1172)
+    uint8_t magicHeader[2];
+    if (fread(magicHeader, 1, 2, f) != 2) {
+        fclose(f);
+        return;
+    }
+    uint16_t magic = (magicHeader[0] << 8) | magicHeader[1];
+    fseek(f, devAddr, SEEK_SET); // Reset pointer for full read
 
     if (magic == 0x1172) { // RZIP / Rare Compression
         uint8_t* compressedBuf = (uint8_t*)malloc(size);
-        fread(compressedBuf, 1, size, f);
-        
-        // Use the decompression function from your rare_decompression.cpp
-        // Note: You may need to adjust arguments based on your specific implementation
-        rare_decompress(compressedBuf, (uint8_t*)dramAddr, size);
-        
-        free(compressedBuf);
+        if (compressedBuf) {
+            fread(compressedBuf, 1, size, f);
+
+            uint32_t outSize = 0;
+            // FIXED: Using the correct function from rare_decompression.h
+            uint8_t* decompressedData = decompress_rare_asset(compressedBuf, size, &outSize);
+
+            if (decompressedData) {
+                // Copy the decompressed data to the target DRAM address
+                // We use outSize to ensure we don't copy more than was produced
+                memcpy(dramAddr, decompressedData, outSize);
+                free(decompressedData);
+            } else {
+                __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Rare decompression failed at 0x%08X", devAddr);
+            }
+            free(compressedBuf);
+        }
     } else {
         // Raw Data DMA
         fread(dramAddr, 1, size, f);
