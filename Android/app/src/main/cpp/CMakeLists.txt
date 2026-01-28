@@ -6,11 +6,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 99)
 
 # 1. Global Definitions & Injections
-# This fixes the 'Vtx', 'Gfx', and 'bool' errors without editing files
+# These satisfy the game's original logic and prevent 'bool' or 'Vtx' errors
 add_definitions(-DVERSION_US=1 -D_LANGUAGE_C -DN_AUDIO -D__BOOL_H__)
 
 # 2. Source Collection
-# Dynamically find all the N64 game C files moved by your Python script
+# This finds the 860+ files your Python script just moved
 file(GLOB_RECURSE GAME_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/game_src/*.c")
 
 set(WRAPPER_SOURCES
@@ -23,11 +23,11 @@ set(WRAPPER_SOURCES
     tools/rare_decompression.cpp
 )
 
-# 3. Build the shared library (Linking BOTH wrapper and game source)
+# 3. Build the shared library
 add_library(bkawrapper SHARED ${WRAPPER_SOURCES} ${GAME_SOURCES})
 
 # 4. Header Management
-# Use SYSTEM for N64 headers to prevent them from breaking standard C libraries
+# We point to the 2.0L folders where the N64-specific headers live
 target_include_directories(bkawrapper SYSTEM PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L
@@ -43,12 +43,13 @@ target_include_directories(bkawrapper PRIVATE
 )
 
 # 5. Compiler Flags for Legacy N64 Code
+# Using absolute paths for -include solves the "no such file or directory" error
 target_compile_options(bkawrapper PRIVATE
     -fno-builtin
-    -w                # Suppress legacy warnings
+    -w                # Suppress legacy warnings (vital for decomp projects)
     -fsigned-char
-    -include "PR/ultratypes.h"
-    -include "PR/gbi.h"
+    -include "${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h"
+    -include "${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/gbi.h"
 )
 
 # 6. Linking
