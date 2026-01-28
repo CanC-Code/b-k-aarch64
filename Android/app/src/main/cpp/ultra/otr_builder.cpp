@@ -38,8 +38,7 @@ void run_native_otr_generation_with_callback(JNIEnv* env, jobject activity, jmet
     mkdir(outDirPath, 0777);
     ManifestHeader* header = (ManifestHeader*)manifestPtr;
 
-    // Verify manifest integrity
-    if (header->magic != 0x424B414D) { 
+    if (header->magic != 0x424B414D) { // 'BKAM'
         __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Manifest Magic Mismatch!");
         return;
     }
@@ -53,7 +52,7 @@ void run_native_otr_generation_with_callback(JNIEnv* env, jobject activity, jmet
         }
         for (auto& w : workers) if (w.joinable()) w.join();
 
-        // THREAD SAFETY: Attach the JVM to get a local env for this background update
+        // Safe JNI update from background thread logic
         JNIEnv* localEnv;
         if (g_jvm->AttachCurrentThread(&localEnv, NULL) == JNI_OK) {
             int percent = (int)((float)(i + 1) / header->entryCount * 100.0f);
