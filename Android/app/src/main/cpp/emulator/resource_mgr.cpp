@@ -6,7 +6,7 @@
 #include <android/log.h>
 #include <cstdlib>
 #include <cstring>
-#include "../rare_decompression.h" 
+#include "../tools/rare_decompression.h" 
 
 #define LOG_TAG "ResourceMgr"
 
