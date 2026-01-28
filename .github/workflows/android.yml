@@ -2,113 +2,70 @@ name: Android Build
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ main, master ]
 
 jobs:
   build-android:
     runs-on: ubuntu-latest
 
     steps:
-      # ---------- Checkout ----------
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          submodules: recursive
           fetch-depth: 0
 
-      # ---------- Submodules ----------
-      - name: Initialize git submodules
-        run: git submodule update --init --recursive
-
-      # ---------- Java ----------
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
+          cache: gradle
 
-      # ---------- Android SDK / NDK ----------
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          api-level: 34
-          build-tools: "34.0.0"
-          ndk: "27.3.10554745"
+          python-version: '3.12'
 
-      # ---------- Manual CMake install ----------
-      - name: Install CMake 3.24.1
-        run: |
-          CMAKE_VERSION=3.24.1
-          CMAKE_DIR=$HOME/cmake-$CMAKE_VERSION
-          mkdir -p $CMAKE_DIR
-          curl -L -o /tmp/cmake.tar.gz https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION-linux-x86_64.tar.gz
-          tar -xzf /tmp/cmake.tar.gz --strip-components=1 -C $CMAKE_DIR
-          echo "$CMAKE_DIR/bin" >> $GITHUB_PATH
-
-      - name: Verify CMake version
-        run: cmake --version
-
-      # ---------- ImageMagick ----------
-      - name: Install ImageMagick
+      - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y imagemagick
+          pip install PyYAML
 
-      # ---------- Generate Launcher Icons ----------
+      # Step 1: Generate Binary Asset Manifests
+      # This script now creates manifest_us.bin and manifest_pal.bin in the assets folder
+      - name: Generate Binary Asset Manifests
+        run: |
+          python3 runtime/generate_assets_header.py
+          # Verify binary manifests exist in the Android assets directory
+          if [ -f "Android/app/src/main/assets/manifest_us.bin" ]; then
+            echo "Success: manifest_us.bin generated."
+          else
+            echo "Error: manifest_us.bin was NOT generated!"
+            exit 1
+          fi
+
+      # Step 2: Generate Launcher Icons
       - name: Generate Android launcher icons
         run: |
-          ICON_DIR=Android/app/src/main/res
-          BASE_ICON=/tmp/ic_launcher.png
-          ROUND_ICON=/tmp/ic_launcher_round.png
+          if [ ! -f "master_icon.png" ]; then
+            convert -size 1024x1024 xc:"#4B0082" -gravity center -fill "#FFD700" \
+              -font DejaVu-Sans-Bold -pointsize 160 -annotate +0+0 "B.K.A" master_icon.png
+          fi
+          python3 runtime/generate_icons.py master_icon.png
 
-          rm -f $ICON_DIR/mipmap-*/ic_launcher*.png
+      # Step 3: Build Application
+      - name: Build with Gradle
+        run: |
+          GRADLEW_PATH=$(find . -name gradlew)
+          chmod +x "$GRADLEW_PATH"
+          cd $(dirname "$GRADLEW_PATH")
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
-          convert -size 1024x1024 xc:"#4B0082" \
-            -gravity center \
-            -fill "#FFD700" \
-            -font DejaVu-Sans-Bold \
-            -pointsize 160 \
-            -annotate +0+0 "B.K.A" \
-            "$BASE_ICON"
-
-          convert "$BASE_ICON" \
-            \( -size 1024x1024 xc:none -fill white -draw "circle 512,512 512,0" \) \
-            -compose copyopacity -composite \
-            "$ROUND_ICON"
-
-          mkdir -p \
-            $ICON_DIR/mipmap-mdpi \
-            $ICON_DIR/mipmap-hdpi \
-            $ICON_DIR/mipmap-xhdpi \
-            $ICON_DIR/mipmap-xxhdpi \
-            $ICON_DIR/mipmap-xxxhdpi
-
-          for SIZE in 48 72 96 144 192; do
-            DENSITY=$(echo $SIZE | awk '{print ($1==48?"mdpi":($1==72?"hdpi":($1==96?"xhdpi":($1==144?"xxhdpi":"xxxhdpi"))))}')
-            convert "$BASE_ICON" -resize ${SIZE}x${SIZE} $ICON_DIR/mipmap-$DENSITY/ic_launcher.png
-            convert "$ROUND_ICON" -resize ${SIZE}x${SIZE} $ICON_DIR/mipmap-$DENSITY/ic_launcher_round.png
-          done
-
-      # ---------- Gradle cache ----------
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            Android/app/build
-          key: gradle-${{ runner.os }}-${{ hashFiles('Android/**/*.gradle*', 'gradle-wrapper.properties') }}
-          restore-keys: gradle-${{ runner.os }}
-
-      # ---------- Permissions ----------
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
-
-      # ---------- Build ----------
-      - name: Build Debug APK
-        run: ./gradlew :Android:app:assembleDebug --no-daemon --no-build-cache --stacktrace
-
-      # ---------- Upload ----------
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: BKA-debug-apk
-          path: Android/app/build/outputs/apk/debug/*.apk
+          path: "Android/app/build/outputs/apk/debug/*.apk"

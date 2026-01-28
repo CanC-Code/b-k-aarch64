@@ -1,63 +1,43 @@
-cmake_minimum_required(VERSION 3.18.1)
-
-project(BKA_N64 LANGUAGES C CXX)
+cmake_minimum_required(VERSION 3.18)
+project(bkawrapper LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# ---------------------------------------------------
-# NDK / Android specific
-# ---------------------------------------------------
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -O2")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -O2 -std=c++17 -fexceptions -frtti")
+# Define the source files explicitly to ensure clean builds
+set(WRAPPER_SOURCES
+    ultra/NativeBridge.cpp
+    ultra/otr_builder.cpp
+    ultra/audio_helper.cpp
+    ultra/exceptasm.cpp
+    ultra/libm_vals.cpp
+    emulator/stubs.cpp
+    tools/rare_decompression.cpp
+)
 
-# ---------------------------------------------------
-# Include directories
-# ---------------------------------------------------
-include_directories(
+# Build the shared library
+add_library(bkawrapper SHARED ${WRAPPER_SOURCES})
+
+# Include directories - added '.' to ensure headers in the root of cpp/ are found
+target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/ultra
+    ${CMAKE_CURRENT_SOURCE_DIR}/tools
     ${CMAKE_CURRENT_SOURCE_DIR}/emulator
 )
 
-# ---------------------------------------------------
-# Source files
-# ---------------------------------------------------
-file(GLOB_RECURSE CPP_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/ultra/*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/emulator/*.cpp"
-)
-
-file(GLOB_RECURSE CPP_HEADERS
-    "${CMAKE_CURRENT_SOURCE_DIR}/*.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/ultra/*.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/emulator/*.hpp"
-)
-
-# ---------------------------------------------------
-# Shared library
-# ---------------------------------------------------
-add_library(
-    bka_native
-    SHARED
-    ${CPP_SOURCES}
-    ${CPP_HEADERS}
-)
-
-# ---------------------------------------------------
-# Link libraries
-# ---------------------------------------------------
+# Locate Android-specific system libraries
 find_library(log-lib log)
 find_library(android-lib android)
-find_library(EGL-lib EGL)
-find_library(GLESv2-lib GLESv2)
+find_library(jnigraphics-lib jnigraphics) # Useful for advanced asset/buffer handling
+find_library(z-lib z)
 
-target_link_libraries(
-    bka_native
+# Link everything together
+target_link_libraries(bkawrapper
     ${log-lib}
     ${android-lib}
-    ${EGL-lib}
-    ${GLESv2-lib}
+    ${jnigraphics-lib}
+    ${z-lib}
+    atomic
+    m
 )

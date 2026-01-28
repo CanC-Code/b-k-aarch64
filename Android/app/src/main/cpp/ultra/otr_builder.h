@@ -1,26 +1,14 @@
-#pragma once
+#ifndef OTR_BUILDER_H
+#define OTR_BUILDER_H
 
-#include <vector>
-#include <cstdint>
-#include <string>
-#include <android/asset_manager.h>
+#include <jni.h>
+#include <stdint.h>
 
-// Forward declaration only — no namespace conflicts
-class OTRGenerator;
+extern "C" {
+    void otr_builder_set_jvm(JavaVM* vm);
+    void run_native_otr_generation_with_callback(JNIEnv* env, jobject activity, jmethodID progressMid,
+                                               int romFd, uint8_t* manifestPtr, uint32_t manifestSize, 
+                                               const char* outDirPath);
+}
 
-// High-level entry point used by JNI / wrapper
-bool buildOTRForROM(
-    AAssetManager* assetManager,
-    const uint8_t* romData,
-    size_t romSize,
-    std::vector<uint8_t>& outOTR
-);
-
-// Optional legacy path (keep only if still used)
-bool buildBKOTR(
-    const uint8_t* romData,
-    size_t romSize,
-    const char* yamlData,
-    size_t yamlSize,
-    std::vector<uint8_t>& outOTR
-);
+#endif

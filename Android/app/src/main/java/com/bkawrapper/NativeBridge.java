@@ -2,21 +2,21 @@ package com.bkawrapper;
 
 import android.content.res.AssetManager;
 
-public final class NativeBridge {
-
+public class NativeBridge {
     static {
-        System.loadLibrary("wrapper"); // name of your .so
+        System.loadLibrary("bkawrapper");
     }
 
-    // Initialize native side (renderer, etc.)
-    public static native void nativeInit(AssetManager assetManager);
+    public static native void nativeInit(Object activity);
+    public static native void runOtrGeneration(int romFd, AssetManager assetManager, String outputDir);
 
-    // Generate OTR from ROM bytes + YAML asset
-    public static native boolean nativeGenerateOTR(byte[] romData, String yamlAssetPath);
+    // Required by OtrService.java
+    public static void notifyFinished() {
+        android.util.Log.i("NativeBridge", "Extraction complete notification received.");
+    }
 
-    // Get generation progress [0.0 – 1.0]
-    public static native float nativeGetProgress();
-
-    // Load in-memory OTR into renderer
-    public static native void nativeLoadOTR();
+    // Required by GLRenderer.java
+    public static void updateTexture(int textureId) {
+        // Stub for future rendering logic
+    }
 }
