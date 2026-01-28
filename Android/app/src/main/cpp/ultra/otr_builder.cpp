@@ -1,33 +1,27 @@
 #include "otr_builder.h"
-#include "assets_manifest.h"
-#include <vector>
-#include <thread>
+#include <unistd.h> // Required for pread
 #include <android/log.h>
 
-#define LOG_TAG "OTR_BUILDER"
-static JavaVM* g_jvm = nullptr;
-
-void otr_builder_set_jvm(JavaVM* vm) { g_jvm = vm; }
-
 void run_native_otr_generation_with_callback(JNIEnv* env, jobject activity, jmethodID progressMid,
-                                           int romFd, uint8_t* manifestPtr, const char* outDirPath) {
+                                           int romFd, uint8_t* manifestPtr, uint32_t manifestSize, 
+                                           const char* outDirPath) {
     
-    ManifestHeader* header = (ManifestHeader*)manifestPtr;
-    AssetEntry* entries = (AssetEntry*)(manifestPtr + sizeof(ManifestHeader));
-
-    for (uint32_t i = 0; i < header->entryCount; i++) {
-        // ... (extraction logic) ...
-
-        // FIX: Safe JNI update from background thread
-        JNIEnv* localEnv;
-        if (g_jvm->AttachCurrentThread(&localEnv, NULL) == JNI_OK) {
-            int percent = (int)((float)i / header->entryCount * 100.0f);
-            jstring jName = localEnv->NewStringUTF(entries[i].name);
-            
-            localEnv->CallVoidMethod(activity, progressMid, percent, jName);
-            
-            localEnv->DeleteLocalRef(jName);
-            g_jvm->DetachCurrentThread();
-        }
+    // Example logic:
+    // 1. Cast manifestPtr to your Entry struct
+    // 2. Loop until total bytes processed == manifestSize
+    // 3. For each entry:
+    //    pread(romFd, buffer, entry.size, entry.romOffset);
+    
+    // IMPORTANT: If you use read() or fread(), the file pointer moves. 
+    // Since extraction is multi-threaded or non-linear, pread() is mandatory.
+    
+    __android_log_print(ANDROID_LOG_INFO, "OTR", "Builder started with FD: %d", romFd);
+    
+    // Dummy progress to verify the bridge is working:
+    for(int i = 0; i <= 100; i += 10) {
+        jstring name = env->NewStringUTF("Checking ROM...");
+        env->CallVoidMethod(activity, progressMid, i, name);
+        env->DeleteLocalRef(name);
+        usleep(100000); // 100ms
     }
 }
