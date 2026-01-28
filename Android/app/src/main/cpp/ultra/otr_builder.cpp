@@ -1,9 +1,7 @@
 #include "otr_builder.h"
 #include <android/log.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#include <stdlib.h>
 
 #define LOG_TAG "OtrBuilder"
 
@@ -19,50 +17,32 @@ void run_native_otr_generation_with_callback(JNIEnv* env, jobject activity, jmet
                                            int romFd, uint8_t* manifestPtr, uint32_t manifestSize, 
                                            const char* outDirPath) {
     
-    if (manifestPtr == nullptr || manifestSize < 48) {
-        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Invalid manifest data");
-        return;
-    }
+    if (!manifestPtr || manifestSize < 48) return;
 
     uint32_t entryCount = manifestSize / 48;
-    __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Starting OTR for %u entries", entryCount);
-
+    
     for (uint32_t i = 0; i < entryCount; i++) {
-        uint8_t* record = manifestPtr + (i * 48);
-        
-        // Safety check to ensure we aren't reading out of bounds
-        if ((i * 48) + 48 > manifestSize) break;
+        // 1. Manage JNI local references to prevent overflow crash
+        if (env->PushLocalFrame(10) < 0) break; 
 
-        uint32_t romOffset = *(uint32_t*)(record + 0);
-        uint32_t fileSize  = *(uint32_t*)(record + 4);
-        
-        // Ensure name is null-terminated for NewStringUTF
+        uint8_t* record = manifestPtr + (i * 48);
         char fileName[33];
         memcpy(fileName, record + 8, 32);
-        fileName[32] = '\0'; 
-        
-        // Calculate percentage
+        fileName[32] = '\0';
+
         int percentage = (int)((i * 100) / entryCount);
 
-        // CRASH PROTECTION: Check if env and activity are still valid
-        if (env != nullptr && activity != nullptr && progressMid != nullptr) {
-            jstring statusMsg = env->NewStringUTF(fileName);
-            env->CallVoidMethod(activity, progressMid, percentage, statusMsg);
-            
-            // Critical: Clean up the local reference or it will overflow the JNI table
-            env->DeleteLocalRef(statusMsg);
-        }
+        // 2. Call Java
+        jstring jName = env->NewStringUTF(fileName);
+        env->CallVoidMethod(activity, progressMid, percentage, jName);
 
-        // --- Actual Processing Placeholder ---
-        // usleep(1000); // Small sleep to prevent UI thread choking during testing
+        // 3. Pop the frame (automatically deletes jName)
+        env->PopLocalFrame(NULL);
     }
 
     // Final Update
-    if (env != nullptr && activity != nullptr) {
-        jstring finishedMsg = env->NewStringUTF("Done");
-        env->CallVoidMethod(activity, progressMid, 100, finishedMsg);
-        env->DeleteLocalRef(finishedMsg);
-    }
+    jstring doneMsg = env->NewStringUTF("Done");
+    env->CallVoidMethod(activity, progressMid, 100, doneMsg);
 }
 
 } // extern "C"
