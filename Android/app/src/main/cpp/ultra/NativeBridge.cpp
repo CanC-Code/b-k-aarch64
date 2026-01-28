@@ -9,11 +9,9 @@
 static jobject g_mainActivityObj = nullptr;
 static jmethodID g_updateProgressMid = nullptr;
 
-// This runs as soon as the library loads. 
-// If this fails or is duplicated elsewhere, the app crashes at launch.
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
-    __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "JNI_OnLoad: Initializing...");
-    otr_builder_set_jvm(vm); 
+    __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "JNI_OnLoad: Library Loading...");
+    otr_builder_set_jvm(vm); // Initialize the VM for otr_builder
     return JNI_VERSION_1_6;
 }
 
@@ -24,9 +22,9 @@ Java_com_bkawrapper_NativeBridge_nativeInit(JNIEnv* env, jclass clazz, jobject a
     if (g_mainActivityObj != nullptr) {
         env->DeleteGlobalRef(g_mainActivityObj);
     }
-    // Create a global reference so the background thread can find the activity
+    // Store global reference to avoid garbage collection of the activity during extraction
     g_mainActivityObj = env->NewGlobalRef(activity);
-
+    
     jclass activityClass = env->GetObjectClass(g_mainActivityObj);
     g_updateProgressMid = env->GetMethodID(activityClass, "updateOtrProgress", "(ILjava/lang/String;)V");
     
@@ -47,9 +45,11 @@ Java_com_bkawrapper_NativeBridge_runOtrGeneration(JNIEnv* env, jclass clazz,
         run_native_otr_generation_with_callback(env, g_mainActivityObj, g_updateProgressMid,
                                               romFd, manifestBuffer, outDir);
         AAsset_close(asset);
+    } else {
+        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Failed to load manifest_us.bin");
     }
 
     env->ReleaseStringUTFChars(outputDir, outDir);
 }
 
-}
+} // extern "C"
