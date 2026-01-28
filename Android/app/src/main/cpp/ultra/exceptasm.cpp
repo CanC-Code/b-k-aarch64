@@ -1,124 +1,114 @@
 // File: app/src/main/cpp/ultra/exceptasm.cpp
 #include <cstdint>
 #include <cstring>
-#include <cinttypes>
 
 extern "C" {
 
 // -----------------------------
 // CPU / Exception state simulation
 // -----------------------------
+// Updated to match the N64 OSThread offset layout more closely for OTR compatibility
 struct CPUState {
-    uint64_t at, v0, v1;
-    uint64_t a0, a1, a2, a3;
-    uint64_t t0, t1, t2, t3, t4, t5, t6, t7, t8, t9;
-    uint64_t s0, s1, s2, s3, s4, s5, s6, s7;
-    uint64_t gp, sp, fp, ra;
-    uint64_t fregs[32]; // FPU
-    uint32_t status, cause, epc, badvaddr;
+    /* 0x00 */ uint64_t at, v0, v1;
+    /* 0x18 */ uint64_t a0, a1, a2, a3;
+    /* 0x38 */ uint64_t t0, t1, t2, t3, t4, t5, t6, t7;
+    /* 0x78 */ uint64_t s0, s1, s2, s3, s4, s5, s6, s7;
+    /* 0xB8 */ uint64_t t8, t9;
+    /* 0xC8 */ uint64_t gp, sp, fp, ra;
+    /* 0xE8 */ uint64_t lo, hi; // Added HI/LO registers from .s file
+    /* 0xF8 */ uint32_t status, cause, pc, badvaddr, rcp;
+    /* 0x10C */ uint32_t fpcsr;
+    /* 0x110 */ uint64_t fregs[32]; 
 };
 
+// OTR engines usually need these specific symbol names to handle scheduling
+typedef struct OSThread_s {
+    struct OSThread_s *next;
+    int32_t priority;
+    struct OSThread_s **queue;
+    struct OSThread_s *tnext;
+    CPUState context;
+} OSThread;
+
+OSThread* __osRunningThread = nullptr;
+OSThread* __osRunQueue = nullptr;
+OSThread* __osFaultedThread = nullptr;
 CPUState __osThreadSave;
-CPUState* __osRunningThread = nullptr;
 
 // -----------------------------
 // Global interrupt state
 // -----------------------------
-volatile uint32_t __OSGlobalIntMask = 0;
-
-// Hardware interrupt tables
-alignas(32) volatile uintptr_t __osHwIntTable[8]  = {0};
-alignas(32) volatile uint8_t   __osIntOffTable[32] = {0};
-alignas(32) volatile uintptr_t __osIntTable[32]    = {0};
+volatile uint32_t __OSGlobalIntMask = 0xFFFFFFFF;
+alignas(32) uintptr_t __osHwIntTable[5] = {0}; 
+alignas(32) uint8_t   __osIntOffTable[32] = {0};
+alignas(32) uintptr_t __osIntTable[9] = {0};
 
 // -----------------------------
-// Helpers
+// Thread Management (The "Glue" for OTR)
 // -----------------------------
-inline void writeReg32(volatile uint32_t* addr, uint32_t value) {
-    *addr = value;
+
+// Port of the __osEnqueueThread logic from your .s file
+void __osEnqueueThread(OSThread** queue, OSThread* thread) {
+    OSThread* prev = (OSThread*)queue;
+    OSThread* curr = *queue;
+
+    while (curr != nullptr && curr->priority >= thread->priority) {
+        prev = curr;
+        curr = curr->next;
+    }
+    thread->next = curr;
+    prev->next = thread;
 }
 
-inline uint32_t readReg32(volatile uint32_t* addr) {
-    return *addr;
+OSThread* __osPopThread(OSThread** queue) {
+    OSThread* thread = *queue;
+    if (thread != nullptr) {
+        *queue = thread->next;
+    }
+    return thread;
 }
 
-void saveExceptionState(CPUState* thread, const CPUState* current) {
-    if (!thread || !current) return;
-    std::memcpy(thread, current, sizeof(CPUState));
-}
-
-void restoreRunningThread() {
-    if (!__osRunningThread) return;
-    saveExceptionState(__osRunningThread, &__osThreadSave);
+void __osDispatchThread() {
+    __osRunningThread = __osPopThread(&__osRunQueue);
+    // In a port, we don't 'eret', we just return to the main loop 
+    // and the engine handles the next task.
 }
 
 // -----------------------------
-// Interrupt handlers (simulation)
+// Interrupt handlers
 // -----------------------------
+
 void redispatch() {
-    restoreRunningThread();
+    if (__osRunningThread) {
+        __osEnqueueThread(&__osRunQueue, __osRunningThread);
+    }
+    __osDispatchThread();
 }
 
-void handleCounter() {
-    __osThreadSave.t0++;
-    redispatch();
+void handleRCP() {
+    // This is the most important for OTR. 
+    // Signal the OTR Resource Manager that a Frame/Task is complete.
+    redispatch(); 
 }
 
 void handleCart() {
     if (__osHwIntTable[4]) {
-        auto handler =
-            reinterpret_cast<void (*)()>(__osHwIntTable[4]);
-        handler();
+        ((void (*)())__osHwIntTable[4])();
     }
     redispatch();
 }
 
-void handleRCP()    { redispatch(); }
-void handleSW1()    { redispatch(); }
-void handleSW2()    { redispatch(); }
-
-void handlePRENMI() {
-    __osThreadSave.status &= ~0x1001;
-    redispatch();
-}
-
-void handleIP6() {
-    __osThreadSave.status &= ~0x2001;
-    redispatch();
-}
-
-void handleIP7() {
-    __osThreadSave.status &= ~0x4001;
-    redispatch();
-}
-
 // -----------------------------
-// Exception dispatcher
+// Initialization
 // -----------------------------
-void exceptionDispatcher(uint32_t cause) {
-    switch (cause) {
-        case 0x00: redispatch();    break;
-        case 0x04: handleSW1();     break;
-        case 0x08: handleSW2();     break;
-        case 0x0C: handleRCP();     break;
-        case 0x10: handleCart();    break;
-        case 0x14: handlePRENMI();  break;
-        case 0x18: handleIP6();     break;
-        case 0x1C: handleIP7();     break;
-        case 0x20: handleCounter(); break;
-        default:   redispatch();    break;
-    }
-}
 
-// -----------------------------
-// Initialize interrupt tables
-// -----------------------------
 void initInterruptTables() {
-    for (int i = 0; i < 32; i++) {
-        __osIntOffTable[i] = static_cast<uint8_t>(i & 7);
-        __osIntTable[i] =
-            reinterpret_cast<uintptr_t>(&redispatch);
-    }
+    // Fill the offsets based on your .s rdata section
+    static const uint8_t defaultOffsets[32] = {
+        0, 20, 24, 24, 28, 28, 28, 28, 32, 32, 24, 24, 28, 28, 28, 28,
+        0, 4, 8, 8, 12, 12, 12, 12, 16, 16, 16, 16, 16, 16, 16, 16
+    };
+    std::memcpy((void*)__osIntOffTable, defaultOffsets, 32);
 }
 
 } // extern "C"
