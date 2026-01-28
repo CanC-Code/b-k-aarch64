@@ -6,11 +6,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 99)
 
 # 1. Global Definitions
-# -D__BOOL_H__ prevents conflicts with modern C++ bool types in old headers
-add_definitions(-DVERSION_US=1 -D_LANGUAGE_C -DN_AUDIO -D__BOOL_H__)
+# -D_GNU_SOURCE: Fixes "undeclared identifier 'sched_yield'" in NDK 25+
+# -D__BOOL_H__: prevents conflicts with modern C++ bool types in old headers
+add_definitions(
+    -D_GNU_SOURCE 
+    -DVERSION_US=1 
+    -D_LANGUAGE_C 
+    -DN_AUDIO 
+    -D__BOOL_H__
+)
 
 # 2. Source Collection
-# CONFIGURE_DEPENDS ensures CMake re-scans if you add/remove files in game_src
 file(GLOB_RECURSE GAME_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/game_src/*.c")
 
 set(WRAPPER_SOURCES
@@ -28,15 +34,13 @@ set(WRAPPER_SOURCES
 # 3. Build the shared library
 add_library(bkawrapper SHARED ${WRAPPER_SOURCES} ${GAME_SOURCES})
 
-# 4. Header Management (CRITICAL FIXES)
-# We use BEFORE to ensure our patched headers are checked first.
+# 4. Header Management
 target_include_directories(bkawrapper BEFORE PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L
     ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR
 )
 
-# Other internal search paths
 target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/ultra
@@ -46,8 +50,6 @@ target_include_directories(bkawrapper PRIVATE
 )
 
 # 5. Compiler Flags
-# -fcommon: Required for many legacy decomps where global variables are defined in headers
-# -Wno-invalid-source-encoding: Prevents errors if your Python script's "ignore errors" left artifacts
 target_compile_options(bkawrapper PRIVATE
     -fno-builtin
     -fcommon
