@@ -15,12 +15,12 @@ file(GLOB_RECURSE GAME_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/game_src/*.c")
 
 set(WRAPPER_SOURCES
     # Core Emulator/HLE Logic (The "Hardware" Layer)
-    emulator/exceptasm.cpp
     emulator/resource_mgr.cpp
     emulator/pi_hle.cpp
     emulator/stubs.cpp
     
     # Asset/Utility Layer
+    ultra/exceptasm.cpp
     ultra/NativeBridge.cpp
     ultra/otr_builder.cpp
     ultra/audio_helper.cpp
