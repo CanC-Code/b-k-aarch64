@@ -2,44 +2,33 @@ cmake_minimum_required(VERSION 3.22.1)
 project(bkawrapper)
 
 set(CPP_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+# Define the path back to the decomp-files directory
+set(DECOMP_ROOT ${CPP_ROOT}/../../../../decomp-files)
 
-# Automatically collect all source files
+# Automatically collect all source files including the HLE bridge and core engine
 file(GLOB_RECURSE LIB_SOURCES 
-    "${CPP_ROOT}/emulator/*.cpp"
-    "${CPP_ROOT}/ultra/*.cpp"
-    "${CPP_ROOT}/game_src/*.c"
-    "${CPP_ROOT}/tools/*.cpp"
-    "${CPP_ROOT}/tools/*.c"
+    "${CPP_ROOT}/*.cpp"
+    "${CPP_ROOT}/*.c"
+    "${DECOMP_ROOT}/src/core1/*.c"
+    "${DECOMP_ROOT}/src/core2/*.c"
+    "${DECOMP_ROOT}/src/core1/os/*.c"
 )
 
 add_library(bkawrapper SHARED ${LIB_SOURCES})
 
-# Include Directories
-# Added ${CPP_ROOT}/tools to the list to resolve rare_decompression.h
+# Include Directories: These must match the renames performed by prepare_source.py
 target_include_directories(bkawrapper PRIVATE
     ${CPP_ROOT}
-    ${CPP_ROOT}/tools
-    ${CPP_ROOT}/emulator
-    ${CPP_ROOT}/ultra
-    ${CPP_ROOT}/game_src
-    ${CPP_ROOT}/include
-    ${CPP_ROOT}/include/2.0L
-    ${CPP_ROOT}/include/2.0L/PR
+    ${DECOMP_ROOT}/include
+    ${DECOMP_ROOT}/include/2.0L
+    ${DECOMP_ROOT}/include/2.0L/PR
+    ${DECOMP_ROOT}/include/core1
+    ${DECOMP_ROOT}/include/core2
 )
 
-# Compile Flags for N64 Porting
-target_compile_options(bkawrapper PRIVATE 
-    -fcommon            # Allows multiple definitions of global variables
-    -w                  # Suppress legacy warnings
-    -fno-builtin        # Don't let Clang replace game functions with built-ins
-    -DN_AUDIO=1
-    -DVERSION_US=1
-    -D_LANGUAGE_C
-)
-
-target_link_libraries(bkawrapper
+# Link necessary Android libraries
+target_link_libraries(bkawrapper 
     android
     log
-    GLESv3
-    z
+    z # Required for rare_decompression.cpp if using zlib
 )
