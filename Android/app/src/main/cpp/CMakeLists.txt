@@ -41,13 +41,13 @@ target_include_directories(bkawrapper PRIVATE
 )
 
 # 5. Compiler Flags
-# Fixed: Explicitly repeating -include for each file
+# Use SHELL: to prevent CMake from splitting the -include flag from its path
 target_compile_options(bkawrapper PRIVATE
     -fno-builtin
     -w
     -fsigned-char
-    -include "${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h"
-    -include "${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/gbi.h"
+    "SHELL:-include ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h"
+    "SHELL:-include ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/gbi.h"
 )
 
 # 6. Linking
