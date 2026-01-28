@@ -67,17 +67,19 @@ def setup_build_dir():
     script_dir = Path(__file__).parent.resolve()
     root_dir = script_dir.parent
     cpp_root = root_dir / "Android" / "app" / "src" / "main" / "cpp"
-    
+
     src_origin = root_dir / "decomp-files" / "src"
     include_origin = root_dir / "decomp-files" / "include"
 
     # 1. SYNC
+    print("--- Syncing Source Files ---")
     for source, target_name in [(src_origin, "game_src"), (include_origin, "include")]:
         target = cpp_root / target_name
         if target.exists(): shutil.rmtree(target)
         shutil.copytree(source, target)
 
     # 2. RENAME SHADOW HEADERS
+    # This creates 'game_stdlib.h', 'game_string.h', etc.
     shadow_map = {"string.h": "game_string.h", "time.h": "game_time.h", "stdlib.h": "game_stdlib.h"}
     for old_name, new_name in shadow_map.items():
         old_path = cpp_root / "include" / old_name
@@ -87,10 +89,8 @@ def setup_build_dir():
     update_include_references(cpp_root, shadow_map)
 
     # 3. FIX ULTRATYPES.H (The "Force Include" Killer)
-    # Since this is force-included, it MUST handle C++ itself
     ultratypes = cpp_root / "include" / "2.0L" / "PR" / "ultratypes.h"
     patch_file(ultratypes, {
-        # Inject standard types at the TOP of the force-included file
         "#ifndef _ULTRATYPES_H_": "#ifndef _ULTRATYPES_H_\n#include <stddef.h>\n#include <stdint.h>",
         "typedef unsigned long       u32;": "typedef uint32_t u32;",
         "typedef signed long         s32;": "typedef int32_t s32;",
@@ -108,6 +108,15 @@ def setup_build_dir():
     # 5. INJECT INTO WRAPPERS
     for target in [cpp_root / "emulator" / "stubs.cpp", cpp_root / "emulator" / "resource_mgr.cpp", cpp_root / "ultra" / "NativeBridge.cpp"]:
         inject_cpp_fixes(target)
+
+    # 6. FIX LIBC CONFLICTS (bcopy, bzero, bcmp)
+    # These legacy functions in os_libc.h clash with Android's <strings.h>
+    os_libc = cpp_root / "include" / "2.0L" / "PR" / "os_libc.h"
+    patch_file(os_libc, {
+        "extern void bcopy(const void *, void *, int);": "#ifndef bcopy\nextern void bcopy(const void *, void *, int);\n#endif",
+        "extern void bzero(void *, int);": "#ifndef bzero\nextern void bzero(void *, int);\n#endif",
+        "extern int  bcmp(const void *, const void *, int);": "#ifndef bcmp\nextern int  bcmp(const void *, const void *, int);\n#endif"
+    })
 
     print("--- Preparation Complete ---")
 
