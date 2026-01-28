@@ -3,6 +3,8 @@
 #include <vector>
 #include <cstdio>
 #include <android/log.h>
+#include <cstdlib>
+#include "../rare_decompression.h" // Uses your existing decompressor
 
 #define LOG_TAG "ResourceMgr"
 
@@ -12,7 +14,6 @@ struct AssetEntry {
     char name[32];
 };
 
-// Map of ROM Offset -> Asset metadata
 static std::map<uint32_t, AssetEntry> g_manifest;
 static std::string g_otrPath;
 
@@ -20,8 +21,11 @@ extern "C" {
 
 void ResourceMgr_Init(const char* otrPath, uint8_t* manifestBuf, uint32_t manifestSize) {
     g_otrPath = otrPath;
-    
-    // The manifestBuf comes from the asset manager in NativeBridge
+    g_manifest.clear();
+
+    if (!manifestBuf) return;
+
+    // Header: Entry Count (4 bytes)
     uint32_t entryCount = *(uint32_t*)manifestBuf;
     AssetEntry* entries = (AssetEntry*)(manifestBuf + 4);
 
@@ -32,16 +36,36 @@ void ResourceMgr_Init(const char* otrPath, uint8_t* manifestBuf, uint32_t manife
     __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Loaded %d asset entries from manifest", entryCount);
 }
 
-// This is what the N64 DMA/Load functions will call
-void* ResourceMgr_LoadFromROM(uint32_t romOffset, uint32_t size) {
-    if (g_manifest.find(romOffset) == g_manifest.end()) {
-        __android_log_print(ANDROID_LOG_WARN, LOG_TAG, "Warning: Accessing unmanifested ROM offset 0x%08X", romOffset);
-        // Fallback: Read raw from the OTR at this offset
+void ResourceMgr_HandleDma(void* dramAddr, uint32_t devAddr, uint32_t size) {
+    FILE* f = fopen(g_otrPath.c_str(), "rb");
+    if (!f) {
+        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Could not open OTR file!");
+        return;
     }
-    
-    // In a "proper" implementation, this returns a pointer to the 
-    // decompressed data for the engine to use.
-    return nullptr; 
+
+    // Seek to the ROM address (The OTR is a 1:1 binary dump of assets)
+    fseek(f, devAddr, SEEK_SET);
+
+    // Read a small header to check for Rare compression (0x1172)
+    uint16_t magic = 0;
+    fread(&magic, 2, 1, f);
+    fseek(f, devAddr, SEEK_SET); // Reset
+
+    if (magic == 0x1172) { // RZIP / Rare Compression
+        uint8_t* compressedBuf = (uint8_t*)malloc(size);
+        fread(compressedBuf, 1, size, f);
+        
+        // Use the decompression function from your rare_decompression.cpp
+        // Note: You may need to adjust arguments based on your specific implementation
+        rare_decompress(compressedBuf, (uint8_t*)dramAddr, size);
+        
+        free(compressedBuf);
+    } else {
+        // Raw Data DMA
+        fread(dramAddr, 1, size, f);
+    }
+
+    fclose(f);
 }
 
 }
