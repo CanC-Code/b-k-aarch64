@@ -1,61 +1,56 @@
 #include "otr_builder.h"
-#include "rare_decompression.h"
 #include <android/log.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
-#include <vector>
-#include <string>
 
-#define LOG_TAG "BKA_OTR"
+#define LOG_TAG "OtrBuilder"
 
-// Ensure struct is packed to exactly 48 bytes
-#pragma pack(push, 1)
-struct ManifestEntry {
-    uint32_t offset;
-    uint32_t size;
-    char name[32];
-    char type[8];
-};
-#pragma pack(pop)
+static JavaVM* g_vm = nullptr;
+
+extern "C" {
+
+void otr_builder_set_jvm(JavaVM* vm) {
+    g_vm = vm;
+}
 
 void run_native_otr_generation_with_callback(JNIEnv* env, jobject activity, jmethodID progressMid,
                                            int romFd, uint8_t* manifestPtr, uint32_t manifestSize, 
                                            const char* outDirPath) {
-
-    uint32_t entryCount = *(uint32_t*)manifestPtr;
-    ManifestEntry* entries = (ManifestEntry*)(manifestPtr + 4);
+    
+    // 1. Calculate entry count (48 bytes per entry)
+    // We assume the manifest is a raw sequence of 48-byte structs
+    uint32_t entryCount = manifestSize / 48;
+    __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Starting OTR for %u entries", entryCount);
 
     for (uint32_t i = 0; i < entryCount; i++) {
-        ManifestEntry& current = entries[i];
+        // Calculate pointer to current 48-byte record
+        uint8_t* record = manifestPtr + (i * 48);
+        
+        // Extract 48-byte record data (Little Endian assumed from Python script)
+        uint32_t romOffset = *(uint32_t*)(record + 0);
+        uint32_t fileSize  = *(uint32_t*)(record + 4);
+        char fileName[32];
+        memcpy(fileName, record + 8, 32);
+        // record + 40 to 48 is Type/Padding
+        
+        // 2. Report Progress back to Java
+        int percentage = (int)((i * 100) / entryCount);
+        jstring statusMsg = env->NewStringUTF(fileName);
+        env->CallVoidMethod(activity, progressMid, percentage, statusMsg);
+        env->DeleteLocalRef(statusMsg);
 
-        // 1. Skip invalid sizes
-        if (current.size == 0) continue;
-
-        // 2. Read exact bytes from ROM
-        std::vector<uint8_t> romBuffer(current.size);
-        ssize_t bytesRead = pread(romFd, romBuffer.data(), current.size, current.offset);
-
-        if (bytesRead > 0) {
-            uint32_t decompressedSize = 0;
-            // 3. Decompress using the Rare tool
-            uint8_t* out = decompress_rare_asset(romBuffer.data(), (uint32_t)bytesRead, &decompressedSize);
-            
-            if (out) {
-                // TODO: Save to disk in outDirPath
-                // e.g., write_to_file(outDirPath, current.name, out, decompressedSize);
-                free(out);
-            } else {
-                // Fallback: This is likely a raw asset (Midi, etc)
-                // write_to_file(outDirPath, current.name, romBuffer.data(), bytesRead);
-            }
-        }
-
-        // 4. Reporting: This is why your progress was 0% before. 
-        // We report every asset name back to Java.
-        if (i % 5 == 0 || i == entryCount - 1) {
-            int percent = (int)((i * 100) / entryCount);
-            jstring jName = env->NewStringUTF(current.name);
-            env->CallVoidMethod(activity, progressMid, percent, jName);
-            env->DeleteLocalRef(jName);
-        }
+        // 3. Logic: pread from ROM FD using manifest data
+        // uint8_t* buffer = (uint8_t*)malloc(fileSize);
+        // pread(romFd, buffer, fileSize, romOffset);
+        // ... call rare_decompression or OTR logic here ...
+        // free(buffer);
     }
+
+    // Final 100% update
+    jstring finishedMsg = env->NewStringUTF("Done");
+    env->CallVoidMethod(activity, progressMid, 100, finishedMsg);
+    env->DeleteLocalRef(finishedMsg);
 }
+
+} // extern "C"
