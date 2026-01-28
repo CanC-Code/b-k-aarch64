@@ -56,6 +56,10 @@ jobs:
           fi
           python3 runtime/generate_icons.py master_icon.png
 
+      - name: Prepare C++ Source for Build
+        run: |
+          python3 runtime/prepare_source.py
+
       # Step 3: Build Application
       - name: Build with Gradle
         run: |
