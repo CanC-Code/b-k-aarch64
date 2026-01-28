@@ -5,12 +5,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 99)
 
-# 1. Global Definitions & Injections
-# These satisfy the game's original logic and prevent 'bool' or 'Vtx' errors
+# 1. Global Definitions
 add_definitions(-DVERSION_US=1 -D_LANGUAGE_C -DN_AUDIO -D__BOOL_H__)
 
 # 2. Source Collection
-# This finds the 860+ files your Python script just moved
+# This finds the 860+ files moved by the script
 file(GLOB_RECURSE GAME_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/game_src/*.c")
 
 set(WRAPPER_SOURCES
@@ -27,7 +26,6 @@ set(WRAPPER_SOURCES
 add_library(bkawrapper SHARED ${WRAPPER_SOURCES} ${GAME_SOURCES})
 
 # 4. Header Management
-# We point to the 2.0L folders where the N64-specific headers live
 target_include_directories(bkawrapper SYSTEM PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L
@@ -42,11 +40,11 @@ target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/game_src
 )
 
-# 5. Compiler Flags for Legacy N64 Code
-# Using absolute paths for -include solves the "no such file or directory" error
+# 5. Compiler Flags
+# Fixed: Explicitly repeating -include for each file
 target_compile_options(bkawrapper PRIVATE
     -fno-builtin
-    -w                # Suppress legacy warnings (vital for decomp projects)
+    -w
     -fsigned-char
     -include "${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h"
     -include "${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/gbi.h"
