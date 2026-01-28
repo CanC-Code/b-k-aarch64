@@ -9,15 +9,11 @@
 
 #define LOG_TAG "OtrBuilder"
 
-// Helper to ensure subdirectories exist (e.g., "assets/tex/...")
+// Helper to create directories for nested assets
 void ensure_directories(const char* path) {
     char tmp[512];
     char* p = NULL;
-    size_t len;
-
     snprintf(tmp, sizeof(tmp), "%s", path);
-    len = strlen(tmp);
-    if (tmp[len - 1] == '/') tmp[len - 1] = 0;
     for (p = tmp + 1; *p; p++) {
         if (*p == '/') {
             *p = 0;
@@ -42,8 +38,7 @@ void run_native_otr_generation_with_callback(JNIEnv* env, jobject callbackObj, j
 
         uint8_t* record = manifestPtr + (i * 48);
         
-        // BIG ENDIAN CONVERSION: ROM offsets in manifest are usually Big Endian
-        // If your manifest is Little Endian, remove the __builtin_bswap32
+        // Convert Big Endian offsets from manifest
         uint32_t romOffset = __builtin_bswap32(*(uint32_t*)(record + 0));
         uint32_t fileSize  = __builtin_bswap32(*(uint32_t*)(record + 4));
         
@@ -55,39 +50,33 @@ void run_native_otr_generation_with_callback(JNIEnv* env, jobject callbackObj, j
         snprintf(fullPath, sizeof(fullPath), "%s/%s", outDirPath, fileName);
         ensure_directories(fullPath);
 
-        // 1. Read the raw data from ROM
         uint8_t* compressedBuffer = (uint8_t*)malloc(fileSize);
         if (compressedBuffer) {
-            ssize_t bytesRead = pread(romFd, compressedBuffer, fileSize, romOffset);
-            
-            if (bytesRead == (ssize_t)fileSize) {
+            if (pread(romFd, compressedBuffer, fileSize, romOffset) == (ssize_t)fileSize) {
                 uint32_t decompressedSize = 0;
-                // 2. Attempt Decompression
                 uint8_t* finalBuffer = decompress_rare_asset(compressedBuffer, fileSize, &decompressedSize);
                 
                 uint8_t* writePtr = (finalBuffer != nullptr) ? finalBuffer : compressedBuffer;
                 uint32_t writeSize = (finalBuffer != nullptr) ? decompressedSize : fileSize;
 
-                // 3. Write to storage
                 int outFd = open(fullPath, O_WRONLY | O_CREAT | O_TRUNC, 0666);
                 if (outFd != -1) {
                     write(outFd, writePtr, writeSize);
                     close(outFd);
                 }
-
                 if (finalBuffer) free(finalBuffer);
             }
             free(compressedBuffer);
         }
 
-        // 4. Progress Update
         int percentage = (int)((i * 100) / entryCount);
         jstring jName = env->NewStringUTF(fileName);
         env->CallVoidMethod(callbackObj, progressMid, percentage, jName);
         env->PopLocalFrame(NULL);
     }
-
-    jstring doneMsg = env->NewStringUTF("Done");
+    
+    // Final progress update
+    jstring doneMsg = env->NewStringUTF("Extraction Finished");
     env->CallVoidMethod(callbackObj, progressMid, 100, doneMsg);
 }
 }
