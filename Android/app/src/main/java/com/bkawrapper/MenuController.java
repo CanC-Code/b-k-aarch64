@@ -12,11 +12,15 @@ public class MenuController {
     }
 
     private void setupListeners() {
-        // Find your select button by ID (ensure this exists in your layout)
-        View selectBtn = activity.findViewById(R.id.button_select_rom);
+        // Find the button using the ID defined in activity_main.xml
+        Button selectBtn = activity.findViewById(R.id.button_select_rom);
+        
         if (selectBtn != null) {
-            selectBtn.setOnClickListener(v -> {
-                activity.openFilePicker();
+            selectBtn.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    activity.openFilePicker();
+                }
             });
         }
     }
