@@ -37,20 +37,17 @@ Java_com_bkawrapper_NativeBridge_runOtrGeneration(JNIEnv* env, jclass clazz,
     const char* outDir = env->GetStringUTFChars(outputDir, nullptr);
     AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
 
-    // FIX: manifest_us.bin is a binary file; we must get its length
     AAsset* asset = AAssetManager_open(mgr, "manifest_us.bin", AASSET_MODE_BUFFER);
     if (asset) {
         uint8_t* manifestBuffer = (uint8_t*)AAsset_getBuffer(asset);
-        off_t manifestSize = AAsset_getLength(asset);
+        uint32_t manifestSize = (uint32_t)AAsset_getLength(asset);
 
-        __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Starting OTR with size: %ld", manifestSize);
-
-        // Pass manifestSize so the loop in otr_builder.cpp knows when to stop
+        // Now passing exactly 7 arguments as required by the logic
         run_native_otr_generation_with_callback(env, g_mainActivityObj, g_updateProgressMid,
-                                              romFd, manifestBuffer, (uint32_t)manifestSize, outDir);
+                                              romFd, manifestBuffer, manifestSize, outDir);
         AAsset_close(asset);
     } else {
-        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "COULD NOT OPEN MANIFEST");
+        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Failed to load manifest_us.bin from assets");
     }
 
     env->ReleaseStringUTFChars(outputDir, outDir);
