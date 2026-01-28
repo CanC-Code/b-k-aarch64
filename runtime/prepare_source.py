@@ -4,7 +4,7 @@ from pathlib import Path
 
 def patch_android_compatibility(cpp_dir):
     print("--- Applying Android Compatibility Patches ---")
-    
+
     # 1. Rename Shadowing Headers
     # These names conflict with standard C++ headers
     shadow_headers = ["string.h", "stdio.h", "ctype.h", "stdlib.h"]
@@ -21,7 +21,6 @@ def patch_android_compatibility(cpp_dir):
             print(f"Renamed shadow header: {header} -> {new_name}")
 
     # 2. Global Search and Replace for Renamed Headers
-    # We must update every file to use the new #include "game_string.h"
     if renamed_map:
         print("Updating include references in all files...")
         for root, _, files in os.walk(cpp_dir):
@@ -47,7 +46,6 @@ def patch_android_compatibility(cpp_dir):
             print("Patched: bool.h")
 
     # 4. Inject standard headers into bridge files
-    # We do this AFTER renaming to ensure they get the SYSTEM headers
     wrapper_files = [
         cpp_dir / "ultra" / "NativeBridge.cpp",
         cpp_dir / "emulator" / "stubs.cpp"
@@ -55,11 +53,40 @@ def patch_android_compatibility(cpp_dir):
     for file_path in wrapper_files:
         if file_path.exists():
             content = file_path.read_text()
-            # We use <cstring> and <cstdio> here to explicitly ask for NDK versions
             injection = "#include <stddef.h>\n#include <stdint.h>\n#include <cstring>\n"
             if "<stddef.h>" not in content:
                 file_path.write_text(injection + content)
                 print(f"Injected system headers into: {file_path.name}")
+
+    # 5. Fix size_t and 64-bit Long conflicts in ultratypes.h
+    # Location: include/2.0L/PR/ultratypes.h
+    ultratypes_h = include_path / "2.0L" / "PR" / "ultratypes.h"
+    if ultratypes_h.exists():
+        print("Patching ultratypes.h for AArch64 compatibility...")
+        content = ultratypes_h.read_text()
+        
+        # A. Fix size_t: Include stddef.h and guard the manual MIPS typedef
+        if "include <stddef.h>" not in content:
+            # Add inclusion at the start of C block
+            content = content.replace(
+                "#if defined(_LANGUAGE_C) || defined(_LANGUAGE_C_PLUS_PLUS)",
+                "#if defined(_LANGUAGE_C) || defined(_LANGUAGE_C_PLUS_PLUS)\n#include <stddef.h>"
+            )
+            # Only allow manual size_t if we are actually on MIPS
+            content = content.replace(
+                "#if !defined(_SIZE_T) && !defined(_SIZE_T_) && !defined(_SIZE_T_DEF)",
+                "#if !defined(_SIZE_T) && !defined(_SIZE_T_) && !defined(_SIZE_T_DEF) && defined(_MIPS_SZLONG)"
+            )
+
+        # B. Fix Integer Widths: On AArch64 'long' is 64-bit, but N64 expects 32-bit.
+        # This converts 'long' to 'int' for u32/s32 types.
+        content = content.replace("typedef unsigned long\t\t\tu32;", "typedef unsigned int\t\t\tu32;")
+        content = content.replace("typedef signed long\t\t\ts32;", "typedef signed int\t\t\ts32;")
+        content = content.replace("typedef volatile unsigned long\t\tvu32;", "typedef volatile unsigned int\t\tvu32;")
+        content = content.replace("typedef volatile signed long\t\tvs32;", "typedef volatile signed int\t\tvs32;")
+        
+        ultratypes_h.write_text(content)
+        print("Patched: ultratypes.h (size_t and 32-bit types)")
 
 def setup_build_dir():
     root_dir = Path(__file__).parent.parent
