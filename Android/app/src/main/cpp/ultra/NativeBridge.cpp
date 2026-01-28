@@ -1,10 +1,10 @@
+#include <sched.h>
 #include <jni.h>
 #include <android/asset_manager.h>
 #include <android/asset_manager_jni.h>
 #include <android/log.h>
 #include <cstring>
 #include <string>
-#include <sched.h>
 
 #include "otr_builder.h"
 
