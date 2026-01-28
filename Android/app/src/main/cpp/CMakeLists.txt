@@ -3,7 +3,7 @@ project(bkawrapper LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-# This ensures -std=gnu++17, enabling POSIX features like sched_yield
+# This is crucial: it enables gnu++17 which exposes sched_yield in Android headers
 set(CMAKE_CXX_EXTENSIONS ON)
 set(CMAKE_C_STANDARD 99)
 
@@ -35,18 +35,19 @@ set(WRAPPER_SOURCES
 add_library(bkawrapper SHARED ${WRAPPER_SOURCES} ${GAME_SOURCES})
 
 # 4. Header Management
-target_include_directories(bkawrapper BEFORE PRIVATE
+# We move the project root and tools to the front so they find the "game_stdlib.h" 
+# but we move the legacy 2.0L folder to AFTER the system includes if possible.
+# Since CMake doesn't have an "AFTER" keyword, we place system-sensitive paths last.
+target_include_directories(bkawrapper PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tools
+    ${CMAKE_CURRENT_SOURCE_DIR}/emulator
+    ${CMAKE_CURRENT_SOURCE_DIR}/ultra
+    ${CMAKE_CURRENT_SOURCE_DIR}/game_src
+    # Legacy N64 headers - kept at lower priority to prevent shadowing <sched.h> or <stdlib.h>
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L
     ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR
-)
-
-target_include_directories(bkawrapper PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/ultra
-    ${CMAKE_CURRENT_SOURCE_DIR}/tools
-    ${CMAKE_CURRENT_SOURCE_DIR}/emulator
-    ${CMAKE_CURRENT_SOURCE_DIR}/game_src
 )
 
 # 5. Compiler Flags
@@ -57,9 +58,9 @@ target_compile_options(bkawrapper PRIVATE
     -fsigned-char
     -Wno-invalid-source-encoding
     -D_GNU_SOURCE
-    # Prevent compiler from using internal optimized versions that conflict with legacy headers
     -fno-builtin-sprintf
     -fno-builtin-vsprintf
+    # Forced includes: Ensure these are treated as system headers if they cause too many warnings
     "SHELL:-include ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h"
     "SHELL:-include ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/gbi.h"
 )
