@@ -1,55 +1,67 @@
 package com.bkawrapper;
 
-import android.app.Activity;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
-import android.util.Log;
+import android.view.View;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
     private static final int PICK_ROM_REQUEST = 1001;
+    
+    // UI Elements
+    private View menuOverlay;
+    private View otrContainer;
+    private ProgressBar progressBar;
+    private TextView progressText;
+    private TextView currentArtifactText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        
-        // Ensure JNI is linked
+
+        // Initialize UI References
+        menuOverlay = findViewById(R.id.menu_overlay);
+        otrContainer = findViewById(R.id.otr_ui_container);
+        progressBar = findViewById(R.id.otr_progress_bar);
+        progressText = findViewById(R.id.otr_progress_text);
+        currentArtifactText = findViewById(R.id.otr_current_artifact);
+
+        // 1. Initialize Native Bridge
         NativeBridge.nativeInit(this);
+
+        // 2. Initialize Menu Controller (This sets up the button listener)
+        new MenuController(this);
     }
 
-    // This is what MenuController calls
     public void openFilePicker() {
-        Log.d("BKA", "Opening SAF File Picker");
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType("*/*"); // You can change this to "application/octet-stream" if needed
-        
-        // Some devices require this to show internal storage
-        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
-        
+        intent.setType("*/*"); 
         startActivityForResult(intent, PICK_ROM_REQUEST);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        
-        if (requestCode == PICK_ROM_REQUEST && resultCode == Activity.RESULT_OK) {
-            if (data != null && data.getData() != null) {
-                Uri uri = data.getData();
-                Log.d("BKA", "Selected ROM Uri: " + uri.toString());
-                
-                // Now pass this URI to your OtrService or NativeBridge to start extraction
-                // startExtraction(uri);
-            }
+        if (requestCode == PICK_ROM_REQUEST && resultCode == RESULT_OK && data != null) {
+            // Show the extraction UI and hide the menu
+            menuOverlay.setVisibility(View.GONE);
+            otrContainer.setVisibility(View.VISIBLE);
+            
+            // Logic to handle the ROM URI would go here
+            // (e.g., passing the FD to OtrService)
         }
     }
 
+    // This is called from C++ background thread
     public void updateOtrProgress(final int percent, final String fileName) {
         runOnUiThread(() -> {
-            Log.d("BKA", "Extraction Progress: " + percent + "% (" + fileName + ")");
+            if (progressBar != null) progressBar.setProgress(percent);
+            if (progressText != null) progressText.setText(percent + "%");
+            if (currentArtifactText != null) currentArtifactText.setText(fileName);
         });
     }
 }
