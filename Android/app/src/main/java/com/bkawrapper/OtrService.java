@@ -27,7 +27,8 @@ public class OtrService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID, "OTR Service", NotificationManager.IMPORTANCE_LOW);
-            getSystemService(NotificationManager.class).createNotificationChannel(channel);
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            if (manager != null) manager.createNotificationChannel(channel);
         }
     }
 
@@ -36,6 +37,16 @@ public class OtrService extends Service {
         intent.putExtra("percent", percent);
         intent.putExtra("status", status);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+
+        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("Extracting Assets...")
+                .setContentText(percent + "% - " + status)
+                .setSmallIcon(android.R.drawable.stat_sys_download)
+                .setProgress(100, percent, false)
+                .build();
+        
+        NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (manager != null) manager.notify(NOTIFICATION_ID, notification);
     }
 
     @Override
@@ -44,18 +55,17 @@ public class OtrService extends Service {
         String outDir = intent.getStringExtra("outDir");
 
         startForeground(NOTIFICATION_ID, new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("Extracting ROM...")
+                .setContentTitle("Starting Extraction")
                 .setSmallIcon(android.R.drawable.stat_sys_download).build());
 
         new Thread(() -> {
-            ParcelFileDescriptor pfd = null;
             try {
                 Uri uri = Uri.parse(uriString);
-                // Open the FD
-                pfd = getContentResolver().openFileDescriptor(uri, "r");
+                ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "r");
                 
                 if (pfd != null) {
-                    int fd = pfd.getDetachFd(); // Use getDetachFd to take ownership!
+                    // FIX: detachFd() is compatible with API 26+
+                    int fd = pfd.detachFd(); 
                     Log.i("OtrService", "Detached FD: " + fd);
                     
                     NativeBridge.nativeInit(this);
@@ -64,8 +74,6 @@ public class OtrService extends Service {
             } catch (Exception e) {
                 Log.e("OtrService", "Extraction Error", e);
             } finally {
-                // If we used getDetachFd, we are responsible for closing it if it didn't hand off,
-                // but usually, we just let the C++ side handle it or close it here after the native call returns.
                 stopForeground(true);
                 stopSelf();
             }
