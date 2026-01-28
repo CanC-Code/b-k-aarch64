@@ -5,10 +5,7 @@
 #include <stdint.h>
 
 extern "C" {
-    // Set the JVM for background thread callbacks
     void otr_builder_set_jvm(JavaVM* vm);
-
-    // Fixed signature: Now accepts manifestSize
     void run_native_otr_generation_with_callback(JNIEnv* env, jobject activity, jmethodID progressMid,
                                                int romFd, uint8_t* manifestPtr, uint32_t manifestSize, 
                                                const char* outDirPath);
