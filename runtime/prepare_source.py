@@ -1,5 +1,6 @@
 import os
 import shutil
+import re
 from pathlib import Path
 
 def patch_android_compatibility(cpp_dir):
@@ -44,7 +45,7 @@ def patch_android_compatibility(cpp_dir):
             bool_h.write_text(patched)
             print("Patched: bool.h")
 
-    # 4. Inject standard headers into bridge files with Macro Undefs
+    # 4. Inject standard headers into bridge files (Fixed sched_yield)
     wrapper_files = [
         cpp_dir / "ultra" / "NativeBridge.cpp",
         cpp_dir / "emulator" / "stubs.cpp",
@@ -53,13 +54,13 @@ def patch_android_compatibility(cpp_dir):
     for file_path in wrapper_files:
         if file_path.exists():
             content = file_path.read_text()
-            # We include system headers, then undefine the macros that crash N64 headers
             injection = (
                 "#include <stddef.h>\n"
                 "#include <stdint.h>\n"
                 "#include <time.h>\n"
                 "#include <cstring>\n"
                 "#include <cstdio>\n"
+                "#include <sched.h>\n"  # Fixed: sched_yield error
                 "#undef bcopy\n"
                 "#undef bzero\n"
             )
@@ -90,7 +91,6 @@ def patch_android_compatibility(cpp_dir):
     if os_libc_h.exists():
         content = os_libc_h.read_text()
         if "#undef bcopy" not in content:
-            # Wrap the entire file in undefs to prevent Android macros from breaking declarations
             content = "#undef bcopy\n#undef bzero\n" + content
             os_libc_h.write_text(content)
             print("Patched: os_libc.h guards")
@@ -101,6 +101,29 @@ def patch_android_compatibility(cpp_dir):
         content = res_mgr.read_text()
         content = content.replace('#include "../rare_decompression.h"', '#include "rare_decompression.h"')
         res_mgr.write_text(content)
+
+    # 8. Bulk Regex Fix for Array Initializations (leafboat.c, code_5DBC0.c, etc.)
+    print("Scanning for invalid array initializations...")
+    # Pattern looks for: u8 name[size] = D_LABEL;
+    # It accounts for potential spaces and different array sizes/labels
+    array_pattern = re.compile(r"u8\s+(\w+)\[(\d+)\]\s*=\s*(D_[0-9A-F_]+);")
+    
+    for root, _, files in os.walk(cpp_dir / "game_src"):
+        for file in files:
+            if file.endswith((".c", ".h")):
+                fpath = Path(root) / file
+                content = fpath.read_text(errors='ignore')
+                
+                if array_pattern.search(content):
+                    # Replace with: u8 name[size]; memcpy(name, D_LABEL, size);
+                    new_content = array_pattern.sub(r"u8 \1[\2]; memcpy(\1, \3, \2);", content)
+                    
+                    # Ensure memcpy is defined via string.h or our renamed game_string.h
+                    if '<string.h>' not in new_content and '"game_string.h"' not in new_content:
+                        new_content = '#include <string.h>\n' + new_content
+                    
+                    fpath.write_text(new_content)
+                    print(f"Bulk Patched Array Init: {file}")
 
 def setup_build_dir():
     root_dir = Path(__file__).parent.parent
