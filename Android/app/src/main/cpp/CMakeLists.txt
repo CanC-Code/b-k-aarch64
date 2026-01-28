@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(bkawrapper)
 
-# CMAKE_CURRENT_SOURCE_DIR is /home/runner/work/.../Android/app/src/main/cpp
+# CPP_ROOT is now correctly absolute: .../Android/app/src/main/cpp
 set(CPP_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
-# Automatically find all source files in the project subdirectories
+# Automatically collect all source files
 file(GLOB_RECURSE LIB_SOURCES 
     "${CPP_ROOT}/emulator/*.cpp"
     "${CPP_ROOT}/ultra/*.cpp"
@@ -13,7 +13,7 @@ file(GLOB_RECURSE LIB_SOURCES
 
 add_library(bkawrapper SHARED ${LIB_SOURCES})
 
-# Include Directories - Rooted correctly to avoid src/main/cpp/src/main/cpp
+# Include Directories
 target_include_directories(bkawrapper PRIVATE
     ${CPP_ROOT}
     ${CPP_ROOT}/tools
@@ -25,11 +25,11 @@ target_include_directories(bkawrapper PRIVATE
     ${CPP_ROOT}/include/2.0L/PR
 )
 
-# Build flags for legacy N64 source compatibility
+# Compile Flags for N64 Porting
 target_compile_options(bkawrapper PRIVATE 
-    -fcommon 
-    -w 
-    -fno-builtin
+    -fcommon            # Allows multiple definitions of global variables
+    -w                  # Suppress legacy warnings
+    -fno-builtin        # Don't let Clang replace game functions with built-ins
     -DN_AUDIO=1
     -DVERSION_US=1
     -D_LANGUAGE_C
