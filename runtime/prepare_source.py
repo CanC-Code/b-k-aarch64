@@ -18,24 +18,50 @@ def patch_file(file_path, patch_map):
         file_path.write_text(content, encoding='utf-8')
         print(f"  [✓] Patched: {file_path.name}")
 
+def update_include_references(directory, rename_map):
+    """Searches all files in a directory and updates #include references."""
+    print(f"--- Updating Header References in {directory.name} ---")
+    # Supports .c, .h, .cpp, .s
+    extensions = {'.c', '.h', '.cpp', '.s'}
+    
+    for file_path in directory.rglob('*'):
+        if file_path.suffix in extensions:
+            content = file_path.read_text(encoding='utf-8', errors='ignore')
+            original = content
+            for old_name, new_name in rename_map.items():
+                # Replace both "name.h" and <name.h> variants
+                content = content.replace(f'"{old_name}"', f'"{new_name}"')
+                content = content.replace(f'<{old_name}>', f'<{new_name}>')
+            
+            if content != original:
+                file_path.write_text(content, encoding='utf-8')
+                print(f"    [fixed] {file_path.relative_to(directory)}")
+
 def inject_cpp_fixes(file_path):
-    """Injects standard headers and wraps legacy headers in extern C blocks."""
+    """Injects standard headers and wraps legacy headers safely."""
     if not file_path.exists():
         print(f"  [!] Target not found for injection: {file_path.name}")
         return
 
     lines = file_path.read_text(encoding='utf-8').splitlines()
 
-    # Avoid double-patching
-    if any('extern "C" {' in line for line in lines[:30]):
+    if any('// ANDROID_FIX_GUARD' in line for line in lines[:10]):
         print(f"  [-] Already guarded: {file_path.name}")
         return
 
-    # Start with mandatory C++ fixes for Android
-    new_content = ["#include <sched.h> // Fixed: sched_yield\n", "#include <stddef.h>\n", "#include <stdint.h>\n"]
+    # 1. Start with System Headers FIRST (Proper C++ Linkage)
+    new_content = [
+        "// ANDROID_FIX_GUARD\n",
+        "#include <stddef.h>\n",
+        "#include <stdint.h>\n",
+        "#include <stdio.h>\n",
+        "#include <string.h>\n",
+        "#include <sched.h>\n\n"
+    ]
 
     for line in lines:
-        # Wrap N64-specific headers to prevent C++ name mangling conflicts
+        # 2. Wrap N64-specific headers to prevent C++ name mangling
+        # Only wrap if it's one of the legacy SDK files
         if any(x in line for x in ["2.0L", "ultratypes.h", "gbi.h", "os.h"]) and "#include" in line:
             new_content.append('extern "C" {\n')
             new_content.append(line + "\n")
@@ -47,59 +73,61 @@ def inject_cpp_fixes(file_path):
     print(f"  [✓] Injected C++ guards: {file_path.name}")
 
 def setup_build_dir():
-    # LOCATE DIRECTORIES
-    # Script is in /runtime/, so .parent is root
     script_dir = Path(__file__).parent.resolve()
     root_dir = script_dir.parent
-    
-    # Destination in Android project
     cpp_root = root_dir / "Android" / "app" / "src" / "main" / "cpp"
     
-    # SOURCE ORIGINS - UPDATED BASED ON LS -R
     src_origin = root_dir / "decomp-files" / "src"
     include_origin = root_dir / "decomp-files" / "include"
 
-    print(f"--- Environment Debug ---")
-    print(f"Root Directory: {root_dir}")
-    print(f"Target CPP Root: {cpp_root}")
+    print(f"--- Environment Setup ---")
+    if not src_origin.exists() or not include_origin.exists():
+        print(f"  [!] Error: Ensure 'decomp-files' exists in {root_dir}")
+        sys.exit(1)
 
-    # 1. SYNCHRONIZE FILES
-    print(f"--- Synchronizing Source Files ---")
+    # 1. SYNC
+    for source, target_name in [(src_origin, "game_src"), (include_origin, "include")]:
+        target = cpp_root / target_name
+        if target.exists(): shutil.rmtree(target)
+        shutil.copytree(source, target)
+        print(f"  [→] Synced {target_name}")
+
+    # 2. RENAME SHADOW HEADERS (Conflict Resolution)
+    # We rename them so the compiler doesn't confuse them with NDK system headers
+    shadow_map = {
+        "string.h": "game_string.h",
+        "time.h": "game_time.h",
+        "stdlib.h": "game_stdlib.h" # Added for safety
+    }
     
-    mapping = [
-        (src_origin, cpp_root / "game_src"),
-        (include_origin, cpp_root / "include")
-    ]
+    for old_name, new_name in shadow_map.items():
+        old_path = cpp_root / "include" / old_name
+        if old_path.exists():
+            new_path = cpp_root / "include" / new_name
+            if new_path.exists(): os.remove(new_path)
+            old_path.rename(new_path)
+            print(f"  [✓] Renamed {old_name} -> {new_name}")
 
-    for source, target in mapping:
-        if source.exists():
-            if target.exists():
-                shutil.rmtree(target)
-            shutil.copytree(source, target, dirs_exist_ok=True)
-            print(f"  [→] Synchronized: {source.name} -> {target.name}")
-        else:
-            print(f"  [!] CRITICAL: Source {source} not found!")
-            sys.exit(1) # Stop here if files are missing
+    # 3. UPDATE ALL REFERENCES TO RENAMED HEADERS
+    update_include_references(cpp_root, shadow_map)
 
-    # 2. APPLY COMPATIBILITY PATCHES
-    print(f"--- Applying Android/ARM64 Patches ---")
-
-    # Fix A: Fix sprintf linkage in the N64 OS header
+    # 4. PATCH LEGACY DEFINITIONS
     os_libc = cpp_root / "include" / "2.0L" / "PR" / "os_libc.h"
     patch_file(os_libc, {
+        # Disable the internal sprintf to use the NDK's fortified version
         'extern int              sprintf(char *s, const char *fmt, ...);': 
-        '#ifdef __cplusplus\nextern "C" {\n#endif\nextern int sprintf(char *s, const char *fmt, ...);\n#ifdef __cplusplus\n}\n#endif'
+        '#ifndef __ANDROID__\nextern int sprintf(char *s, const char *fmt, ...);\n#endif'
     })
 
-    # Fix B: Fix ultratypes.h for 64-bit Android (long is 64-bit on ARM64, we need 32-bit)
     ultratypes = cpp_root / "include" / "2.0L" / "PR" / "ultratypes.h"
     patch_file(ultratypes, {
         "typedef unsigned long       u32;": "typedef unsigned int u32;",
         "typedef signed long         s32;": "typedef signed int s32;",
-        "typedef int bool;": "#ifndef __cplusplus\ntypedef int bool;\n#endif"
+        "typedef int bool;": "#ifndef __cplusplus\ntypedef int bool;\n#endif",
+        "typedef unsigned int size_t;": "/* size_t handled by stddef.h */"
     })
 
-    # Fix C: Inject guards into wrapper files (using paths found in your ls -R)
+    # 5. INJECT GUARDS INTO WRAPPERS
     cpp_targets = [
         cpp_root / "emulator" / "stubs.cpp",
         cpp_root / "emulator" / "resource_mgr.cpp",
@@ -108,20 +136,7 @@ def setup_build_dir():
     for target in cpp_targets:
         inject_cpp_fixes(target)
 
-    # Fix D: Handle Shadow Headers (Standard Library conflicts)
-    shadow_headers = [
-        (cpp_root / "include" / "string.h", cpp_root / "include" / "game_string.h"),
-        (cpp_root / "include" / "time.h", cpp_root / "include" / "game_time.h")
-    ]
-    for old_path, new_path in shadow_headers:
-        if old_path.exists():
-            if new_path.exists():
-                os.remove(old_path)
-            else:
-                old_path.rename(new_path)
-            print(f"  [✓] Resolved Shadow Header: {old_path.name}")
-
-    print("--- Preparation Complete ---")
+    print("\n--- Preparation Complete. Ready to build. ---")
 
 if __name__ == "__main__":
     setup_build_dir()
