@@ -3,7 +3,7 @@ project(bkawrapper LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-# This ensures -std=gnu++17 instead of -std=c++17, exposing POSIX headers
+# This ensures -std=gnu++17, enabling POSIX features like sched_yield
 set(CMAKE_CXX_EXTENSIONS ON)
 set(CMAKE_C_STANDARD 99)
 
@@ -57,6 +57,9 @@ target_compile_options(bkawrapper PRIVATE
     -fsigned-char
     -Wno-invalid-source-encoding
     -D_GNU_SOURCE
+    # Prevent compiler from using internal optimized versions that conflict with legacy headers
+    -fno-builtin-sprintf
+    -fno-builtin-vsprintf
     "SHELL:-include ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h"
     "SHELL:-include ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/gbi.h"
 )
