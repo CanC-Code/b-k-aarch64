@@ -48,22 +48,22 @@ def inject_cpp_fixes(file_path):
 
 def setup_build_dir():
     # LOCATE DIRECTORIES
-    # Script is in /runtime/, so .parent is /runtime/, .parent.parent is root
+    # Script is in /runtime/, so .parent is root
     script_dir = Path(__file__).parent.resolve()
     root_dir = script_dir.parent
     
     # Destination in Android project
     cpp_root = root_dir / "Android" / "app" / "src" / "main" / "cpp"
     
-    # Source origins (Adjust these names if your decomp folders are named differently)
-    src_origin = root_dir / "src"
-    include_origin = root_dir / "include"
+    # SOURCE ORIGINS - UPDATED BASED ON LS -R
+    src_origin = root_dir / "decomp-files" / "src"
+    include_origin = root_dir / "decomp-files" / "include"
 
     print(f"--- Environment Debug ---")
     print(f"Root Directory: {root_dir}")
     print(f"Target CPP Root: {cpp_root}")
 
-    # 1. SYNCHRONIZE FILES (The 'Lost Logic')
+    # 1. SYNCHRONIZE FILES
     print(f"--- Synchronizing Source Files ---")
     
     mapping = [
@@ -78,8 +78,8 @@ def setup_build_dir():
             shutil.copytree(source, target, dirs_exist_ok=True)
             print(f"  [→] Synchronized: {source.name} -> {target.name}")
         else:
-            print(f"  [!] CRITICAL: Source {source} not found! Check repository structure.")
-            # We don't exit yet to see if other parts exist, but build will likely fail.
+            print(f"  [!] CRITICAL: Source {source} not found!")
+            sys.exit(1) # Stop here if files are missing
 
     # 2. APPLY COMPATIBILITY PATCHES
     print(f"--- Applying Android/ARM64 Patches ---")
@@ -99,7 +99,7 @@ def setup_build_dir():
         "typedef int bool;": "#ifndef __cplusplus\ntypedef int bool;\n#endif"
     })
 
-    # Fix C: Inject guards into wrapper files
+    # Fix C: Inject guards into wrapper files (using paths found in your ls -R)
     cpp_targets = [
         cpp_root / "emulator" / "stubs.cpp",
         cpp_root / "emulator" / "resource_mgr.cpp",
