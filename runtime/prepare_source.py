@@ -5,12 +5,12 @@ from pathlib import Path
 
 def patch_android_compatibility(cpp_dir):
     print("--- Applying Android Compatibility Patches ---")
+    include_path = cpp_dir / "include"
 
     # 1. Rename Shadowing Headers
     shadow_headers = ["string.h", "stdio.h", "ctype.h", "stdlib.h", "time.h"]
     renamed_map = {}
 
-    include_path = cpp_dir / "include"
     for header in shadow_headers:
         original = include_path / header
         if original.exists():
@@ -22,7 +22,6 @@ def patch_android_compatibility(cpp_dir):
 
     # 2. Global Search and Replace for Renamed Headers
     if renamed_map:
-        print("Updating include references...")
         for root, _, files in os.walk(cpp_dir):
             for file in files:
                 if file.endswith((".c", ".h", ".cpp", ".hpp")):
@@ -37,37 +36,35 @@ def patch_android_compatibility(cpp_dir):
                                 changed = True
                         if changed:
                             fpath.write_text(content, encoding='utf-8')
-                    except Exception as e:
-                        print(f"Failed to process {file}: {e}")
+                    except Exception: pass
 
-    # 3. Fix 'bool' redeclaration and basic types
-    bool_h = include_path / "bool.h"
-    if bool_h.exists():
-        content = bool_h.read_text()
-        if "#ifndef __cplusplus" not in content:
-            patched = content.replace("typedef int bool;", "#ifndef __cplusplus\ntypedef int bool;\n#endif")
-            bool_h.write_text(patched)
-            print("Patched: bool.h")
+    # 3. Fix Linkage Conflict in os_libc.h (CRITICAL)
+    os_libc_h = include_path / "2.0L" / "PR" / "os_libc.h"
+    if os_libc_h.exists():
+        content = os_libc_h.read_text()
+        if 'extern "C" {' not in content:
+            # Wrap everything in extern "C" so C++ sees them as C symbols
+            patched = "#ifdef __cplusplus\nextern \"C\" {\n#endif\n"
+            patched += "#undef bcopy\n#undef bzero\n" # Combined with step 6 logic
+            patched += content
+            patched += "\n#ifdef __cplusplus\n}\n#endif\n"
+            os_libc_h.write_text(patched)
+            print("Patched: os_libc.h with extern C linkage")
 
     # 4. Inject standard headers into bridge files
-    # _GNU_SOURCE must be defined BEFORE any standard headers are included.
     wrapper_files = [
         cpp_dir / "ultra" / "NativeBridge.cpp",
         cpp_dir / "emulator" / "stubs.cpp",
         cpp_dir / "emulator" / "resource_mgr.cpp"
     ]
+    # We include <sched.h> and <cstdio> BEFORE the bridge logic
     injection = (
-        "#ifndef _GNU_SOURCE\n"
-        "#define _GNU_SOURCE\n"
-        "#endif\n"
+        "#ifndef _GNU_SOURCE\n#define _GNU_SOURCE\n#endif\n"
         "#include <sched.h>\n" 
+        "#include <cstdio>\n"
+        "#include <cstring>\n"
         "#include <stddef.h>\n"
         "#include <stdint.h>\n"
-        "#include <time.h>\n"
-        "#include <cstring>\n"
-        "#include <cstdio>\n"
-        "#undef bcopy\n"
-        "#undef bzero\n"
     )
     for file_path in wrapper_files:
         if file_path.exists():
@@ -76,7 +73,7 @@ def patch_android_compatibility(cpp_dir):
                 file_path.write_text(injection + content)
                 print(f"Injected system guards into: {file_path.name}")
 
-    # 5. Fix size_t and 32-bit types (64-bit portability)
+    # 5. Fix ultratypes for 64-bit portability
     ultratypes_h = include_path / "2.0L" / "PR" / "ultratypes.h"
     if ultratypes_h.exists():
         content = ultratypes_h.read_text()
@@ -88,21 +85,10 @@ def patch_android_compatibility(cpp_dir):
                 "#include <stddef.h>\n#if defined(_LANGUAGE_C) || defined(_LANGUAGE_C_PLUS_PLUS)"
             )
         ultratypes_h.write_text(content)
-        print("Patched: ultratypes.h for 64-bit portability")
+        print("Patched: ultratypes.h")
 
-    # 6. Fix bcopy/bzero conflict
-    os_libc_h = include_path / "2.0L" / "PR" / "os_libc.h"
-    if os_libc_h.exists():
-        content = os_libc_h.read_text()
-        if "#undef bcopy" not in content:
-            content = "#undef bcopy\n#undef bzero\n" + content
-            os_libc_h.write_text(content)
-            print("Patched: os_libc.h guards")
-
-    # 7. Array Initialization Fix
-    print("Scanning for invalid array initializations...")
+    # 6. Array Initialization Fix
     array_pattern = re.compile(r"u8\s+(\w+)\[(\d+)\]\s*=\s*(D_[0-9A-F_]+);")
-
     for root, _, files in os.walk(cpp_dir / "game_src"):
         for file in files:
             if file.endswith((".c", ".h")):
@@ -119,16 +105,13 @@ def setup_build_dir():
     src_origin = root_dir / "decomp-files" / "src"
     include_origin = root_dir / "decomp-files" / "include"
 
-    print(f"--- Preparing Source for Build ---")
     for target, origin in [(cpp_dir / "game_src", src_origin), (cpp_dir / "include", include_origin)]:
-        if target.exists():
-            shutil.rmtree(target)
+        if target.exists(): shutil.rmtree(target)
         target.mkdir(parents=True, exist_ok=True)
-        if origin.exists():
-            shutil.copytree(origin, target, dirs_exist_ok=True)
+        if origin.exists(): shutil.copytree(origin, target, dirs_exist_ok=True)
 
     patch_android_compatibility(cpp_dir)
-    print(f"Build directory ready!")
+    print("Build directory ready!")
 
 if __name__ == "__main__":
     setup_build_dir()
