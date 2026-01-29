@@ -14,16 +14,15 @@ file(GLOB_RECURSE LIB_SOURCES
 
 add_library(bkawrapper SHARED ${LIB_SOURCES})
 
-# 2. THE FIX: Forced Global Type Definitions
-# We now include stddef.h first to ensure size_t and NULL are defined 
-# before any N64 headers are parsed.
+# 2. THE FIX: Force standard types BEFORE N64 types
+# This ensures size_t, NULL, and ptrdiff_t are defined for the Android NDK headers.
 target_compile_options(bkawrapper PRIVATE
     -include "stddef.h"
     -include "${CPP_ROOT}/include/2.0L/PR/ultratypes.h"
 )
 
 # 3. Critical Architectural Flags
-# These flags tell the N64 headers they are running on a 64-bit Android system.
+# These flags help N64 headers coexist with a 64-bit environment.
 target_compile_definitions(bkawrapper PRIVATE 
     _LANGUAGE_C
     _FINALROM
@@ -33,6 +32,7 @@ target_compile_definitions(bkawrapper PRIVATE
 )
 
 # 4. Search Path Priority
+# Note: ${CPP_ROOT}/include is first to prioritize your patched/promoted headers.
 target_include_directories(bkawrapper PRIVATE
     ${CPP_ROOT}/include
     ${CPP_ROOT}/include/2.0L
