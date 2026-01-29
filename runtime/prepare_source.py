@@ -8,7 +8,10 @@ def prepare_source():
     src_root = "decomp-files"
     android_cpp_path = "Android/app/src/main/cpp"
     
-    sync_map = {"include": "include", "src": "src", "tools": "tools"}
+    # CRITICAL: Do NOT sync tools directory as it would overwrite rare_decompression.cpp/h
+    # The decomp-files/tools contains Python scripts, not the C++ decompression code
+    # The C++ code is already in Android/app/src/main/cpp/tools and must be preserved
+    sync_map = {"include": "include", "src": "src"}
 
     for src_sub, dest_sub in sync_map.items():
         full_src = os.path.join(src_root, src_sub)
@@ -17,6 +20,8 @@ def prepare_source():
             if os.path.exists(full_dest): shutil.rmtree(full_dest)
             shutil.copytree(full_src, full_dest)
             print(f"  [→] Synced {src_sub}")
+
+    print(f"  [!] Skipped tools sync (preserving C++ decompression code)")
 
     # Create ultra64 directory structure for compatibility
     base_include = os.path.join(android_cpp_path, "include")
@@ -27,12 +32,19 @@ def prepare_source():
         os.makedirs(ultra64_dir)
         print(f"  [+] Created ultra64 directory")
     
-    # Create a proper types.h in ultra64/ that includes ultratypes.h
+    # Create a proper types.h in ultra64/ with extern C guards
     types_wrapper = """#ifndef _ULTRA64_TYPES_H_
 #define _ULTRA64_TYPES_H_
 
-/* This is a compatibility wrapper for ultratypes.h */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "../2.0L/PR/ultratypes.h"
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _ULTRA64_TYPES_H_ */
 """
@@ -41,15 +53,25 @@ def prepare_source():
         f.write(types_wrapper)
     print(f"  [→] Created ultra64/types.h wrapper")
     
-    # Create a proper ultra64.h in ultra64/ that includes types FIRST, then the main header
+    # Create ultra64.h wrapper that ensures types are included BEFORE 2.0L/ultra64.h
     ultra64_wrapper = """#ifndef _ULTRA64_ULTRA64_H_
 #define _ULTRA64_ULTRA64_H_
 
-/* Include types first to ensure all PR headers have type definitions */
+/* Must include types FIRST to ensure all PR headers have type definitions */
+#ifndef _ULTRA64_TYPES_H_
 #include "types.h"
+#endif
 
-/* Now include the actual ultra64.h */
+/* Now include the actual ultra64.h which will pull in all the PR headers */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "../2.0L/ultra64.h"
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _ULTRA64_ULTRA64_H_ */
 """
