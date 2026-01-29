@@ -28,6 +28,16 @@ target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/game_src
 )
 
+# [span_5](start_span)Fix "unknown type name" errors (u8, s32, etc.)[span_5](end_span)
+# We re-enable the essential definitions at the target level
+target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
+
+# Target-level header injection to ensure N64 types are available globally
+# This is cleaner than build.gradle injection as it only affects this target
+target_compile_options(bkawrapper PRIVATE
+    -include "${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h"
+)
+
 # Android system libraries
 find_library(log-lib log)
 find_library(android-lib android)
