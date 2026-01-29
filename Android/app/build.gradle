@@ -19,9 +19,10 @@ android {
 
         externalNativeBuild {
             cmake {
-                // ADDED -D_LANGUAGE_C to enable N64 SDK type definitions
+                // Ensure stddef.h is included BEFORE ultratypes.h to provide size_t
                 cppFlags "-std=c++17 " +
                          "-D_LANGUAGE_C " + 
+                         "-include stddef.h " + 
                          "-include ${projectDir}/src/main/cpp/include/2.0L/PR/ultratypes.h"
                 
                 arguments "-DANDROID_STL=c++_shared"
