@@ -32,19 +32,12 @@ def prepare_source():
         os.makedirs(ultra64_dir)
         print(f"  [+] Created ultra64 directory")
     
-    # Create a proper types.h in ultra64/ with extern C guards
+    # Create a proper types.h in ultra64/
+    # This needs to be a direct include without extern C since ultratypes.h handles that
     types_wrapper = """#ifndef _ULTRA64_TYPES_H_
 #define _ULTRA64_TYPES_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "../2.0L/PR/ultratypes.h"
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _ULTRA64_TYPES_H_ */
 """
@@ -53,25 +46,39 @@ extern "C" {
         f.write(types_wrapper)
     print(f"  [→] Created ultra64/types.h wrapper")
     
-    # Create ultra64.h wrapper that ensures types are included BEFORE 2.0L/ultra64.h
+    # CRITICAL FIX: We need to patch 2.0L/ultra64.h to include ultratypes.h at the top
+    # Check if 2.0L/ultra64.h exists and prepend the types include
+    ultra64_main = os.path.join(base_include, "2.0L", "ultra64.h")
+    if os.path.exists(ultra64_main):
+        with open(ultra64_main, 'r', errors='ignore') as f:
+            content = f.read()
+        
+        # Check if ultratypes.h is not already included at the top
+        if 'ultratypes.h' not in content[:200]:  # Check first 200 chars
+            # Prepend the include after any existing header guards
+            lines = content.split('\n')
+            insert_pos = 0
+            
+            # Find position after header guards
+            for i, line in enumerate(lines):
+                if line.strip().startswith('#ifndef') or line.strip().startswith('#define'):
+                    insert_pos = i + 1
+                elif line.strip() and not line.strip().startswith('/*') and not line.strip().startswith('*'):
+                    # Found first non-comment, non-guard line
+                    break
+            
+            # Insert the types include
+            lines.insert(insert_pos, '#include "PR/ultratypes.h"')
+            
+            with open(ultra64_main, 'w') as f:
+                f.write('\n'.join(lines))
+            print(f"  [✓] Patched 2.0L/ultra64.h to include ultratypes.h")
+    
+    # Create ultra64.h wrapper - much simpler now since 2.0L/ultra64.h has types
     ultra64_wrapper = """#ifndef _ULTRA64_ULTRA64_H_
 #define _ULTRA64_ULTRA64_H_
 
-/* Must include types FIRST to ensure all PR headers have type definitions */
-#ifndef _ULTRA64_TYPES_H_
-#include "types.h"
-#endif
-
-/* Now include the actual ultra64.h which will pull in all the PR headers */
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "../2.0L/ultra64.h"
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _ULTRA64_ULTRA64_H_ */
 """
