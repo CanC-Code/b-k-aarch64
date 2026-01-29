@@ -1,30 +1,29 @@
 cmake_minimum_required(VERSION 3.22.1)
-project(bkawrapper)
 
-set(CPP_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+project("bkawrapper")
 
-file(GLOB_RECURSE LIB_SOURCES 
-    "${CPP_ROOT}/emulator/*.cpp"
-    "${CPP_ROOT}/ultra/*.cpp"
-    "${CPP_ROOT}/game_src/*.c"
-    "${CPP_ROOT}/tools/*.cpp"
-    "${CPP_ROOT}/tools/*.c"
+# Define include directories based on the compiler command line in the logs
+include_directories(
+    src/main/cpp
+    src/main/cpp/include
+    src/main/cpp/include/ultra64
+    src/main/cpp/include/core1
+    src/main/cpp/include/core2
+    src/main/cpp/include/2.0L
+    src/main/cpp/include/2.0L/PR
+    src/main/cpp/tools
+    src/main/cpp/emulator
+    src/main/cpp/ultra
+    src/main/cpp/game_src
 )
 
-add_library(bkawrapper SHARED ${LIB_SOURCES})
-
-target_include_directories(bkawrapper PRIVATE
-    ${CPP_ROOT}
-    ${CPP_ROOT}/include
-    ${CPP_ROOT}/include/ultra64
-    ${CPP_ROOT}/include/core1
-    ${CPP_ROOT}/include/core2
-    ${CPP_ROOT}/include/2.0L
-    ${CPP_ROOT}/include/2.0L/PR
-    ${CPP_ROOT}/tools
-    ${CPP_ROOT}/emulator
-    ${CPP_ROOT}/ultra
-    ${CPP_ROOT}/game_src
+# Add all relevant source files found in the build logs
+add_library(bkawrapper SHARED
+    tools/rare_decompression.cpp
+    ultra/otr_builder.cpp
+    # Add other .c and .cpp files from your src/main/cpp directories here
 )
 
-target_link_libraries(bkawrapper android log z)
+# Link against the Android log library (standard for NDK projects)
+find_library(log-lib log)
+target_link_libraries(bkawrapper ${log-lib})
