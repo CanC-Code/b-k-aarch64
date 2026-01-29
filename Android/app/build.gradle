@@ -19,10 +19,14 @@ android {
 
         externalNativeBuild {
             cmake {
-                // Ensure stddef.h is included BEFORE ultratypes.h to provide size_t
+                // 1. Define _LANGUAGE_C for N64 SDK compatibility
+                // 2. Force include stddef.h for size_t
+                // 3. Force include string.h for memcpy/memset
+                // 4. Force include ultratypes.h for u8/u32/s32 etc
                 cppFlags "-std=c++17 " +
                          "-D_LANGUAGE_C " + 
                          "-include stddef.h " + 
+                         "-include string.h " + 
                          "-include ${projectDir}/src/main/cpp/include/2.0L/PR/ultratypes.h"
                 
                 arguments "-DANDROID_STL=c++_shared"
@@ -63,7 +67,5 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-
-    // REQUIRED: This allows OtrService to talk to MainActivity safely
     implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'
 }
