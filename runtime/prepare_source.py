@@ -18,31 +18,45 @@ def prepare_source():
             shutil.copytree(full_src, full_dest)
             print(f"  [→] Synced {src_sub}")
 
+    # Create ultra64 directory structure for compatibility
+    base_include = os.path.join(android_cpp_path, "include")
+    ultra64_dir = os.path.join(base_include, "ultra64")
+    
+    # Create ultra64 directory if it doesn't exist
+    if not os.path.exists(ultra64_dir):
+        os.makedirs(ultra64_dir)
+        print(f"  [+] Created ultra64 directory")
+    
+    # Copy types.h from 2.0L/PR to ultra64/
+    types_source = os.path.join(base_include, "2.0L", "PR", "ultratypes.h")
+    types_dest = os.path.join(ultra64_dir, "types.h")
+    if os.path.exists(types_source):
+        shutil.copy2(types_source, types_dest)
+        print(f"  [→] Copied ultratypes.h to ultra64/types.h")
+    
+    # Also copy ultra64.h as a fallback
+    ultra64_source = os.path.join(base_include, "2.0L", "ultra64.h")
+    ultra64_dest = os.path.join(ultra64_dir, "ultra64.h")
+    if os.path.exists(ultra64_source):
+        shutil.copy2(ultra64_source, ultra64_dest)
+        print(f"  [→] Copied ultra64.h to ultra64/")
+
     renames = {
         "string.h": "game_string.h",
         "time.h": "game_time.h",
-        "stdlib.h": "game_stdlib.h",
         "sched.h": "game_sched.h"
     }
-
-    base_include = os.path.join(android_cpp_path, "include")
 
     # PHASE 1: Physical Renaming and "Promotion"
     for root, dirs, files in os.walk(android_cpp_path):
         for filename in files:
-            # Fix for rare_decompression.h: Promote it to root include
-            if filename == "rare_decompression.h":
-                target = os.path.join(base_include, filename)
-                if os.path.join(root, filename) != target:
-                    shutil.copy2(os.path.join(root, filename), target)
-                    print(f"  [!] Promoted {filename} to include root")
-
             if filename in renames:
                 new_name = renames[filename]
                 old_path = os.path.join(root, filename)
                 new_path = os.path.join(base_include, new_name)
-                shutil.move(old_path, new_path)
-                print(f"  [!] Renamed & Promoted {filename} -> {new_name}")
+                if old_path != new_path:  # Avoid moving to itself
+                    shutil.move(old_path, new_path)
+                    print(f"  [!] Renamed & Promoted {filename} -> {new_name}")
 
     # PHASE 2: Content Patching
     # We inject types.h into the renamed headers to fix the 'u8' errors
@@ -56,9 +70,17 @@ def prepare_source():
                     content = f.read()
                 
                 new_content = content
+                
+                # Replace old header includes with new names
                 for old_h, new_h in renames.items():
-                    new_content = new_content.replace(f'#include <{old_h}>', f'#include <{new_h}>')
+                    new_content = new_content.replace(f'#include <{old_h}>', f'#include "{new_h}"')
                     new_content = new_content.replace(f'#include "{old_h}"', f'#include "{new_h}"')
+                
+                # Fix rare_decompression.h includes - make them consistent
+                new_content = new_content.replace(
+                    '#include "../tools/rare_decompression.h"',
+                    '#include "rare_decompression.h"'
+                )
                 
                 # If this is one of our renamed system headers, ensure it has types
                 if filename in renames.values() and 'types.h' not in new_content:
