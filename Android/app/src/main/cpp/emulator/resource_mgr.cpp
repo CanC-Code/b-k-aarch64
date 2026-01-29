@@ -16,7 +16,7 @@ extern "C" {
 }
 #endif
 
-#include "../tools/rare_decompression.h" 
+#include "rare_decompression.h" 
 
 #define LOG_TAG "ResourceMgr"
 
