@@ -27,19 +27,36 @@ def prepare_source():
         os.makedirs(ultra64_dir)
         print(f"  [+] Created ultra64 directory")
     
-    # Copy types.h from 2.0L/PR to ultra64/
-    types_source = os.path.join(base_include, "2.0L", "PR", "ultratypes.h")
+    # Create a proper types.h in ultra64/ that includes ultratypes.h
+    types_wrapper = """#ifndef _ULTRA64_TYPES_H_
+#define _ULTRA64_TYPES_H_
+
+/* This is a compatibility wrapper for ultratypes.h */
+#include "../2.0L/PR/ultratypes.h"
+
+#endif /* _ULTRA64_TYPES_H_ */
+"""
     types_dest = os.path.join(ultra64_dir, "types.h")
-    if os.path.exists(types_source):
-        shutil.copy2(types_source, types_dest)
-        print(f"  [→] Copied ultratypes.h to ultra64/types.h")
+    with open(types_dest, 'w') as f:
+        f.write(types_wrapper)
+    print(f"  [→] Created ultra64/types.h wrapper")
     
-    # Also copy ultra64.h as a fallback
-    ultra64_source = os.path.join(base_include, "2.0L", "ultra64.h")
+    # Create a proper ultra64.h in ultra64/ that includes types FIRST, then the main header
+    ultra64_wrapper = """#ifndef _ULTRA64_ULTRA64_H_
+#define _ULTRA64_ULTRA64_H_
+
+/* Include types first to ensure all PR headers have type definitions */
+#include "types.h"
+
+/* Now include the actual ultra64.h */
+#include "../2.0L/ultra64.h"
+
+#endif /* _ULTRA64_ULTRA64_H_ */
+"""
     ultra64_dest = os.path.join(ultra64_dir, "ultra64.h")
-    if os.path.exists(ultra64_source):
-        shutil.copy2(ultra64_source, ultra64_dest)
-        print(f"  [→] Copied ultra64.h to ultra64/")
+    with open(ultra64_dest, 'w') as f:
+        f.write(ultra64_wrapper)
+    print(f"  [→] Created ultra64/ultra64.h wrapper")
 
     renames = {
         "string.h": "game_string.h",
