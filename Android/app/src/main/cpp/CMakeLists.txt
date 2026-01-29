@@ -16,6 +16,7 @@ add_library(bkawrapper SHARED ${LIB_SOURCES})
 target_include_directories(bkawrapper PRIVATE
     ${CPP_ROOT}
     ${CPP_ROOT}/include
+    ${CPP_ROOT}/include/ultra64
     ${CPP_ROOT}/include/core1
     ${CPP_ROOT}/include/core2
     ${CPP_ROOT}/include/2.0L
