@@ -7,7 +7,7 @@ def prepare_source():
     android_cpp_path = "Android/app/src/main/cpp"
     sync_map = {"include": "include", "src": "src"}
 
-    # Sync files
+    # Sync initial files
     for src_sub, dest_sub in sync_map.items():
         full_src = os.path.join(src_root, src_sub)
         full_dest = os.path.join(android_cpp_path, dest_sub)
@@ -17,13 +17,13 @@ def prepare_source():
 
     base_include = os.path.join(android_cpp_path, "include")
     
-    # 1. Fix os_libc.h Linkage & Macro Conflicts
+    # 1. Resolve Macro Conflicts in os_libc.h
+    # We must undefine bcopy/bzero before they are declared as functions
     os_libc_path = os.path.join(base_include, "2.0L", "PR", "os_libc.h")
     if os.path.exists(os_libc_path):
         with open(os_libc_path, 'r') as f:
             content = f.read()
         if 'extern "C"' not in content:
-            # Wrap in extern C AND undefine system macros that conflict
             patched = (
                 "#ifndef _OS_LIBC_PATCH_H\n"
                 "#define _OS_LIBC_PATCH_H\n"
@@ -42,9 +42,9 @@ def prepare_source():
             )
             with open(os_libc_path, 'w') as f:
                 f.write(patched)
-            print("  [✓] Patched os_libc.h")
+            print("  [✓] Applied macro conflict fixes to os_libc.h")
 
-    # 2. Fix bool.h correctly
+    # 2. Fix C++ bool Redefinition
     bool_h_path = os.path.join(base_include, "bool.h")
     if os.path.exists(bool_h_path):
         modern_bool = (
@@ -56,12 +56,12 @@ def prepare_source():
         )
         with open(bool_h_path, 'w') as f:
             f.write(modern_bool)
-        print("  [✓] Patched bool.h")
+        print("  [✓] Neutralized bool conflict")
 
-    # 3. Handle renames and fix content
+    # 3. Safe Renaming and Content Patching
     renames = {"string.h": "game_string.h", "time.h": "game_time.h", "sched.h": "game_sched.h"}
     
-    # Pre-calculate renames to avoid FileNotFoundError during walk
+    # Move the files first to prevent FileNotFoundError
     for root, dirs, files in os.walk(android_cpp_path):
         for filename in files:
             if filename in renames:
@@ -69,7 +69,7 @@ def prepare_source():
                 new_path = os.path.join(base_include, renames[filename])
                 shutil.move(old_path, new_path)
 
-    # Now walk again to patch contents
+    # Perform content patching on the newly moved/existing files
     for root, dirs, files in os.walk(android_cpp_path):
         for filename in files:
             path = os.path.join(root, filename)
@@ -78,13 +78,13 @@ def prepare_source():
                     c = f.read()
                 
                 nc = c
-                # Update includes for renamed files
+                # Update include statements to point to the renamed files
                 for old_h, new_h in renames.items():
                     nc = nc.replace(f'#include <{old_h}>', f'#include "{new_h}"')
                     nc = nc.replace(f'#include "{old_h}"', f'#include "{new_h}"')
                 
-                # Ensure types are included in renamed headers
-                if filename in renames.values() and 'ultratypes.h' not in nc:
+                # Ensure game_string.h has essential types
+                if filename == "game_string.h" and 'ultratypes.h' not in nc:
                     nc = '#include "2.0L/PR/ultratypes.h"\n' + nc
                 
                 if nc != c:
