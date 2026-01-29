@@ -19,23 +19,22 @@ android {
 
         externalNativeBuild {
             cmake {
-                // Global includes to fix missing size_t and memory functions
-                cppFlags "-std=c++17 " +
-                         "-D_LANGUAGE_C " + 
-                         "-include stddef.h " + 
-                         "-include string.h " + 
-                         "-include ${projectDir}/src/main/cpp/include/2.0L/PR/ultratypes.h"
-                
+                // Keep C++ standard explicit, remove global header injection
+                cppFlags "-std=c++17"
                 arguments "-DANDROID_STL=c++_shared"
             }
         }
     }
 
     buildTypes {
-        debug { debuggable true }
+        debug {
+            debuggable true
+        }
         release {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile(
+                'proguard-android-optimize.txt'
+            ), 'proguard-rules.pro'
         }
     }
 
@@ -51,7 +50,9 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    buildFeatures { prefab true }
+    buildFeatures {
+        prefab true
+    }
 }
 
 dependencies {
