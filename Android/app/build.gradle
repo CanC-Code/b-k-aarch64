@@ -19,10 +19,6 @@ android {
 
         externalNativeBuild {
             cmake {
-                // 1. Define _LANGUAGE_C for N64 SDK compatibility
-                // 2. Force include stddef.h for size_t
-                // 3. Force include string.h for memcpy/memset
-                // 4. Force include ultratypes.h for u8/u32/s32 etc
                 cppFlags "-std=c++17 " +
                          "-D_LANGUAGE_C " + 
                          "-include stddef.h " + 
@@ -35,13 +31,10 @@ android {
     }
 
     buildTypes {
-        debug {
-            debuggable true
-        }
+        debug { debuggable true }
         release {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
-                          'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 
@@ -57,9 +50,7 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    buildFeatures {
-        prefab true
-    }
+    buildFeatures { prefab true }
 }
 
 dependencies {
