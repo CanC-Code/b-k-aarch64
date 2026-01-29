@@ -2,12 +2,30 @@ import os
 import shutil
 
 def prepare_source():
-    print("--- Syncing & Patching Source ---")
+    print("--- Syncing, Moving & Patching Source ---")
+
+    # Paths
+    src_root = "decomp-files"
+    android_cpp_path = "Android/app/src/main/cpp"
     
-    # Target the directory containing all C++ source
-    base_path = "Android/app/src/main/cpp"
-    
-    # [span_3](start_span)N64 headers that conflict with Android/Linux system headers[span_3](end_span)
+    # 1. Sync files from decomp-files to Android project
+    sync_map = {
+        "include": "include",
+        "src": "src",
+        "tools": "tools"
+    }
+
+    for src_sub, dest_sub in sync_map.items():
+        full_src = os.path.join(src_root, src_sub)
+        full_dest = os.path.join(android_cpp_path, dest_sub)
+        
+        if os.path.exists(full_src):
+            if os.path.exists(full_dest):
+                shutil.rmtree(full_dest)
+            shutil.copytree(full_src, full_dest)
+            print(f"  [→] Synced {src_sub} to Android directory")
+
+    # 2. Define renames to avoid NDK system conflicts
     renames = {
         "string.h": "game_string.h",
         "time.h": "game_time.h",
@@ -15,78 +33,44 @@ def prepare_source():
         "sched.h": "game_sched.h"
     }
 
-    # [span_4](start_span)[span_5](start_span)Macro fix for Android Bionic compatibility[span_4](end_span)[span_5](end_span)
-    android_macro_fix = """
-#ifdef __ANDROID__
-  #include <strings.h>
-  #undef bcopy
-  #undef bzero
-  #undef bcmp
-#endif
-"""
-
-    # [span_6](start_span)Essential N64 type definitions to prevent "unknown type name" errors in NDK[span_6](end_span)
-    type_definitions_fix = """
-#ifndef _ULTRATYPES_H_FIX_
-#define _ULTRATYPES_H_FIX_
-typedef signed char            s8;
-typedef unsigned char          u8;
-typedef signed short           s16;
-typedef unsigned short         u16;
-typedef signed int             s32;
-typedef unsigned int           u32;
-typedef signed long long       s64;
-typedef unsigned long long     u64;
-typedef float                  f32;
-typedef double                 f64;
-#endif
-"""
-
-    bridge_files = ["stubs.cpp", "resource_mgr.cpp", "NativeBridge.cpp", "otr_builder.cpp"]
-
-    # PHASE 1: RECURSIVE RENAME
-    # [span_7](start_span)Physical rename of conflicting header files[span_7](end_span)
-    for root, dirs, files in os.walk(base_path):
+    # 3. Patching and Renaming
+    base_include = os.path.join(android_cpp_path, "include")
+    
+    for root, dirs, files in os.walk(android_cpp_path):
         for filename in files:
+            # Physical Rename
             if filename in renames:
                 old_path = os.path.join(root, filename)
-                new_path = os.path.join(root, renames[filename])
+                new_name = renames[filename]
+                new_path = os.path.join(root, new_name)
                 
-                if os.path.exists(new_path):
-                    os.remove(new_path)
                 shutil.move(old_path, new_path)
-                print(f"  [→] Renamed File: {filename} to {renames[filename]}")
+                
+                # Promotion: Move the renamed header to the root include dir 
+                # so the compiler's include path finds it easily.
+                final_dest = os.path.join(base_include, new_name)
+                if new_path != final_dest:
+                    if os.path.exists(final_dest): os.remove(final_dest)
+                    shutil.move(new_path, final_dest)
+                
+                print(f"  [!] Renamed & Promoted {filename} -> {new_name}")
+                continue 
 
-    # PHASE 2: RECURSIVE CONTENT PATCH
-    # [span_8](start_span)[span_9](start_span)Updates #include lines and injects Android-specific macro fixes[span_8](end_span)[span_9](end_span)
-    for root, dirs, files in os.walk(base_path):
-        for filename in files:
+            # Content Revision (Update #include lines)
             if filename.endswith(('.c', '.cpp', '.h', '.hpp')):
                 file_path = os.path.join(root, filename)
-                
                 with open(file_path, 'r', errors='ignore') as f:
                     content = f.read()
                 
-                original_content = content
-
-                # [span_10](start_span)Replace header references to renamed files[span_10](end_span)
+                new_content = content
                 for old_h, new_h in renames.items():
-                    content = content.replace(f'#include <{old_h}>', f'#include <{new_h}>')
-                    content = content.replace(f'#include "{old_h}"', f'#include "{new_h}"')
-
-                # [span_11](start_span)Inject Android fix for specific bridge files[span_11](end_span)
-                if filename in bridge_files and "#ifdef __ANDROID__" not in content:
-                    content = android_macro_fix + content
-
-                # PHASE 3: TYPE DEFINITION INJECTION
-                # [span_12](start_span)Inject basic N64 types into the main SDK header to resolve compilation errors[span_12](end_span)
-                if filename == "ultra64.h" and "_ULTRATYPES_H_FIX_" not in content:
-                    content = type_definitions_fix + content
-
-                if content != original_content:
+                    new_content = new_content.replace(f'#include <{old_h}>', f'#include <{new_h}>')
+                    new_content = new_content.replace(f'#include "{old_h}"', f'#include "{new_h}"')
+                
+                if new_content != content:
                     with open(file_path, 'w') as f:
-                        f.write(content)
-                    print(f"  [✓] Patched Content: {filename}")
+                        f.write(new_content)
+                    print(f"  [✓] Patched {filename}")
 
 if __name__ == "__main__":
     prepare_source()
