@@ -1,29 +1,45 @@
 cmake_minimum_required(VERSION 3.22.1)
 
-project("bkawrapper")
+project(bkawrapper LANGUAGES C CXX)
 
-# Define include directories based on the compiler command line in the logs
-include_directories(
-    src/main/cpp
-    src/main/cpp/include
-    src/main/cpp/include/ultra64
-    src/main/cpp/include/core1
-    src/main/cpp/include/core2
-    src/main/cpp/include/2.0L
-    src/main/cpp/include/2.0L/PR
-    src/main/cpp/tools
-    src/main/cpp/emulator
-    src/main/cpp/ultra
-    src/main/cpp/game_src
-)
-
-# Add all relevant source files found in the build logs
+# Build the native shared library
 add_library(bkawrapper SHARED
-    tools/rare_decompression.cpp
+    ultra/NativeBridge.cpp
     ultra/otr_builder.cpp
-    # Add other .c and .cpp files from your src/main/cpp directories here
+    ultra/audio_helper.cpp
+    ultra/exceptasm.cpp
+
+    emulator/resource_mgr.cpp
+    emulator/pi_hle.cpp
+    emulator/stubs.cpp
+
+    tools/rare_decompression.cpp
 )
 
-# Link against the Android log library (standard for NDK projects)
+# Target-scoped include directories
+target_include_directories(bkawrapper PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR
+    ${CMAKE_CURRENT_SOURCE_DIR}/tools
+    ${CMAKE_CURRENT_SOURCE_DIR}/ultra
+    ${CMAKE_CURRENT_SOURCE_DIR}/emulator
+    ${CMAKE_CURRENT_SOURCE_DIR}/game_src
+)
+
+# Android system libraries
 find_library(log-lib log)
-target_link_libraries(bkawrapper ${log-lib})
+find_library(android-lib android)
+find_library(jnigraphics-lib jnigraphics)
+find_library(z-lib z)
+
+# Link everything together
+target_link_libraries(bkawrapper
+    ${log-lib}
+    ${android-lib}
+    ${jnigraphics-lib}
+    ${z-lib}
+    atomic
+    m
+)
