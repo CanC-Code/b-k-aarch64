@@ -20,6 +20,7 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags "-std=c++17"
+                // Ensure shared STL is used for cross-module compatibility
                 arguments "-DANDROID_STL=c++_shared"
             }
         }
