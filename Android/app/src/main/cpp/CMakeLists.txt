@@ -3,7 +3,6 @@ project(bkawrapper)
 
 set(CPP_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
-# Automatically collect all source files
 file(GLOB_RECURSE LIB_SOURCES 
     "${CPP_ROOT}/emulator/*.cpp"
     "${CPP_ROOT}/ultra/*.cpp"
@@ -14,8 +13,6 @@ file(GLOB_RECURSE LIB_SOURCES
 
 add_library(bkawrapper SHARED ${LIB_SOURCES})
 
-# Include Directories
-# Added core1 and core2 to ensure game_sched.h and game_stdlib.h are found
 target_include_directories(bkawrapper PRIVATE
     ${CPP_ROOT}
     ${CPP_ROOT}/include
@@ -29,9 +26,4 @@ target_include_directories(bkawrapper PRIVATE
     ${CPP_ROOT}/game_src
 )
 
-# Link standard Android libraries
-target_link_libraries(bkawrapper
-    android
-    log
-    z
-)
+target_link_libraries(bkawrapper android log z)
