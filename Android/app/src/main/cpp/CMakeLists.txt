@@ -15,9 +15,10 @@ file(GLOB_RECURSE LIB_SOURCES
 add_library(bkawrapper SHARED ${LIB_SOURCES})
 
 # 2. THE FIX: Forced Global Type Definitions
-# Instead of relying on header ordering, we force these definitions globally.
-# We also force the compiler to include ultratypes.h at the very start of every file.
+# We now include stddef.h first to ensure size_t and NULL are defined 
+# before any N64 headers are parsed.
 target_compile_options(bkawrapper PRIVATE
+    -include "stddef.h"
     -include "${CPP_ROOT}/include/2.0L/PR/ultratypes.h"
 )
 
@@ -32,8 +33,6 @@ target_compile_definitions(bkawrapper PRIVATE
 )
 
 # 4. Search Path Priority
-# We place ${CPP_ROOT}/include first so your 'game_string.h' and other 
-# promoted headers are found before NDK system headers.
 target_include_directories(bkawrapper PRIVATE
     ${CPP_ROOT}/include
     ${CPP_ROOT}/include/2.0L
