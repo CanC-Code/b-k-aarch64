@@ -3,7 +3,6 @@ project(bkawrapper)
 
 set(CPP_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
-# 1. Sources
 file(GLOB_RECURSE LIB_SOURCES 
     "${CPP_ROOT}/emulator/*.cpp"
     "${CPP_ROOT}/ultra/*.cpp"
@@ -14,25 +13,18 @@ file(GLOB_RECURSE LIB_SOURCES
 
 add_library(bkawrapper SHARED ${LIB_SOURCES})
 
-# 2. Includes
 target_include_directories(bkawrapper PRIVATE
     ${CPP_ROOT}
     ${CPP_ROOT}/include
     ${CPP_ROOT}/include/ultra64
+    ${CPP_ROOT}/include/core1
+    ${CPP_ROOT}/include/core2
     ${CPP_ROOT}/include/2.0L
     ${CPP_ROOT}/include/2.0L/PR
     ${CPP_ROOT}/tools
     ${CPP_ROOT}/emulator
     ${CPP_ROOT}/ultra
     ${CPP_ROOT}/game_src
-)
-
-# 3. FIX: Force includes with explicit individual flags
-# Putting each part in its own set of quotes ensures CMake passes them 
-# to Clang as separate arguments: -include <file1> -include <file2>
-target_compile_options(bkawrapper PRIVATE 
-    "-include" "stddef.h"
-    "-include" "${CPP_ROOT}/include/2.0L/PR/ultratypes.h"
 )
 
 target_link_libraries(bkawrapper android log z)
