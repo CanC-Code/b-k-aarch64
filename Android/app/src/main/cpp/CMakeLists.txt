@@ -28,11 +28,11 @@ target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/game_src
 )
 
-# Fix "unknown type name" errors
+# Fix "unknown type name" errors (u8, s32, size_t, etc.)
 target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
 
-# Target-level header injection
-# Crucially, we now include stddef.h FIRST to define size_t properly
+# Corrected Target-level header injection
+# Each header MUST have its own -include flag
 target_compile_options(bkawrapper PRIVATE
     -include "stddef.h"
     -include "${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h"
