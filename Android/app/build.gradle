@@ -19,9 +19,11 @@ android {
 
         externalNativeBuild {
             cmake {
-                // The -include flag ensures that types like u8, u32, and s32 are defined 
-                // for every file before other headers are processed.
-                cppFlags "-std=c++17 -include ${projectDir}/src/main/cpp/include/2.0L/PR/ultratypes.h"
+                // ADDED -D_LANGUAGE_C to enable N64 SDK type definitions
+                cppFlags "-std=c++17 " +
+                         "-D_LANGUAGE_C " + 
+                         "-include ${projectDir}/src/main/cpp/include/2.0L/PR/ultratypes.h"
+                
                 arguments "-DANDROID_STL=c++_shared"
             }
         }
