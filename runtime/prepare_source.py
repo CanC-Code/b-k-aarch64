@@ -18,31 +18,22 @@ def prepare_source():
 
     base_include = os.path.join(android_cpp_path, "include")
 
-    # 2. Fix os_libc.h Macro/Linkage Conflict
+    # 2. Fix os_libc.h - Comment out conflicting standard functions
+    # We comment these out so the game uses the Android NDK's standard definitions
     os_libc_path = os.path.join(base_include, "2.0L", "PR", "os_libc.h")
     if os.path.exists(os_libc_path):
         with open(os_libc_path, 'r') as f:
             content = f.read()
-        if 'extern "C"' not in content:
-            patched_content = (
-                "#ifndef _OS_LIBC_PATCH_H\n"
-                "#define _OS_LIBC_PATCH_H\n"
-                "#include <strings.h>\n"
-                "#undef bcopy\n"
-                "#undef bzero\n"
-                "#undef bcmp\n"
-                "#ifdef __cplusplus\n"
-                "extern \"C\" {\n"
-                "#endif\n\n"
-                f"{content}\n\n"
-                "#ifdef __cplusplus\n"
-                "}\n"
-                "#endif\n"
-                "#endif\n"
-            )
-            with open(os_libc_path, 'w') as f:
-                f.write(patched_content)
-            print("  [✓] Applied macro conflict fixes to os_libc.h")
+        
+        # Use regex to comment out the specific conflicting declarations
+        # Matches: extern void bcopy(const void *, void *, int); (and similar)
+        content = re.sub(r'extern\s+void\s+bcopy\s*\(.*?\);', '// \g<0>', content, flags=re.DOTALL)
+        content = re.sub(r'extern\s+void\s+bzero\s*\(.*?\);', '// \g<0>', content, flags=re.DOTALL)
+        content = re.sub(r'extern\s+int\s+sprintf\s*\(.*?\);', '// \g<0>', content, flags=re.DOTALL)
+
+        with open(os_libc_path, 'w') as f:
+            f.write(content)
+        print("  [✓] Commented out conflicting libc functions in os_libc.h")
 
     # 3. Handle C++ bool Redefinition
     bool_h_path = os.path.join(base_include, "bool.h")
@@ -60,7 +51,7 @@ def prepare_source():
             f.write(modern_bool)
         print("  [✓] Resolved C++ bool conflict")
 
-    # 4. (NEW) Fix ultratypes.h guards to prevent redefinition errors
+    # 4. Fix ultratypes.h guards
     ultratypes_path = os.path.join(base_include, "2.0L", "PR", "ultratypes.h")
     if os.path.exists(ultratypes_path):
         with open(ultratypes_path, 'r') as f:
@@ -93,7 +84,6 @@ def prepare_source():
                     updated = updated.replace(f'#include "{old_h}"', f'#include "{new_h}"')
 
                 # SAFE PATCHING: Use regex to only replace standalone UNUSED keywords
-                # This fixes the enum corruption error from previous logs
                 updated = re.sub(r'\bUNUSED\b', '[[maybe_unused]]', updated)
 
                 if filename == "game_string.h" and 'ultratypes.h' not in updated:
