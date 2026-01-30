@@ -28,8 +28,8 @@ target_include_directories(bkawrapper PRIVATE
 # Required for N64 headers to expose correct logic
 target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
 
-# FIXED: Using a list ensures CMake passes these as separate arguments to the compiler.
-# This prevents the "multiple output files" error by ensuring each header has its own -include flag.
+# FIXED: Use semicolon-delimited strings to force separate arguments.
+# This prevents headers like 'stdint.h' from being treated as source files.
 target_compile_options(bkawrapper PRIVATE
     "-include;stddef.h"
     "-include;stdint.h"
