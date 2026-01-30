@@ -28,12 +28,13 @@ target_include_directories(bkawrapper PRIVATE
 # Required for N64 headers to expose correct logic
 target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
 
-# Global header injection (Removed spaces inside quotes)
+# FIXED: Separate the flag and the filename into individual arguments.
+# This prevents Clang from misinterpreting paths or looking for files with leading spaces.
 target_compile_options(bkawrapper PRIVATE
-    "-include stddef.h"
-    "-include stdint.h"
-    "-include string.h"
-    "-include${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h"
+    "-include" "stddef.h"
+    "-include" "stdint.h"
+    "-include" "string.h"
+    "-include" "${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h"
 )
 
 # Linker setup
