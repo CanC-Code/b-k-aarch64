@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(bkawrapper LANGUAGES C CXX)
 
-# Build the native shared library
+# Define source files
 add_library(bkawrapper SHARED
     ultra/NativeBridge.cpp
     ultra/otr_builder.cpp
@@ -13,7 +13,7 @@ add_library(bkawrapper SHARED
     tools/rare_decompression.cpp
 )
 
-# Target-scoped include directories
+# Configure Include Paths
 target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -25,11 +25,11 @@ target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/game_src
 )
 
-# Fix "unknown type name" errors (u8, s32, size_t, etc.)
+# Required for N64 headers to expose correct logic
 target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
 
-# FIXED: Target-level header injection
-# Each header MUST be preceded by its own "-include" string argument.
+# FIXED: Separate each flag and header into individual strings.
+# This ensures every header is correctly treated as a forced include.
 target_compile_options(bkawrapper PRIVATE
     "-include" "stddef.h"
     "-include" "stdint.h"
@@ -37,13 +37,12 @@ target_compile_options(bkawrapper PRIVATE
     "-include" "${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h"
 )
 
-# Android system libraries
+# Linker setup
 find_library(log-lib log)
 find_library(android-lib android)
 find_library(jnigraphics-lib jnigraphics)
 find_library(z-lib z)
 
-# Link everything together
 target_link_libraries(bkawrapper
     ${log-lib}
     ${android-lib}
