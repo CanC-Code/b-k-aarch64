@@ -60,7 +60,17 @@ def prepare_source():
             f.write(modern_bool)
         print("  [✓] Resolved C++ bool conflict")
 
-    # 4. Safe Renaming & Include Patching
+    # 4. (NEW) Fix ultratypes.h guards to prevent redefinition errors
+    ultratypes_path = os.path.join(base_include, "2.0L", "PR", "ultratypes.h")
+    if os.path.exists(ultratypes_path):
+        with open(ultratypes_path, 'r') as f:
+            content = f.read()
+        if "#ifndef _ULTRATYPES_H_GUARD" not in content:
+            patched = "#ifndef _ULTRATYPES_H_GUARD\n#define _ULTRATYPES_H_GUARD\n" + content + "\n#endif"
+            with open(ultratypes_path, 'w') as f: f.write(patched)
+            print("  [✓] Applied redefinition guards to ultratypes.h")
+
+    # 5. Safe Renaming & Include Patching
     renames = {"string.h": "game_string.h", "time.h": "game_time.h", "sched.h": "game_sched.h"}
 
     for root, dirs, files in os.walk(android_cpp_path):
@@ -83,6 +93,7 @@ def prepare_source():
                     updated = updated.replace(f'#include "{old_h}"', f'#include "{new_h}"')
 
                 # SAFE PATCHING: Use regex to only replace standalone UNUSED keywords
+                # This fixes the enum corruption error from previous logs
                 updated = re.sub(r'\bUNUSED\b', '[[maybe_unused]]', updated)
 
                 if filename == "game_string.h" and 'ultratypes.h' not in updated:
