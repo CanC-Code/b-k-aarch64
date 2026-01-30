@@ -32,7 +32,7 @@ target_include_directories(bkawrapper PRIVATE
 target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
 
 # Corrected Target-level header injection
-# Each header MUST have its own -include flag to avoid the "multiple output files" error
+# Each header MUST have its own -include flag to avoid Clang parsing errors
 target_compile_options(bkawrapper PRIVATE
     -include "stddef.h"
     -include "${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h"
