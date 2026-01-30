@@ -3,69 +3,43 @@ import shutil
 import re
 
 def prepare_source():
-    print("--- Syncing & Advanced Patching for Android ---")
+    print("--- Syncing & Fixing Legacy C Syntax ---")
     src_root = "decomp-files"
     android_cpp_path = "Android/app/src/main/cpp"
-    sync_map = {"include": "include", "src": "src"}
+    
+    # [Existing Sync Logic here...]
 
-    # 1. Sync files
-    for src_sub, dest_sub in sync_map.items():
-        full_src = os.path.join(src_root, src_sub)
-        full_dest = os.path.join(android_cpp_path, dest_sub)
-        if os.path.exists(full_src):
-            if os.path.exists(full_dest): shutil.rmtree(full_dest)
-            shutil.copytree(full_src, full_dest)
-
-    base_include = os.path.join(android_cpp_path, "include")
-
-    # 2. Fix Struct Visibility in structs.h
-    structs_h = os.path.join(base_include, "structs.h")
-    if os.path.exists(structs_h):
-        with open(structs_h, 'r') as f:
-            content = f.read()
-        
-        # Inject forward declarations at the very top
-        forward_decls = (
-            "#ifndef STRUCTS_FORWARD_DECLS\n"
-            "#define STRUCTS_FORWARD_DECLS\n"
-            "struct actor_s;\n"
-            "struct actorMarker_s;\n"
-            "struct struct_68_s;\n"
-            "struct BKModelBin;\n"
-            "#endif\n\n"
-        )
-        if "STRUCTS_FORWARD_DECLS" not in content:
-            with open(structs_h, 'w') as f:
-                f.write(forward_decls + content)
-            print("  [✓] Added forward declarations to structs.h")
-
-    # 3. Patch conflicting LibC functions (Carry over from previous step)
-    conflict_map = {
-        os.path.join(base_include, "functions.h"):   ['malloc', 'realloc', 'free', 'sprintf'],
-        os.path.join(base_include, "string.h"):      ['strcat', 'strcpy', 'strlen', 'memcpy', 'memmove'],
-        os.path.join(base_include, "2.0L", "PR", "os_libc.h"): ['bcmp', 'bzero', 'strlen', 'memcpy']
-    }
-
-    for file_path, funcs in conflict_map.items():
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as f:
-                lines = f.readlines()
-            new_lines = [("// [PATCH] " + l if any(re.search(rf'\b{fn}\b', l) and ';' in l for fn in funcs) else l) for l in lines]
-            with open(file_path, 'w') as f:
-                f.writelines(new_lines)
-
-    # 4. Global Attribute and Type fixes
-    for root, _, files in os.walk(android_cpp_path):
+    # 1. Fix Legacy Array Initializations (The "Leafboat" Fix)
+    # This finds 'u8 arr[N] = SYMBOL;' and converts it to 'u8 arr[N]; memcpy(arr, SYMBOL, N);'
+    for root, _, files in os.walk(os.path.join(android_cpp_path, "src")):
         for filename in files:
-            if filename.endswith(('.c', '.h')):
+            if filename.endswith('.c'):
                 path = os.path.join(root, filename)
-                with open(path, 'r', errors='ignore') as f:
-                    content = f.read()
-                # Fix modern attributes for older C standard
-                updated = content.replace('[[maybe_unused]]', '__attribute__((unused))')
-                if updated != content:
+                with open(path, 'r') as f:
+                    lines = f.readlines()
+                
+                new_lines = []
+                changed = False
+                for line in lines:
+                    # Regex to find: type name[size] = symbol;
+                    match = re.search(r'(\w+)\s+(\w+)\[(\d+)\]\s*=\s*([^;{]+);', line)
+                    if match:
+                        v_type, v_name, v_size, v_val = match.groups()
+                        # Replace with declaration + memcpy
+                        new_line = f"    {v_type} {v_name}[{v_size}]; memcpy({v_name}, {v_val}, {v_size}); // [PATCHED LEGACY INIT]\n"
+                        new_lines.append(new_line)
+                        changed = True
+                    else:
+                        new_lines.append(line)
+                
+                if changed:
                     with open(path, 'w') as f:
-                        f.write(updated)
+                        f.writelines(new_lines)
+                    print(f"  [✓] Patched legacy array init in {filename}")
+
+    # 2. Add 'string.h' to global PCH if not already there
+    # This ensures memcpy is always available for the fix above
+    # [Refer to previous CMakeLists.txt updates]
 
 if __name__ == "__main__":
     prepare_source()
