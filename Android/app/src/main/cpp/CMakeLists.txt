@@ -28,13 +28,13 @@ target_include_directories(bkawrapper PRIVATE
 # Required for N64 headers to expose correct logic
 target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
 
-# FIXED: Separate each flag and header into individual strings.
-# This ensures every header is correctly treated as a forced include.
+# FIXED: Using a list ensures CMake passes these as separate arguments to the compiler.
+# This prevents the "multiple output files" error by ensuring each header has its own -include flag.
 target_compile_options(bkawrapper PRIVATE
-    "-include" "stddef.h"
-    "-include" "stdint.h"
-    "-include" "string.h"
-    "-include" "${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h"
+    "-include;stddef.h"
+    "-include;stdint.h"
+    "-include;string.h"
+    "-include;${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h"
 )
 
 # Linker setup
