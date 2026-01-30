@@ -18,10 +18,9 @@ add_library(bkawrapper SHARED
     tools/rare_decompression.cpp
 )
 
-# Lenient flags for legacy code
 target_compile_options(bkawrapper PRIVATE
-    -w # Temporarily suppress warnings to find actual hard errors
-    -fcommon # Allow multiple definitions of global variables (common in legacy C)
+    -w 
+    -fcommon 
 )
 
 target_include_directories(bkawrapper PRIVATE
@@ -34,7 +33,7 @@ target_include_directories(bkawrapper PRIVATE
 
 target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
 
-# Force system headers BEFORE game headers
+# --- Updated PCH Generation with Relative Path ---
 set(GLOBAL_PCH "${CMAKE_CURRENT_BINARY_DIR}/global_pch.h")
 file(WRITE ${GLOBAL_PCH} "
 #pragma once
@@ -43,7 +42,8 @@ file(WRITE ${GLOBAL_PCH} "
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include \"${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h\"
+/* Use relative path from include directories defined above */
+#include \"PR/ultratypes.h\"
 ")
 target_compile_options(bkawrapper PRIVATE "-include" "${GLOBAL_PCH}")
 
