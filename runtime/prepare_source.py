@@ -34,12 +34,11 @@ def prepare_source():
 
                 orig_content = content
 
-                # A. Update includes (Flatten legacy paths and handle renames)
+                # A. Update includes & Flatten legacy paths
                 for old_h, new_h in renames.items():
                     content = content.replace(f'#include <{old_h}>', f'#include "{new_h}"')
                     content = content.replace(f'#include "{old_h}"', f'#include "{new_h}"')
                 
-                # Fix legacy path references like "2.0L/PR/sched.h" -> "game_sched.h"
                 content = re.sub(r'#include\s+["<](?:2\.0L/PR/)?sched\.h[">]', '#include "game_sched.h"', content)
                 content = re.sub(r'#include\s+["<](?:2\.0L/PR/)?string\.h[">]', '#include "game_string.h"', content)
 
@@ -52,9 +51,8 @@ def prepare_source():
                     content = re.sub(r'(\w+)\s+(\w+)\[(\d+)\]\s*=\s*([^;{]+);', 
                                      r'\1 \2[\3]; memcpy(\2, \4, \3); // [PATCHED]', content)
 
-                # C. Advanced Type & Linkage Harmonizer (For .c files)
+                # C. Advanced Type & Linkage Harmonizer
                 if filename.endswith('.c'):
-                    # Extract Enums and Structs
                     type_defs = re.findall(r'((?:typedef\s+)?(?:struct|enum)\s*([\w\d_]*)\s*\{[^}]+\}\s*([\w\d_]*)\s*;)', content, re.DOTALL)
                     static_defs = re.findall(r'^(static\s+[\w\*]+\s+([\w\d_]+)\s*\([^)]*\))\s*\{', content, re.MULTILINE)
 
@@ -77,6 +75,25 @@ def prepare_source():
                             content = content[:insert_pos] + header_block + content[insert_pos:]
                         else:
                             content = header_block + content
+
+                # D. Fix for audioManager & n_alInit (Specific to core engine)
+                if filename == "code_1D00.c":
+                    # Fix n_alInit declaration conflict
+                    content = content.replace('extern void n_alInit(N_ALGlobals *, ALSynConfig *);', 
+                                            '// [PATCHED] extern void n_alInit(N_ALGlobals *, ALSynConfig *);')
+                    
+                    # Inject audioManager global declaration if missing
+                    if 'audioManager' in content and 'struct' not in content:
+                        injection = "\n// [PATCHED] Global audioManager declaration\n"
+                        injection += "extern struct { \n    OSMesgQueue audioReplyMsgQ; \n    OSMesg audioReplyMsgBuf[8]; \n"
+                        injection += "    OSMesgQueue audioFrameMsgQ; \n    OSMesg audioFrameMsgBuf[8]; \n"
+                        injection += "    void* ACMDList[3]; \n    struct audioInfo* audioInfo[3]; \n"
+                        injection += "    OSThread thread; \n} audioManager;\n"
+                        
+                        include_matches = list(re.finditer(r'#include.*?\n', content))
+                        if include_matches:
+                            insert_pos = include_matches[-1].end()
+                            content = content[:insert_pos] + injection + content[insert_pos:]
 
                 if content != orig_content:
                     with open(path, 'w') as f: f.write(content)
