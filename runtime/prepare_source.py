@@ -3,12 +3,12 @@ import shutil
 import re
 
 def prepare_source():
-    print("--- Syncing, Moving & Patching Source ---")
+    print("--- Syncing & Patching Source for Android Compatibility ---")
     src_root = "decomp-files"
     android_cpp_path = "Android/app/src/main/cpp"
     sync_map = {"include": "include", "src": "src"}
 
-    # 1. Initial Sync
+    # 1. Sync files
     for src_sub, dest_sub in sync_map.items():
         full_src = os.path.join(src_root, src_sub)
         full_dest = os.path.join(android_cpp_path, dest_sub)
@@ -18,47 +18,48 @@ def prepare_source():
 
     base_include = os.path.join(android_cpp_path, "include")
 
-    # 2. Fix game_string.h & core1/mem.h - Comment out conflicting overrides
-    # These functions conflict with Android's built-in string.h
-    files_to_patch = [
-        os.path.join(base_include, "game_string.h"),
-        os.path.join(base_include, "core1", "mem.h")
-    ]
-    
-    conflicting_funcs = ['strcat', 'strcpy', 'strlen', 'memcpy', 'memmove', 'wmemcpy']
+    # 2. Files and functions that conflict with Android's Bionic libc
+    # Added malloc and realloc to this list
+    conflict_map = {
+        os.path.join(base_include, "game_string.h"): ['strcat', 'strcpy', 'strlen', 'memcpy', 'memmove'],
+        os.path.join(base_include, "string.h"):      ['strcat', 'strcpy', 'strlen', 'memcpy', 'memmove'],
+        os.path.join(base_include, "functions.h"):   ['malloc', 'realloc', 'free'],
+        os.path.join(base_include, "core1", "mem.h"): ['memcpy', 'memmove', 'wmemcpy'],
+        os.path.join(base_include, "2.0L", "PR", "os_libc.h"): ['bcmp', 'bzero', 'strlen', 'memcpy']
+    }
 
-    for file_path in files_to_patch:
+    for file_path, funcs in conflict_map.items():
         if os.path.exists(file_path):
             with open(file_path, 'r') as f:
-                content = f.read()
+                lines = f.readlines()
             
-            for func in conflicting_funcs:
-                # Matches: void strcat(char *dst, char *src); (and variants)
-                content = re.sub(rf'(?m)^.*?\b{func}\b.*?;', r'// \g<0>', content)
+            new_lines = []
+            for line in lines:
+                should_comment = False
+                for func in funcs:
+                    # Match function name with a boundary to avoid partial matches
+                    if re.search(rf'\b{func}\b', line) and ';' in line:
+                        should_comment = True
+                        break
+                
+                if should_comment:
+                    new_lines.append("// [PATCH] " + line)
+                else:
+                    new_lines.append(line)
 
             with open(file_path, 'w') as f:
-                f.write(content)
-            print(f"  [✓] Commented out conflicting functions in {os.path.basename(file_path)}")
+                f.writelines(new_lines)
+            print(f"  [✓] Patched conflicts in {os.path.basename(file_path)}")
 
-    # 3. Handle C++ bool Redefinition
-    bool_h_path = os.path.join(base_include, "bool.h")
-    if os.path.exists(bool_h_path):
-        modern_bool = (
-            "#ifndef __cplusplus\n#ifndef bool\ntypedef int bool;\n#define true 1\n#define false 0\n#endif\n#endif\n"
-        )
-        with open(bool_h_path, 'w') as f:
-            f.write(modern_bool)
-
-    # 4. Correct UNUSED attribute for C files
-    # Replacing [[maybe_unused]] with __attribute__((unused)) for C compatibility
-    for root, dirs, files in os.walk(android_cpp_path):
+    # 3. Recursive attribute fix (for [[maybe_unused]] issues)
+    for root, _, files in os.walk(android_cpp_path):
         for filename in files:
             if filename.endswith(('.c', '.h')):
                 path = os.path.join(root, filename)
                 with open(path, 'r', errors='ignore') as f:
                     content = f.read()
                 
-                # Update the previous patch to use a C-compatible attribute
+                # Convert modern C++ attributes to C-compatible ones
                 updated = content.replace('[[maybe_unused]]', '__attribute__((unused))')
                 
                 if updated != content:
