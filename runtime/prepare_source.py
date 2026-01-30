@@ -3,7 +3,7 @@ import shutil
 import re
 
 def prepare_source():
-    print("--- Syncing & Patching Source for Android Compatibility ---")
+    print("--- Syncing & Advanced Patching for Android ---")
     src_root = "decomp-files"
     android_cpp_path = "Android/app/src/main/cpp"
     sync_map = {"include": "include", "src": "src"}
@@ -18,13 +18,31 @@ def prepare_source():
 
     base_include = os.path.join(android_cpp_path, "include")
 
-    # 2. Files and functions that conflict with Android's Bionic libc
-    # Added malloc and realloc to this list
+    # 2. Fix Struct Visibility in structs.h
+    structs_h = os.path.join(base_include, "structs.h")
+    if os.path.exists(structs_h):
+        with open(structs_h, 'r') as f:
+            content = f.read()
+        
+        # Inject forward declarations at the very top
+        forward_decls = (
+            "#ifndef STRUCTS_FORWARD_DECLS\n"
+            "#define STRUCTS_FORWARD_DECLS\n"
+            "struct actor_s;\n"
+            "struct actorMarker_s;\n"
+            "struct struct_68_s;\n"
+            "struct BKModelBin;\n"
+            "#endif\n\n"
+        )
+        if "STRUCTS_FORWARD_DECLS" not in content:
+            with open(structs_h, 'w') as f:
+                f.write(forward_decls + content)
+            print("  [✓] Added forward declarations to structs.h")
+
+    # 3. Patch conflicting LibC functions (Carry over from previous step)
     conflict_map = {
-        os.path.join(base_include, "game_string.h"): ['strcat', 'strcpy', 'strlen', 'memcpy', 'memmove'],
+        os.path.join(base_include, "functions.h"):   ['malloc', 'realloc', 'free', 'sprintf'],
         os.path.join(base_include, "string.h"):      ['strcat', 'strcpy', 'strlen', 'memcpy', 'memmove'],
-        os.path.join(base_include, "functions.h"):   ['malloc', 'realloc', 'free'],
-        os.path.join(base_include, "core1", "mem.h"): ['memcpy', 'memmove', 'wmemcpy'],
         os.path.join(base_include, "2.0L", "PR", "os_libc.h"): ['bcmp', 'bzero', 'strlen', 'memcpy']
     }
 
@@ -32,36 +50,19 @@ def prepare_source():
         if os.path.exists(file_path):
             with open(file_path, 'r') as f:
                 lines = f.readlines()
-            
-            new_lines = []
-            for line in lines:
-                should_comment = False
-                for func in funcs:
-                    # Match function name with a boundary to avoid partial matches
-                    if re.search(rf'\b{func}\b', line) and ';' in line:
-                        should_comment = True
-                        break
-                
-                if should_comment:
-                    new_lines.append("// [PATCH] " + line)
-                else:
-                    new_lines.append(line)
-
+            new_lines = [("// [PATCH] " + l if any(re.search(rf'\b{fn}\b', l) and ';' in l for fn in funcs) else l) for l in lines]
             with open(file_path, 'w') as f:
                 f.writelines(new_lines)
-            print(f"  [✓] Patched conflicts in {os.path.basename(file_path)}")
 
-    # 3. Recursive attribute fix (for [[maybe_unused]] issues)
+    # 4. Global Attribute and Type fixes
     for root, _, files in os.walk(android_cpp_path):
         for filename in files:
             if filename.endswith(('.c', '.h')):
                 path = os.path.join(root, filename)
                 with open(path, 'r', errors='ignore') as f:
                     content = f.read()
-                
-                # Convert modern C++ attributes to C-compatible ones
+                # Fix modern attributes for older C standard
                 updated = content.replace('[[maybe_unused]]', '__attribute__((unused))')
-                
                 if updated != content:
                     with open(path, 'w') as f:
                         f.write(updated)
