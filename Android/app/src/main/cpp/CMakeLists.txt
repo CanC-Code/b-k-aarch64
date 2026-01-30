@@ -28,8 +28,9 @@ target_include_directories(bkawrapper PRIVATE
 # [span_3](start_span)Fix "unknown type name" errors (u8, s32, size_t, etc.)[span_3](end_span)
 target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
 
-# Corrected Target-level header injection
-# [span_4](start_span)Each header MUST have its own -include flag to avoid Clang parsing errors[span_4](end_span)
+# [span_4](start_span)FIXED: Target-level header injection[span_4](end_span)
+# Each header MUST have its own "-include" string to avoid Clang parsing errors.
+# This resolves the "multiple output files" error seen in the recent log.
 target_compile_options(bkawrapper PRIVATE
     "-include" "stddef.h"
     "-include" "stdint.h"
