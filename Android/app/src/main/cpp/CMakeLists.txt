@@ -8,11 +8,9 @@ add_library(bkawrapper SHARED
     ultra/otr_builder.cpp
     ultra/audio_helper.cpp
     ultra/exceptasm.cpp
-
     emulator/resource_mgr.cpp
     emulator/pi_hle.cpp
     emulator/stubs.cpp
-
     tools/rare_decompression.cpp
 )
 
@@ -28,14 +26,14 @@ target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/game_src
 )
 
-# Fix "unknown type name" errors (u8, s32, size_t, etc.)
+# Fix "unknown type name" errors by ensuring legacy types are available
 target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
 
-# Corrected Target-level header injection
-# Each header MUST have its own -include flag to avoid Clang parsing errors
+# FIXED: Corrected Target-level header injection
+# Using quoted joined strings ensures -include and the path are treated as one argument
 target_compile_options(bkawrapper PRIVATE
-    -include "stddef.h"
-    -include "${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h"
+    "-include stddef.h"
+    "-include ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h"
 )
 
 # Android system libraries
