@@ -26,6 +26,7 @@ target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L
     ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/tools
 )
 
 # Remove the complex PCH generation for now—it's likely masking the real include errors
