@@ -24,7 +24,7 @@ def prepare_source():
             if filename in renames:
                 shutil.move(os.path.join(root, filename), os.path.join(root, renames[filename]))
 
-    # --- STEP 5 & 6: SAFE SOURCE HARMONIZER ---
+    # --- STEP 5 & 6: ADVANCED SOURCE HARMONIZER ---
     for root, _, files in os.walk(android_cpp_path):
         for filename in files:
             path = os.path.join(root, filename)
@@ -43,23 +43,33 @@ def prepare_source():
                 content = re.sub(r'(\w+)\s+(\w+)\[(\d+)\]\s*=\s*([^;{]+);', 
                                  r'\1 \2[\3]; memcpy(\2, \4, \3); // [PATCHED]', content)
 
-                # C. Safe Harmonizer: Inject declarations WITHOUT moving original code
+                # C. Type & Linkage Harmonizer
                 if filename.endswith('.c'):
-                    # 1. Identify all static function definitions
-                    # Matches: static [type] [name]([args]) {
-                    static_defs = re.findall(r'^(static\s+[\w\*]+\s+([\w\d_]+)\s*\([^)]*\))\s*\{', content, re.MULTILINE)
+                    # 1. Extract Enums and Structs (to solve Incomplete Type errors)
+                    # This captures blocks like: typedef struct { ... } Name; or enum Name { ... };
+                    type_defs = re.findall(r'((?:typedef\s+)?(?:struct|enum)\s*[\w\d_]*\s*\{[^}]+\}\s*[\w\d_]*\s*;)', content, re.DOTALL)
                     
-                    if static_defs:
-                        declarations = []
+                    # 2. Identify all static function definitions
+                    static_defs = re.findall(r'^(static\s+[\w\*]+\s+([\w\d_]+)\s*\([^)]*\))\s*\{', content, re.MULTILINE)
+
+                    if type_defs or static_defs:
+                        # Build the header block
+                        header_block = "\n// [PATCHED TYPE & FUNCTION BLOCK]\n"
+                        
+                        # Add types first (Crucial for Clang)
+                        for td in type_defs:
+                            header_block += td + "\n"
+                            # Comment out original to avoid redefinition error
+                            content = content.replace(td, f"// [MOVED TO TOP]\n")
+                        
+                        # Add static forward declarations
                         for full_sig, func_name in static_defs:
-                            declarations.append(f"{full_sig};")
-                            # Fix existing non-static declarations that might conflict
+                            header_block += f"{full_sig};\n"
+                            # Fix any existing conflicting declarations
                             ptrn = r'^(?!(?:static|inline|#))([\w\*]+\s+' + re.escape(func_name) + r'\s*\([^;]*\);)'
                             content = re.sub(ptrn, r'static \1', content, flags=re.MULTILINE)
-                        
-                        header_block = "\n// [SAFE FORWARD DECLARATIONS]\n" + "\n".join(declarations) + "\n"
-                        
-                        # 2. Find the best injection point (after last include)
+
+                        # 3. Inject after the last include
                         include_matches = list(re.finditer(r'#include.*?\n', content))
                         if include_matches:
                             insert_pos = include_matches[-1].end()
