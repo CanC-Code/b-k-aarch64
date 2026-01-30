@@ -7,10 +7,9 @@
 
 extern "C" {
 
-// New stub to fix the current linker error
+// Fix for missing symbol in audio_helper/NativeBridge
 void n_audioStep() {
-    // Stub implementation: This would normally handle audio buffer processing
-    // For now, we just provide the symbol so the app compiles.
+    // Stub: Native audio processing placeholder
 }
 
 void core1_loadOTR(uint8_t* data, size_t size) {
@@ -22,12 +21,7 @@ void core1_reset() {
     LOGI("core1_reset called");
 }
 
-void core1_stepCPU() {
-    // CPU stepping logic
-}
-
-void core2_stepFrame() {
-    // Frame stepping logic
-}
+void core1_stepCPU() {}
+void core2_stepFrame() {}
 
 } // extern "C"
