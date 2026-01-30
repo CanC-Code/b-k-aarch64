@@ -28,8 +28,8 @@ target_include_directories(bkawrapper PRIVATE
 # Required for N64 headers to expose correct logic
 target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
 
-# FIXED: Separate the flag and the filename into individual arguments.
-# This prevents Clang from misinterpreting paths or looking for files with leading spaces.
+# FIXED: Separate flag and argument into individual strings.
+# This ensures Clang treats headers correctly and avoids the "multiple output files" error.
 target_compile_options(bkawrapper PRIVATE
     "-include" "stddef.h"
     "-include" "stdint.h"
