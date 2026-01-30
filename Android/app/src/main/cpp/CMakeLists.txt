@@ -26,15 +26,12 @@ target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/game_src
 )
 
-# Fix "unknown type name" errors by ensuring legacy types are available
+# Define _LANGUAGE_C so that N64 headers expose the correct types
 target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
 
-# FIXED: Corrected Target-level header injection
-# Using quoted joined strings ensures -include and the path are treated as one argument
-target_compile_options(bkawrapper PRIVATE
-    "-include stddef.h"
-    "-include ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h"
-)
+# REMOVED: -include flags. 
+# We will now rely on the code to include what it needs.
+# This prevents the "redefinition" errors seen in the log.
 
 # Android system libraries
 find_library(log-lib log)
