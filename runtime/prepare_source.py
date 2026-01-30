@@ -17,25 +17,6 @@ def prepare_source():
             shutil.copytree(full_src, full_dest)
             print(f"  [✓] Synced {src_sub}")
 
-    base_include = os.path.join(android_cpp_path, "include")
-
-    # --- STEP 2: PATCH os_libc.h ---
-    os_libc_path = os.path.join(base_include, "2.0L", "PR", "os_libc.h")
-    if os.path.exists(os_libc_path):
-        with open(os_libc_path, 'r') as f:
-            content = f.read()
-        if 'extern "C"' not in content:
-            patched = f"#ifndef _OS_LIBC_PATCH_H\n#define _OS_LIBC_PATCH_H\n#include <string.h>\n#include <strings.h>\n#undef bcopy\n#undef bzero\n#undef bcmp\n#ifdef __cplusplus\nextern \"C\" {{\n#endif\n{content}\n#ifdef __cplusplus\n}}\n#endif\n#endif"
-            with open(os_libc_path, 'w') as f: f.write(patched)
-            print("  [✓] Patched os_libc.h")
-
-    # --- STEP 3: FIX bool.h ---
-    bool_h_path = os.path.join(base_include, "bool.h")
-    if os.path.exists(bool_h_path):
-        with open(bool_h_path, 'w') as f:
-            f.write("#ifndef __cplusplus\ntypedef int bool;\n#define true 1\n#define false 0\n#endif\n")
-        print("  [✓] Patched bool.h")
-
     # --- STEP 4: RENAME SYSTEM HEADERS ---
     renames = {"string.h": "game_string.h", "time.h": "game_time.h", "sched.h": "game_sched.h"}
     for root, _, files in os.walk(android_cpp_path):
@@ -43,7 +24,7 @@ def prepare_source():
             if filename in renames:
                 shutil.move(os.path.join(root, filename), os.path.join(root, renames[filename]))
 
-    # --- STEP 5 & 6: ADVANCED SOURCE HARMONIZER ---
+    # --- STEP 5 & 6: SAFE SOURCE HARMONIZER ---
     for root, _, files in os.walk(android_cpp_path):
         for filename in files:
             path = os.path.join(root, filename)
@@ -58,40 +39,37 @@ def prepare_source():
                     content = content.replace(f'#include <{old_h}>', f'#include "{new_h}"')
                     content = content.replace(f'#include "{old_h}"', f'#include "{new_h}"')
 
-                # B. Leafboat Fix
+                # B. Leafboat Fix (Legacy Array Initialization)
                 content = re.sub(r'(\w+)\s+(\w+)\[(\d+)\]\s*=\s*([^;{]+);', 
                                  r'\1 \2[\3]; memcpy(\2, \4, \3); // [PATCHED]', content)
 
-                # C. Advanced Type & Linkage Harmonizer
+                # C. Safe Harmonizer: Inject declarations WITHOUT moving original code
                 if filename.endswith('.c'):
-                    # 1. Extract Enums and Structs to prevent "incomplete type" errors
-                    # This finds 'typedef struct { ... } name;' or 'enum name { ... };'
-                    type_defs = re.findall(r'((?:typedef\s+)?(?:struct|enum)\s*[\w\d_]*\s*\{[^}]+\}\s*[\w\d_]*\s*;)', content, re.DOTALL)
-                    for td in type_defs:
-                        content = content.replace(td, "") # Remove from original location
-                    
-                    # 2. Extract Static Function Signatures
+                    # 1. Identify all static function definitions
+                    # Matches: static [type] [name]([args]) {
                     static_defs = re.findall(r'^(static\s+[\w\*]+\s+([\w\d_]+)\s*\([^)]*\))\s*\{', content, re.MULTILINE)
-                    declarations = [f"{sig};" for sig, name in static_defs]
-
-                    # 3. Clean existing problematic forward declarations
-                    for _, name in static_defs:
-                        content = re.sub(r'^(static\s+)?[\w\*]+\s+' + re.escape(name) + r'\s*\([^;]*\);', "", content, flags=re.MULTILINE)
-
-                    # 4. Reconstruct the Header Block
-                    header_block = "\n// [AUTO-GENERATED COMPATIBILITY BLOCK]\n"
-                    header_block += "\n".join(type_defs) + "\n"
-                    header_block += "\n".join(declarations) + "\n"
-
-                    # 5. Inject after the last include
-                    if "#include" in content:
-                        content = re.sub(r'(.*#include.*?\n)(?!#include)', r'\1' + header_block, content, count=1, flags=re.DOTALL)
-                    else:
-                        content = header_block + content
+                    
+                    if static_defs:
+                        declarations = []
+                        for full_sig, func_name in static_defs:
+                            declarations.append(f"{full_sig};")
+                            # Fix existing non-static declarations that might conflict
+                            ptrn = r'^(?!(?:static|inline|#))([\w\*]+\s+' + re.escape(func_name) + r'\s*\([^;]*\);)'
+                            content = re.sub(ptrn, r'static \1', content, flags=re.MULTILINE)
+                        
+                        header_block = "\n// [SAFE FORWARD DECLARATIONS]\n" + "\n".join(declarations) + "\n"
+                        
+                        # 2. Find the best injection point (after last include)
+                        include_matches = list(re.finditer(r'#include.*?\n', content))
+                        if include_matches:
+                            insert_pos = include_matches[-1].end()
+                            content = content[:insert_pos] + header_block + content[insert_pos:]
+                        else:
+                            content = header_block + content
 
                 if content != orig_content:
                     with open(path, 'w') as f: f.write(content)
-                    print(f"  [✓] Harmonized {filename}")
+                    print(f"  [✓] Patched {filename}")
 
     print("--- Source Preparation Complete ---")
 
