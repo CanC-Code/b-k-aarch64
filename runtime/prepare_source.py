@@ -42,9 +42,8 @@ def prepare_source():
         for filename in files:
             if filename in renames:
                 shutil.move(os.path.join(root, filename), os.path.join(root, renames[filename]))
-                print(f"  [✓] Renamed {filename}")
 
-    # --- STEP 5 & 6: PATCH CONTENT & INJECT FORWARD DECLARATIONS ---
+    # --- STEP 5 & 6: ADVANCED SOURCE HARMONIZER ---
     for root, _, files in os.walk(android_cpp_path):
         for filename in files:
             path = os.path.join(root, filename)
@@ -59,40 +58,40 @@ def prepare_source():
                     content = content.replace(f'#include <{old_h}>', f'#include "{new_h}"')
                     content = content.replace(f'#include "{old_h}"', f'#include "{new_h}"')
 
-                # B. Leafboat Fix (Legacy Array Initialization)
+                # B. Leafboat Fix
                 content = re.sub(r'(\w+)\s+(\w+)\[(\d+)\]\s*=\s*([^;{]+);', 
                                  r'\1 \2[\3]; memcpy(\2, \4, \3); // [PATCHED]', content)
 
-                # C. Robust Harmonizer: Inject forward declarations for all static functions
-                # This fixes "implicit declaration" and "static follows non-static" errors
+                # C. Advanced Type & Linkage Harmonizer
                 if filename.endswith('.c'):
-                    # Match signatures: static [type] [name]([args]) {
-                    static_defs = re.findall(r'^(static\s+[\w\*]+\s+([\w\d_]+)\s*\([^)]*\))\s*\{', content, re.MULTILINE)
+                    # 1. Extract Enums and Structs to prevent "incomplete type" errors
+                    # This finds 'typedef struct { ... } name;' or 'enum name { ... };'
+                    type_defs = re.findall(r'((?:typedef\s+)?(?:struct|enum)\s*[\w\d_]*\s*\{[^}]+\}\s*[\w\d_]*\s*;)', content, re.DOTALL)
+                    for td in type_defs:
+                        content = content.replace(td, "") # Remove from original location
                     
-                    if static_defs:
-                        declarations = []
-                        for full_sig, func_name in static_defs:
-                            declarations.append(f"{full_sig};")
-                            # Also fix existing non-static declarations if they exist
-                            ptrn = r'^(?!(?:static|inline|#))([\w\*]+\s+' + re.escape(func_name) + r'\s*\([^;]*\);)'
-                            content = re.sub(ptrn, r'static \1', content, flags=re.MULTILINE)
-                        
-                        decl_block = "\n// [PATCHED FORWARD DECLARATIONS]\n" + "\n".join(declarations) + "\n"
-                        
-                        # Inject after the last include to ensure types are defined
-                        if "#include" in content:
-                            content = re.sub(r'(.*#include.*?\n)(?!#include)', r'\1' + decl_block, content, count=1, flags=re.DOTALL)
-                        else:
-                            content = decl_block + content
+                    # 2. Extract Static Function Signatures
+                    static_defs = re.findall(r'^(static\s+[\w\*]+\s+([\w\d_]+)\s*\([^)]*\))\s*\{', content, re.MULTILINE)
+                    declarations = [f"{sig};" for sig, name in static_defs]
 
-                # D. Ensure renamed headers have types
-                if filename in renames.values() and 'ultratypes.h' not in content:
-                    content = '#include "2.0L/PR/ultratypes.h"\n' + content
+                    # 3. Clean existing problematic forward declarations
+                    for _, name in static_defs:
+                        content = re.sub(r'^(static\s+)?[\w\*]+\s+' + re.escape(name) + r'\s*\([^;]*\);', "", content, flags=re.MULTILINE)
+
+                    # 4. Reconstruct the Header Block
+                    header_block = "\n// [AUTO-GENERATED COMPATIBILITY BLOCK]\n"
+                    header_block += "\n".join(type_defs) + "\n"
+                    header_block += "\n".join(declarations) + "\n"
+
+                    # 5. Inject after the last include
+                    if "#include" in content:
+                        content = re.sub(r'(.*#include.*?\n)(?!#include)', r'\1' + header_block, content, count=1, flags=re.DOTALL)
+                    else:
+                        content = header_block + content
 
                 if content != orig_content:
-                    with open(path, 'w') as f:
-                        f.write(content)
-                    print(f"  [✓] Patched {filename}")
+                    with open(path, 'w') as f: f.write(content)
+                    print(f"  [✓] Harmonized {filename}")
 
     print("--- Source Preparation Complete ---")
 
