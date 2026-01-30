@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(bkawrapper LANGUAGES C CXX)
 
+# Define source files
 add_library(bkawrapper SHARED
     ultra/NativeBridge.cpp
     ultra/otr_builder.cpp
@@ -12,6 +13,7 @@ add_library(bkawrapper SHARED
     tools/rare_decompression.cpp
 )
 
+# Configure Include Paths
 target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -23,17 +25,18 @@ target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/game_src
 )
 
+# Required for N64 headers to expose correct logic
 target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
 
-# FIXED: Safe global includes to provide size_t, uint8_t, and memcpy to all files
-# We separate standard headers from the legacy SDK header to prevent Clang errors
+# Global header injection (Removed spaces inside quotes)
 target_compile_options(bkawrapper PRIVATE
     "-include stddef.h"
     "-include stdint.h"
     "-include string.h"
-    "-include ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h"
+    "-include${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR/ultratypes.h"
 )
 
+# Linker setup
 find_library(log-lib log)
 find_library(android-lib android)
 find_library(jnigraphics-lib jnigraphics)
