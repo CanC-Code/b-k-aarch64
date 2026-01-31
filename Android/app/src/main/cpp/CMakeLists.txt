@@ -1,41 +1,43 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(bkawrapper LANGUAGES C CXX)
 
-# 1. Collect all harmonized game source files
+# 1. Explicitly define paths to Harmonized sources
+set(GAME_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
+set(GAME_INC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
+
+# 2. Collect ALL harmonized game source files
 file(GLOB_RECURSE GAME_SOURCES 
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+    "${GAME_SRC_DIR}/*.c"
+    "${GAME_SRC_DIR}/*.cpp"
 )
 
-# 2. Define the library and include all engine components
+# Debug: Print found files to the build log so we can verify the Harmonizer worked
+foreach(src ${GAME_SOURCES})
+    message(STATUS "Found Source: ${src}")
+endforeach()
+
+# 3. Define the library
 add_library(bkawrapper SHARED
     ${GAME_SOURCES}
-    ultra/NativeBridge.cpp
-    ultra/otr_builder.cpp
-    ultra/audio_helper.cpp
-    ultra/exceptasm.cpp
-    emulator/resource_mgr.cpp
-    emulator/pi_hle.cpp
-    emulator/stubs.cpp
-    tools/rare_decompression.cpp
+    # Link wrapper files directly from the parent directory if they exist there
+    NativeBridge.cpp
+    otr_builder.cpp
 )
 
-# 3. Compiler Definitions & Include Paths
-target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
+# 4. Include paths
 target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/tools
+    ${GAME_INC_DIR}
+    ${GAME_INC_DIR}/2.0L
+    ${GAME_INC_DIR}/2.0L/PR
+    ${GAME_SRC_DIR}
 )
 
-# 4. Compatibility flags for legacy code
-# -fcommon allows multiple definitions of global variables, common in N64 ports
+# 5. Compiler Flags
+target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
 target_compile_options(bkawrapper PRIVATE -w -fcommon -O3)
 
-# 5. Link standard Android & System libraries
+# 6. Link standard Android & System libraries
 find_library(log-lib log)
 find_library(android-lib android)
 find_library(z-lib z)
