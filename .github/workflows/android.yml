@@ -39,27 +39,24 @@ jobs:
 
       - name: Generate App Icons
         run: |
-          # Check if master icon exists before running your script
+          # Use your script if the icon exists, otherwise create a placeholder
           if [ -f "master_icon.png" ]; then
             python3 runtime/generate_icons.py master_icon.png
           else
-            echo "!! WARNING: master_icon.png not found in root. Using fallback to prevent packaging failure !!"
+            echo "master_icon.png missing, creating placeholders"
             mkdir -p Android/app/src/main/res/mipmap-mdpi
             convert -size 48x48 xc:blue Android/app/src/main/res/mipmap-mdpi/ic_launcher.png
-            convert -size 48x48 xc:blue Android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+            cp Android/app/src/main/res/mipmap-mdpi/ic_launcher.png Android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
           fi
 
-      - name: Prepare C++ Source (Harmonizer)
+      - name: Prepare C++ Source
         run: python3 runtime/prepare_source.py
 
       - name: Build with Gradle
         run: |
-          # Locate gradlew dynamically
           GRADLEW_PATH=$(find . -name gradlew)
           chmod +x "$GRADLEW_PATH"
           cd $(dirname "$GRADLEW_PATH")
-          
-          # Clean is mandatory to ensure the new icons and harmonized C++ files are indexed
           ./gradlew clean assembleDebug --no-daemon --stacktrace
 
       - name: Upload Debug APK
