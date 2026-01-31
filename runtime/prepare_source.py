@@ -1,5 +1,3 @@
-
-.../new/b-k-aarch64 $ git show 5b720c1bb707cd125e5879e746d88d37d09af390:runtime/prepare_source.py
 import os
 import shutil
 import re
@@ -17,7 +15,7 @@ class SourceHarmonizer:
         patterns = [
             r'((?:typedef\s+)?(?:struct|enum)\s*([\w\d_]*)\s*\{[^}]+\}\s*([\w\d_]*)\s*;)',
             r'(typedef\s+[\w\d_]+\s+([\w\d_]+)\s*;)',
-            r'(struct\s+([\w\d_]+)\s*;)' # Catch forward declarations too
+            r'(struct\s+([\w\d_]+)\s*;)' 
         ]
 
         for root, _, files in os.walk(self.root_path):
@@ -49,15 +47,12 @@ class SourceHarmonizer:
 
         orig_content = content
 
-        # A. Header Mapping (Syncing code with renamed physical files)
         for old_h, new_h in self.renames.items():
             content = content.replace(f'#include <{old_h}>', f'#include "{new_h}"')
             content = content.replace(f'#include "{old_h}"', f'#include "{new_h}"')
 
         content = re.sub(r'#include\s+["<](?:2\.0L/PR/)?sched\.h[">]', '#include "game_sched.h"', content)
 
-        # B. Dependency Injection
-        # Added 'ActorMarker' and more to the detection list
         is_core_header = any(x in content for x in ["ultra64.h", "gbi.h", "mbi.h"])
         potential_types = set(re.findall(r'\b([sS][\w\d_]+|[a-zA-Z_][\w\d_]*_t|audioInfo|Bitmap|Gfx|ActorMarker|Actor)\b', content))
 
@@ -68,14 +63,12 @@ class SourceHarmonizer:
                     guard = f"_GUARD_{type_name}"
                     needed_defs.append(f"#ifndef {guard}\n#define {guard}\n{self.symbol_db[type_name]}\n#endif")
 
-        # C. Linkage (Static vs Extern)
         static_funcs = re.findall(r'^static\s+[\w\*]+\s+([\w\d_]+)\s*\(', content, re.MULTILINE)
         prototypes = []
         for f in static_funcs:
             sig = re.search(r'^(static\s+[\w\*]+\s+' + re.escape(f) + r'\s*\([^)]*\))', content, re.MULTILINE)
             if sig: prototypes.append(f"{sig.group(1)};")
 
-        # Injection
         if needed_defs or prototypes:
             injection = "\n// --- AUTOMATED HARMONIZER v3 ---\n" + "\n".join(needed_defs + prototypes) + "\n"
             match = re.search(r'#include.*?\n', content)
@@ -91,18 +84,19 @@ def prepare_source():
     print("--- Starting Automated Source Harmonization v3 ---")
     android_cpp = "Android/app/src/main/cpp"
 
-    # 1. Sync & Setup
-    if os.path.exists(android_cpp): shutil.rmtree(android_cpp)
-    shutil.copytree("decomp-files/include", os.path.join(android_cpp, "include"))
-    shutil.copytree("decomp-files/src", os.path.join(android_cpp, "src"))
+    # Selective wipe to protect NativeBridge/CMake files
+    for sub in ["src", "include"]:
+        target = os.path.join(android_cpp, sub)
+        if os.path.exists(target): shutil.rmtree(target)
+        os.makedirs(target, exist_ok=True)
+
+    shutil.copytree("decomp-files/include", os.path.join(android_cpp, "include"), dirs_exist_ok=True)
+    shutil.copytree("decomp-files/src", os.path.join(android_cpp, "src"), dirs_exist_ok=True)
 
     harmonizer = SourceHarmonizer(android_cpp)
-
-    # 2. Fix physical file names first!
     harmonizer.rename_physical_headers()
-
-    # 3. Scan and Harmonize
     harmonizer.scan_symbols()
+    
     patched = 0
     for root, _, files in os.walk(android_cpp):
         for f in files:
