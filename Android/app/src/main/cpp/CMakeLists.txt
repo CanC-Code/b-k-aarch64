@@ -6,7 +6,7 @@ set(GAME_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(GAME_INC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 # 2. Collect ALL harmonized game source files
-file(GLOB_RECURSE GAME_SOURCES 
+file(GLOB_RECURSE GAME_SOURCES
     "${GAME_SRC_DIR}/*.c"
     "${GAME_SRC_DIR}/*.cpp"
 )
@@ -39,10 +39,10 @@ find_library(log-lib log)
 find_library(android-lib android)
 find_library(z-lib z)
 
-target_link_libraries(bkawrapper 
-    ${log-lib} 
-    ${android-lib} 
-    ${z-lib} 
-    atomic 
+target_link_libraries(bkawrapper
+    ${log-lib}
+    ${android-lib}
+    ${z-lib}
+    atomic
     m
 )
