@@ -40,8 +40,8 @@ jobs:
 
       - name: Prepare C++ Source for Build
         run: |
-          # Runs the Selective Harmonization script to prepare game files
-          # DO NOT 'touch' CMakeLists.txt as it can disrupt the NDK configuration
+          # Executes the Selective Harmonization v5 script
+          # This wipes game folders but PROTECTS NativeBridge.cpp and CMakeLists.txt
           python3 runtime/prepare_source.py
 
       - name: Build with Gradle
