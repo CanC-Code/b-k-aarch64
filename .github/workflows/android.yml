@@ -35,23 +35,31 @@ jobs:
           pip install PyYAML
 
       - name: Generate Binary Asset Manifests
-        run: |
-          python3 runtime/generate_assets_header.py
+        run: python3 runtime/generate_assets_header.py
 
-      - name: Prepare C++ Source for Build
+      - name: Generate App Icons
         run: |
-          # Executes the Selective Harmonization v5 script
-          # This wipes game folders but PROTECTS NativeBridge.cpp and CMakeLists.txt
-          python3 runtime/prepare_source.py
+          # Check if master icon exists before running your script
+          if [ -f "master_icon.png" ]; then
+            python3 runtime/generate_icons.py master_icon.png
+          else
+            echo "!! WARNING: master_icon.png not found in root. Using fallback to prevent packaging failure !!"
+            mkdir -p Android/app/src/main/res/mipmap-mdpi
+            convert -size 48x48 xc:blue Android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+            convert -size 48x48 xc:blue Android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+          fi
+
+      - name: Prepare C++ Source (Harmonizer)
+        run: python3 runtime/prepare_source.py
 
       - name: Build with Gradle
         run: |
-          # Dynamically find gradlew to handle different directory structures
+          # Locate gradlew dynamically
           GRADLEW_PATH=$(find . -name gradlew)
           chmod +x "$GRADLEW_PATH"
           cd $(dirname "$GRADLEW_PATH")
           
-          # 'clean' is required to force CMake to recognize the new folder structure
+          # Clean is mandatory to ensure the new icons and harmonized C++ files are indexed
           ./gradlew clean assembleDebug --no-daemon --stacktrace
 
       - name: Upload Debug APK
