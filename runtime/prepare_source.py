@@ -5,11 +5,11 @@ import re
 class SourceHarmonizer:
     def __init__(self, root_path):
         self.root_path = root_path
-        self.symbol_db = {} 
+        self.symbol_db = {}
         # Maps system headers to game-specific headers to avoid NDK collisions
         self.renames = {
-            "string.h": "game_string.h", 
-            "time.h": "game_time.h", 
+            "string.h": "game_string.h",
+            "time.h": "game_time.h",
             "sched.h": "game_sched.h"
         }
 
