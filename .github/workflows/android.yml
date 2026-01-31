@@ -40,16 +40,18 @@ jobs:
 
       - name: Prepare C++ Source for Build
         run: |
-          # Only run the script. DO NOT 'touch' CMakeLists.txt as it wipes your config.
+          # Runs the Selective Harmonization script to prepare game files
+          # DO NOT 'touch' CMakeLists.txt as it can disrupt the NDK configuration
           python3 runtime/prepare_source.py
 
       - name: Build with Gradle
         run: |
-          # Using the 'find' logic that successfully located gradlew in your logs
+          # Dynamically find gradlew to handle different directory structures
           GRADLEW_PATH=$(find . -name gradlew)
           chmod +x "$GRADLEW_PATH"
           cd $(dirname "$GRADLEW_PATH")
-          # 'clean' is mandatory to force CMake to see the new 'src/' structure
+          
+          # 'clean' is required to force CMake to recognize the new folder structure
           ./gradlew clean assembleDebug --no-daemon --stacktrace
 
       - name: Upload Debug APK
