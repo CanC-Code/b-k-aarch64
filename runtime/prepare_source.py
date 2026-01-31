@@ -46,24 +46,27 @@ def prepare_source():
                 content = re.sub(r'(\w+)\s+(\w+)\[(\d+)\]\s*=\s*([^;{]+);', 
                                  r'\1 \2[\3]; memcpy(\2, \4, \3); // [PATCHED]', content)
 
-                # C. Advanced Type & Linkage Harmonizer
-                if filename.endswith('.c'):
-                    # Fix n_alInit declaration conflict found in log
-                    content = content.replace('extern void n_alInit(N_ALGlobals *, ALSynConfig *);', 
-                                            '// [PATCHED] extern void n_alInit(N_ALGlobals *, ALSynConfig *);')
+                # C. Linkage Harmonizer (Fixes 'static follows non-static' errors)
+                # Finds static function definitions and ensures their forward declarations are also static
+                static_funcs = re.findall(r'^static\s+[\w\*]+\s+([\w\d_]+)\s*\(', content, re.MULTILINE)
+                for func_name in static_funcs:
+                    # Look for a non-static forward declaration of the same function
+                    ptrn = r'^([\w\*]+\s+' + re.escape(func_name) + r'\s*\([^;]*\);)'
+                    content = re.sub(ptrn, r'static \1', content, flags=re.MULTILINE)
 
                 # D. Fix Core Engine specific missing identifiers (code_1D00.c)
                 if filename == "code_1D00.c":
-                    injection = "\n// [PATCHED] Global declarations for missing core identifiers\n"
+                    # Fix n_alInit declaration conflict
+                    content = content.replace('extern void n_alInit(N_ALGlobals *, ALSynConfig *);', 
+                                            '// [PATCHED] extern void n_alInit(N_ALGlobals *, ALSynConfig *);')
                     
-                    # Inject audioManager global structure
+                    injection = "\n// [PATCHED] Global declarations for missing core identifiers\n"
                     if 'audioManager' in content and 'struct' not in content:
                         injection += "extern struct { \n    OSMesgQueue audioReplyMsgQ; \n    OSMesg audioReplyMsgBuf[8]; \n"
                         injection += "    OSMesgQueue audioFrameMsgQ; \n    OSMesg audioFrameMsgBuf[8]; \n"
                         injection += "    void* ACMDList[3]; \n    struct audioInfo* audioInfo[3]; \n"
                         injection += "    OSThread thread; \n} audioManager;\n"
                     
-                    # Inject D_8027D5B0 global structure
                     if 'D_8027D5B0' in content:
                         injection += "extern struct { int unk4; int unk8; } D_8027D5B0;\n"
                         
