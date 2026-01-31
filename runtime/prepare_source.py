@@ -42,58 +42,35 @@ def prepare_source():
                 content = re.sub(r'#include\s+["<](?:2\.0L/PR/)?sched\.h[">]', '#include "game_sched.h"', content)
                 content = re.sub(r'#include\s+["<](?:2\.0L/PR/)?string\.h[">]', '#include "game_string.h"', content)
 
-                # B. Leafboat Fix + Memcpy Header Check
-                if 'memcpy(' in content or '=' in content:
-                    if 'memcpy' in re.findall(r'(\w+)\s+(\w+)\[(\d+)\]\s*=\s*([^;{]+);', content):
-                        if "#include <string.h>" not in content and "#include \"game_string.h\"" not in content:
-                            content = "#include \"game_string.h\"\n" + content
-                    
-                    content = re.sub(r'(\w+)\s+(\w+)\[(\d+)\]\s*=\s*([^;{]+);', 
-                                     r'\1 \2[\3]; memcpy(\2, \4, \3); // [PATCHED]', content)
+                # B. Fix memory copies and legacy assignments
+                content = re.sub(r'(\w+)\s+(\w+)\[(\d+)\]\s*=\s*([^;{]+);', 
+                                 r'\1 \2[\3]; memcpy(\2, \4, \3); // [PATCHED]', content)
 
                 # C. Advanced Type & Linkage Harmonizer
                 if filename.endswith('.c'):
-                    type_defs = re.findall(r'((?:typedef\s+)?(?:struct|enum)\s*([\w\d_]*)\s*\{[^}]+\}\s*([\w\d_]*)\s*;)', content, re.DOTALL)
-                    static_defs = re.findall(r'^(static\s+[\w\*]+\s+([\w\d_]+)\s*\([^)]*\))\s*\{', content, re.MULTILINE)
-
-                    if type_defs or static_defs:
-                        header_block = "\n// [PATCHED TYPE & FUNCTION BLOCK]\n"
-                        for full_type, name1, name2 in type_defs:
-                            t_name = name1 if name1 else name2
-                            safe_type = f"#ifndef _TYPE_{t_name}\n#define _TYPE_{t_name}\n{full_type}\n#endif\n"
-                            header_block += safe_type
-                            content = content.replace(full_type, f"// [MOVED TO TOP: {t_name}]\n")
-                        
-                        for full_sig, func_name in static_defs:
-                            header_block += f"{full_sig};\n"
-                            ptrn = r'^(?!(?:static|inline|#))([\w\*]+\s+' + re.escape(func_name) + r'\s*\([^;]*\);)'
-                            content = re.sub(ptrn, r'static \1', content, flags=re.MULTILINE)
-
-                        include_matches = list(re.finditer(r'#include.*?\n', content))
-                        if include_matches:
-                            insert_pos = include_matches[-1].end()
-                            content = content[:insert_pos] + header_block + content[insert_pos:]
-                        else:
-                            content = header_block + content
-
-                # D. Fix for audioManager & n_alInit (Specific to core engine)
-                if filename == "code_1D00.c":
-                    # Fix n_alInit declaration conflict
+                    # Fix n_alInit declaration conflict found in log
                     content = content.replace('extern void n_alInit(N_ALGlobals *, ALSynConfig *);', 
                                             '// [PATCHED] extern void n_alInit(N_ALGlobals *, ALSynConfig *);')
+
+                # D. Fix Core Engine specific missing identifiers (code_1D00.c)
+                if filename == "code_1D00.c":
+                    injection = "\n// [PATCHED] Global declarations for missing core identifiers\n"
                     
-                    # Inject audioManager global declaration if missing
+                    # Inject audioManager global structure
                     if 'audioManager' in content and 'struct' not in content:
-                        injection = "\n// [PATCHED] Global audioManager declaration\n"
                         injection += "extern struct { \n    OSMesgQueue audioReplyMsgQ; \n    OSMesg audioReplyMsgBuf[8]; \n"
                         injection += "    OSMesgQueue audioFrameMsgQ; \n    OSMesg audioFrameMsgBuf[8]; \n"
                         injection += "    void* ACMDList[3]; \n    struct audioInfo* audioInfo[3]; \n"
                         injection += "    OSThread thread; \n} audioManager;\n"
+                    
+                    # Inject D_8027D5B0 global structure
+                    if 'D_8027D5B0' in content:
+                        injection += "extern struct { int unk4; int unk8; } D_8027D5B0;\n"
                         
-                        include_matches = list(re.finditer(r'#include.*?\n', content))
-                        if include_matches:
-                            insert_pos = include_matches[-1].end()
-                            content = content[:insert_pos] + injection + content[insert_pos:]
+                    include_matches = list(re.finditer(r'#include.*?\n', content))
+                    if include_matches:
+                        insert_pos = include_matches[-1].end()
+                        content = content[:insert_pos] + injection + content[insert_pos:]
 
                 if content != orig_content:
                     with open(path, 'w') as f: f.write(content)
