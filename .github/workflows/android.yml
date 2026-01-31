@@ -62,7 +62,7 @@ jobs:
           chmod +x "$GRADLEW_PATH"
           cd $(dirname "$GRADLEW_PATH")
           
-          # Clean is critical to force CMake to re-scan for files
+          # [span_12](start_span)Clean is critical to force CMake to re-scan for files[span_12](end_span)
           ./gradlew clean assembleDebug --no-daemon --stacktrace
 
       - name: Verify Shared Library in APK
