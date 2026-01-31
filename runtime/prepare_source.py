@@ -34,71 +34,74 @@ def prepare_source():
 
                 orig_content = content
 
-                # A. Update includes & Flatten legacy paths
+                # A. Update includes
                 for old_h, new_h in renames.items():
                     content = content.replace(f'#include <{old_h}>', f'#include "{new_h}"')
                     content = content.replace(f'#include "{old_h}"', f'#include "{new_h}"')
                 
                 content = re.sub(r'#include\s+["<](?:2\.0L/PR/)?sched\.h[">]', '#include "game_sched.h"', content)
-                content = re.sub(r'#include\s+["<](?:2\.0L/PR/)?string\.h[">]', '#include "game_string.h"', content)
 
-                # B. Fix memory copies
+                # B. Fix legacy array assignments
                 content = re.sub(r'(\w+)\s+(\w+)\[(\d+)\]\s*=\s*([^;{]+);', 
                                  r'\1 \2[\3]; memcpy(\2, \4, \3); // [PATCHED]', content)
 
                 # C. Linkage & Guarded Type Harmonizer
                 if filename.endswith('.c'):
-                    # Match structs/enums: capturing the name for the guard
-                    # This regex looks for: typedef (opt) struct/enum NAME { ... } NAME (opt);
                     type_pattern = r'((?:typedef\s+)?(?:struct|enum)\s*([\w\d_]*)\s*\{[^}]+\}\s*([\w\d_]*)\s*;)'
                     type_matches = re.findall(type_pattern, content, re.DOTALL)
-                    
                     static_funcs = re.findall(r'^static\s+[\w\*]+\s+([\w\d_]+)\s*\(', content, re.MULTILINE)
                     
                     if type_matches or static_funcs:
                         header_block = "\n// [PATCHED TYPE & PROTOTYPE BLOCK]\n"
-                        
                         for full_def, name1, name2 in type_matches:
-                            # Use name1 (struct name) or name2 (typedef name) for the guard
                             t_name = name1 if name1 else name2
                             if t_name:
-                                guarded_type = f"#ifndef _GUARD_{t_name}\n#define _GUARD_{t_name}\n{full_def}\n#endif\n"
-                                header_block += guarded_type
+                                header_block += f"#ifndef _GUARD_{t_name}\n#define _GUARD_{t_name}\n{full_def}\n#endif\n"
                                 content = content.replace(full_def, f"// [MOVED: {t_name}]\n")
                         
                         for func_name in static_funcs:
                             sig_match = re.search(r'^(static\s+[\w\*]+\s+' + re.escape(func_name) + r'\s*\([^)]*\))', content, re.MULTILINE)
-                            if sig_match:
-                                header_block += f"{sig_match.group(1)};\n"
-                            # Fix non-static forward declarations
-                            ptrn = r'^([\w\*]+\s+' + re.escape(func_name) + r'\s*\([^;]*\);)'
-                            content = re.sub(ptrn, r'static \1', content, flags=re.MULTILINE)
+                            if sig_match: header_block += f"{sig_match.group(1)};\n"
+                            content = re.sub(r'^([\w\*]+\s+' + re.escape(func_name) + r'\s*\([^;]*\);)', r'static \1', content, flags=re.MULTILINE)
 
                         include_matches = list(re.finditer(r'#include.*?\n', content))
                         if include_matches:
                             insert_pos = include_matches[-1].end()
                             content = content[:insert_pos] + header_block + content[insert_pos:]
-                        else:
-                            content = header_block + content
 
-                # D. Fix Core Engine specific missing identifiers (code_1D00.c)
+                # D. CORE ENGINE REPAIR (Specifically for src/core1/code_1D00.c)
                 if filename == "code_1D00.c":
-                    content = content.replace('extern void n_alInit(N_ALGlobals *, ALSynConfig *);', 
-                                            '// [PATCHED] alInit')
+                    # Fix n_alInit redefinition
+                    content = content.replace('extern void n_alInit(N_ALGlobals *, ALSynConfig *);', '// [REMOVED CONFLICT]')
                     
-                    if 'audioManager' in content and 'extern struct' not in content:
-                        injection = (
-                            "\n#ifndef _AM_GUARD\n#define _AM_GUARD\n"
-                            "extern struct { \n    OSMesgQueue audioReplyMsgQ; \n    OSMesg audioReplyMsgBuf[8]; \n"
-                            "    OSMesgQueue audioFrameMsgQ; \n    OSMesg audioFrameMsgBuf[8]; \n"
-                            "    void* ACMDList[3]; \n    struct audioInfo* audioInfo[3]; \n"
-                            "    OSThread thread; \n} audioManager;\n"
-                            "#endif\n"
-                        )
-                        if 'D_8027D5B0' in content:
-                            injection += "extern struct { int unk4; int unk8; } D_8027D5B0;\n"
-                        
-                        content = content.replace("#include \"game_sched.h\"", "#include \"game_sched.h\"\n" + injection)
+                    # Complete Structure injection for missing core variables
+                    injection = """
+#ifndef _CORE_FIX_1D00
+#define _CORE_FIX_1D00
+// Corrected struct for D_8027D5B0 to include unk0
+extern struct {
+    int unk0;
+    int unk4;
+    int unk8;
+} D_8027D5B0;
+
+// Corrected audioManager structure for thread and queue handling
+extern struct {
+    OSMesgQueue audioReplyMsgQ;
+    OSMesg      audioReplyMsgBuf[8];
+    OSMesgQueue audioFrameMsgQ;
+    OSMesg      audioFrameMsgBuf[8];
+    void* ACMDList[3];
+    struct audioInfo* audioInfo[3];
+    OSThread    thread;
+} audioManager;
+#endif
+"""
+                    # Inject after the includes to ensure types like OSThread are known
+                    include_matches = list(re.finditer(r'#include.*?\n', content))
+                    if include_matches:
+                        insert_pos = include_matches[-1].end()
+                        content = content[:insert_pos] + injection + content[insert_pos:]
 
                 if content != orig_content:
                     with open(path, 'w') as f: f.write(content)
