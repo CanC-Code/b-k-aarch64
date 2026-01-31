@@ -70,15 +70,27 @@ jobs:
           # Clean is recommended once after source injection to ensure no stale objects
           ./gradlew clean assembleDebug --no-daemon --stacktrace
 
-      # Step 5: Verification of Binary
+      # Step 5: Robust Verification of Binary
       - name: Verify Shared Library
         run: |
-          SO_FILE=$(find Android/app/build -name "libbkawrapper.so" | head -n 1)
+          echo "Searching for native library..."
+          # Broaden search to include intermediate folders where NDK outputs .so files
+          SO_FILE=$(find Android/app/build -name "libbkawrapper.so" -type f | grep "arm64-v8a" | head -n 1)
+          
+          if [ -z "$SO_FILE" ]; then
+            # Backup search in the .cxx directory if intermediates fail
+            SO_FILE=$(find Android/app/.cxx -name "libbkawrapper.so" -type f | grep "arm64-v8a" | head -n 1)
+          fi
+
           if [ -f "$SO_FILE" ]; then
+            echo "Found Library at: $SO_FILE"
             echo "Final Binary Size:"
             ls -lh "$SO_FILE"
           else
-            echo "Warning: libbkawrapper.so not found!"
+            echo "Error: libbkawrapper.so for arm64-v8a not found!"
+            echo "Listing build directory for debugging:"
+            find Android/app/build -maxdepth 4
+            exit 1
           fi
 
       - name: Upload Debug APK
