@@ -52,15 +52,16 @@ jobs:
 
       - name: Prepare C++ Source for Build
         run: |
-          # Only run the harmonizer. No 'touch' command here anymore.
+          # Runs the v5 selective harmonizer to patch game files
           python3 runtime/prepare_source.py
 
       - name: Build with Gradle
         run: |
-          # Dynamically find gradlew to avoid 'No such file' errors
+          # [span_13](start_span)Dynamically find gradlew to avoid 'No such file' errors[span_13](end_span)
           GRADLEW_PATH=$(find . -name gradlew)
           chmod +x "$GRADLEW_PATH"
           cd $(dirname "$GRADLEW_PATH")
+          # Clean ensures a fresh CMake state for the new file paths
           ./gradlew clean assembleDebug --no-daemon --stacktrace
 
       - name: Verify Shared Library in APK
@@ -70,7 +71,6 @@ jobs:
           
           if [ -f "$APK_PATH" ]; then
             echo "Found APK at $APK_PATH"
-            # Verify the engine library is physically inside the zip
             if unzip -l "$APK_PATH" | grep "libbkawrapper.so"; then
               echo "Verification Success: libbkawrapper.so is present."
             else
