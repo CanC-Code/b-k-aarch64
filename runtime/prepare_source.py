@@ -41,11 +41,9 @@ class SourceHarmonizer:
             content = f.read()
         
         orig = content
-        # Sync Includes
         for old_h, new_h in self.renames.items():
             content = content.replace(f'<{old_h}>', f'"{new_h}"').replace(f'"{old_h}"', f'"{new_h}"')
         
-        # Inject Types (Actor, Gfx, etc)
         is_core = any(x in content for x in ["ultra64.h", "gbi.h"])
         potential = set(re.findall(r'\b([sS][\w\d_]+|[a-zA-Z_][\w\d_]*_t|Bitmap|Gfx|ActorMarker|Actor)\b', content))
         
@@ -56,7 +54,7 @@ class SourceHarmonizer:
                     needed.append(f"#ifndef _G_{t}\n#define _G_{t}\n{self.symbol_db[t]}\n#endif")
 
         if needed:
-            content = "// --- HARMONIZER v4 ---\n" + "\n".join(needed) + "\n" + content
+            content = "// --- HARMONIZER v5 ---\n" + "\n".join(needed) + "\n" + content
 
         if content != orig:
             with open(path, 'w') as f: f.write(content)
@@ -64,18 +62,27 @@ class SourceHarmonizer:
         return False
 
 def prepare_source():
-    android_cpp = "Android/app/src/main/cpp"
-    if os.path.exists(android_cpp): shutil.rmtree(android_cpp)
-    os.makedirs(android_cpp)
-    shutil.copytree("decomp-files/include", os.path.join(android_cpp, "include"))
-    shutil.copytree("decomp-files/src", os.path.join(android_cpp, "src"))
+    print("--- Starting Selective Harmonization v5 ---")
+    cpp_root = "Android/app/src/main/cpp"
+    gen_src = os.path.join(cpp_root, "src")
+    gen_inc = os.path.join(cpp_root, "include")
 
-    harmonizer = SourceHarmonizer(android_cpp)
+    # [span_0](start_span)ONLY wipe the generated game directories[span_0](end_span)
+    for folder in [gen_src, gen_inc]:
+        if os.path.exists(folder):
+            print(f"  [!] Cleaning generated folder: {folder}")
+            shutil.rmtree(folder)
+
+    # Re-sync from your decomp-files
+    shutil.copytree("decomp-files/include", gen_inc)
+    shutil.copytree("decomp-files/src", gen_src)
+
+    harmonizer = SourceHarmonizer(cpp_root)
     harmonizer.rename_physical_headers()
     harmonizer.scan_symbols()
     
     count = 0
-    for root, _, files in os.walk(android_cpp):
+    for root, _, files in os.walk(cpp_root):
         for f in files:
             if f.endswith(('.c', '.h')) and harmonizer.harmonize_file(os.path.join(root, f)):
                 count += 1
