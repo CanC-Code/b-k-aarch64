@@ -11,17 +11,17 @@ file(GLOB_RECURSE GAME_SOURCES
     "${GAME_SRC_DIR}/*.cpp"
 )
 
-# Debug: Print found files to the build log so we can verify the Harmonizer worked
-foreach(src ${GAME_SOURCES})
-    message(STATUS "Found Source: ${src}")
-endforeach()
-
-# 3. Define the library
+# 3. Define the library with absolute paths for bridge files
 add_library(bkawrapper SHARED
     ${GAME_SOURCES}
-    # Link wrapper files directly from the parent directory if they exist there
-    NativeBridge.cpp
-    otr_builder.cpp
+    "${CMAKE_CURRENT_SOURCE_DIR}/NativeBridge.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/otr_builder.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/audio_helper.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/exceptasm.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/emulator/resource_mgr.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/emulator/pi_hle.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/emulator/stubs.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tools/rare_decompression.cpp"
 )
 
 # 4. Include paths
@@ -31,6 +31,8 @@ target_include_directories(bkawrapper PRIVATE
     ${GAME_INC_DIR}/2.0L
     ${GAME_INC_DIR}/2.0L/PR
     ${GAME_SRC_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tools
+    ${CMAKE_CURRENT_SOURCE_DIR}/emulator
 )
 
 # 5. Compiler Flags
