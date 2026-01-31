@@ -52,17 +52,17 @@ jobs:
 
       - name: Prepare C++ Source for Build
         run: |
-          # Patching game engine files
+          # Patching game engine files via the harmonizer
           python3 runtime/prepare_source.py
 
       - name: Build with Gradle
         run: |
-          # Find gradlew dynamically to avoid 'No such file' errors
+          # Robust finding of gradlew used in latest successful steps
           GRADLEW_PATH=$(find . -name gradlew)
           chmod +x "$GRADLEW_PATH"
           cd $(dirname "$GRADLEW_PATH")
           
-          # Clean is critical to force CMake to re-scan for NativeBridge.cpp
+          # Clean is critical to force CMake to re-scan for files
           ./gradlew clean assembleDebug --no-daemon --stacktrace
 
       - name: Verify Shared Library in APK
@@ -74,7 +74,7 @@ jobs:
             if unzip -l "$APK_PATH" | grep "libbkawrapper.so"; then
               echo "Verification Success: libbkawrapper.so is present."
             else
-              echo "CRITICAL ERROR: libbkawrapper.so is missing from the APK!"
+              echo "CRITICAL ERROR: libbkawrapper.so is missing from APK!"
               exit 1
             fi
           else
