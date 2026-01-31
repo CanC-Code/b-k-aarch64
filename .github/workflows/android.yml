@@ -38,7 +38,7 @@ jobs:
         run: |
           python3 runtime/generate_assets_header.py
           if [ ! -f "Android/app/src/main/assets/manifest_us.bin" ]; then
-            echo "Error: manifest_us.bin not found!"
+            echo "Error: manifest_us.bin was NOT generated!"
             exit 1
           fi
 
@@ -50,34 +50,35 @@ jobs:
           fi
           python3 runtime/generate_icons.py master_icon.png
 
-      - name: Prepare C++ Source
+      - name: Prepare C++ Source for Build
         run: |
-          # Patching game files via the harmonizer
+          # Patching game engine files
           python3 runtime/prepare_source.py
 
       - name: Build with Gradle
         run: |
-          # Robust finding of gradlew
+          # Find gradlew dynamically to avoid 'No such file' errors
           GRADLEW_PATH=$(find . -name gradlew)
           chmod +x "$GRADLEW_PATH"
           cd $(dirname "$GRADLEW_PATH")
           
-          # Clean is critical here to force CMake to re-evaluate the new paths
+          # Clean is critical to force CMake to re-scan for NativeBridge.cpp
           ./gradlew clean assembleDebug --no-daemon --stacktrace
 
-      - name: Verify APK Contents
+      - name: Verify Shared Library in APK
         run: |
-          echo "Verifying native library in APK..."
+          echo "Checking APK for native library..."
           APK_PATH=$(find . -name "*.apk" | grep "debug" | head -n 1)
+          
           if [ -f "$APK_PATH" ]; then
             if unzip -l "$APK_PATH" | grep "libbkawrapper.so"; then
-              echo "Verification Success: libbkawrapper.so found."
+              echo "Verification Success: libbkawrapper.so is present."
             else
-              echo "CRITICAL FAILURE: libbkawrapper.so is missing from APK!"
+              echo "CRITICAL ERROR: libbkawrapper.so is missing from the APK!"
               exit 1
             fi
           else
-            echo "Error: Debug APK not found."
+            echo "Error: APK file was not found!"
             exit 1
           fi
 
