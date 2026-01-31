@@ -1,19 +1,19 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(bkawrapper LANGUAGES C CXX)
 
-# 1. Define paths clearly using absolute references
+# 1. Define internal paths clearly
 set(BRIDGE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(GAME_SRC_DIR "${BRIDGE_DIR}/src")
 set(GAME_INC_DIR "${BRIDGE_DIR}/include")
 
-# 2. Collect ALL harmonized game source files
+# 2. Collect all game sources patched by the harmonizer
 file(GLOB_RECURSE GAME_SOURCES 
     "${GAME_SRC_DIR}/*.c"
     "${GAME_SRC_DIR}/*.cpp"
 )
 
-# 3. Define the library with absolute paths for bridge files
-# This fixes the "Cannot find source file" error for NativeBridge.cpp
+# 3. Add the library with explicit paths for all bridge files
+# This directly addresses the "Cannot find source file" error
 add_library(bkawrapper SHARED
     ${GAME_SOURCES}
     "${BRIDGE_DIR}/NativeBridge.cpp"
@@ -22,7 +22,7 @@ add_library(bkawrapper SHARED
     "${BRIDGE_DIR}/exceptasm.cpp"
 )
 
-# 4. Global Include paths
+# 4. Comprehensive Include paths
 target_include_directories(bkawrapper PRIVATE
     "${BRIDGE_DIR}"
     "${GAME_INC_DIR}"
@@ -31,7 +31,7 @@ target_include_directories(bkawrapper PRIVATE
     "${GAME_SRC_DIR}"
 )
 
-# 5. Compiler Flags
+# 5. Compiler Flags for Portability
 target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
 target_compile_options(bkawrapper PRIVATE -w -fcommon -O3)
 
