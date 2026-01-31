@@ -6,6 +6,7 @@ class SourceHarmonizer:
     def __init__(self, root_path):
         self.root_path = root_path
         self.symbol_db = {}
+        # Maps system headers to game-specific headers to avoid NDK collisions
         self.renames = {
             "string.h": "game_string.h",
             "time.h": "game_time.h",
@@ -48,6 +49,7 @@ class SourceHarmonizer:
         try:
             with open(path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
+            
             orig = content
             for old_h, new_h in self.renames.items():
                 content = content.replace(f'<{old_h}>', f'"{new_h}"').replace(f'"{old_h}"', f'"{new_h}"')
@@ -78,19 +80,24 @@ def prepare_source():
     cpp_root = "Android/app/src/main/cpp"
     gen_src = os.path.join(cpp_root, "src")
     gen_inc = os.path.join(cpp_root, "include")
-
+    
     if not os.path.exists("decomp-files"):
         print("  [!] Error: 'decomp-files' directory not found!")
         return
 
+    # 1. Selective Wipe: ONLY clean engine subdirectories
     for folder in [gen_src, gen_inc]:
         if os.path.exists(folder):
+            print(f"  [!] Cleaning generated folder: {folder}")
             shutil.rmtree(folder)
         os.makedirs(folder, exist_ok=True)
 
+    # 2. Sync: Copy fresh files from your decomp source
+    print("  [>] Syncing fresh source and headers...")
     shutil.copytree("decomp-files/src", gen_src, dirs_exist_ok=True)
     shutil.copytree("decomp-files/include", gen_inc, dirs_exist_ok=True)
 
+    # 3. Process: Harmonize everything within the cpp_root
     harmonizer = SourceHarmonizer(cpp_root)
     harmonizer.rename_physical_headers()
     harmonizer.scan_symbols()
