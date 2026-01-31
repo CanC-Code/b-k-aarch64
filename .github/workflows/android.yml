@@ -54,36 +54,35 @@ jobs:
           fi
           python3 runtime/generate_icons.py master_icon.png
 
-      # Step 3: Prepare Source (THE DANGEROUS TOUCH IS GONE)
+      # Step 3: Prepare Source
       - name: Prepare C++ Source for Build
         run: |
           python3 runtime/prepare_source.py
-          # Note: We no longer 'touch' CMakeLists.txt. 
-          # Your prepare_source.py v5 handles the selective wipe of game files.
 
-      # Step 4: Build Application
+      # Step 4: Build Application (Restored Robust Pathing)
       - name: Build with Gradle
         run: |
-          chmod +x gradlew
-          # Running clean ensures CMake re-scans the 100+ files patched by Python
+          # Find gradlew in the root or subfolders
+          GRADLEW_PATH=$(find . -name gradlew)
+          chmod +x "$GRADLEW_PATH"
+          
+          # Navigate to where gradlew lives and run the build
+          cd $(dirname "$GRADLEW_PATH")
           ./gradlew clean assembleDebug --no-daemon --stacktrace
-        working-directory: Android
 
-      # Step 5: Verification (Proof the engine is actually in the APK)
+      # Step 5: Verification (Look inside the APK)
       - name: Verify Shared Library
         run: |
           echo "Checking APK for native library..."
-          APK_PATH=$(find Android/app/build/outputs/apk/debug -name "*.apk" | head -n 1)
+          # Broad search for the APK
+          APK_PATH=$(find . -name "*.apk" | grep "debug" | head -n 1)
           
           if [ -f "$APK_PATH" ]; then
             echo "APK generated at $APK_PATH"
-            # unzip -l lists contents. We MUST see libbkawrapper.so here.
             if unzip -l "$APK_PATH" | grep "libbkawrapper.so"; then
               echo "Verification Success: libbkawrapper.so is present in APK."
-              unzip -l "$APK_PATH" | grep "libbkawrapper.so"
             else
               echo "CRITICAL ERROR: libbkawrapper.so is MISSING from the APK!"
-              echo "Check your CMakeLists.txt source paths."
               exit 1
             fi
           else
