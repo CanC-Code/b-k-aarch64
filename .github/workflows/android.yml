@@ -39,13 +39,13 @@ jobs:
 
       - name: Generate App Icons
         run: |
-          # Use your script if the icon exists, otherwise create a placeholder
+          # Restoring icon generation to fix packaging error
           if [ -f "master_icon.png" ]; then
             python3 runtime/generate_icons.py master_icon.png
           else
-            echo "master_icon.png missing, creating placeholders"
+            echo "master_icon.png not found, building with dummy icon"
             mkdir -p Android/app/src/main/res/mipmap-mdpi
-            convert -size 48x48 xc:blue Android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+            convert -size 48x48 xc:gray Android/app/src/main/res/mipmap-mdpi/ic_launcher.png
             cp Android/app/src/main/res/mipmap-mdpi/ic_launcher.png Android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
           fi
 
@@ -57,6 +57,7 @@ jobs:
           GRADLEW_PATH=$(find . -name gradlew)
           chmod +x "$GRADLEW_PATH"
           cd $(dirname "$GRADLEW_PATH")
+          # CLEAN is vital here to re-link your new icons
           ./gradlew clean assembleDebug --no-daemon --stacktrace
 
       - name: Upload Debug APK
