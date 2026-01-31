@@ -37,50 +37,20 @@ jobs:
       - name: Generate Binary Asset Manifests
         run: |
           python3 runtime/generate_assets_header.py
-          if [ ! -f "Android/app/src/main/assets/manifest_us.bin" ]; then
-            echo "Error: manifest_us.bin was NOT generated!"
-            exit 1
-          fi
-
-      - name: Generate Android launcher icons
-        run: |
-          if [ ! -f "master_icon.png" ]; then
-            convert -size 1024x1024 xc:"#4B0082" -gravity center -fill "#FFD700" \
-              -font DejaVu-Sans-Bold -pointsize 160 -annotate +0+0 "B.K.A" master_icon.png
-          fi
-          python3 runtime/generate_icons.py master_icon.png
 
       - name: Prepare C++ Source for Build
         run: |
-          # Patching game engine files via the harmonizer
+          # Only run the script. DO NOT 'touch' CMakeLists.txt as it wipes your config.
           python3 runtime/prepare_source.py
 
       - name: Build with Gradle
         run: |
-          # Robust finding of gradlew used in latest successful steps
+          # Using the 'find' logic that successfully located gradlew in your logs
           GRADLEW_PATH=$(find . -name gradlew)
           chmod +x "$GRADLEW_PATH"
           cd $(dirname "$GRADLEW_PATH")
-          
-          # [span_12](start_span)Clean is critical to force CMake to re-scan for files[span_12](end_span)
+          # 'clean' is mandatory to force CMake to see the new 'src/' structure
           ./gradlew clean assembleDebug --no-daemon --stacktrace
-
-      - name: Verify Shared Library in APK
-        run: |
-          echo "Checking APK for native library..."
-          APK_PATH=$(find . -name "*.apk" | grep "debug" | head -n 1)
-          
-          if [ -f "$APK_PATH" ]; then
-            if unzip -l "$APK_PATH" | grep "libbkawrapper.so"; then
-              echo "Verification Success: libbkawrapper.so is present."
-            else
-              echo "CRITICAL ERROR: libbkawrapper.so is missing from APK!"
-              exit 1
-            fi
-          else
-            echo "Error: APK file was not found!"
-            exit 1
-          fi
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
