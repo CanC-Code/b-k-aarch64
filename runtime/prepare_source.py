@@ -6,7 +6,6 @@ class SourceHarmonizer:
     def __init__(self, root_path):
         self.root_path = root_path
         self.symbol_db = {}
-        # Maps system headers to game-specific headers to avoid NDK collisions
         self.renames = {
             "string.h": "game_string.h",
             "time.h": "game_time.h",
@@ -15,7 +14,6 @@ class SourceHarmonizer:
 
     def scan_symbols(self):
         print("  [>] Scanning for global types and structs...")
-        # Patterns to find typedefs and struct definitions in the decomp files
         patterns = [
             r'((?:typedef\s+)?(?:struct|enum)\s*([\w\d_]*)\s*\{[^}]+\}\s*([\w\d_]*)\s*;)',
             r'(typedef\s+[\w\d_]+\s+([\w\d_]+)\s*;)',
@@ -50,13 +48,10 @@ class SourceHarmonizer:
         try:
             with open(path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
-            
             orig = content
-            # Update include statements to point to renamed headers
             for old_h, new_h in self.renames.items():
                 content = content.replace(f'<{old_h}>', f'"{new_h}"').replace(f'"{old_h}"', f'"{new_h}"')
             
-            # Identify required symbols for the file
             is_core = any(x in content for x in ["ultra64.h", "gbi.h"])
             potential = set(re.findall(r'\b([sS][\w\d_]+|[a-zA-Z_][\w\d_]*_t|Bitmap|Gfx|ActorMarker|Actor)\b', content))
             
@@ -64,7 +59,6 @@ class SourceHarmonizer:
             if not is_core:
                 for t in potential:
                     if t in self.symbol_db and f"struct {t}" not in content:
-                        # Prevent duplicate injection
                         if f"#ifndef _G_{t}" not in content:
                             needed.append(f"#ifndef _G_{t}\n#define _G_{t}\n{self.symbol_db[t]}\n#endif")
 
@@ -81,30 +75,22 @@ class SourceHarmonizer:
 
 def prepare_source():
     print("--- Starting Selective Harmonization v5 ---")
-    
-    # Project Paths
     cpp_root = "Android/app/src/main/cpp"
     gen_src = os.path.join(cpp_root, "src")
     gen_inc = os.path.join(cpp_root, "include")
-    
-    # Check if decomp sources exist
+
     if not os.path.exists("decomp-files"):
         print("  [!] Error: 'decomp-files' directory not found!")
         return
 
-    # 1. Selective Wipe: Clean subdirectories but PROTECT root files (NativeBridge.cpp, etc.)
     for folder in [gen_src, gen_inc]:
         if os.path.exists(folder):
-            print(f"  [!] Cleaning generated folder: {folder}")
             shutil.rmtree(folder)
         os.makedirs(folder, exist_ok=True)
 
-    # 2. Sync: Copy fresh files into the structure
-    print("  [>] Syncing fresh source and headers...")
     shutil.copytree("decomp-files/src", gen_src, dirs_exist_ok=True)
     shutil.copytree("decomp-files/include", gen_inc, dirs_exist_ok=True)
 
-    # 3. Process: Harmonize everything within the cpp_root
     harmonizer = SourceHarmonizer(cpp_root)
     harmonizer.rename_physical_headers()
     harmonizer.scan_symbols()
@@ -115,7 +101,6 @@ def prepare_source():
             if f.endswith(('.c', '.h')):
                 if harmonizer.harmonize_file(os.path.join(root, f)):
                     count += 1
-                    
     print(f"--- Finished: Patched {count} files ---")
 
 if __name__ == "__main__":
