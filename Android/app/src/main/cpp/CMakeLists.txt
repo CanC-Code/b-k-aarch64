@@ -1,37 +1,36 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(bkawrapper LANGUAGES C CXX)
 
-# 1. Define internal paths clearly
-set(BRIDGE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
-set(GAME_SRC_DIR "${BRIDGE_DIR}/src")
-set(GAME_INC_DIR "${BRIDGE_DIR}/include")
+# 1. Define paths to Harmonized sources (created by the python script)
+set(GAME_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
+set(GAME_INC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
-# 2. Collect all game sources patched by the harmonizer
+# 2. Collect ALL harmonized game source files
 file(GLOB_RECURSE GAME_SOURCES 
     "${GAME_SRC_DIR}/*.c"
     "${GAME_SRC_DIR}/*.cpp"
 )
 
-# 3. Add the library with explicit paths for all bridge files
-# This directly addresses the "Cannot find source file" error
+# 3. Define the library
 add_library(bkawrapper SHARED
     ${GAME_SOURCES}
-    "${BRIDGE_DIR}/NativeBridge.cpp"
-    "${BRIDGE_DIR}/otr_builder.cpp"
-    "${BRIDGE_DIR}/audio_helper.cpp"
-    "${BRIDGE_DIR}/exceptasm.cpp"
+    # Using absolute paths ensures Ninja finds these even during a 'clean' build
+    "${CMAKE_CURRENT_SOURCE_DIR}/NativeBridge.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/otr_builder.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/audio_helper.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/exceptasm.cpp"
 )
 
-# 4. Comprehensive Include paths
+# 4. Include paths
 target_include_directories(bkawrapper PRIVATE
-    "${BRIDGE_DIR}"
-    "${GAME_INC_DIR}"
-    "${GAME_INC_DIR}/2.0L"
-    "${GAME_INC_DIR}/2.0L/PR"
-    "${GAME_SRC_DIR}"
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${GAME_INC_DIR}
+    ${GAME_INC_DIR}/2.0L
+    ${GAME_INC_DIR}/2.0L/PR
+    ${GAME_SRC_DIR}
 )
 
-# 5. Compiler Flags for Portability
+# 5. Compiler Flags
 target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
 target_compile_options(bkawrapper PRIVATE -w -fcommon -O3)
 
