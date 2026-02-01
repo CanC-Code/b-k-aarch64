@@ -2,7 +2,7 @@ import os
 import shutil
 import re
 
-class SourceHarmonizerV6_7:
+class SourceHarmonizerV6_8:
     def __init__(self, android_path, decomp_path):
         self.android_path = android_path
         self.decomp_path = decomp_path
@@ -23,53 +23,63 @@ class SourceHarmonizerV6_7:
 
     def repair_structural_syntax(self):
         """
-        Context-Aware Guard: Specifically targets orphaned logic artifacts.
-        It removes lines that are clearly function calls (e.g. func(val);) 
-        but ONLY if they do not start with a known C type or keyword.
+        Safe-Type Guard: A surgical approach to stripping orphaned logic.
+        Uses an expanded type whitelist and a brace-depth tracker to ensure
+        we only remove executable code found in the global scope.
         """
-        print("  [>] Logic Fix: Applying Context-Aware Structural Guard...")
-        # Common N64/C types to protect
-        protected_types = r'^(s8|u8|s16|u16|s32|u32|s64|u64|f32|f64|void|int|char|float|double|static|extern|typedef|struct|enum)'
-        cleaned_count = 0
+        print("  [>] Logic Fix: Applying Safe-Type Structural Guard...")
+        # Expanded whitelist including N64 specific types and pointers
+        types = [
+            's8','u8','s16','u16','s32','u32','s64','u64','f32','f64',
+            'void','int','char','float','double','long','short','unsigned','signed',
+            'static','extern','typedef','struct','enum','union','const','volatile',
+            'Mtx','Vtx','Gfx','LookAt','Hilite','Lights','u_long','u_short'
+        ]
+        type_pattern = r'^(' + '|'.join(types) + r')[\s\*]'
         
+        cleaned_count = 0
         for root, _, files in os.walk(self.src_target):
             for f in files:
                 if f.endswith('.c'):
                     path = os.path.join(root, f)
-                    with open(path, 'r', errors='ignore') as file: 
-                        lines = file.readlines()
+                    with open(path, 'r', errors='ignore') as file: lines = file.readlines()
                     
                     new_lines = []
                     modified = False
+                    brace_depth = 0
+                    
                     for line in lines:
                         trimmed = line.strip()
-                        # If it's a call with arguments but NOT a declaration
-                        is_call = re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*\s*\([^)]+\);', trimmed)
-                        is_decl = re.match(protected_types, trimmed)
+                        # Track braces to know if we are in global scope (depth 0)
+                        brace_depth += line.count('{') - line.count('}')
                         
-                        if is_call and not is_decl:
-                            # This is likely an orphaned call like mapSpecificFlags_set(0x10, 0);
-                            modified = True
-                            continue 
+                        # Identify potential orphaned logic (function calls or math) in global scope
+                        is_executable = re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*\s*\([^;]*\);', trimmed) or \
+                                        re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*\s*=[^=;]+;', trimmed)
+                        
+                        # Only strip if: 1. It looks like logic, 2. It's global scope, 3. It's not a known type
+                        if brace_depth <= 0 and is_executable and not re.match(type_pattern, trimmed):
+                            # Ensure we don't strip common macros like GFX_...
+                            if not trimmed.isupper():
+                                modified = True
+                                continue 
+                        
                         new_lines.append(line)
                     
                     if modified:
-                        with open(path, 'w') as file: 
-                            file.writelines(new_lines)
+                        with open(path, 'w') as file: file.writelines(new_lines)
                         cleaned_count += 1
-        print(f"      [!] Cleaned orphaned logic in {cleaned_count} files.")
+        print(f"      [!] Safe-stripped logic in {cleaned_count} files.")
 
     def patch_cmake(self):
-        print("  [>] Logic Fix: Updating CMake discovery (v6.7)...")
+        print("  [>] Logic Fix: Updating CMake discovery (v6.8)...")
         if os.path.exists(self.cmake_file):
             with open(self.cmake_file, 'r') as f: content = f.read()
             content = re.sub(r'# --- Harmonizer v6\..*?# ---+', '', content, flags=re.DOTALL)
-            
             injection = (
-                "\n# --- Harmonizer v6.7 Total Discovery ---\n"
+                "\n# --- Harmonizer v6.8 Total Discovery ---\n"
                 "file(GLOB_RECURSE ALL_C_FILES \"src/*.c\" \"src/*.cpp\")\n"
                 "foreach(FILE_PATH ${ALL_C_FILES})\n"
-                "    # Exclude lib/ and internal N64 OS/Graphics utils to avoid NDK conflicts\n"
                 "    if(NOT FILE_PATH MATCHES \"/lib/\" AND \n"
                 "       NOT FILE_PATH MATCHES \"inflate.c\" AND \n"
                 "       NOT FILE_PATH MATCHES \"rarezip.c\" AND\n"
@@ -81,7 +91,6 @@ class SourceHarmonizerV6_7:
                 "target_sources(bkawrapper PRIVATE ${FILTERED_SOURCES})\n"
                 "# ---------------------------------------\n"
             )
-            
             with open(self.cmake_file, 'w') as f: f.write(content + injection)
 
     def fix_static_conflicts(self):
@@ -103,20 +112,6 @@ class SourceHarmonizerV6_7:
                             patched += 1
         print(f"      [!] Fixed {patched} files.")
 
-    def fix_function_pointer_casts(self):
-        builder_cpp = os.path.join(self.ultra_target, "otr_builder.cpp")
-        if os.path.exists(builder_cpp):
-            with open(builder_cpp, 'r') as f: content = f.read()
-            new_content = content.replace("decompress_rare_asset", "(void (*)(u8 *, u8 *))decompress_rare_asset")
-            with open(builder_cpp, 'w') as f: f.write(new_content)
-
-    def fix_conflicting_signatures(self):
-        target_h = os.path.join(self.ultra_target, "rare_decompression.h")
-        if os.path.exists(target_h):
-            with open(target_h, 'r') as f: content = f.read()
-            new_content = content.replace("s32 decompress_rare_asset", "void decompress_rare_asset")
-            with open(target_h, 'w') as f: f.write(new_content)
-
     def repair_source(self):
         print("  [>] Logic Fix: Repairing array initializers...")
         patched = 0
@@ -134,19 +129,17 @@ class SourceHarmonizerV6_7:
         print(f"      [!] Repaired {patched} files.")
 
     def run(self):
-        print("--- Harmonizer v6.7: Context-Aware Fix ---")
+        print("--- Harmonizer v6.8: Safe-Type Integrity Fix ---")
         self.sync_files()
-        self.fix_conflicting_signatures()
-        self.fix_function_pointer_casts()
         self.fix_static_conflicts()
         self.repair_source()
         self.repair_structural_syntax()
         self.patch_cmake()
-        print("--- v6.7 Complete ---")
+        print("--- v6.8 Complete ---")
 
 if __name__ == "__main__":
     ROOT = "Android/app/src/main/cpp"
     DECOMP = "decomp-files"
     if not os.path.exists(DECOMP): DECOMP = "decomp"
-    h = SourceHarmonizerV6_7(ROOT, DECOMP)
+    h = SourceHarmonizerV6_8(ROOT, DECOMP)
     h.run()
