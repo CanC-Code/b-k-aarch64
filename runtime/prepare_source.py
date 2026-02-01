@@ -2,7 +2,7 @@ import os
 import shutil
 import re
 
-class SourceHarmonizerV6_5:
+class SourceHarmonizerV6_6:
     def __init__(self, android_path, decomp_path):
         self.android_path = android_path
         self.decomp_path = decomp_path
@@ -23,11 +23,11 @@ class SourceHarmonizerV6_5:
 
     def repair_structural_syntax(self):
         """
-        Universal Syntax Guard: Scans all .c files for orphaned logic.
-        Identifies function calls at the start of lines (global scope)
-        that lack a return type or declaration context.
+        Precise Scope Guard: Fixes 'expected parameter declarator'.
+        Only removes lines that are clearly executable logic (calls with values) 
+        found in the global scope, while preserving function declarations.
         """
-        print("  [>] Logic Fix: Applying Universal Syntax Guard to game actors...")
+        print("  [>] Logic Fix: Applying Precise Scope Guard...")
         cleaned_count = 0
         for root, _, files in os.walk(self.src_target):
             for f in files:
@@ -39,39 +39,42 @@ class SourceHarmonizerV6_5:
                     new_lines = []
                     modified = False
                     for line in lines:
-                        # Matches orphaned calls like: func_name(args); at start of line
-                        # Ignores declarations and common keywords
-                        is_orphaned_call = re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*\s*\([^;]*\);', line)
-                        if is_orphaned_call and "static" not in line and "extern" not in line:
+                        # TARGET: Orphaned calls like 'func(0x10, 0);' or 'variable = value;' in global scope
+                        # PROTECT: 'void func(s32 a);' or 'extern int x;'
+                        
+                        # Match a function call pattern that starts at line beginning
+                        is_call = re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*\s*\([^)]*[0-9x][^)]*\);', line)
+                        # Match a global assignment artifact
+                        is_assignment = re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*\s*=[^=;]+;', line)
+                        
+                        if (is_call or is_assignment) and not any(k in line for k in ["static", "extern", "typedef", "struct"]):
                             modified = True
-                            continue # Strip the orphaned line
+                            continue 
                         new_lines.append(line)
                     
                     if modified:
                         with open(path, 'w') as file: 
                             file.writelines(new_lines)
                         cleaned_count += 1
-        print(f"      [!] Cleaned orphaned logic in {cleaned_count} files.")
+        print(f"      [!] Stripped orphaned logic artifacts from {cleaned_count} files.")
 
     def patch_cmake(self):
-        """
-        Smart Discovery: Updated for v6.5 with stricter exclusion logic.
-        """
-        print("  [>] Logic Fix: Updating CMake with v6.5 integrity discovery...")
+        print("  [>] Logic Fix: Updating CMake with v6.6 discovery logic...")
         if os.path.exists(self.cmake_file):
             with open(self.cmake_file, 'r') as f: content = f.read()
+            # Clean all previous Harmonizer versions
             content = re.sub(r'# --- Harmonizer v6\..*?# ---+', '', content, flags=re.DOTALL)
             
             injection = (
-                "\n# --- Harmonizer v6.5 Total Discovery ---\n"
+                "\n# --- Harmonizer v6.6 Total Discovery ---\n"
                 "file(GLOB_RECURSE ALL_C_FILES \"src/*.c\")\n"
                 "foreach(FILE_PATH ${ALL_C_FILES})\n"
-                "    # Stricter platform exclusion to avoid NDK library collisions\n"
+                "    # Exclude lib and platform-specifics that conflict with NDK\n"
                 "    if(NOT FILE_PATH MATCHES \"src/lib/\" AND \n"
                 "       NOT FILE_PATH MATCHES \"inflate.c\" AND \n"
                 "       NOT FILE_PATH MATCHES \"rarezip.c\" AND\n"
-                "       NOT FILE_PATH MATCHES \"gu\" AND\n"
-                "       NOT FILE_PATH MATCHES \"os\")\n"
+                "       NOT FILE_PATH MATCHES \"gu/\" AND\n"
+                "       NOT FILE_PATH MATCHES \"os/\")\n"
                 "        list(APPEND FILTERED_SOURCES ${FILE_PATH})\n"
                 "    endif()\n"
                 "endforeach()\n"
@@ -80,7 +83,7 @@ class SourceHarmonizerV6_5:
             )
             
             with open(self.cmake_file, 'w') as f: f.write(content + injection)
-            print("      [!] CMakeLists.txt updated to v6.5.")
+            print("      [!] CMakeLists.txt updated.")
 
     def fix_static_conflicts(self):
         print("  [>] Logic Fix: Harmonizing static function declarations...")
@@ -133,7 +136,7 @@ class SourceHarmonizerV6_5:
         print(f"      [!] Repaired {patched} files.")
 
     def run(self):
-        print("--- Harmonizer v6.5: Universal Syntax Fix ---")
+        print("--- Harmonizer v6.6: Precise Integrity Fix ---")
         self.sync_files()
         self.fix_conflicting_signatures()
         self.fix_function_pointer_casts()
@@ -141,11 +144,11 @@ class SourceHarmonizerV6_5:
         self.repair_source()
         self.repair_structural_syntax()
         self.patch_cmake()
-        print("--- v6.5 Complete ---")
+        print("--- v6.6 Complete ---")
 
 if __name__ == "__main__":
     ROOT = "Android/app/src/main/cpp"
     DECOMP = "decomp-files"
     if not os.path.exists(DECOMP): DECOMP = "decomp"
-    h = SourceHarmonizerV6_5(ROOT, DECOMP)
+    h = SourceHarmonizerV6_6(ROOT, DECOMP)
     h.run()
