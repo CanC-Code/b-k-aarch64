@@ -11,7 +11,6 @@ class SourceHarmonizer:
 
     def scan_symbols(self):
         print("  [>] Scanning project for all global types...")
-        # This regex logic is what successfully extracted the N64 types previously
         patterns = [
             r'((?:typedef\s+)?(?:struct|enum)\s*([\w\d_]*)\s*\{[^}]+\}\s*([\w\d_]*)\s*;)',
             r'(typedef\s+[\w\d_]+\s+([\w\d_]+)\s*;)',
@@ -51,16 +50,22 @@ class SourceHarmonizer:
             content = content.replace(f'#include "{old_h}"', f'#include "{new_h}"')
 
         # B. Dependency Injection (The N64 Fix)
-        # We explicitly exclude core headers from injection to stop the redefinition errors
-        skip_list = ["ultra64.h", "gbi.h", "mbi.h", "sptask.h", "enums.h", "structs.h", "model.h"]
+        # [span_9](start_span)[span_10](start_span)[span_11](start_span)Expanded skip_list based on log.txt redefinition errors[span_9](end_span)[span_10](end_span)[span_11](end_span)
+        skip_list = [
+            "ultra64.h", "gbi.h", "mbi.h", "sptask.h", "enums.h", "structs.h", 
+            "model.h", "functions.h", "prop.h", "modelRender.h", "skeletalanim.h", "core1.h"
+        ]
         is_core = any(x in filename for x in skip_list)
 
         if not is_core:
+            # [span_12](start_span)We specifically avoid injecting 'sprite' as it's defined in core PR/sp.h[span_12](end_span)
             potential_types = set(re.findall(r'\b([sS][\w\d_]+|[a-zA-Z_][\w\d_]*_t|ActorMarker|Gfx|BK[\w\d_]+)\b', content))
             needed_defs = []
             for type_name in potential_types:
+                if type_name == "sprite": continue 
+                
                 # Only inject if symbol exists and isn't already textually in the file
-                if type_name in self.symbol_db and f" {type_name}" not in content:
+                if type_name in self.symbol_db and f" {type_name}" not in content and f"*{type_name}" not in content:
                     guard = f"_GUARD_{type_name}"
                     needed_defs.append(f"#ifndef {guard}\n#define {guard}\n{self.symbol_db[type_name]}\n#endif")
             
@@ -72,7 +77,7 @@ class SourceHarmonizer:
                 if sig: prototypes.append(f"{sig.group(1)};")
 
             if needed_defs or prototypes:
-                injection = "\n// --- HARMONIZED v3.5 ---\n" + "\n".join(needed_defs + prototypes) + "\n"
+                injection = "\n// --- HARMONIZED v3.6 ---\n" + "\n".join(needed_defs + prototypes) + "\n"
                 match = re.search(r'#include.*?\n', content)
                 pos = match.end() if match else 0
                 content = content[:pos] + injection + content[pos:]
@@ -83,10 +88,10 @@ class SourceHarmonizer:
         return False
 
 def prepare_source():
-    print("--- Starting Automated Source Harmonization v3.5 ---")
+    print("--- Starting Automated Source Harmonization v3.6 ---")
     android_cpp = "Android/app/src/main/cpp"
 
-    # FIXED: Selective wipe (protects NativeBridge.cpp and CMakeLists.txt)
+    # Selective wipe (protects NativeBridge.cpp and CMakeLists.txt)
     for sub in ["src", "include"]:
         target = os.path.join(android_cpp, sub)
         if os.path.exists(target): shutil.rmtree(target)
