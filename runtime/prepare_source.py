@@ -2,7 +2,7 @@ import os
 import shutil
 import re
 
-class SourceHarmonizerV8_5:
+class SourceHarmonizerV8_6:
     def __init__(self, android_path, decomp_path):
         self.android_path = android_path
         self.decomp_path = decomp_path
@@ -26,9 +26,8 @@ class SourceHarmonizerV8_5:
                         for name in struct_pat.findall(content): self.type_definitions[name] = "struct"
 
     def index_all_symbols(self):
-        print("  [>] Pass 2: Mapping Linkage Boundaries...")
+        print("  [>] Pass 2: Mapping Absolute Linkage...")
         blacklist = {'main', 'memcpy', 'memset', 'memmove', 'sprintf', 'sqrt', 'sin', 'cos'}
-        # Fixed Regex: Captures function signatures more accurately across multiple lines
         func_pat = re.compile(r'^(?:static\s+)?([\w\*]+\s+([a-zA-Z_]\w*)\s*\((?:[^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
         sym_pat = re.compile(r'^(?:static\s+)?([\w\*]+)\s+([a-zA-Z_]\w*)\s*[;=\[]', re.MULTILINE)
         
@@ -39,33 +38,30 @@ class SourceHarmonizerV8_5:
                         content = file.read()
                         for full_sig, name in func_pat.findall(content):
                             if name not in blacklist: 
-                                # Clean up newlines in multiline signatures
                                 clean_sig = " ".join(full_sig.replace('static ', '').split())
                                 self.func_signatures[name] = clean_sig
-                        
                         for dtype, sym in sym_pat.findall(content):
                             if sym not in blacklist: self.global_symbols[sym] = dtype
 
     def promote_and_clean(self):
-        print("  [>] Pass 3: Addressing Hardware Constraints...")
+        print("  [>] Pass 3: Breaking 4GB Address Barriers...")
         for root, _, files in os.walk(self.src_target):
             for f in files:
                 if f.endswith('.c'):
                     path = os.path.join(root, f)
                     with open(path, 'r', errors='ignore') as file: content = file.read()
                     
-                    # Force globalization to resolve 'relocation out of range'
+                    # Force globalization and remove N64 alignment that crashes the ARM64 linker
                     content = re.sub(r'^static\s+', '', content, flags=re.MULTILINE)
-                    # Strip N64-specific attributes that cause ARM64 alignment traps
                     content = re.sub(r'__attribute__\(\(aligned\(\d+\)\)\)', '', content)
                     
                     if 'harmonized_globals.h' not in content:
-                        content = '#include \"harmonized_globals.h\"\n' + content
+                        content = '#include "harmonized_globals.h"\n' + content
                     
                     with open(path, 'w') as file: file.write(content)
 
     def generate_final_header(self):
-        print("  [>] Pass 4: Generating Master Symbol Table...")
+        print("  [>] Pass 4: Generating Large-Model Global Header...")
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         os.makedirs(self.include_target, exist_ok=True)
         
@@ -83,7 +79,7 @@ class SourceHarmonizerV8_5:
             for sym, dtype in self.global_symbols.items():
                 if sym.startswith(('D_', 'g', 'bgs', 'B_')):
                     clean_type = dtype if dtype in self.type_definitions or dtype.endswith('*') else 'void'
-                    # v8.5: Use 'extern' only for data symbols to prevent binary bloating
+                    # Use incomplete array syntax to resolve size mismatches in large model
                     f.write(f"__attribute__((weak)) extern {clean_type} {sym}[];\n")
             
             f.write("#ifdef __cplusplus\n}\n#endif\n#endif\n")
@@ -97,16 +93,19 @@ class SourceHarmonizerV8_5:
                 shutil.copytree(source, target)
 
     def patch_cmake(self):
-        print("  [>] Finalizing CMake for v8.5 Enterprise...")
+        print("  [>] Finalizing CMake for v8.6 Platinum...")
         if os.path.exists(self.cmake_file):
             with open(self.cmake_file, 'r') as f: content = f.read()
             content = re.sub(r'# --- Harmonizer v[0-9]\.[0-9].*?# ---+', '', content, flags=re.DOTALL)
-            # v8.5 Fix: Added -mcmodel=small (default is too restrictive) and -Wl,--allow-shlib-undefined
+            # v8.6 Final Fix:
+            # 1. -mcmodel=large : Essential to fix AArch64 relocation out of range
+            # 2. -Wl,--no-rosegment : Ensures data stays in a reachable segment
+            # 3. -fno-plt : Force direct addressing
             injection = (
-                "\n# --- Harmonizer v8.5 Enterprise Logic ---\n"
+                "\n# --- Harmonizer v8.6 Platinum Edition ---\n"
                 "include_directories(include)\n"
                 "add_definitions(-D__arm64__ -D_LANGUAGE_C -DN_AUDIO -DNDEBUG)\n"
-                "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -fcommon -w -O3 -fno-strict-aliasing -fno-asynchronous-unwind-tables\")\n"
+                "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -mcmodel=large -fcommon -w -O3 -fno-strict-aliasing -fno-plt\")\n"
                 "set(CMAKE_SHARED_LINKER_FLAGS \"${CMAKE_SHARED_LINKER_FLAGS} -Wl,--allow-multiple-definition -Wl,--no-rosegment\")\n"
                 "file(GLOB_RECURSE ALL_C_FILES \"src/*.c\" \"src/*.cpp\")\n"
                 "target_sources(bkawrapper PRIVATE ${ALL_C_FILES})\n"
@@ -116,15 +115,15 @@ class SourceHarmonizerV8_5:
             with open(self.cmake_file, 'w') as f: f.write(content + injection)
 
     def run(self):
-        print("--- Harmonizer v8.5: Enterprise Final ---")
+        print("--- Harmonizer v8.6: Platinum Edition ---")
         self.parse_typedefs()
         self.sync_files()
         self.index_all_symbols()
         self.generate_final_header()
         self.promote_and_clean()
         self.patch_cmake()
-        print("--- v8.5 Complete ---")
+        print("--- v8.6 Complete ---")
 
 if __name__ == "__main__":
-    h = SourceHarmonizerV8_5("Android/app/src/main/cpp", "decomp-files")
+    h = SourceHarmonizerV8_6("Android/app/src/main/cpp", "decomp-files")
     h.run()
