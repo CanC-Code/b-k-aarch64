@@ -6,13 +6,25 @@ class SourceHarmonizer:
     def __init__(self, root_path):
         self.root_path = root_path
         self.symbol_db = {}
+        # NDK safety renames
         self.renames = {"string.h": "game_string.h", "time.h": "game_time.h", "sched.h": "game_sched.h"}
-        # [span_8](start_span)[span_9](start_span)These headers are "Source of Truth" - we NEVER inject into them [cite: 442-459]
-        self.source_of_truth = ["functions.h", "structs.h", "model.h", "prop.h", "skeletalanim.h", "enums.h"]
+        
+        # SACRED TYPES: These are already defined correctly in core headers. 
+        # Adding them here prevents the "typedef redefinition" errors found in log.txt.
+        self.sacred_types = [
+            "BKVertexList", "BKAnimationList", "BKTextureList", "BKModelBin", 
+            "BKGfxList", "BKModel", "Struct84s", "struct5Bs", "sfx_e", "sprite",
+            "ALLink", "ALSound", "N_ALVoice", "ALMicroTime", "Bitmap", "Gfx"
+        ]
+        
+        # [span_3](start_span)[span_4](start_span)CORE HEADERS: Do not inject anything into these to prevent loops [cite: 401-423]
+        self.core_headers = [
+            "ultra64.h", "gbi.h", "mbi.h", "sp.h", "libaudio.h", 
+            "model.h", "structs.h", "enums.h", "functions.h"
+        ]
 
     def scan_symbols(self):
-        print("  [>] Brute-force scanning project...")
-        # [cite_start]Catching Typedefs, Structs, and Enums[span_8](end_span)[span_9](end_span)
+        print("  [>] Brute-force scanning for all project types...")
         patterns = [
             r'((?:typedef\s+)?(?:struct|enum)\s*([\w\d_]*)\s*\{[^}]+\}\s*([\w\d_]*)\s*;)',
             r'(typedef\s+[\w\d_]+\s+([\w\d_]+)\s*;)',
@@ -35,26 +47,27 @@ class SourceHarmonizer:
             content = f.read()
         orig_content = content
 
-        # 1. Update includes for NDK safety
+        # Rename colliding headers
         for old_h, new_h in self.renames.items():
             content = content.replace(f'#include <{old_h}>', f'#include "{new_h}"')
 
-        # 2. Strict Injection Control
-        # If it's a Source of Truth header, DO NOT inject. [span_10](start_span)This stops the redefinition loops[span_10](end_span).
-        if filename not in self.source_of_truth:
-            # [span_11](start_span)[span_12](start_span)Find every custom-looking type (BK-prefix, s-prefix, or _t suffix)[span_11](end_span)[span_12](end_span)
-            potential_types = set(re.findall(r'\b(BK[\w\d_]+|[sS][\w\d_]+|ActorMarker|BoneTransformList|Gfx)\b', content))
+        # [cite_start]Logic: Only inject into non-core files to avoid the redefinition errors in log[span_3](end_span)[span_4](end_span)
+        if filename not in self.core_headers:
+            # Find every possible custom type usage
+            potential_types = set(re.findall(r'\b(BK[\w\d_]+|[sS][\w\d_]+|ActorMarker|Gfx|Bitmap|AL[\w\d_]+)\b', content))
             needed_defs = []
             
             for type_name in potential_types:
-                if type_name in self.symbol_db:
-                    # BRUTE FORCE: Wrap in unique guards so even if it exists elsewhere, it won't crash
-                    guard = f"_FORCE_DEF_{type_name}"
-                    needed_defs.append(f"#ifndef {guard}\n#define {guard}\n{self.symbol_db[type_name]}\n#endif")
+                # If we have a definition and it's NOT a sacred type that causes crashes
+                if type_name in self.symbol_db and type_name not in self.sacred_types:
+                    # BRUTE FORCE: Wrap in unique guards
+                    guard = f"_HARM_DEF_{type_name}"
+                    if guard not in content:
+                        needed_defs.append(f"#ifndef {guard}\n#define {guard}\n{self.symbol_db[type_name]}\n#endif")
 
             if needed_defs:
-                injection = "\n// --- BRUTE FORCE HARMONIZER v4.1 ---\n" + "\n".join(needed_defs) + "\n"
-                # Inject after includes to ensure it doesn't conflict with system headers
+                injection = "\n// --- HARMONIZER v4.5 ---\n" + "\n".join(needed_defs) + "\n"
+                # Insert after the first include to ensure system types are loaded first
                 match = re.search(r'#include.*?\n', content)
                 pos = match.end() if match else 0
                 content = content[:pos] + injection + content[pos:]
@@ -64,23 +77,27 @@ class SourceHarmonizer:
             return True
         return False
 
-def prepare_source():
-    android_cpp = "Android/app/src/main/cpp"
-    # Sync folders
+def run_harmonizer():
+    target_dir = "Android/app/src/main/cpp"
+    
+    # Reset and Sync
     for sub in ["src", "include"]:
-        target = os.path.join(android_cpp, sub)
-        if os.path.exists(target): shutil.rmtree(target)
-        os.makedirs(target, exist_ok=True)
-    shutil.copytree("decomp-files/include", os.path.join(android_cpp, "include"), dirs_exist_ok=True)
-    shutil.copytree("decomp-files/src", os.path.join(android_cpp, "src"), dirs_exist_ok=True)
+        path = os.path.join(target_dir, sub)
+        if os.path.exists(path): shutil.rmtree(path)
+        os.makedirs(path, exist_ok=True)
+    
+    shutil.copytree("decomp-files/include", os.path.join(target_dir, "include"), dirs_exist_ok=True)
+    shutil.copytree("decomp-files/src", os.path.join(target_dir, "src"), dirs_exist_ok=True)
 
-    harmonizer = SourceHarmonizer(android_cpp)
-    harmonizer.scan_symbols()
+    h = SourceHarmonizer(target_dir)
+    h.scan_symbols()
 
-    for root, _, files in os.walk(android_cpp):
+    print("  [>] Applying v4.5 conflict resolution...")
+    for root, _, files in os.walk(target_dir):
         for f in files:
             if f.endswith(('.c', '.h')):
-                harmonizer.harmonize_file(os.path.join(root, f), f)
+                h.harmonize_file(os.path.join(root, f), f)
+    print("  [!] Done. Ready for build.")
 
 if __name__ == "__main__":
-    prepare_source()
+    run_harmonizer()
