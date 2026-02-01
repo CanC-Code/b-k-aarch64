@@ -28,7 +28,6 @@ class SourceHarmonizerV6_3:
         identifying code that escaped function boundaries during decompilation.
         """
         print("  [>] Logic Fix: Repairing structural syntax in game actors...")
-        # Targeted fix for frogminigame.c and similar actor files
         for root, _, files in os.walk(self.src_target):
             for f in files:
                 if f.endswith('.c'):
@@ -36,7 +35,6 @@ class SourceHarmonizerV6_3:
                     with open(path, 'r', errors='ignore') as file: content = file.read()
                     
                     # Fix: Remove orphaned function calls sitting in global scope
-                    # These often look like: func(val, val);
                     # We regex for calls that start at the beginning of a line and aren't declarations
                     cleaned_content = re.sub(r'^[a-zA-Z0-9_]+\([^\)]*\);', '', content, flags=re.MULTILINE)
                     
@@ -129,7 +127,7 @@ class SourceHarmonizerV6_3:
         self.fix_function_pointer_casts()
         self.fix_static_conflicts()
         self.repair_source()
-        self.repair_structural_syntax() # Comprehensive structural check
+        self.repair_structural_syntax()
         self.patch_cmake()
         print("--- v6.3 Complete ---")
 
