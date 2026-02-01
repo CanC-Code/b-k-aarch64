@@ -2,7 +2,7 @@ import os
 import shutil
 import re
 
-class SourceHarmonizerV5_5:
+class SourceHarmonizerV5_6:
     def __init__(self, android_path, decomp_path):
         self.android_path = android_path
         self.decomp_path = decomp_path
@@ -13,28 +13,17 @@ class SourceHarmonizerV5_5:
         self.ultra_target = os.path.join(android_path, "ultra")
 
     def sync_files(self):
-        """Physically copies the decompiled source into the Android project."""
         print(f"  [>] Syncing source from {self.decomp_path}...")
-        
-        # Map source to target
-        mappings = {
-            "src": self.src_target,
-            "include": self.include_target
-        }
-
+        mappings = {"src": self.src_target, "include": self.include_target}
         for sub, target in mappings.items():
             source = os.path.join(self.decomp_path, sub)
             if os.path.exists(source):
-                # Clean target first to ensure a fresh sync
                 if os.path.exists(target): shutil.rmtree(target)
                 shutil.copytree(source, target)
-                count = len([f for _, _, files in os.walk(target) for f in files])
-                print(f"      [+] Synced {count} files to {sub}/")
-            else:
-                print(f"      [!] Warning: Source {source} not found!")
+                print(f"      [+] Synced {sub}/ folder.")
 
     def repair_source(self):
-        """Fixes legacy array initializer syntax errors in the newly synced files."""
+        """Fixes legacy array initializer syntax and ensures string.h for memmove."""
         print("  [>] Logic Fix: Repairing legacy C array initializers...")
         patched = 0
         for root, _, files in os.walk(self.src_target):
@@ -44,47 +33,54 @@ class SourceHarmonizerV5_5:
                     with open(path, 'r', errors='ignore') as file:
                         content = file.read()
                     
-                    # Fix: u8 arr[N] = SYMBOL; -> u8 arr[N]; memmove(arr, SYMBOL, N);
+                    # Pattern for: u8 arr[size] = symbol;
                     pattern = r'(\w+)\s+(\w+)\[(\d+)\]\s*=\s*([^;{]+);'
-                    new_content = re.sub(pattern, r'\1 \2[\3]; memmove(\2, \4, \3);', content)
-                    
-                    if new_content != content:
-                        if '#include <string.h>' not in new_content:
-                            new_content = '#include <string.h>\n' + new_content
+                    if re.search(pattern, content):
+                        # Ensure string.h is present for memmove
+                        if '<string.h>' not in content and '"string.h"' not in content:
+                            content = '#include <string.h>\n' + content
+                        
+                        new_content = re.sub(pattern, r'\1 \2[\3]; memmove(\2, \4, \3);', content)
                         with open(path, 'w') as file:
                             file.write(new_content)
                         patched += 1
         print(f"      [!] Repaired {patched} files.")
 
     def fix_header_linkage(self):
-        """Ensures rare_decompression.h is reachable by the builder."""
+        """Deep search for rare_decompression.h to fix the Ninja fatal error."""
         target = "rare_decompression.h"
         dest = os.path.join(self.ultra_target, target)
         
-        if not os.path.exists(dest):
-            # Search freshly synced include folder
-            for root, _, files in os.walk(self.include_target):
+        print(f"  [>] Searching for {target}...")
+        # Broad search: Check decomp_path, include_target, and the root
+        search_roots = [self.decomp_path, self.android_path, "."]
+        
+        for s_root in search_roots:
+            for root, _, files in os.walk(s_root):
                 if target in files:
-                    shutil.copy2(os.path.join(root, target), dest)
-                    print(f"      [!] Linked {target} to ultra/ folder.")
-                    return
-            print(f"      [!] Error: Could not find {target} to link!")
+                    found_path = os.path.join(root, target)
+                    os.makedirs(self.ultra_target, exist_ok=True)
+                    shutil.copy2(found_path, dest)
+                    print(f"      [SUCCESS] Linked {target} from {root}")
+                    return True
+        
+        print(f"      [ERROR] {target} NOT FOUND. Ninja will fail.")
+        return False
 
     def run(self):
-        print("--- Harmonizer v5.5: Full Sync & Repair ---")
+        print("--- Harmonizer v5.6: Deep Search & Repair ---")
         self.sync_files()
         self.repair_source()
         self.fix_header_linkage()
-        print("--- v5.5 Complete: Source is synchronized and patched ---")
+        print("--- v5.6 Complete ---")
 
 if __name__ == "__main__":
-    # Settings for your specific environment
-    ANDROID_CPP_ROOT = "Android/app/src/main/cpp"
-    DECOMP_SOURCE = "decomp-files" # Ensure this folder contains your 'src' and 'include'
+    # Standard GitHub Actions / Android Project Paths
+    ROOT = "Android/app/src/main/cpp"
+    DECOMP = "decomp-files"
     
-    # Fallback for different environments
-    if not os.path.exists(DECOMP_SOURCE):
-        DECOMP_SOURCE = "decomp" 
+    # Fallback for manual runs
+    if not os.path.exists(DECOMP): DECOMP = "decomp"
 
-    h = SourceHarmonizerV5_5(ANDROID_CPP_ROOT, DECOMP_SOURCE)
+    h = SourceHarmonizerV5_6(ROOT, DECOMP)
     h.run()
