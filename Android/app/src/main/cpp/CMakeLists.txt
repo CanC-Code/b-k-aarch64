@@ -10,19 +10,30 @@ set(ULTRA_DIR "${CPP_ROOT}/ultra")
 set(GAME_SRC_DIR "${CPP_ROOT}/src")
 set(GAME_INC_DIR "${CPP_ROOT}/include")
 
-# GLOB_RECURSE is necessary because Harmonizer v3 preserves the tree structure
-file(GLOB_RECURSE GAME_SOURCES 
+# --- Harmonizer v6.3 Smart Discovery ---
+# We discover all files but filter out NDK/Platform duplicates
+file(GLOB_RECURSE ALL_C_FILES 
     "${GAME_SRC_DIR}/*.c" 
     "${GAME_SRC_DIR}/*.cpp"
 )
 
+foreach(FILE_PATH ${ALL_C_FILES})
+    # Exclude lib/ and specific duplicates identified in build logs
+    if(NOT FILE_PATH MATCHES "src/lib/" AND 
+       NOT FILE_PATH MATCHES "inflate.c" AND 
+       NOT FILE_PATH MATCHES "rarezip.c" AND
+       NOT FILE_PATH MATCHES "gu")
+        list(APPEND FILTERED_GAME_SOURCES ${FILE_PATH})
+    endif()
+endforeach()
+
 add_library(bkawrapper SHARED
-    ${GAME_SOURCES}
+    ${FILTERED_GAME_SOURCES}
     "${ULTRA_DIR}/NativeBridge.cpp"
     "${ULTRA_DIR}/otr_builder.cpp"
     "${ULTRA_DIR}/audio_helper.cpp"
     "${ULTRA_DIR}/exceptasm.cpp"
-    # Ensure any .s files in ultra/ are included if they aren't C++ wrapped
+    # Essential low-level assembly
     "${ULTRA_DIR}/setintmask.s"
     "${ULTRA_DIR}/libm_vals.s"
     "${ULTRA_DIR}/parameters.s"
@@ -34,7 +45,6 @@ target_include_directories(bkawrapper PRIVATE
     ${GAME_INC_DIR}
     ${GAME_INC_DIR}/2.0L
     ${GAME_INC_DIR}/2.0L/PR
-    # Add the core1/core2 includes specifically if Harmonizer places them there
     ${GAME_INC_DIR}/core1
     ${GAME_INC_DIR}/core2
 )
@@ -42,7 +52,8 @@ target_include_directories(bkawrapper PRIVATE
 # _LANGUAGE_C is needed for the decompiled headers to behave correctly
 target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
 
-# -fcommon is critical for decompilation projects to handle multiple global definitions
+# -fcommon handles multiple global definitions in decomp projects
+# -w suppresses non-critical warnings from legacy source
 target_compile_options(bkawrapper PRIVATE -w -fcommon -O3)
 
 find_library(log-lib log)
