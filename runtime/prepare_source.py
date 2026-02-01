@@ -6,22 +6,9 @@ class SourceHarmonizer:
     def __init__(self, root_path):
         self.root_path = root_path
         self.symbol_db = {}
-        # NDK safety renames
         self.renames = {"string.h": "game_string.h", "time.h": "game_time.h", "sched.h": "game_sched.h"}
-        
-        # SACRED TYPES: These are already defined correctly in core headers. 
-        # Adding them here prevents the "typedef redefinition" errors found in log.txt.
-        self.sacred_types = [
-            "BKVertexList", "BKAnimationList", "BKTextureList", "BKModelBin", 
-            "BKGfxList", "BKModel", "Struct84s", "struct5Bs", "sfx_e", "sprite",
-            "ALLink", "ALSound", "N_ALVoice", "ALMicroTime", "Bitmap", "Gfx"
-        ]
-        
-        # [span_3](start_span)[span_4](start_span)CORE HEADERS: Do not inject anything into these to prevent loops [cite: 401-423]
-        self.core_headers = [
-            "ultra64.h", "gbi.h", "mbi.h", "sp.h", "libaudio.h", 
-            "model.h", "structs.h", "enums.h", "functions.h"
-        ]
+        # [span_11](start_span)High-traffic types that cause redefinition loops in your log [cite: 11-28]
+        self.sacred_types = ["BKModel", "BKVertexList", "Struct62s", "Struct6Cs", "SkeletalAnimation", "SkeletalAnimationCallback", "sprite_prop_s", "SpriteProp"]
 
     def scan_symbols(self):
         print("  [>] Brute-force scanning for all project types...")
@@ -47,27 +34,26 @@ class SourceHarmonizer:
             content = f.read()
         orig_content = content
 
-        # Rename colliding headers
         for old_h, new_h in self.renames.items():
             content = content.replace(f'#include <{old_h}>', f'#include "{new_h}"')
 
-        # [cite_start]Logic: Only inject into non-core files to avoid the redefinition errors in log[span_3](end_span)[span_4](end_span)
-        if filename not in self.core_headers:
-            # Find every possible custom type usage
-            potential_types = set(re.findall(r'\b(BK[\w\d_]+|[sS][\w\d_]+|ActorMarker|Gfx|Bitmap|AL[\w\d_]+)\b', content))
+        # [cite_start]Core engine headers shouldn't receive injections to prevent loops[span_11](end_span)
+        is_core = any(x in filename for x in ["functions.h", "structs.h", "prop.h", "ultra64.h", "gbi.h"])
+        
+        if not is_core:
+            # [span_12](start_span)[span_13](start_span)Capture custom types and types found missing in log (BoneTransformList, StopNSwop_Data)[span_12](end_span)[span_13](end_span)
+            potential_types = set(re.findall(r'\b(BK[\w\d_]+|[sS][\w\d_]+|ActorMarker|Gfx|BoneTransformList|StopNSwop_Data)\b', content))
             needed_defs = []
             
             for type_name in potential_types:
-                # If we have a definition and it's NOT a sacred type that causes crashes
                 if type_name in self.symbol_db and type_name not in self.sacred_types:
-                    # BRUTE FORCE: Wrap in unique guards
-                    guard = f"_HARM_DEF_{type_name}"
+                    # BRUTE FORCE: Use a unique guard for every single type
+                    guard = f"_FORCE_DEF_{type_name}"
                     if guard not in content:
                         needed_defs.append(f"#ifndef {guard}\n#define {guard}\n{self.symbol_db[type_name]}\n#endif")
 
             if needed_defs:
-                injection = "\n// --- HARMONIZER v4.5 ---\n" + "\n".join(needed_defs) + "\n"
-                # Insert after the first include to ensure system types are loaded first
+                injection = "\n// --- HARMONIZER v4.6 ---\n" + "\n".join(needed_defs) + "\n"
                 match = re.search(r'#include.*?\n', content)
                 pos = match.end() if match else 0
                 content = content[:pos] + injection + content[pos:]
@@ -77,27 +63,24 @@ class SourceHarmonizer:
             return True
         return False
 
-def run_harmonizer():
-    target_dir = "Android/app/src/main/cpp"
-    
-    # Reset and Sync
+def prepare_source():
+    android_cpp = "Android/app/src/main/cpp"
+    # Selective wipe: ONLY clean src/include, preserve CMake/Bridge files
     for sub in ["src", "include"]:
-        path = os.path.join(target_dir, sub)
-        if os.path.exists(path): shutil.rmtree(path)
-        os.makedirs(path, exist_ok=True)
-    
-    shutil.copytree("decomp-files/include", os.path.join(target_dir, "include"), dirs_exist_ok=True)
-    shutil.copytree("decomp-files/src", os.path.join(target_dir, "src"), dirs_exist_ok=True)
+        target = os.path.join(android_cpp, sub)
+        if os.path.exists(target): shutil.rmtree(target)
+        os.makedirs(target, exist_ok=True)
 
-    h = SourceHarmonizer(target_dir)
-    h.scan_symbols()
+    shutil.copytree("decomp-files/include", os.path.join(android_cpp, "include"), dirs_exist_ok=True)
+    shutil.copytree("decomp-files/src", os.path.join(android_cpp, "src"), dirs_exist_ok=True)
 
-    print("  [>] Applying v4.5 conflict resolution...")
-    for root, _, files in os.walk(target_dir):
+    harmonizer = SourceHarmonizer(android_cpp)
+    harmonizer.scan_symbols()
+
+    for root, _, files in os.walk(android_cpp):
         for f in files:
             if f.endswith(('.c', '.h')):
-                h.harmonize_file(os.path.join(root, f), f)
-    print("  [!] Done. Ready for build.")
+                harmonizer.harmonize_file(os.path.join(root, f), f)
 
 if __name__ == "__main__":
-    run_harmonizer()
+    prepare_source()
