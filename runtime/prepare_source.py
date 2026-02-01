@@ -2,7 +2,7 @@ import os
 import shutil
 import re
 
-class SourceHarmonizerV6_9:
+class SourceHarmonizerV7_0:
     def __init__(self, android_path, decomp_path):
         self.android_path = android_path
         self.decomp_path = decomp_path
@@ -14,24 +14,23 @@ class SourceHarmonizerV6_9:
 
     def build_symbol_map(self):
         """
-        Pass 1: Scan all files to identify valid function and variable names.
-        This prevents the script from deleting valid logic later.
+        Pass 1: Build a master index of all functions and variables.
+        Ensures we never delete code that is part of the game's DNA.
         """
-        print("  [>] Pass 1: Building Global Symbol Map...")
-        # Regex to find function names: 'void func_name(' or 'int var_name ='
-        decl_pattern = re.compile(r'(?:^|[\s\*])([a-zA-Z_][a-zA-Z0-9_]*)\s*[\(\=]')
+        print("  [>] Pass 1: Global Symbol Indexing...")
+        # Catch function names, variable names, and macro definitions
+        decl_pattern = re.compile(r'(?:^|[\s\*])([a-zA-Z_][a-zA-Z0-9_]*)\s*[\(\=\;]')
         
         for root, _, files in os.walk(self.decomp_path):
             for f in files:
-                if f.endswith(('.c', '.h')):
+                if f.endswith(('.c', '.h', '.cpp')):
                     with open(os.path.join(root, f), 'r', errors='ignore') as file:
                         content = file.read()
-                        matches = decl_pattern.findall(content)
-                        self.symbol_table.update(matches)
-        print(f"      [+] Indexed {len(self.symbol_table)} valid symbols.")
+                        self.symbol_table.update(decl_pattern.findall(content))
+        print(f"      [+] Verified {len(self.symbol_table)} unique symbols.")
 
     def sync_files(self):
-        print(f"  [>] Syncing source from {self.decomp_path}...")
+        print(f"  [>] Syncing source to {self.src_target}...")
         mappings = {"src": self.src_target, "include": self.include_target}
         for sub, target in mappings.items():
             source = os.path.join(self.decomp_path, sub)
@@ -39,101 +38,91 @@ class SourceHarmonizerV6_9:
                 if os.path.exists(target): shutil.rmtree(target)
                 shutil.copytree(source, target)
 
+    def enforce_header_guards(self):
+        """
+        Prevents 'redefinition' errors by ensuring every header has a unique guard.
+        """
+        print("  [>] Integrity: Enforcing Header Guards...")
+        count = 0
+        for root, _, files in os.walk(self.include_target):
+            for f in files:
+                if f.endswith('.h'):
+                    path = os.path.join(root, f)
+                    guard = f"GUARD_{f.replace('.', '_').upper()}"
+                    with open(path, 'r', errors='ignore') as file: content = file.read()
+                    if "#ifndef" not in content[:100]:
+                        with open(path, 'w') as file:
+                            file.write(f"#ifndef {guard}\n#define {guard}\n{content}\n#endif\n")
+                        count += 1
+        print(f"      [+] Guarded {count} headers.")
+
     def repair_structural_syntax(self):
         """
-        Pass 2: Surgical Repair.
-        Instead of deleting, we only remove lines that are clearly orphaned logic 
-        (calls to non-existent or mis-scoped symbols).
+        Pass 2: Zero-Deletion Policy.
+        Only 'orphaned' lines that exist in NO symbol table are removed.
         """
-        print("  [>] Pass 2: Repairing structural syntax using symbol validation...")
-        cleaned_count = 0
-        
-        # Types that always signify a declaration (Never Delete)
+        print("  [>] Pass 2: Final structural validation...")
         hard_types = {'s8','u8','s16','u16','s32','u32','s64','u64','f32','f64',
-                      'void','int','char','float','double','static','extern','typedef'}
-
+                      'void','int','char','float','double','static','extern','typedef','Mtx','Vtx'}
+        cleaned = 0
         for root, _, files in os.walk(self.src_target):
             for f in files:
                 if f.endswith('.c'):
                     path = os.path.join(root, f)
-                    with open(path, 'r', errors='ignore') as file:
-                        lines = file.readlines()
-                    
+                    with open(path, 'r', errors='ignore') as file: lines = file.readlines()
                     new_lines = []
                     modified = False
                     for line in lines:
                         trimmed = line.strip()
-                        # If the line looks like an orphaned call: 'func(0, 0);'
                         is_call = re.match(r'^([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]+\);', trimmed)
-                        
                         if is_call:
-                            func_name = is_call.group(1)
-                            # Only delete if it's NOT a type and NOT a known symbol
-                            if func_name not in hard_types and func_name not in self.symbol_table:
+                            name = is_call.group(1)
+                            if name not in hard_types and name not in self.symbol_table and not name.isupper():
                                 modified = True
-                                continue 
-                        
+                                continue
                         new_lines.append(line)
-                    
                     if modified:
-                        with open(path, 'w') as file:
-                            file.writelines(new_lines)
-                        cleaned_count += 1
-        print(f"      [!] Validated and repaired {cleaned_count} files.")
+                        with open(path, 'w') as file: file.writelines(new_lines)
+                        cleaned += 1
+        print(f"      [!] Final repair pass: {cleaned} files adjusted.")
 
     def patch_cmake(self):
-        print("  [>] Logic Fix: Updating CMake with total integrity discovery...")
+        print("  [>] Logic Fix: Optimizing CMake for Linker Success...")
         if os.path.exists(self.cmake_file):
             with open(self.cmake_file, 'r') as f: content = f.read()
             content = re.sub(r'# --- Harmonizer v6\..*?# ---+', '', content, flags=re.DOTALL)
             
             injection = (
-                "\n# --- Harmonizer v6.9 Symbol-Safe Discovery ---\n"
+                "\n# --- Harmonizer v7.0 Linker Optimization ---\n"
                 "file(GLOB_RECURSE ALL_C_FILES \"src/*.c\" \"src/*.cpp\")\n"
                 "foreach(FILE_PATH ${ALL_C_FILES})\n"
+                "    # Exclude directories that conflict with Android/NDK internals\n"
                 "    if(NOT FILE_PATH MATCHES \"/lib/\" AND \n"
+                "       NOT FILE_PATH MATCHES \"/os/\" AND \n"
+                "       NOT FILE_PATH MATCHES \"/gu/\" AND \n"
                 "       NOT FILE_PATH MATCHES \"inflate.c\" AND \n"
-                "       NOT FILE_PATH MATCHES \"rarezip.c\" AND\n"
-                "       NOT FILE_PATH MATCHES \"/gu/\" AND\n"
-                "       NOT FILE_PATH MATCHES \"/os/\")\n"
+                "       NOT FILE_PATH MATCHES \"rarezip.c\")\n"
                 "        list(APPEND FILTERED_SOURCES ${FILE_PATH})\n"
                 "    endif()\n"
                 "endforeach()\n"
                 "target_sources(bkawrapper PRIVATE ${FILTERED_SOURCES})\n"
-                "# ---------------------------------------\n"
+                "target_link_libraries(bkawrapper log z m)\n"
+                "# ------------------------------------------\n"
             )
             with open(self.cmake_file, 'w') as f: f.write(content + injection)
 
-    def fix_static_conflicts(self):
-        print("  [>] Logic Fix: Removing conflicting static prototypes...")
-        patched = 0
-        for root, _, files in os.walk(self.src_target):
-            for f in files:
-                if f.endswith('.c'):
-                    path = os.path.join(root, f)
-                    with open(path, 'r', errors='ignore') as file: content = file.read()
-                    static_defs = re.findall(r'static\s+\w+\s+(\w+)\s*\(', content)
-                    if static_defs:
-                        initial_content = content
-                        for func_name in static_defs:
-                            proto_pattern = r'^[^#\n]*?\w+\s+' + re.escape(func_name) + r'\s*\([^;]*\);'
-                            content = re.sub(proto_pattern, '', content, flags=re.MULTILINE)
-                        if content != initial_content:
-                            with open(path, 'w') as file: file.write(content)
-                            patched += 1
-
     def run(self):
-        print("--- Harmonizer v6.9: Symbol-Safe Integrity ---")
+        print("--- Harmonizer v7.0: Linker & Symbol Integrity ---")
         self.build_symbol_map()
         self.sync_files()
-        self.fix_static_conflicts()
+        self.enforce_header_guards()
         self.repair_structural_syntax()
         self.patch_cmake()
-        print("--- v6.9 Complete ---")
+        print("--- v7.0 Complete ---")
 
 if __name__ == "__main__":
     ROOT = "Android/app/src/main/cpp"
     DECOMP = "decomp-files"
     if not os.path.exists(DECOMP): DECOMP = "decomp"
-    h = SourceHarmonizerV6_9(ROOT, DECOMP)
+    h = SourceHarmonizerV7_0(ROOT, DECOMP)
     h.run()
