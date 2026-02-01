@@ -2,7 +2,7 @@ import os
 import shutil
 import re
 
-class SourceHarmonizerV5_7:
+class SourceHarmonizerV5_8:
     def __init__(self, android_path, decomp_path):
         self.android_path = android_path
         self.decomp_path = decomp_path
@@ -20,19 +20,35 @@ class SourceHarmonizerV5_7:
                 shutil.copytree(source, target)
                 print(f"      [+] Synced {sub}/ folder.")
 
+    def fix_function_pointer_casts(self):
+        """
+        Log Fix: Resolves 'incompatible function pointer types' in otr_builder.cpp.
+        It finds where decompress_rare_asset is used and adds an explicit cast.
+        """
+        print("  [>] Logic Fix: Applying explicit casts to function pointers...")
+        builder_cpp = os.path.join(self.ultra_target, "otr_builder.cpp")
+        if os.path.exists(builder_cpp):
+            with open(builder_cpp, 'r') as f: content = f.read()
+            
+            # This looks for decompress_rare_asset being passed as an argument
+            # and wraps it in a cast to (void*) or the specific engine pointer type.
+            new_content = content.replace(
+                "decompress_rare_asset", 
+                "(void (*)(u8 *, u8 *))decompress_rare_asset"
+            )
+            
+            if new_content != content:
+                with open(builder_cpp, 'w') as f: f.write(new_content)
+                print("      [!] Applied C-style cast to decompress_rare_asset in otr_builder.cpp")
+
     def fix_conflicting_signatures(self):
-        """
-        Log Fix: Aligns decompress_rare_asset between C and C++ code.
-        The log shows a conflict between 'void' and 's32' returns.
-        """
-        print("  [>] Logic Fix: Aligning rare_decompression function signatures...")
+        print("  [>] Logic Fix: Aligning rare_decompression.h return types...")
         target_h = os.path.join(self.ultra_target, "rare_decompression.h")
         if os.path.exists(target_h):
             with open(target_h, 'r') as f: content = f.read()
-            # Force the header to use 'void' to match the OTR wrapper implementation
             new_content = content.replace("s32 decompress_rare_asset", "void decompress_rare_asset")
             with open(target_h, 'w') as f: f.write(new_content)
-            print("      [!] Forced rare_decompression.h to 'void' return type.")
+            print("      [!] Forced rare_decompression.h to 'void'.")
 
     def repair_source(self):
         print("  [>] Logic Fix: Repairing legacy C array initializers...")
@@ -64,16 +80,17 @@ class SourceHarmonizerV5_7:
         return False
 
     def run(self):
-        print("--- Harmonizer v5.7: Signature Alignment ---")
+        print("--- Harmonizer v5.8: Pointer Casting & Alignment ---")
         self.sync_files()
         self.fix_header_linkage()
-        self.fix_conflicting_signatures() # New logic step
+        self.fix_conflicting_signatures()
+        self.fix_function_pointer_casts() # New logic step for otr_builder.cpp
         self.repair_source()
-        print("--- v5.7 Complete ---")
+        print("--- v5.8 Complete ---")
 
 if __name__ == "__main__":
     ROOT = "Android/app/src/main/cpp"
     DECOMP = "decomp-files"
     if not os.path.exists(DECOMP): DECOMP = "decomp"
-    h = SourceHarmonizerV5_7(ROOT, DECOMP)
+    h = SourceHarmonizerV5_8(ROOT, DECOMP)
     h.run()
