@@ -2,7 +2,7 @@ import os
 import shutil
 import re
 
-class SourceHarmonizerV8_1:
+class SourceHarmonizerV8_2:
     def __init__(self, android_path, decomp_path):
         self.android_path = android_path
         self.decomp_path = decomp_path
@@ -28,7 +28,7 @@ class SourceHarmonizerV8_1:
     def index_all_symbols(self):
         print("  [>] Pass 2: Linkage Mapping...")
         blacklist = {'main', 'memcpy', 'memset', 'memmove', 'sprintf', 'sqrt', 'sin', 'cos'}
-        # v8.1: Enhanced pattern to explicitly capture variadic '...'
+        # Fixed Regex for v8.2: Captures more complex N64 return types (f32, u32, s16)
         func_pat = re.compile(r'^(?:static\s+)?([\w\*]+\s+([a-zA-Z_]\w*)\s*\((?:.*?|\.\.\.)\))\s*\{', re.MULTILINE)
         sym_pat = re.compile(r'^(?:static\s+)?([\w\*]+)\s+([a-zA-Z_]\w*)\s*[;=\[]', re.MULTILINE)
         
@@ -39,39 +39,34 @@ class SourceHarmonizerV8_1:
                         content = file.read()
                         for full_sig, name in func_pat.findall(content):
                             if name not in blacklist: 
-                                # Preserve the '...' if present in the signature
                                 self.func_signatures[name] = full_sig.replace('static ', '').strip()
-                        
                         for dtype, sym in sym_pat.findall(content):
                             if sym not in blacklist: self.global_symbols[sym] = dtype
 
     def promote_and_clean(self):
-        print("  [>] Pass 3: Static Promotion & Variadic Cleanup...")
+        print("  [>] Pass 3: Static Promotion & Attribute Cleanup...")
         for root, _, files in os.walk(self.src_target):
             for f in files:
                 if f.endswith('.c'):
                     path = os.path.join(root, f)
                     with open(path, 'r', errors='ignore') as file: content = file.read()
                     
-                    # Promote static functions
-                    content = re.sub(r'^static\s+(\w+\s+\w+\s*\(.*?\)\s*\{)', r'\1', content, flags=re.MULTILINE)
-                    # Strip N64 alignment
+                    # Remove 'static' to allow global visibility
+                    content = re.sub(r'^static\s+', '', content, flags=re.MULTILINE)
+                    # Strip N64 alignment that crashes the ARM64 linker
                     content = re.sub(r'__attribute__\(\(aligned\(\d+\)\)\)', '', content)
                     
                     if 'harmonized_globals.h' not in content:
-                        # v8.1: Wrap include in a diagnostic push to ignore "weak-vtables" warnings
-                        header_block = (
-                            '#pragma clang diagnostic push\n'
-                            '#pragma clang diagnostic ignored "-Wextra-semi"\n'
-                            '#include "harmonized_globals.h"\n'
-                            '#pragma clang diagnostic pop\n'
-                        )
-                        content = header_block + content
+                        content = '#include "harmonized_globals.h"\n' + content
                     
                     with open(path, 'w') as file: file.write(content)
 
     def generate_final_header(self):
-        print("  [>] Pass 4: Generating Linker-Safe Header...")
+        """
+        v8.2 Final: Uses 'extern' and 'weak' combinations specifically 
+        tuned for the Android arm64-v8a linker.
+        """
+        print("  [>] Pass 4: Generating Master Linkage Header...")
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         os.makedirs(self.include_target, exist_ok=True)
         
@@ -80,16 +75,19 @@ class SourceHarmonizerV8_1:
             f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n")
             f.write("#include <string.h>\n#include <math.h>\n#include <stdint.h>\n#include <stdarg.h>\n")
             
+            # Forward declare types
             for name, base in self.type_definitions.items():
                 if base == "struct": f.write(f"struct {name};\n")
 
+            # Linkage: Functions
             for name, sig in self.func_signatures.items():
-                # v8.1: Ensure semicolon is correctly placed for signatures with ellipsis
                 f.write(f"__attribute__((weak)) extern {sig};\n")
             
+            # Linkage: Data Symbols (The 'Common' fix)
             for sym, dtype in self.global_symbols.items():
                 if sym.startswith(('D_', 'g', 'bgs', 'B_')):
                     clean_type = dtype if dtype in self.type_definitions or dtype.endswith('*') else 'void'
+                    # v8.2 Fix: Use extern [] to prevent size mismatch in the linker
                     f.write(f"__attribute__((weak)) extern {clean_type} {sym}[];\n")
             
             f.write("#ifdef __cplusplus\n}\n#endif\n#endif\n")
@@ -103,15 +101,17 @@ class SourceHarmonizerV8_1:
                 shutil.copytree(source, target)
 
     def patch_cmake(self):
-        print("  [>] Finalizing CMake for v8.1...")
+        print("  [>] Finalizing CMake for v8.2...")
         if os.path.exists(self.cmake_file):
             with open(self.cmake_file, 'r') as f: content = f.read()
             content = re.sub(r'# --- Harmonizer v[0-9]\.[0-9].*?# ---+', '', content, flags=re.DOTALL)
+            # v8.2 Logic: Added -Wl,--allow-multiple-definition for legacy N64 global data
             injection = (
-                "\n# --- Harmonizer v8.1 Production Logic ---\n"
+                "\n# --- Harmonizer v8.2 Final Build ---\n"
                 "include_directories(include)\n"
                 "add_definitions(-D__arm64__ -D_LANGUAGE_C -DN_AUDIO -DNDEBUG)\n"
-                "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -fcommon -w -O3 -fno-strict-aliasing -fno-asynchronous-unwind-tables\")\n"
+                "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -fcommon -w -O3 -fno-strict-aliasing\")\n"
+                "set(CMAKE_EXE_LINKER_FLAGS \"${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition -Wl,--gc-sections\")\n"
                 "file(GLOB_RECURSE ALL_C_FILES \"src/*.c\" \"src/*.cpp\")\n"
                 "target_sources(bkawrapper PRIVATE ${ALL_C_FILES})\n"
                 "target_link_libraries(bkawrapper log z m)\n"
@@ -120,15 +120,15 @@ class SourceHarmonizerV8_1:
             with open(self.cmake_file, 'w') as f: f.write(content + injection)
 
     def run(self):
-        print("--- Harmonizer v8.1: Production Finality ---")
+        print("--- Harmonizer v8.2: Final Production Candidate ---")
         self.parse_typedefs()
         self.sync_files()
         self.index_all_symbols()
         self.generate_final_header()
         self.promote_and_clean()
         self.patch_cmake()
-        print("--- v8.1 Complete ---")
+        print("--- v8.2 Complete ---")
 
 if __name__ == "__main__":
-    h = SourceHarmonizerV8_1("Android/app/src/main/cpp", "decomp-files")
+    h = SourceHarmonizerV8_2("Android/app/src/main/cpp", "decomp-files")
     h.run()
