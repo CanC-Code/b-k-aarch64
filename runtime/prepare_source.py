@@ -11,7 +11,7 @@ class SourceHarmonizerV8_7:
         self.cmake_file = os.path.join(android_path, "CMakeLists.txt")
         self.global_symbols = {}
         self.func_signatures = {}
-        self.existing_typedefs = set()
+        self.existing_types = set() # Renamed to track both typedefs and enums
         self.types_used_in_signatures = set()
 
     def sync_files(self):
@@ -44,62 +44,42 @@ class SourceHarmonizerV8_7:
                     shutil.copytree(source, target)
 
     def parse_typedefs(self):
-        """Comprehensive typedef extraction - handles ALL C typedef patterns"""
+        """Comprehensive type extraction to avoid redefinition errors"""
         print("  [>] Pass 1: Global Type Discovery...")
         include_dir = self.include_target
         if not os.path.exists(include_dir):
-            print(f"    WARNING: Include directory not found: {include_dir}")
             return
         
+        # Regex to match 'typedef struct/union/enum { ... } Name;' or '}Name;'
+        # Improved to catch definitions without spaces after the closing brace
+        type_def_pattern = re.compile(r'}\s*([a-zA-Z_]\w*)\s*;')
+        # Regex for simple typedefs: 'typedef int Name;'
+        simple_typedef_pattern = re.compile(r'typedef\s+(?!struct|union|enum)[\w\s\*]+\s+([a-zA-Z_]\w*)\s*;')
+        # Regex for enum names: 'enum Name {'
+        enum_name_pattern = re.compile(r'enum\s+([a-zA-Z_]\w*)\s*\{')
+
         for root, _, files in os.walk(include_dir):
             for f in files:
                 if f.endswith('.h'):
                     path = os.path.join(root, f)
                     with open(path, 'r', errors='ignore') as file:
                         content = file.read()
-                    
-                    # Match complex struct/union/enum typedef blocks
-                    typedef_block_pattern = re.compile(
-                        r'typedef\s+(?:struct|union|enum)\s+\w*\s*\{[^}]*\}\s*(\w+)\s*(?://.*)?;',
-                        re.DOTALL
-                    )
-                    for match in typedef_block_pattern.findall(content):
-                        self.existing_typedefs.add(match)
-                    
-                    # Match simple typedefs like typedef int s32;
-                    simple_typedef_pattern = re.compile(
-                        r'typedef\s+(?!struct|union|enum)[\w\s\*]+\s+(\w+)\s*;'
-                    )
-                    for match in simple_typedef_pattern.findall(content):
-                        if not match.startswith('_'):
-                            self.existing_typedefs.add(match)
-                    
-                    # Match forward declarations
-                    forward_pattern = re.compile(r'typedef\s+struct\s+(\w+)\s+(\w+)\s*;')
-                    for struct_name, typedef_name in forward_pattern.findall(content):
-                        self.existing_typedefs.add(typedef_name)
+                        self.existing_types.update(type_def_pattern.findall(content))
+                        self.existing_types.update(simple_typedef_pattern.findall(content))
+                        self.existing_types.update(enum_name_pattern.findall(content))
         
-        print(f"    Found {len(self.existing_typedefs)} existing typedefs")
+        print(f"    Found {len(self.existing_types)} existing types")
 
     def index_all_symbols(self):
         """Index functions and track all types used in signatures"""
         print("  [>] Pass 2: Mapping Absolute Linkage...")
-        blacklist = {'main', 'memcpy', 'memset', 'memmove', 'sprintf', 'sqrt', 'sin', 'cos'}
+        blacklist = {'main', 'memcpy', 'memset', 'memmove', 'sprintf', 'sqrt', 'sin', 'cos', 'long'}
         
-        func_pat = re.compile(
-            r'^(?:static\s+)?([\w\*]+\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', 
-            re.MULTILINE | re.DOTALL
-        )
-        sym_pat = re.compile(
-            r'^(?:static\s+)?([\w\*]+)\s+([a-zA-Z_]\w*)\s*[;=\[]', 
-            re.MULTILINE
-        )
+        func_pat = re.compile(r'^(?:static\s+)?([\w\*]+\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
+        sym_pat = re.compile(r'^(?:static\s+)?([\w\*]+)\s+([a-zA-Z_]\w*)\s*[;=\[]', re.MULTILINE)
         
-        # IMPROVED: This regex now catches 'Type*', 'Type *', and 'struct Type*' patterns
+        # Catch types used as pointers: 'Type *' or 'struct Type*'
         type_in_param_pat = re.compile(r'\b(?:struct\s+)?([a-zA-Z_]\w*)\s*\*')
-        
-        # MANUAL FIX: Ensure types causing build failure are explicitly tracked for forward-declaration
-        self.types_used_in_signatures.update(['Actor', 'ActorMarker', 'asset_e'])
         
         scan_paths = [self.decomp_path, self.src_target]
         for base_path in scan_paths:
@@ -110,25 +90,44 @@ class SourceHarmonizerV8_7:
                         path = os.path.join(root, f)
                         with open(path, 'r', errors='ignore') as file:
                             content = file.read()
-                            # Find functions and their parameter types
                             for full_sig, name, params in func_pat.findall(content):
                                 if name not in blacklist: 
                                     self.func_signatures[name] = " ".join(full_sig.replace('static ', '').split())
-                                    for type_match in type_in_param_pat.findall(params):
-                                        type_name = type_match.strip()
-                                        # Filter out standard primitives and keywords
-                                        if type_name not in {'uint8_t', 'uint16_t', 'uint32_t', 'uint64_t',
-                                                              'int8_t', 'int16_t', 'int32_t', 'int64_t', 
-                                                              'void', 'char', 'int', 'float', 'double', 'bool',
-                                                              'f32', 's32', 'u32', 'u8', 's8', 'u16', 's16'}:
+                                    for type_name in type_in_param_pat.findall(params):
+                                        if type_name not in blacklist and len(type_name) > 1:
                                             self.types_used_in_signatures.add(type_name)
-                            
-                            # Find global variables
                             for dtype, sym in sym_pat.findall(content):
                                 if sym not in blacklist: self.global_symbols[sym] = dtype
         
-        print(f"    Found {len(self.types_used_in_signatures)} types used in signatures")
-        print(f"    Found {len(self.func_signatures)} function signatures")
+        # Filter out primitives
+        primitives = {'void', 'int', 'char', 'float', 'double', 'short', 'uint8_t', 'int32_t', 'u32', 's32', 'f32'}
+        self.types_used_in_signatures -= primitives
+
+    def generate_final_header(self):
+        """Generate harmonized_globals.h with safe forward declarations"""
+        print("  [>] Pass 4: Generating Large-Model Global Header...")
+        header_path = os.path.join(self.include_target, "harmonized_globals.h")
+        
+        # Only forward declare types that are used but NOT defined in any header
+        types_to_declare = self.types_used_in_signatures - self.existing_types
+        
+        with open(header_path, 'w') as f:
+            f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n\n")
+            f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
+            f.write("#include <stdint.h>\n#include <stdbool.h>\n\n")
+            
+            if types_to_declare:
+                f.write("/* Forward declarations for unknown types */\n")
+                for type_name in sorted(types_to_declare):
+                    f.write(f"typedef struct {type_name} {type_name};\n")
+                f.write("\n")
+            
+            if self.func_signatures:
+                f.write("/* ==== Function Declarations ==== */\n")
+                for name, sig in sorted(self.func_signatures.items()):
+                    f.write(f"__attribute__((weak)) extern {sig};\n")
+            
+            f.write("\n#ifdef __cplusplus\n}\n#endif\n#endif\n")
 
     def promote_and_clean(self):
         """Remove static keywords and alignment attributes"""
@@ -150,63 +149,19 @@ class SourceHarmonizerV8_7:
                         modified += 1
         print(f"    Modified {modified} source files")
 
-    def generate_final_header(self):
-        """Generate harmonized_globals.h with necessary forward declarations"""
-        print("  [>] Pass 4: Generating Large-Model Global Header...")
-        header_path = os.path.join(self.include_target, "harmonized_globals.h")
-        os.makedirs(self.include_target, exist_ok=True)
-        
-        # Determine which types were used but never defined/typedefed
-        types_needing_forward_decl = self.types_used_in_signatures - self.existing_typedefs
-        
-        with open(header_path, 'w') as f:
-            f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n\n")
-            f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
-            f.write("#include <stddef.h>\n#include <string.h>\n#include <math.h>\n")
-            f.write("#include <stdint.h>\n#include <stdarg.h>\n#include <stdbool.h>\n\n")
-            
-            if types_needing_forward_decl:
-                f.write("/* Forward declarations for missing types found in signatures */\n")
-                for type_name in sorted(types_needing_forward_decl):
-                    # Default to struct for unknown types used as pointers
-                    f.write(f"typedef struct {type_name} {type_name};\n")
-                f.write("\n")
-            
-            if self.func_signatures:
-                f.write("/* ==== Weak Function Declarations ==== */\n")
-                for name, sig in sorted(self.func_signatures.items()):
-                    f.write(f"__attribute__((weak)) extern {sig};\n")
-            
-            f.write("\n")
-            global_vars = [(sym, dtype) for sym, dtype in self.global_symbols.items() 
-                          if sym.startswith(('D_', 'g', 'bgs', 'B_'))]
-            if global_vars:
-                f.write("/* ==== Weak Global Variable Declarations ==== */\n")
-                for sym, dtype in sorted(global_vars):
-                    clean_type = dtype if dtype.endswith('*') else 'void'
-                    f.write(f"__attribute__((weak)) extern {clean_type} {sym}[];\n")
-            
-            f.write("\n#ifdef __cplusplus\n}\n#endif\n#endif\n")
-        print(f"    Generated header with {len(types_needing_forward_decl)} declarations")
-
     def patch_cmake(self):
         """Update CMakeLists.txt with necessary compiler flags"""
-        print("  [>] Finalizing CMake for v8.7 Platinum...")
         if not os.path.exists(self.cmake_file): return
         with open(self.cmake_file, 'r') as f: content = f.read()
         content = re.sub(r'# --- Harmonizer v[0-9]\.[0-9].*?# ---+', '', content, flags=re.DOTALL)
         
         injection = (
             "\n# --- Harmonizer v8.7 Platinum Edition ---\n"
-            "include_directories(include)\ninclude_directories(include/2.0L)\n"
-            "include_directories(include/2.0L/PR)\ninclude_directories(include/core1)\n"
-            "include_directories(include/core2)\n\n"
-            "add_definitions(-D__arm64__ -D_LANGUAGE_C -DN_AUDIO -DNDEBUG)\n"
-            "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -mcmodel=large -fcommon -w -O3 -fno-strict-aliasing -fno-plt\")\n"
-            "set(CMAKE_SHARED_LINKER_FLAGS \"${CMAKE_SHARED_LINKER_FLAGS} -Wl,--allow-multiple-definition -Wl,--no-rosegment\")\n"
-            "file(GLOB_RECURSE ALL_C_FILES \"src/*.c\" \"src/*.cpp\")\n"
+            "include_directories(include)\n"
+            "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -mcmodel=large -fcommon -w -O3\")\n"
+            "set(CMAKE_SHARED_LINKER_FLAGS \"${CMAKE_SHARED_LINKER_FLAGS} -Wl,--allow-multiple-definition\")\n"
+            "file(GLOB_RECURSE ALL_C_FILES \"src/*.c\")\n"
             "target_sources(bkawrapper PRIVATE ${ALL_C_FILES})\n"
-            "target_link_libraries(bkawrapper log z m)\n"
             "# ----------------------------------------\n"
         )
         with open(self.cmake_file, 'w') as f: f.write(content + injection)
@@ -219,7 +174,7 @@ class SourceHarmonizerV8_7:
         self.generate_final_header()
         self.promote_and_clean()
         self.patch_cmake()
-        print("--- v8.7 Complete: Ready for Android Build ---")
+        print("--- v8.7 Complete ---")
 
 if __name__ == "__main__":
     h = SourceHarmonizerV8_7("Android/app/src/main/cpp", "decomp-files")
