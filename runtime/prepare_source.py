@@ -12,19 +12,29 @@ class SourceHarmonizerV8_6:
         self.type_definitions = {} 
         self.global_symbols = {}
         self.func_signatures = {}
-        self.struct_types = set()  # Track all struct types used in signatures
+        self.struct_types = set()
+        self.existing_typedefs = set()  # Track types already typedef'd in headers
 
     def parse_typedefs(self):
         print("  [>] Pass 1: Global Type Discovery...")
-        typedef_pat = re.compile(r'typedef\s+(.+)\s+(\w+);')
+        typedef_pat = re.compile(r'typedef\s+(?:struct\s+\w+\s+)?(\w+)\s*;')
+        typedef_struct_pat = re.compile(r'typedef\s+struct\s+\w+\s*\{[^}]*\}\s*(\w+)\s*;', re.DOTALL)
         struct_pat = re.compile(r'struct\s+(\w+)')
+        
         for root, _, files in os.walk(os.path.join(self.decomp_path, "include")):
             for f in files:
                 if f.endswith('.h'):
-                    with open(os.path.join(root, f), 'r', errors='ignore') as file:
+                    path = os.path.join(root, f)
+                    with open(path, 'r', errors='ignore') as file:
                         content = file.read()
-                        for base, name in typedef_pat.findall(content): 
-                            self.type_definitions[name] = base
+                        
+                        # Track all existing typedef names
+                        for name in typedef_pat.findall(content):
+                            self.existing_typedefs.add(name)
+                        for name in typedef_struct_pat.findall(content):
+                            self.existing_typedefs.add(name)
+                        
+                        # Track struct definitions
                         for name in struct_pat.findall(content): 
                             self.type_definitions[name] = "struct"
 
@@ -34,8 +44,8 @@ class SourceHarmonizerV8_6:
         func_pat = re.compile(r'^(?:static\s+)?([\w\*]+\s+([a-zA-Z_]\w*)\s*\((?:[^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
         sym_pat = re.compile(r'^(?:static\s+)?([\w\*]+)\s+([a-zA-Z_]\w*)\s*[;=\[]', re.MULTILINE)
         
-        # Pattern to find struct types in function signatures
-        struct_in_sig_pat = re.compile(r'\b(Actor|ActorMarker|[A-Z][a-zA-Z0-9_]*)\s*\*')
+        # Pattern to find struct/type names in function signatures
+        param_type_pat = re.compile(r'\b((?:struct\s+)?[A-Z][a-zA-Z0-9_]*)\s*\*')
         
         for root, _, files in os.walk(self.decomp_path):
             for f in files:
@@ -46,10 +56,16 @@ class SourceHarmonizerV8_6:
                             if name not in blacklist: 
                                 clean_sig = " ".join(full_sig.replace('static ', '').split())
                                 self.func_signatures[name] = clean_sig
+                                
                                 # Extract struct types from signature
-                                for struct_type in struct_in_sig_pat.findall(clean_sig):
-                                    if struct_type not in {'uint8_t', 'uint16_t', 'uint32_t', 'int8_t', 'int16_t', 'int32_t'}:
-                                        self.struct_types.add(struct_type)
+                                for match in param_type_pat.findall(clean_sig):
+                                    # Remove 'struct' prefix if present
+                                    type_name = match.replace('struct ', '').strip()
+                                    # Skip standard types and already typedef'd types
+                                    if (type_name not in {'uint8_t', 'uint16_t', 'uint32_t', 'int8_t', 'int16_t', 'int32_t', 'void'} 
+                                        and type_name not in self.existing_typedefs):
+                                        self.struct_types.add(type_name)
+                                        
                         for dtype, sym in sym_pat.findall(content):
                             if sym not in blacklist: self.global_symbols[sym] = dtype
 
@@ -77,35 +93,51 @@ class SourceHarmonizerV8_6:
         
         with open(header_path, 'w') as f:
             f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n")
-            f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n")
+            f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
             
-            # CRITICAL FIX: Include stddef.h for size_t BEFORE any declarations
+            # CRITICAL: Include stddef.h for size_t BEFORE any declarations
+            f.write("/* Standard library includes */\n")
             f.write("#include <stddef.h>\n")
-            f.write("#include <string.h>\n#include <math.h>\n#include <stdint.h>\n#include <stdarg.h>\n\n")
+            f.write("#include <string.h>\n")
+            f.write("#include <math.h>\n")
+            f.write("#include <stdint.h>\n")
+            f.write("#include <stdarg.h>\n\n")
             
-            # Forward declare all struct types found in function signatures
-            f.write("/* Forward declarations for struct types */\n")
-            for struct_type in sorted(self.struct_types):
-                f.write(f"typedef struct {struct_type} {struct_type};\n")
-            f.write("\n")
+            # Only forward declare struct types that are NOT already typedef'd
+            if self.struct_types:
+                f.write("/* Forward declarations for struct types (only those not already typedef'd) */\n")
+                for struct_type in sorted(self.struct_types):
+                    # Only create forward declaration if it's not already a typedef
+                    if struct_type not in self.existing_typedefs:
+                        f.write(f"typedef struct {struct_type} {struct_type};\n")
+                f.write("\n")
             
-            # Add any additional struct declarations from type definitions
-            f.write("/* Additional struct forward declarations */\n")
-            for name, base in self.type_definitions.items():
-                if base == "struct" and name not in self.struct_types:
+            # Forward declare remaining struct types from type definitions
+            remaining_structs = [name for name in self.type_definitions.keys() 
+                               if self.type_definitions[name] == "struct" 
+                               and name not in self.struct_types 
+                               and name not in self.existing_typedefs]
+            
+            if remaining_structs:
+                f.write("/* Additional struct forward declarations */\n")
+                for name in sorted(remaining_structs):
                     f.write(f"struct {name};\n")
-            f.write("\n")
+                f.write("\n")
 
             # Function signatures
-            f.write("/* Weak function declarations */\n")
-            for name, sig in self.func_signatures.items():
-                f.write(f"__attribute__((weak)) extern {sig};\n")
-            f.write("\n")
+            if self.func_signatures:
+                f.write("/* Weak function declarations */\n")
+                for name, sig in sorted(self.func_signatures.items()):
+                    f.write(f"__attribute__((weak)) extern {sig};\n")
+                f.write("\n")
             
             # Global symbols
-            f.write("/* Weak global variable declarations */\n")
-            for sym, dtype in self.global_symbols.items():
-                if sym.startswith(('D_', 'g', 'bgs', 'B_')):
+            global_vars = [(sym, dtype) for sym, dtype in self.global_symbols.items() 
+                          if sym.startswith(('D_', 'g', 'bgs', 'B_'))]
+            
+            if global_vars:
+                f.write("/* Weak global variable declarations */\n")
+                for sym, dtype in sorted(global_vars):
                     clean_type = dtype if dtype in self.type_definitions or dtype.endswith('*') else 'void'
                     # Use incomplete array syntax to resolve size mismatches in large model
                     f.write(f"__attribute__((weak)) extern {clean_type} {sym}[];\n")
