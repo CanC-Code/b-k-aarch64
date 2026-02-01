@@ -2,7 +2,7 @@ import os
 import shutil
 import re
 
-class SourceHarmonizerV6_3:
+class SourceHarmonizerV6_4:
     def __init__(self, android_path, decomp_path):
         self.android_path = android_path
         self.decomp_path = decomp_path
@@ -23,39 +23,45 @@ class SourceHarmonizerV6_3:
 
     def repair_structural_syntax(self):
         """
-        Structural Repair: Fixes scope-related errors in game actors.
-        Corrects 'expected parameter declarator' and 'conflicting types' by
-        identifying code that escaped function boundaries during decompilation.
+        Structural Repair: Targeted logic to fix 'expected parameter declarator'.
+        Instead of a broad regex, we target specific known orphaned calls 
+        and patterns that break the Clang compiler in Android NDK.
         """
         print("  [>] Logic Fix: Repairing structural syntax in game actors...")
+        # Specific fix for the blocker in frogminigame.c identified in logs
         for root, _, files in os.walk(self.src_target):
             for f in files:
                 if f.endswith('.c'):
                     path = os.path.join(root, f)
-                    with open(path, 'r', errors='ignore') as file: content = file.read()
+                    with open(path, 'r', errors='ignore') as file: 
+                        lines = file.readlines()
                     
-                    # Fix: Remove orphaned function calls sitting in global scope
-                    # We regex for calls that start at the beginning of a line and aren't declarations
-                    cleaned_content = re.sub(r'^[a-zA-Z0-9_]+\([^\)]*\);', '', content, flags=re.MULTILINE)
+                    new_lines = []
+                    for line in lines:
+                        # Logic: If a line starts with a function call but is not inside a { } 
+                        # block and is not a declaration, it's likely orphaned logic.
+                        if "mapSpecificFlags_set" in line and "(" in line and line.strip().endswith(");"):
+                            # Check if it looks like a global scope call (no indentation or specific files)
+                            if not line.startswith(" ") and not line.startswith("\t"):
+                                continue # Drop this line
+                        new_lines.append(line)
                     
-                    if cleaned_content != content:
-                        with open(path, 'w') as file: file.write(cleaned_content)
+                    if len(new_lines) != len(lines):
+                        with open(path, 'w') as file: 
+                            file.writelines(new_lines)
 
     def patch_cmake(self):
-        """
-        Smart Discovery: Refined to prevent NDK/Platform duplication.
-        """
         print("  [>] Logic Fix: Updating CMake with total integrity discovery...")
         if os.path.exists(self.cmake_file):
             with open(self.cmake_file, 'r') as f: content = f.read()
-            # Clean all previous Harmonizer versions
+            # Clean all previous versions
             content = re.sub(r'# --- Harmonizer v6\..*?# ---+', '', content, flags=re.DOTALL)
             
+            # Smart Discovery: We must exclude lib/ and graphics utils that conflict with NDK
             injection = (
-                "\n# --- Harmonizer v6.3 Total Discovery ---\n"
+                "\n# --- Harmonizer v6.4 Total Discovery ---\n"
                 "file(GLOB_RECURSE ALL_C_FILES \"src/*.c\")\n"
                 "foreach(FILE_PATH ${ALL_C_FILES})\n"
-                "    # Refined exclusion list to stop platform conflicts\n"
                 "    if(NOT FILE_PATH MATCHES \"src/lib/\" AND \n"
                 "       NOT FILE_PATH MATCHES \"inflate.c\" AND \n"
                 "       NOT FILE_PATH MATCHES \"rarezip.c\" AND\n"
@@ -68,7 +74,7 @@ class SourceHarmonizerV6_3:
             )
             
             with open(self.cmake_file, 'w') as f: f.write(content + injection)
-            print("      [!] CMakeLists.txt updated to v6.3.")
+            print("      [!] CMakeLists.txt updated to v6.4.")
 
     def fix_static_conflicts(self):
         print("  [>] Logic Fix: Harmonizing static function declarations...")
@@ -78,6 +84,7 @@ class SourceHarmonizerV6_3:
                 if f.endswith('.c'):
                     path = os.path.join(root, f)
                     with open(path, 'r', errors='ignore') as file: content = file.read()
+                    # Pattern for static prototypes that conflict with their definitions
                     static_defs = re.findall(r'static\s+\w+\s+(\w+)\s*\(', content)
                     if static_defs:
                         initial_content = content
@@ -98,6 +105,7 @@ class SourceHarmonizerV6_3:
                 with open(builder_cpp, 'w') as f: f.write(new_content)
 
     def fix_conflicting_signatures(self):
+        # Aligns the decompressor signature across the bridge
         target_h = os.path.join(self.ultra_target, "rare_decompression.h")
         if os.path.exists(target_h):
             with open(target_h, 'r') as f: content = f.read()
@@ -121,7 +129,7 @@ class SourceHarmonizerV6_3:
         print(f"      [!] Repaired {patched} files.")
 
     def run(self):
-        print("--- Harmonizer v6.3: Total Integrity Fix ---")
+        print("--- Harmonizer v6.4: Final Integrity & Repair ---")
         self.sync_files()
         self.fix_conflicting_signatures()
         self.fix_function_pointer_casts()
@@ -129,11 +137,11 @@ class SourceHarmonizerV6_3:
         self.repair_source()
         self.repair_structural_syntax()
         self.patch_cmake()
-        print("--- v6.3 Complete ---")
+        print("--- v6.4 Complete ---")
 
 if __name__ == "__main__":
     ROOT = "Android/app/src/main/cpp"
     DECOMP = "decomp-files"
     if not os.path.exists(DECOMP): DECOMP = "decomp"
-    h = SourceHarmonizerV6_3(ROOT, DECOMP)
+    h = SourceHarmonizerV6_4(ROOT, DECOMP)
     h.run()
