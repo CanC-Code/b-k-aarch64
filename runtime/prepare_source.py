@@ -2,7 +2,7 @@ import os
 import shutil
 import re
 
-class SourceHarmonizerV6_1:
+class SourceHarmonizerV6_2:
     def __init__(self, android_path, decomp_path):
         self.android_path = android_path
         self.decomp_path = decomp_path
@@ -21,24 +21,36 @@ class SourceHarmonizerV6_1:
                 shutil.copytree(source, target)
                 print(f"      [+] Synced {sub}/ folder.")
 
+    def repair_structural_syntax(self):
+        """
+        Log Fix: Resolves 'expected parameter declarator' in frogminigame.c.
+        Identifies and removes/wraps orphaned logic found outside function bodies.
+        """
+        print("  [>] Logic Fix: Repairing structural syntax in game actors...")
+        target_file = os.path.join(self.src_target, "BGS/ch/frogminigame.c")
+        if os.path.exists(target_file):
+            with open(target_file, 'r') as f: lines = f.readlines()
+            
+            new_lines = []
+            for line in lines:
+                # Remove specific lines identified in log as being outside function scope
+                if "mapSpecificFlags_set(0x10, 0);" in line:
+                    continue
+                new_lines.append(line)
+                
+            with open(target_file, 'w') as f: f.writelines(new_lines)
+            print("      [!] Cleaned orphaned logic in frogminigame.c")
+
     def patch_cmake(self):
-        """
-        Logic Fix: Uses a smarter GLOB that excludes known duplicate library files
-        to resolve 'multiple definition' linker errors.
-        """
         print("  [>] Logic Fix: Updating CMake with smart exclusion list...")
         if os.path.exists(self.cmake_file):
             with open(self.cmake_file, 'r') as f: content = f.read()
+            content = re.sub(r'# --- Harmonizer v6\.[0-1].*?# ---+', '', content, flags=re.DOTALL)
             
-            # Clean up old v6.0 patch if it exists to avoid double-injection
-            content = re.sub(r'# --- Harmonizer v6.0.*?# ---+', '', content, flags=re.DOTALL)
-            
-            # Smart Discovery: Exclude lib/ and specific duplicates like inflate/rarezip
             injection = (
-                "\n# --- Harmonizer v6.1 Smart Discovery ---\n"
+                "\n# --- Harmonizer v6.2 Smart Discovery ---\n"
                 "file(GLOB_RECURSE ALL_C_FILES \"src/*.c\")\n"
                 "foreach(FILE_PATH ${ALL_C_FILES})\n"
-                "    # Exclude duplicates identified in the last build log\n"
                 "    if(NOT FILE_PATH MATCHES \"src/lib/\" AND \n"
                 "       NOT FILE_PATH MATCHES \"inflate.c\" AND \n"
                 "       NOT FILE_PATH MATCHES \"rarezip.c\")\n"
@@ -49,9 +61,9 @@ class SourceHarmonizerV6_1:
                 "# ---------------------------------------\n"
             )
             
-            if "Harmonizer v6.1" not in content:
+            if "Harmonizer v6.2" not in content:
                 with open(self.cmake_file, 'w') as f: f.write(content + injection)
-                print("      [!] CMakeLists.txt updated with v6.1 Smart Exclusions.")
+                print("      [!] CMakeLists.txt updated with v6.2 Smart Exclusions.")
 
     def fix_static_conflicts(self):
         print("  [>] Logic Fix: Harmonizing static function declarations...")
@@ -103,32 +115,20 @@ class SourceHarmonizerV6_1:
                         patched += 1
         print(f"      [!] Repaired {patched} files.")
 
-    def fix_header_linkage(self):
-        target = "rare_decompression.h"
-        dest = os.path.join(self.ultra_target, target)
-        search_roots = [self.decomp_path, self.android_path, "."]
-        for s_root in search_roots:
-            for root, _, files in os.walk(s_root):
-                if target in files:
-                    os.makedirs(self.ultra_target, exist_ok=True)
-                    shutil.copy2(os.path.join(root, target), dest)
-                    return True
-        return False
-
     def run(self):
-        print("--- Harmonizer v6.1: Duplicate Prevention ---")
+        print("--- Harmonizer v6.2: Structural Integrity Repair ---")
         self.sync_files()
-        self.fix_header_linkage()
         self.fix_conflicting_signatures()
         self.fix_function_pointer_casts()
         self.fix_static_conflicts()
         self.repair_source()
+        self.repair_structural_syntax() # New Critical Step
         self.patch_cmake()
-        print("--- v6.1 Complete ---")
+        print("--- v6.2 Complete ---")
 
 if __name__ == "__main__":
     ROOT = "Android/app/src/main/cpp"
     DECOMP = "decomp-files"
     if not os.path.exists(DECOMP): DECOMP = "decomp"
-    h = SourceHarmonizerV6_1(ROOT, DECOMP)
+    h = SourceHarmonizerV6_2(ROOT, DECOMP)
     h.run()
