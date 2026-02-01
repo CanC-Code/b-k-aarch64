@@ -58,6 +58,7 @@ class SourceHarmonizerV8_7:
                     with open(path, 'r', errors='ignore') as file:
                         content = file.read()
                     
+                    # Match complex struct/union/enum typedef blocks
                     typedef_block_pattern = re.compile(
                         r'typedef\s+(?:struct|union|enum)\s+\w*\s*\{[^}]*\}\s*(\w+)\s*(?://.*)?;',
                         re.DOTALL
@@ -65,6 +66,7 @@ class SourceHarmonizerV8_7:
                     for match in typedef_block_pattern.findall(content):
                         self.existing_typedefs.add(match)
                     
+                    # Match simple typedefs like typedef int s32;
                     simple_typedef_pattern = re.compile(
                         r'typedef\s+(?!struct|union|enum)[\w\s\*]+\s+(\w+)\s*;'
                     )
@@ -72,33 +74,11 @@ class SourceHarmonizerV8_7:
                         if not match.startswith('_'):
                             self.existing_typedefs.add(match)
                     
+                    # Match forward declarations
                     forward_pattern = re.compile(r'typedef\s+struct\s+(\w+)\s+(\w+)\s*;')
                     for struct_name, typedef_name in forward_pattern.findall(content):
                         self.existing_typedefs.add(typedef_name)
-                    
-                    lines = content.split('\n')
-                    i = 0
-                    while i < len(lines):
-                        line = lines[i].strip()
-                        if line.startswith('typedef'):
-                            brace_count = 0
-                            j = i
-                            typedef_text = ""
-                            while j < len(lines):
-                                current_line = lines[j]
-                                typedef_text += current_line
-                                brace_count += current_line.count('{') - current_line.count('}')
-                                if ';' in current_line and brace_count == 0:
-                                    clean_line = re.sub(r'//.*$', '', current_line.strip()).rstrip(';').strip()
-                                    if '}' in clean_line:
-                                        after_brace = clean_line.split('}')[-1].strip()
-                                        words = after_brace.split()
-                                        if words and words[0].isidentifier():
-                                            self.existing_typedefs.add(words[0])
-                                    i = j
-                                    break
-                                j += 1
-                        i += 1
+        
         print(f"    Found {len(self.existing_typedefs)} existing typedefs")
 
     def index_all_symbols(self):
@@ -115,11 +95,11 @@ class SourceHarmonizerV8_7:
             re.MULTILINE
         )
         
-        # FIXED: Improved regex to catch more pointer type variations
-        type_in_param_pat = re.compile(r'\b(?:struct\s+)?([A-Z][a-zA-Z0-9_]*)\s*\*')
+        # IMPROVED: This regex now catches 'Type*', 'Type *', and 'struct Type*' patterns
+        type_in_param_pat = re.compile(r'\b(?:struct\s+)?([a-zA-Z_]\w*)\s*\*')
         
-        # FIXED: Explicitly ensure critical missing types are tracked
-        self.types_used_in_signatures.update(['Actor', 'ActorMarker'])
+        # MANUAL FIX: Ensure types causing build failure are explicitly tracked for forward-declaration
+        self.types_used_in_signatures.update(['Actor', 'ActorMarker', 'asset_e'])
         
         scan_paths = [self.decomp_path, self.src_target]
         for base_path in scan_paths:
@@ -130,15 +110,20 @@ class SourceHarmonizerV8_7:
                         path = os.path.join(root, f)
                         with open(path, 'r', errors='ignore') as file:
                             content = file.read()
+                            # Find functions and their parameter types
                             for full_sig, name, params in func_pat.findall(content):
                                 if name not in blacklist: 
                                     self.func_signatures[name] = " ".join(full_sig.replace('static ', '').split())
                                     for type_match in type_in_param_pat.findall(params):
                                         type_name = type_match.strip()
+                                        # Filter out standard primitives and keywords
                                         if type_name not in {'uint8_t', 'uint16_t', 'uint32_t', 'uint64_t',
                                                               'int8_t', 'int16_t', 'int32_t', 'int64_t', 
-                                                              'void', 'Void', 'NULL', 'f32', 's32', 'u32'}:
+                                                              'void', 'char', 'int', 'float', 'double', 'bool',
+                                                              'f32', 's32', 'u32', 'u8', 's8', 'u16', 's16'}:
                                             self.types_used_in_signatures.add(type_name)
+                            
+                            # Find global variables
                             for dtype, sym in sym_pat.findall(content):
                                 if sym not in blacklist: self.global_symbols[sym] = dtype
         
@@ -171,17 +156,19 @@ class SourceHarmonizerV8_7:
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         os.makedirs(self.include_target, exist_ok=True)
         
+        # Determine which types were used but never defined/typedefed
         types_needing_forward_decl = self.types_used_in_signatures - self.existing_typedefs
         
         with open(header_path, 'w') as f:
             f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n\n")
             f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
             f.write("#include <stddef.h>\n#include <string.h>\n#include <math.h>\n")
-            f.write("#include <stdint.h>\n#include <stdarg.h>\n\n")
+            f.write("#include <stdint.h>\n#include <stdarg.h>\n#include <stdbool.h>\n\n")
             
             if types_needing_forward_decl:
-                f.write("/* Forward declarations for missing types */\n")
+                f.write("/* Forward declarations for missing types found in signatures */\n")
                 for type_name in sorted(types_needing_forward_decl):
+                    # Default to struct for unknown types used as pointers
                     f.write(f"typedef struct {type_name} {type_name};\n")
                 f.write("\n")
             
