@@ -9,9 +9,24 @@ class SourceHarmonizer:
         # Maps problematic legacy headers to safe local names
         self.renames = {"string.h": "game_string.h", "time.h": "game_time.h", "sched.h": "game_sched.h"}
 
+    def enforce_header_guards(self, path, filename):
+        """Physically adds #ifndef guards to every header to stop recursive inclusion errors."""
+        with open(path, 'r', errors='ignore') as f:
+            content = f.read()
+        
+        if content.startswith("#ifndef"):
+            return False # Already guarded
+
+        # Create a unique guard name based on the filename
+        guard_name = f"GUARD_{filename.replace('.', '_').upper()}_{os.urandom(2).hex()}"
+        new_content = f"#ifndef {guard_name}\n#define {guard_name}\n\n{content}\n\n#endif // {guard_name}"
+        
+        with open(path, 'w') as f:
+            f.write(new_content)
+        return True
+
     def scan_symbols(self):
         print("  [>] Scanning project for all global types...")
-        # Patterns to catch structs, enums, and complex typedefs
         patterns = [
             r'((?:typedef\s+)?(?:struct|enum)\s*([\w\d_]*)\s*\{[^}]+\}\s*([\w\d_]*)\s*;)',
             r'(typedef\s+[\w\d_]+\s+([\w\d_]+)\s*;)',
@@ -47,37 +62,32 @@ class SourceHarmonizer:
 
         orig_content = content
 
-        # A. Header Mapping
         for old_h, new_h in self.renames.items():
             content = content.replace(f'#include <{old_h}>', f'#include "{new_h}"')
             content = content.replace(f'#include "{old_h}"', f'#include "{new_h}"')
 
         content = re.sub(r'#include\s+["<](?:2\.0L/PR/)?sched\.h[">]', '#include "game_sched.h"', content)
 
-        # B. Dependency Injection with Exclusion Logic
-        # We exclude core headers and files that already define these types to stop redefinition errors
-        is_core_header = any(x in content for x in ["ultra64.h", "gbi.h", "mbi.h", "sptask.h", "enums.h"])
+        # [span_2](start_span)Exclude core headers from injection entirely to prevent duplication[span_2](end_span)
+        is_core_header = any(x in filename for x in ["ultra64.h", "gbi.h", "mbi.h", "sptask.h", "enums.h", "ucode.h", "sp.h"])
         
         potential_types = set(re.findall(r'\b([sS][\w\d_]+|[a-zA-Z_][\w\d_]*_t|audioInfo|Bitmap|Gfx|ActorMarker|Actor)\b', content))
 
         needed_defs = []
         if not is_core_header:
             for type_name in potential_types:
-                # Only inject if the symbol is in our DB and NOT already textually present in this file
                 if type_name in self.symbol_db and f"struct {type_name}" not in content and f"typedef struct {type_name}" not in content:
                     guard = f"_GUARD_{type_name}"
                     needed_defs.append(f"#ifndef {guard}\n#define {guard}\n{self.symbol_db[type_name]}\n#endif")
 
-        # C. Linkage (Static vs Extern)
         static_funcs = re.findall(r'^static\s+[\w\*]+\s+([\w\d_]+)\s*\(', content, re.MULTILINE)
         prototypes = []
         for f in static_funcs:
             sig = re.search(r'^(static\s+[\w\*]+\s+' + re.escape(f) + r'\s*\([^)]*\))', content, re.MULTILINE)
             if sig: prototypes.append(f"{sig.group(1)};")
 
-        # Injection
         if needed_defs or prototypes:
-            injection = "\n// --- AUTOMATED HARMONIZER v3.1 (FIXED) ---\n" + "\n".join(needed_defs + prototypes) + "\n"
+            injection = "\n// --- AUTOMATED HARMONIZER v3.2 (AGGRESSIVE) ---\n" + "\n".join(needed_defs + prototypes) + "\n"
             match = re.search(r'#include.*?\n', content)
             pos = match.end() if match else 0
             content = content[:pos] + injection + content[pos:]
@@ -88,31 +98,31 @@ class SourceHarmonizer:
         return False
 
 def prepare_source():
-    print("--- Starting Automated Source Harmonization v3.1 ---")
+    print("--- Starting Automated Source Harmonization v3.2 ---")
     android_cpp = "Android/app/src/main/cpp"
 
-    # 1. Selective wipe to protect NativeBridge/CMake files (crucial for packaging)
     for sub in ["src", "include"]:
         target = os.path.join(android_cpp, sub)
         if os.path.exists(target): shutil.rmtree(target)
         os.makedirs(target, exist_ok=True)
 
-    # 2. Sync fresh files
-    print("  [+] Syncing fresh files from decomp-files...")
     shutil.copytree("decomp-files/include", os.path.join(android_cpp, "include"), dirs_exist_ok=True)
     shutil.copytree("decomp-files/src", os.path.join(android_cpp, "src"), dirs_exist_ok=True)
 
     harmonizer = SourceHarmonizer(android_cpp)
-
-    # 3. Fix physical file names first
     harmonizer.rename_physical_headers()
+    
+    # 1. Enforce guards on all fresh headers FIRST
+    for root, _, files in os.walk(android_cpp):
+        for f in files:
+            if f.endswith('.h'):
+                harmonizer.enforce_header_guards(os.path.join(root, f), f)
 
-    # 4. Scan and Harmonize
+    # 2. Harmonize
     harmonizer.scan_symbols()
     patched = 0
     for root, _, files in os.walk(android_cpp):
         for f in files:
-            # We process everything in cpp root (including ultra/ and src/)
             if f.endswith(('.c', '.h')):
                 if harmonizer.harmonize_file(os.path.join(root, f), f):
                     patched += 1
