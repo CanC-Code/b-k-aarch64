@@ -12,28 +12,15 @@ class SourceHarmonizerV8_6:
         self.type_definitions = {} 
         self.global_symbols = {}
         self.func_signatures = {}
-        self.existing_typedefs = set()  # All typedef names already defined
-        self.include_files = []  # Track which header files need to be included
+        self.existing_typedefs = set()
+        self.types_used_in_signatures = set()
 
     def parse_typedefs(self):
         """Scan all header files to identify existing typedefs"""
         print("  [>] Pass 1: Global Type Discovery...")
         
-        # Match: typedef struct X { ... } TypeName;
-        typedef_struct_body_pat = re.compile(
-            r'typedef\s+(?:struct|union|enum)\s+\w*\s*\{[^}]*\}\s*(\w+)\s*;', 
-            re.DOTALL
-        )
-        
-        # Match: typedef struct X TypeName;
-        typedef_forward_pat = re.compile(
-            r'typedef\s+(?:struct|union|enum)\s+\w+\s+(\w+)\s*;'
-        )
-        
-        # Match: } TypeName; (closing brace typedef)
-        closing_typedef_pat = re.compile(
-            r'\}\s*(\w+)\s*;'
-        )
+        # Pattern to match typedef endings: } TypeName;
+        typedef_ending_pat = re.compile(r'\}\s*(\w+)\s*;')
         
         for root, _, files in os.walk(os.path.join(self.decomp_path, "include")):
             for f in files:
@@ -42,37 +29,42 @@ class SourceHarmonizerV8_6:
                     with open(path, 'r', errors='ignore') as file:
                         content = file.read()
                         
-                        # Extract all typedef names
-                        for name in typedef_struct_body_pat.findall(content):
-                            self.existing_typedefs.add(name)
-                            
-                        for name in typedef_forward_pat.findall(content):
-                            self.existing_typedefs.add(name)
+                        # Track typedef blocks
+                        # Match: typedef struct/union/enum ... { ... } TypeName;
+                        in_typedef = False
+                        brace_depth = 0
                         
-                        # For closing brace typedefs, check if preceded by typedef
-                        lines = content.split('\n')
-                        typedef_active = False
-                        for line in lines:
-                            if 'typedef' in line and ('{' in line or 'struct' in line or 'union' in line):
-                                typedef_active = True
-                            if typedef_active and '}' in line:
-                                match = re.search(r'\}\s*(\w+)\s*;', line)
+                        for line in content.split('\n'):
+                            # Check if starting typedef
+                            if re.search(r'typedef\s+(?:struct|union|enum)', line):
+                                in_typedef = True
+                            
+                            # Track braces
+                            brace_depth += line.count('{') - line.count('}')
+                            
+                            # Check if ending typedef
+                            if in_typedef and brace_depth == 0 and '}' in line:
+                                match = typedef_ending_pat.search(line)
                                 if match:
                                     self.existing_typedefs.add(match.group(1))
-                                typedef_active = False
+                                in_typedef = False
 
     def index_all_symbols(self):
-        """Index all functions and global symbols"""
+        """Index all functions and global symbols, tracking types used in signatures"""
         print("  [>] Pass 2: Mapping Absolute Linkage...")
         blacklist = {'main', 'memcpy', 'memset', 'memmove', 'sprintf', 'sqrt', 'sin', 'cos'}
+        
         func_pat = re.compile(
-            r'^(?:static\s+)?([\w\*]+\s+([a-zA-Z_]\w*)\s*\((?:[^\{]*?)\))\s*\{', 
+            r'^(?:static\s+)?([\w\*]+\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', 
             re.MULTILINE | re.DOTALL
         )
         sym_pat = re.compile(
             r'^(?:static\s+)?([\w\*]+)\s+([a-zA-Z_]\w*)\s*[;=\[]', 
             re.MULTILINE
         )
+        
+        # Pattern to find type names in parameters (struct X *, TypeName *)
+        type_in_param_pat = re.compile(r'\b(?:struct\s+)?([A-Z][a-zA-Z0-9_]*)\s*\*')
         
         for root, _, files in os.walk(self.decomp_path):
             for f in files:
@@ -81,10 +73,20 @@ class SourceHarmonizerV8_6:
                         content = file.read()
                         
                         # Extract function signatures
-                        for full_sig, name in func_pat.findall(content):
+                        for full_sig, name, params in func_pat.findall(content):
                             if name not in blacklist: 
                                 clean_sig = " ".join(full_sig.replace('static ', '').split())
                                 self.func_signatures[name] = clean_sig
+                                
+                                # Find all types used in this signature
+                                for type_match in type_in_param_pat.findall(params):
+                                    # Remove 'struct' prefix if present
+                                    type_name = type_match.strip()
+                                    # Skip primitive types
+                                    if type_name not in {'uint8_t', 'uint16_t', 'uint32_t', 'uint64_t',
+                                                          'int8_t', 'int16_t', 'int32_t', 'int64_t', 
+                                                          'void', 'Void', 'NULL'}:
+                                        self.types_used_in_signatures.add(type_name)
                         
                         # Extract global symbols
                         for dtype, sym in sym_pat.findall(content):
@@ -113,7 +115,7 @@ class SourceHarmonizerV8_6:
                         file.write(content)
 
     def generate_final_header(self):
-        """Generate the harmonized globals header WITHOUT any struct forward declarations"""
+        """Generate the harmonized globals header with minimal, necessary forward declarations"""
         print("  [>] Pass 4: Generating Large-Model Global Header...")
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         os.makedirs(self.include_target, exist_ok=True)
@@ -131,9 +133,18 @@ class SourceHarmonizerV8_6:
             f.write("#include <stdint.h>\n")
             f.write("#include <stdarg.h>\n\n")
             
-            # DO NOT create any typedef forward declarations
-            # The existing headers already handle this correctly
-            # We'll just declare functions and globals
+            # Forward declare ONLY types that are:
+            # 1. Used in function signatures
+            # 2. NOT already typedef'd in existing headers
+            types_needing_forward_decl = self.types_used_in_signatures - self.existing_typedefs
+            
+            if types_needing_forward_decl:
+                f.write("/* Forward declarations for types used in function signatures */\n")
+                f.write("/* (Only types not already typedef'd in existing headers) */\n")
+                for type_name in sorted(types_needing_forward_decl):
+                    # Use opaque struct pointer pattern - safest approach
+                    f.write(f"typedef struct {type_name} {type_name};\n")
+                f.write("\n")
             
             # Function signatures (weak linkage)
             if self.func_signatures:
