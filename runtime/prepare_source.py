@@ -7,11 +7,16 @@ class SourceHarmonizer:
         self.root_path = root_path
         self.symbol_db = {}
         self.renames = {"string.h": "game_string.h", "time.h": "game_time.h", "sched.h": "game_sched.h"}
-        # [span_11](start_span)High-traffic types that cause redefinition loops in your log [cite: 11-28]
-        self.sacred_types = ["BKModel", "BKVertexList", "Struct62s", "Struct6Cs", "SkeletalAnimation", "SkeletalAnimationCallback", "sprite_prop_s", "SpriteProp"]
+        
+        # SACRED TYPES: These cause the redefinitions found in log.txt. 
+        # [span_10](start_span)[span_11](start_span)We manually skip them to let the headers handle them naturally.[span_10](end_span)[span_11](end_span)
+        self.sacred_types = ["sprite", "sfx_e", "ALLink", "ALSound", "N_ALVoice", "ALMicroTime", "Bitmap"]
+        
+        # CORE HEADERS: We NEVER inject into these. This prevents the loops in ultra64/enums.
+        self.core_headers = ["ultra64.h", "gbi.h", "sp.h", "libaudio.h", "enums.h", "functions.h"]
 
     def scan_symbols(self):
-        print("  [>] Brute-force scanning for all project types...")
+        print("  [>] Scanning for project types...")
         patterns = [
             r'((?:typedef\s+)?(?:struct|enum)\s*([\w\d_]*)\s*\{[^}]+\}\s*([\w\d_]*)\s*;)',
             r'(typedef\s+[\w\d_]+\s+([\w\d_]+)\s*;)',
@@ -37,23 +42,21 @@ class SourceHarmonizer:
         for old_h, new_h in self.renames.items():
             content = content.replace(f'#include <{old_h}>', f'#include "{new_h}"')
 
-        # [cite_start]Core engine headers shouldn't receive injections to prevent loops[span_11](end_span)
-        is_core = any(x in filename for x in ["functions.h", "structs.h", "prop.h", "ultra64.h", "gbi.h"])
-        
-        if not is_core:
-            # [span_12](start_span)[span_13](start_span)Capture custom types and types found missing in log (BoneTransformList, StopNSwop_Data)[span_12](end_span)[span_13](end_span)
-            potential_types = set(re.findall(r'\b(BK[\w\d_]+|[sS][\w\d_]+|ActorMarker|Gfx|BoneTransformList|StopNSwop_Data)\b', content))
+        # Logic: Only inject into non-core files to avoid the redefinition errors in log
+        if filename not in self.core_headers:
+            # Find all potential custom types
+            potential_types = set(re.findall(r'\b(BK[\w\d_]+|[sS][\w\d_]+|ActorMarker|Gfx|Bitmap|AL[\w\d_]+)\b', content))
             needed_defs = []
             
             for type_name in potential_types:
                 if type_name in self.symbol_db and type_name not in self.sacred_types:
-                    # BRUTE FORCE: Use a unique guard for every single type
-                    guard = f"_FORCE_DEF_{type_name}"
+                    # BRUTE FORCE: Wrap in unique guards so even multiple injections won't crash
+                    guard = f"_HARM_DEF_{type_name}"
                     if guard not in content:
                         needed_defs.append(f"#ifndef {guard}\n#define {guard}\n{self.symbol_db[type_name]}\n#endif")
 
             if needed_defs:
-                injection = "\n// --- HARMONIZER v4.6 ---\n" + "\n".join(needed_defs) + "\n"
+                injection = "\n// --- HARMONIZER v4.7 ---\n" + "\n".join(needed_defs) + "\n"
                 match = re.search(r'#include.*?\n', content)
                 pos = match.end() if match else 0
                 content = content[:pos] + injection + content[pos:]
@@ -63,24 +66,26 @@ class SourceHarmonizer:
             return True
         return False
 
-def prepare_source():
+def run_harmonizer():
     android_cpp = "Android/app/src/main/cpp"
-    # Selective wipe: ONLY clean src/include, preserve CMake/Bridge files
+    
+    # SAFE WIPE: Refresh only game source, keep CMake/NativeBridge files
     for sub in ["src", "include"]:
-        target = os.path.join(android_cpp, sub)
-        if os.path.exists(target): shutil.rmtree(target)
-        os.makedirs(target, exist_ok=True)
-
+        path = os.path.join(android_cpp, sub)
+        if os.path.exists(path): shutil.rmtree(path)
+        os.makedirs(path, exist_ok=True)
+    
     shutil.copytree("decomp-files/include", os.path.join(android_cpp, "include"), dirs_exist_ok=True)
     shutil.copytree("decomp-files/src", os.path.join(android_cpp, "src"), dirs_exist_ok=True)
 
-    harmonizer = SourceHarmonizer(android_cpp)
-    harmonizer.scan_symbols()
+    h = SourceHarmonizer(android_cpp)
+    h.scan_symbols()
 
+    print("  [>] Applying v4.7 build-safe patches...")
     for root, _, files in os.walk(android_cpp):
         for f in files:
             if f.endswith(('.c', '.h')):
-                harmonizer.harmonize_file(os.path.join(root, f), f)
+                h.harmonize_file(os.path.join(root, f), f)
 
 if __name__ == "__main__":
-    prepare_source()
+    run_harmonizer()
