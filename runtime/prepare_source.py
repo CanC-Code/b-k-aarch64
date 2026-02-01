@@ -2,102 +2,90 @@ import os
 import shutil
 import re
 
-class SourceHarmonizer:
+class SourceHarmonizerV5:
     def __init__(self, root_path):
         self.root_path = root_path
         self.symbol_db = {}
-        self.renames = {"string.h": "game_string.h", "time.h": "game_time.h", "sched.h": "game_sched.h"}
+        # Core headers that MUST NOT be modified by injection
+        self.protected_dir = os.path.join(root_path, "include")
+
+    def fix_model_h(self):
+        """Specifically targets the massive redefinitions in model.h revealed in log."""
+        model_h_path = os.path.join(self.protected_dir, "model.h")
+        if not os.path.exists(model_h_path): return
         
-        # SACRED TYPES: Updated based on the latest log.txt "redefinition" errors.
-        self.sacred_types = [
-            "sprite", "sfx_e", "ALLink", "ALSound", "N_ALVoice", "ALMicroTime", 
-            "Bitmap", "AnSeqElement", "struct5Bs", "struct62s", "struct6Cs",
-            "SkeletalAnimation", "SkeletalAnimationCallback"
+        print("  [>] Log Fix: Deduplicating model.h structures...")
+        with open(model_h_path, 'r') as f: content = f.read()
+        
+        # [span_6](start_span)Types identified in log as redefined [cite: 16-37]
+        redefined_types = [
+            "BKVtxRef", "BKMesh", "BKGeoList", "BKMeshList", "BKVertexList", 
+            "BKCollisionGeo", "BKCollisionTri", "BKCollisionList", "BKEffectsList", 
+            "BKAnimation", "BKAnimationList"
         ]
         
-        # CORE HEADERS: Never modify these to maintain N64 engine integrity.
-        self.core_headers = [
-            "ultra64.h", "gbi.h", "mbi.h", "sp.h", "libaudio.h", 
-            "enums.h", "functions.h", "structs.h", "prop.h"
-        ]
+        for t in redefined_types:
+            # Matches the second occurrence of a typedef struct for these types
+            pattern = r'(typedef\s+struct.*?}\s*' + t + r'\s*;)'
+            matches = list(re.finditer(pattern, content, re.DOTALL))
+            if len(matches) > 1:
+                # Keep the first, comment out the rest
+                for m in matches[1:]:
+                    content = content[:m.start()] + "/* Redundant: " + m.group(1) + " */" + content[m.end():]
+        
+        with open(model_h_path, 'w') as f: f.write(content)
 
     def scan_symbols(self):
-        print("  [>] Scanning for structs, enums, and macros...")
-        # Expanded patterns to capture the vector/FREE_LIST macros causing log errors
-        patterns = [
-            r'((?:typedef\s+)?(?:struct|enum)\s*([\w\d_]*)\s*\{[^}]+\}\s*([\w\d_]*)\s*;)',
-            r'(typedef\s+[\w\d_]+\s+([\w\d_]+)\s*;)',
-            r'(struct\s+([\w\d_]+)\s*;)',
-            r'(#define\s+([\w\d_]+)\s*\(.*?\).*)' 
-        ]
+        print("  [>] Scanning for type names...")
+        # We only need the name now for forward declarations
+        pattern = r'(?:struct|enum)\s+([\w\d_]+)\s*\{'
         for root, _, files in os.walk(self.root_path):
             for filename in files:
                 if filename.endswith(('.c', '.h')):
                     with open(os.path.join(root, filename), 'r', errors='ignore') as f:
-                        content = f.read()
-                        for pat in patterns:
-                            for match in re.findall(pat, content, re.DOTALL):
-                                full_def = match[0]
-                                name = match[1] if match[1] else (match[2] if len(match)>2 else "")
-                                if name and name not in self.symbol_db:
-                                    self.symbol_db[name] = full_def
+                        for name in re.findall(pattern, f.read()):
+                            self.symbol_db[name] = True
 
-    def harmonize_file(self, path, filename):
-        with open(path, 'r', errors='ignore') as f:
-            content = f.read()
-        orig_content = content
+    def harmonize_c_file(self, path):
+        """Injects only FORWARD DECLARATIONS to avoid redefinition errors."""
+        with open(path, 'r', errors='ignore') as f: content = f.read()
+        orig = content
+        
+        # [cite_start]Identify types used but potentially undefined[span_6](end_span)
+        potential_types = set(re.findall(r'\b(BK[\w\d_]+|struct\s+[\w\d_]+)\b', content))
+        injections = []
+        
+        for t in potential_types:
+            clean_name = t.replace("struct ", "")
+            if clean_name in self.symbol_db:
+                guard = f"_FWD_{clean_name}"
+                if guard not in content:
+                    injections.append(f"#ifndef {guard}\n#define {guard}\nstruct {clean_name};\ntypedef struct {clean_name} {clean_name};\n#endif")
 
-        for old_h, new_h in self.renames.items():
-            content = content.replace(f'#include <{old_h}>', f'#include "{new_h}"')
-
-        if filename not in self.core_headers:
-            # Capture types that the log says are 'unknown'
-            type_regex = r'\b(BK[\w\d_]+|[sS][\w\d_]+|ActorMarker|Gfx|Bitmap|FREE_LIST|TUPLE|vector|BoneTransformList)\b'
-            potential_types = set(re.findall(type_regex, content))
-            needed_defs = []
-            
-            for type_name in potential_types:
-                if type_name in self.symbol_db and type_name not in self.sacred_types:
-                    guard = f"_HARM_DEF_{type_name}"
-                    if guard not in content:
-                        # BRUTE FORCE: Force definition at top of file
-                        needed_defs.append(f"#ifndef {guard}\n#define {guard}\n{self.symbol_db[type_name]}\n#endif")
-
-            if needed_defs:
-                injection = "\n// --- HARMONIZER v4.9 ---\n" + "\n".join(needed_defs) + "\n"
-                # Locate first include or start of file
-                match = re.search(r'#include.*?\n', content)
-                pos = match.end() if match else 0
-                content = content[:pos] + injection + content[pos:]
-
-        if content != orig_content:
+        if injections:
+            content = "// --- HARMONIZER v5.0 ---\n" + "\n".join(injections) + "\n" + content
             with open(path, 'w') as f: f.write(content)
-            return True
-        return False
 
-def run_harmonizer():
-    android_cpp = "Android/app/src/main/cpp"
+def run_v5():
+    cpp_path = "Android/app/src/main/cpp"
+    h = SourceHarmonizerV5(cpp_path)
     
-    # Selective reset: Preserve CMake and Native wrappers
-    for sub in ["src", "include"]:
-        path = os.path.join(android_cpp, sub)
-        if os.path.exists(path): shutil.rmtree(path)
-        os.makedirs(path, exist_ok=True)
-    
-    shutil.copytree("decomp-files/include", os.path.join(android_cpp, "include"), dirs_exist_ok=True)
-    shutil.copytree("decomp-files/src", os.path.join(android_cpp, "src"), dirs_exist_ok=True)
+    # 1. Physical file preparation (Standard Refresh)
+    for s in ["src", "include"]:
+        p = os.path.join(cpp_path, s)
+        if os.path.exists(p): shutil.rmtree(p)
+        shutil.copytree(f"decomp-files/{s}", p)
 
-    h = SourceHarmonizer(android_cpp)
+    # 2. Logic Phase: Fix the source of the redefinitions
+    h.fix_model_h()
     h.scan_symbols()
 
-    print("  [>] Applying final v4.9 build patches...")
-    patched = 0
-    for root, _, files in os.walk(android_cpp):
+    # 3. [span_7](start_span)Application Phase: Patch ONLY .c files to avoid header pollution[span_7](end_span)
+    for root, _, files in os.walk(os.path.join(cpp_path, "src")):
         for f in files:
-            if f.endswith(('.c', '.h')):
-                if h.harmonize_file(os.path.join(root, f), f):
-                    patched += 1
-    print(f"--- Finished: Patched {patched} files ---")
+            if f.endswith('.c'):
+                h.harmonize_c_file(os.path.join(root, f))
+    print("--- v5.0 Complete: Logic-based patches applied ---")
 
 if __name__ == "__main__":
-    run_harmonizer()
+    run_v5()
