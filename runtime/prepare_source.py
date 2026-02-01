@@ -1,54 +1,50 @@
 import os
 import shutil
-import re
 
-class SourceHarmonizerV5_1:
+class SourceHarmonizerV5_2:
     def __init__(self, root_path):
         self.root_path = root_path
-        # We'll use this to fix the specific array initializer error in leafboat.c
-        self.src_dir = os.path.join(root_path, "src")
+        self.ultra_dir = os.path.join(root_path, "ultra")
+        self.include_dir = os.path.join(root_path, "include")
 
-    def fix_array_initializers(self):
+    def fix_missing_headers(self):
         """
-        Finds 'u8 arr[N] = SYMBOL;' and converts it to:
-        u8 arr[N]; memmove(arr, SYMBOL, N);
-        [span_5](start_span)This fixes the 'array initializer must be an initializer list' error[span_5](end_span).
+        Specifically addresses the 'rare_decompression.h' not found error.
+        It searches for the file in the project and ensures it's in the 'ultra' 
+        directory where 'otr_builder.cpp' expects it.
         """
-        print("  [>] Logic Fix: Repairing modern C array initializers...")
-        for root, _, files in os.walk(self.src_dir):
-            for filename in files:
-                if filename.endswith('.c'):
-                    path = os.path.join(root, filename)
-                    with open(path, 'r', errors='ignore') as f:
-                        content = f.read()
-                    
-                    # Regex to find: type name[size] = symbol;
-                    # Capture: 1=type, 2=name, 3=size, 4=symbol
-                    pattern = r'(\w+)\s+(\w+)\[(\d+)\]\s*=\s*([^;{]+);'
-                    new_content = re.sub(
-                        pattern, 
-                        r'\1 \2[\3]; memmove(\2, \4, \3);', 
-                        content
-                    )
-                    
-                    if new_content != content:
-                        # Ensure string.h is included for memmove
-                        if '#include <string.h>' not in new_content and '#include "game_string.h"' not in new_content:
-                            new_content = '#include <string.h>\n' + new_content
-                        
-                        with open(path, 'w') as f:
-                            f.write(new_content)
-                            print(f"      [!] Repaired array assignment in {filename}")
+        target_header = "rare_decompression.h"
+        target_path = os.path.join(self.ultra_dir, target_header)
+        
+        if os.path.exists(target_path):
+            print(f"  [>] {target_header} already exists in ultra/.")
+            return
 
-def run_v5_1():
+        print(f"  [>] Logic Fix: Locating and linking {target_header}...")
+        
+        # Search the entire root path for the missing header
+        found_path = None
+        for root, _, files in os.walk(self.root_path):
+            if target_header in files:
+                found_path = os.path.join(root, target_header)
+                break
+        
+        if found_path:
+            shutil.copy2(found_path, target_path)
+            print(f"      [!] Successfully copied {target_header} to {self.ultra_dir}")
+        else:
+            # If not found, create a dummy or search in decomp-files if available
+            print(f"      [ERROR] Could not find {target_header} in {self.root_path}")
+            # Optional: Add logic to fetch from a known backup directory if needed
+
+def run_v5_2():
     cpp_path = "Android/app/src/main/cpp"
-    # Note: We assume the previous V5 logic has already refreshed/deduplicated files
-    h = SourceHarmonizerV5_1(cpp_path)
+    h = SourceHarmonizerV5_2(cpp_path)
     
-    # [span_6](start_span)[span_7](start_span)Apply the specific syntactic fix for the current log error[span_6](end_span)[span_7](end_span)
-    h.fix_array_initializers()
+    # Apply the fix for the specific 'file not found' error in the log
+    h.fix_missing_headers()
     
-    print("--- v5.1 Complete: Syntactic array fixes applied ---")
+    print("--- v5.2 Complete: Header path resolution applied ---")
 
 if __name__ == "__main__":
-    run_v5_1()
+    run_v5_2()
