@@ -9,7 +9,6 @@ class SourceHarmonizerV8_6:
         self.src_target = os.path.join(android_path, "src")
         self.include_target = os.path.join(android_path, "include")
         self.cmake_file = os.path.join(android_path, "CMakeLists.txt")
-        self.type_definitions = {} 
         self.global_symbols = {}
         self.func_signatures = {}
         self.existing_typedefs = set()
@@ -27,16 +26,9 @@ class SourceHarmonizerV8_6:
                 shutil.copytree(source, target)
 
     def parse_typedefs(self):
-        """Scan SYNCED header files to identify existing typedefs"""
+        """Extract typedef names using simple string parsing - most reliable method"""
         print("  [>] Pass 1: Global Type Discovery...")
         
-        # Comprehensive patterns to catch all typedef forms
-        # Pattern 1: } TypeName; at end of typedef block
-        typedef_ending_pat = re.compile(r'\}\s*(\w+)\s*;')
-        # Pattern 2: Direct typedef like: typedef TYPE NAME;
-        direct_typedef_pat = re.compile(r'^\s*typedef\s+(?:struct|union|enum)?\s*\w+\s+(\w+)\s*;', re.MULTILINE)
-        
-        # Scan the ANDROID include directory (after sync!)
         include_dir = self.include_target
         if not os.path.exists(include_dir):
             print(f"    WARNING: Include directory not found: {include_dir}")
@@ -47,32 +39,60 @@ class SourceHarmonizerV8_6:
                 if f.endswith('.h'):
                     path = os.path.join(root, f)
                     with open(path, 'r', errors='ignore') as file:
-                        content = file.read()
+                        lines = file.readlines()
+                    
+                    # Simple state machine to track typedef blocks
+                    i = 0
+                    while i < len(lines):
+                        line = lines[i].strip()
                         
-                        # Method 1: Track typedef blocks with braces
-                        in_typedef = False
-                        brace_depth = 0
-                        
-                        for line in content.split('\n'):
-                            # Check if starting typedef
-                            if re.search(r'^\s*typedef\s+(?:struct|union|enum)', line):
-                                in_typedef = True
-                            
+                        # Look for typedef lines
+                        if line.startswith('typedef'):
                             # Track braces
-                            brace_depth += line.count('{') - line.count('}')
+                            brace_count = 0
+                            typedef_started = True
+                            j = i
                             
-                            # Check if ending typedef with closing brace
-                            if in_typedef and brace_depth == 0 and '}' in line:
-                                match = typedef_ending_pat.search(line)
-                                if match:
-                                    self.existing_typedefs.add(match.group(1))
-                                in_typedef = False
+                            # Scan forward until we find the end of the typedef
+                            while j < len(lines):
+                                current_line = lines[j]
+                                brace_count += current_line.count('{') - current_line.count('}')
+                                
+                                # Check if this line ends the typedef (semicolon after braces balance)
+                                if ';' in current_line and brace_count == 0:
+                                    # Extract the typedef name - it's the word before the semicolon
+                                    # after the closing brace if present
+                                    clean_line = current_line.strip()
+                                    
+                                    # Remove trailing semicolon and comments
+                                    if '//' in clean_line:
+                                        clean_line = clean_line.split('//')[0]
+                                    clean_line = clean_line.rstrip(';').strip()
+                                    
+                                    # If there's a closing brace, get the word after it
+                                    if '}' in clean_line:
+                                        after_brace = clean_line.split('}')[-1].strip()
+                                        # Extract the typedef name (first word)
+                                        words = after_brace.split()
+                                        if words:
+                                            typedef_name = words[0]
+                                            # Remove any trailing characters like commas
+                                            typedef_name = typedef_name.strip(',*')
+                                            if typedef_name and typedef_name.isidentifier():
+                                                self.existing_typedefs.add(typedef_name)
+                                    
+                                    i = j  # Move past this typedef
+                                    break
+                                
+                                j += 1
                         
-                        # Method 2: Catch direct typedefs without braces
-                        for match in direct_typedef_pat.findall(content):
-                            self.existing_typedefs.add(match)
+                        i += 1
         
         print(f"    Found {len(self.existing_typedefs)} existing typedefs")
+        # Debug: print first 20 typedefs found
+        if self.existing_typedefs:
+            sample = sorted(list(self.existing_typedefs))[:20]
+            print(f"    Sample: {', '.join(sample)}")
 
     def index_all_symbols(self):
         """Index all functions and global symbols, tracking types used in signatures"""
@@ -180,7 +200,7 @@ class SourceHarmonizerV8_6:
                     f.write(f"typedef struct {type_name} {type_name};\n")
                 f.write("\n")
             else:
-                f.write("/* No additional forward declarations needed */\n\n")
+                f.write("/* No additional forward declarations needed - all types already defined */\n\n")
             
             # Function signatures (weak linkage)
             if self.func_signatures:
