@@ -12,16 +12,16 @@ class FunctionSignature:
     return_type: str
     parameters: str
 
-class SourceHarmonizerV55:
+class SourceHarmonizerV56:
     def __init__(self, android_path: str, decomp_path: str):
         self.android_path = os.path.normpath(android_path)
         self.decomp_path = os.path.normpath(decomp_path)
         self.src_target = os.path.join(self.android_path, "src")
         self.include_target = os.path.join(self.android_path, "include")
         
-        # State
-        self.reserved_identifiers = {'bool', 'true', 'false', 'void', 'int', 'char', 'long', 'float', 'double', 'static', 'extern', 'inline'}
-        self.existing_types: Set[str] = set()
+        # Comprehensive State
+        self.system_reserved = {'bool', 'true', 'false', 'void', 'int', 'char', 'long', 'float', 'double', 'static', 'extern', 'inline', 'u8', 'u16', 'u32', 'u64', 's8', 's16', 's32', 's64'}
+        self.existing_registry: Set[str] = set()
         self.discovered_types: Set[str] = set()
         self.func_signatures: Dict[str, FunctionSignature] = {}
 
@@ -30,8 +30,8 @@ class SourceHarmonizerV55:
         return hashlib.md5(rel_path.encode()).hexdigest()[:12]
 
     def ensure_environment(self):
-        """Pass 0: Establishes directory structure and syncs files."""
-        print("[>] Pass 0: Validating Environment...")
+        """Pass 0: Infrastructure Setup"""
+        print("[>] Pass 0: Initializing Aegis Environment...")
         for folder in [self.src_target, self.include_target]:
             if os.path.exists(folder): shutil.rmtree(folder)
             os.makedirs(folder, exist_ok=True)
@@ -46,27 +46,31 @@ class SourceHarmonizerV55:
                     os.makedirs(dest, exist_ok=True)
                     for f in files: shutil.copy2(os.path.join(root, f), os.path.join(dest, f))
 
-    def precheck_existing_headers(self):
-        """NEW PRECHECK: Fixes Error 196 (Typedef Redefinition) by mapping existing types."""
-        print("[>] Pass 0.5: Scanning Existing Headers for Type Protection...")
-        # Regex to find 'typedef struct Name Name;' or '} Name;'
-        typedef_pattern = re.compile(r'typedef\s+(?:struct|union|enum)?\s*(\w+)\s+(\w+);|(?:\}\s*(\w+);)')
+    def dynamic_type_check(self):
+        """Pass 0.5: Self-Correcting Registry. Scans for existing definitions to prevent Error 196."""
+        print("[>] Pass 0.5: Building Aegis Type Registry...")
+        # Matches: typedef [any] Name;  OR struct Name { ... }; OR enum Name { ... };
+        patterns = [
+            re.compile(r'typedef\s+.*?\s+(\w+);', re.DOTALL),
+            re.compile(r'\}\s*(\w+);'),
+            re.compile(r'(?:struct|union|enum)\s+(\w+)\s*\{')
+        ]
         
         for root, _, files in os.walk(self.include_target):
             for file in files:
-                if file.endswith('.h') and file != "harmonized_globals.h":
+                if file.endswith('.h'):
                     with open(os.path.join(root, file), 'r', errors='ignore') as f:
                         content = f.read()
-                        for match in typedef_pattern.findall(content):
-                            # Extract the type name from any of the capture groups
-                            type_name = next(group for group in reversed(match) if group)
-                            self.existing_types.add(type_name.strip())
+                        for p in patterns:
+                            for match in p.findall(content):
+                                self.existing_registry.add(match.strip())
 
     def map_and_promote(self):
-        """Pass 1 & 2: Discover types and promote visibility."""
-        print("[>] Pass 1 & 2: Logic Mapping & Symbol Promotion...")
+        """Pass 1 & 2: Symbol Extraction and Namespace Protection."""
+        print("[>] Pass 1 & 2: Global Linkage Entanglement...")
         func_pat = re.compile(r'^(?!.*inline)(?!.*extern)static\s+(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
-        type_regex = re.compile(r'\b([A-Z][a-zA-Z0-9_]+)\b')
+        # Identifies CamelCase types likely needing forward declarations
+        type_candidate_pat = re.compile(r'\b([A-Z][a-zA-Z0-9_]+)\b')
 
         for root, _, files in os.walk(self.src_target):
             for f in files:
@@ -75,57 +79,59 @@ class SourceHarmonizerV55:
                 fid = self.get_file_id(path)
                 with open(path, 'r', errors='ignore') as file: content = file.read()
 
-                # Robust Type Discovery: Ignore anything found in the PreCheck
-                for t in type_regex.findall(content):
-                    if t not in self.existing_types and t not in self.reserved_identifiers:
+                # Dynamic Filtering: Only discover types that aren't already in the registry
+                for t in type_candidate_pat.findall(content):
+                    if t not in self.existing_registry and t not in self.system_reserved:
                         self.discovered_types.add(t)
 
                 def func_repl(m):
                     name = m.group(3).strip()
                     if name in ['main']: return m.group(0)
                     self.func_signatures[f"{fid}_{name}"] = FunctionSignature(name, m.group(2).strip(), m.group(4).strip() or "void")
-                    return f"#undef {name}\n#define GLOBAL_DEF_{fid}_{name}\n__attribute__((visibility(\"protected\"), used)) {m.group(1).replace(name, f'SI_{fid}_{name}', 1)} "
+                    return f"#undef {name}\n#define GLOBAL_DEF_{fid}_{name}\n__attribute__((visibility(\"protected\"), used)) {m.group(1).replace(name, f'AG_{fid}_{name}', 1)} "
 
                 patched = re.sub(func_pat, func_repl, content)
                 with open(path, 'w') as file:
                     file.write('#include <ultra64.h>\n#include "harmonized_globals.h"\n' + patched)
 
     def generate_header(self):
-        """Pass 3: Finalizes the header with defensive guards."""
-        print("[>] Pass 3: Finalizing Stellar-Integrity Header...")
+        """Pass 3: Triple-Guarded Aegis Header."""
+        print("[>] Pass 3: Finalizing Aegis-Dynamic Header...")
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         with open(header_path, 'w') as f:
             f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n")
             f.write("#include <stdbool.h>\n")
-            f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n")
+            f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
             
-            # Forward declarations for discovered types
+            # Triple-Guard Pattern: Prevents "redefinition as different kind of symbol"
             for t in sorted(self.discovered_types):
-                f.write(f"#ifndef {t}_DEFINED\n  struct {t};\n  typedef struct {t} {t};\n  #define {t}_DEFINED\n#endif\n")
+                f.write(f"#if !defined({t}_DEFINED) && !defined({t})\n")
+                f.write(f"  struct {t};\n  typedef struct {t} {t};\n")
+                f.write(f"  #define {t}_DEFINED\n")
+                f.write(f"#endif\n")
             
             for key, sig in sorted(self.func_signatures.items()):
-                f.write(f"#ifndef GLOBAL_DEF_{key}\n  #undef {sig.name}\n  #define {sig.name} SI_{key}\n  extern {sig.return_type} SI_{key}({sig.parameters});\n#endif\n")
+                f.write(f"#ifndef GLOBAL_DEF_{key}\n  #undef {sig.name}\n  #define {sig.name} AG_{key}\n  extern {sig.return_type} AG_{key}({sig.parameters});\n#endif\n")
             
-            f.write("#ifdef __cplusplus\n}\n#endif\n#endif\n")
+            f.write("\n#ifdef __cplusplus\n}\n#endif\n#endif\n")
 
     def run(self):
         print("\n" + "="*60)
-        print("Banjo-Kazooie Harmonizer v55.0 STELLAR-INTEGRITY")
+        print("Banjo-Kazooie Harmonizer v56.0 AEGIS-DYNAMIC")
         print("="*60)
         self.ensure_environment()
-        self.precheck_existing_headers()
+        self.dynamic_type_check()
         self.map_and_promote()
         self.generate_header()
         
-        # Achievement Dashboard for your review
         print("\n" + "="*60)
-        print("✓ HARMONIZATION SUCCESSFUL")
+        print("✓ AEGIS HARMONIZATION COMPLETE")
         print("="*60)
-        print(f"  [PRECHECK] Blocked Duplicate Types: {len(self.existing_types)}")
-        print(f"  [ACHIEVEMENT] Discovered New Types: {len(self.discovered_types)}")
-        print(f"  [ACHIEVEMENT] Promoted Global Symbols: {len(self.func_signatures)}")
+        print(f"  [REGISTRY] Blocked Existing Types: {len(self.existing_registry)}")
+        print(f"  [AEGIS] Dynamically Shielded Types: {len(self.discovered_types)}")
+        print(f"  [LINKAGE] Promoted Local Symbols: {len(self.func_signatures)}")
         print("="*60 + "\n")
 
 if __name__ == "__main__":
-    harmonizer = SourceHarmonizerV55("Android/app/src/main/cpp", "decomp-files")
+    harmonizer = SourceHarmonizerV56("Android/app/src/main/cpp", "decomp-files")
     harmonizer.run()
