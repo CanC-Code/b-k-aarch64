@@ -2,19 +2,25 @@ import os
 import shutil
 import re
 
-class SourceHarmonizerV9_4:
+class SourceHarmonizerV9_5:
     def __init__(self, android_path, decomp_path):
         self.android_path = android_path
         self.decomp_path = decomp_path
         self.src_target = os.path.join(android_path, "src")
         self.include_target = os.path.join(android_path, "include")
         self.cmake_file = os.path.join(android_path, "CMakeLists.txt")
-        self.existing_types = set()
         self.func_signatures = {}
         self.opaque_types = set()
+        # Types that are definitely NOT structs (primitives and N64 typedefs)
+        self.protected_types = {
+            'void', 'char', 'int', 'long', 'float', 'double', 'short', 'signed', 'unsigned',
+            'u8', 's8', 'u16', 's16', 'u32', 's32', 'u64', 's64', 'f32', 'f64',
+            'Vtx', 'Mtx', 'Gfx', 'u_long', 'u_short', 'u_int', 'u_char', 'bool',
+            'size_t', 'uintptr_t', 'intptr_t', 'LookAt', 'Hilite'
+        }
 
     def sync_files(self):
-        print("  [>] Pass 0: Syncing...")
+        print("  [>] Pass 0: Robust Syncing...")
         for sub in ["src", "include"]:
             source = os.path.join(self.decomp_path, sub)
             target = os.path.join(self.android_path, sub)
@@ -28,11 +34,11 @@ class SourceHarmonizerV9_4:
                     shutil.copy2(os.path.join(root, f), os.path.join(dest_dir, f))
 
     def map_linkage(self):
-        print("  [>] Pass 1: Global Symbol Mapping...")
-        # Matches global function definitions: return_type name(params) {
+        print("  [>] Pass 1: Universal Symbol Mapping...")
+        # Catch function definitions (handles multiline and static)
         func_pat = re.compile(r'^(?:static\s+)?([\w\*]+\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
-        # Matches potential custom types used as pointers
-        ptr_type_pat = re.compile(r'\b([a-zA-Z_]\w*)\s*(?=\*)')
+        # Deep pointer discovery: any word followed by a space and an asterisk
+        ptr_find = re.compile(r'\b([a-zA-Z_]\w*)\s*(?=\*)')
         
         for root, _, files in os.walk(self.src_target):
             for f in files:
@@ -40,21 +46,21 @@ class SourceHarmonizerV9_4:
                     with open(os.path.join(root, f), 'r', errors='ignore') as file:
                         content = file.read()
                         for full_sig, name, params in func_pat.findall(content):
-                            # Transform signatures to use 'struct' tags for non-primitives
-                            # This makes the signatures immune to missing typedefs
+                            # Clean up whitespace
                             sig = " ".join(full_sig.replace('static ', '').split())
                             
-                            # Identify all types that look like custom structs
-                            for t in ptr_type_pat.findall(sig):
-                                if t not in ['void', 'char', 'int', 'long', 'u8', 's8', 'u16', 's16', 'u32', 's32', 'u64', 's64', 'f32', 'f64', 'Vtx', 'Mtx', 'Gfx']:
+                            # Find every type being used as a pointer in this signature
+                            potential_types = ptr_find.findall(sig)
+                            for t in potential_types:
+                                if t not in self.protected_types and not t.endswith('_t'):
                                     self.opaque_types.add(t)
-                                    # Convert "TypeName *" to "struct TypeName *" in signature
-                                    sig = re.sub(fr'\b{t}\s*\*', f'struct {t} *', sig)
+                                    # Use a negative lookbehind to avoid "struct struct T"
+                                    sig = re.sub(fr'(?<!struct\s)\b{t}\b', f'struct {t}', sig)
                             
                             self.func_signatures[name] = sig
 
     def promote_linkage(self):
-        print("  [>] Pass 2: Source Globalization...")
+        print("  [>] Pass 2: Scope Globalization...")
         for root, _, files in os.walk(self.src_target):
             for f in files:
                 if f.endswith('.c'):
@@ -62,16 +68,22 @@ class SourceHarmonizerV9_4:
                     with open(path, 'r', errors='ignore') as file:
                         lines = file.readlines()
                     
-                    # 1. Strip static from top-level scope
-                    # 2. Append harmonized header to the BOTTOM to ensure real headers take precedence
-                    output = [re.sub(r'^static\s+', '', line) for line in lines]
+                    output = []
+                    for line in lines:
+                        # Strip static from global functions AND global variables
+                        # Only strips if it's the very first word on the line
+                        processed = re.sub(r'^static\s+', '', line)
+                        output.append(processed)
+                    
+                    # Force our harmonized header to the very end of the file
+                    # This ensures it acts as a weak fallback for missing declarations
                     output.append('\n#include "harmonized_globals.h"\n')
                         
                     with open(path, 'w') as file:
                         file.writelines(output)
 
     def generate_header(self):
-        print("  [>] Pass 3: Generating Ultra-Link Header...")
+        print("  [>] Pass 3: Generating Universal Header...")
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         
         with open(header_path, 'w') as f:
@@ -79,13 +91,13 @@ class SourceHarmonizerV9_4:
             f.write("#include <ultra64.h>\n#include <stdint.h>\n#include <stddef.h>\n\n")
             f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
             
-            f.write("/* Opaque Tag Declarations */\n")
+            f.write("/* Opaque Forward Tags (No Typedefs needed) */\n")
             for t in sorted(self.opaque_types):
                 f.write(f"struct {t};\n")
             
-            f.write("\n/* Globally Promoted Weak Signatures */\n")
+            f.write("\n/* Globally Promoted Weak Symbols */\n")
             for name, sig in sorted(self.func_signatures.items()):
-                # Weak linkage allows the linker to pick the real version if available
+                # weak visibility ensures no 'multiple definition' errors
                 f.write(f"__attribute__((weak)) extern {sig};\n")
             
             f.write("\n#ifdef __cplusplus\n}\n#endif\n#endif\n")
@@ -96,14 +108,14 @@ class SourceHarmonizerV9_4:
         content = re.sub(r'# --- Harmonizer.*?# ---+', '', content, flags=re.DOTALL)
         
         injection = (
-            "\n# --- Harmonizer v9.4 Ultra-Link ---\n"
+            "\n# --- Harmonizer v9.5 Universal Link ---\n"
             "include_directories(include)\n"
             "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -mcmodel=large -fcommon -w -O3 -fno-strict-aliasing\")\n"
             "set(CMAKE_SHARED_LINKER_FLAGS \"${CMAKE_SHARED_LINKER_FLAGS} -Wl,--allow-multiple-definition\")\n"
             "add_definitions(-D__arm64__ -D_LANGUAGE_C -DFCOMMON)\n"
             "file(GLOB_RECURSE ALL_C \"src/*.c\")\n"
             "target_sources(bkawrapper PRIVATE ${ALL_C})\n"
-            "# ----------------------------------\n"
+            "# --------------------------------------\n"
         )
         with open(self.cmake_file, 'w') as f: f.write(content + injection)
 
@@ -113,8 +125,8 @@ class SourceHarmonizerV9_4:
         self.promote_linkage()
         self.generate_header()
         self.patch_cmake()
-        print("--- v9.4 Ultra-Link: Perfected ---")
+        print("--- v9.5 Universal Link: Deployment Ready ---")
 
 if __name__ == "__main__":
-    h = SourceHarmonizerV9_4("Android/app/src/main/cpp", "decomp-files")
+    h = SourceHarmonizerV9_5("Android/app/src/main/cpp", "decomp-files")
     h.run()
