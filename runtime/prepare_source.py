@@ -2,7 +2,7 @@ import os
 import shutil
 import re
 
-class SourceHarmonizerV24_0:
+class SourceHarmonizerV25_0:
     def __init__(self, android_path, decomp_path):
         self.android_path = os.path.normpath(android_path)
         self.decomp_path = os.path.normpath(decomp_path)
@@ -14,7 +14,7 @@ class SourceHarmonizerV24_0:
         self.discovered_types = set()
 
     def sync_files(self):
-        print("  [>] Pass 0: Singularity-Nexus Clean Sync...")
+        print("  [>] Pass 0: Omni-Core Clean Sync...")
         for folder in [self.src_target, self.include_target]:
             if os.path.exists(folder):
                 shutil.rmtree(folder)
@@ -32,7 +32,7 @@ class SourceHarmonizerV24_0:
                     shutil.copy2(os.path.join(root, f), os.path.join(dest_dir, f))
 
     def map_linkage(self):
-        print("  [>] Pass 1: Nexus Symbol Analysis...")
+        print("  [>] Pass 1: Global Symbol Mapping...")
         func_pat = re.compile(r'^(?!static\s+inline)static\s+(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
         var_pat = re.compile(r'^static\s+(const\s+)?([\w\* ]+)\s+([a-zA-Z_]\w*)(\s*\[[^\]]*\])*\s*([:=;])', re.MULTILINE)
         
@@ -56,7 +56,7 @@ class SourceHarmonizerV24_0:
                                 self.var_declarations[vname] = (qualifier + vtype.strip(), varr.strip(), suffix == ';')
 
     def promote_linkage(self):
-        print("  [>] Pass 2: Weak Linkage Promotion & Cache Padding...")
+        print("  [>] Pass 2: Hidden-Weak Promotion...")
         for root, _, files in os.walk(self.src_target):
             for f in files:
                 if f.endswith('.c'):
@@ -67,21 +67,21 @@ class SourceHarmonizerV24_0:
                     def replacer(m):
                         name = m.group(3)
                         if name.startswith('G_'): return m.group(0)
-                        # v24.0: Injecting Weak attribute to handle multi-definition collisions
-                        promoted = m.group(0).replace('static ', '__attribute__((weak)) ', 1).replace(name, f"G_{name}", 1)
+                        # v25.0: Forcing hidden visibility at the definition site
+                        promoted = m.group(0).replace('static ', '__attribute__((weak, visibility("hidden"))) ', 1).replace(name, f"G_{name}", 1)
                         return f"#undef {name}\n#define GLOBAL_DEF_{name}\n{promoted}"
 
                     pattern = r'^(?!static\s+inline)static\s+(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(.*?\)\s*\{)'
                     content = re.sub(pattern, replacer, content, flags=re.MULTILINE | re.DOTALL)
                     
                     for vname, (full_type, v_arr, is_bss) in self.var_declarations.items():
-                        # v24.0: All variables promoted with weak linkage for safety
+                        prefix = '__attribute__((weak, visibility("hidden"))) '
                         if is_bss:
                             bss_pat = rf'^static\s+.*?{re.escape(vname)}\s*{re.escape(v_arr)}\s*;'
-                            content = re.sub(bss_pat, f"#undef {vname}\n#define GLOBAL_DEF_{vname}\n__attribute__((weak)) {full_type} G_{vname}{v_arr} = {{0}};", content, flags=re.MULTILINE)
+                            content = re.sub(bss_pat, f"#undef {vname}\n#define GLOBAL_DEF_{vname}\n{prefix}{full_type} G_{vname}{v_arr} = {{0}};", content, flags=re.MULTILINE)
                         else:
                             init_pat = rf'^static\s+(.*?{re.escape(vname)}\s*{re.escape(v_arr)}\s*[:=])'
-                            content = re.sub(init_pat, f"#undef {vname}\n#define GLOBAL_DEF_{vname}\n__attribute__((weak)) {full_type} G_{vname}{v_arr} \\1", content, flags=re.MULTILINE)
+                            content = re.sub(init_pat, f"#undef {vname}\n#define GLOBAL_DEF_{vname}\n{prefix}{full_type} G_{vname}{v_arr} \\1", content, flags=re.MULTILINE)
 
                     if 'harmonized_globals.h' not in content:
                         content = '#include "harmonized_globals.h"\n' + content
@@ -90,7 +90,7 @@ class SourceHarmonizerV24_0:
                         file.write(content)
 
     def generate_header(self):
-        print("  [>] Pass 3: Generating v24 Singularity-Nexus Header...")
+        print("  [>] Pass 3: Generating v25 Omni-Core Header...")
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         with open(header_path, 'w') as f:
             f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n")
@@ -104,12 +104,11 @@ class SourceHarmonizerV24_0:
             
             for name, (ret, params) in sorted(self.func_signatures.items()):
                 f.write(f"#ifndef GLOBAL_DEF_{name}\n  #undef {name}\n  #define {name} G_{name}\n")
-                f.write(f"  __attribute__((visibility(\"internal\"))) extern {ret} G_{name}({params});\n#endif\n")
+                f.write(f"  __attribute__((visibility(\"hidden\"))) extern {ret} G_{name}({params});\n#endif\n")
             
             for name, (vtype, varr, _) in sorted(self.var_declarations.items()):
                 f.write(f"#ifndef GLOBAL_DEF_{name}\n  #undef {name}\n  #define {name} G_{name}\n")
-                # v24.0: 64-byte alignment to match ARM64 cache line
-                f.write(f"  __attribute__((visibility(\"internal\"), aligned(64))) extern {vtype} G_{name}{varr};\n#endif\n")
+                f.write(f"  __attribute__((visibility(\"hidden\"), aligned(64))) extern {vtype} G_{name}{varr};\n#endif\n")
             
             f.write("\n#ifdef __cplusplus\n}\n#endif\n#endif\n")
 
@@ -118,20 +117,20 @@ class SourceHarmonizerV24_0:
         with open(self.cmake_file, 'r') as f: content = f.read()
         content = re.sub(r'# --- Harmonizer.*?# ---+', '', content, flags=re.DOTALL)
         
-        # v24.0: Large code model and Cache alignment for extreme scale
+        # v25.0: GNU Hash style and No Semantic Interposition
         injection = (
-            "\n# --- Harmonizer v24.0 Singularity-Nexus ---\n"
+            "\n# --- Harmonizer v25.0 Omni-Core ---\n"
             "include_directories(include)\n"
             "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -O3 -fPIC -fno-common -w -fvisibility=hidden "
             "-ffunction-sections -fdata-sections -falign-functions=64 -falign-loops=64 "
-            "-fno-plt -mstrict-align -flto -mcmodel=large\")\n"
+            "-fno-plt -mstrict-align -flto -mcmodel=large -fno-semantic-interposition\")\n"
             "set(CMAKE_SHARED_LINKER_FLAGS \"${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections -Wl,--icf=all -s "
-            "-Wl,-Bsymbolic -Wl,--fix-cortex-a53-843419 -Wl,--fix-cortex-a53-835769 "
+            "-Wl,-Bsymbolic -Wl,--fix-cortex-a53-843419 -Wl,--fix-cortex-a53-835769 -Wl,--hash-style=gnu "
             "-flto -Wl,--allow-multiple-definition -Wl,--no-relax -Wl,--exclude-libs,ALL\")\n"
             "add_definitions(-D__arm64__ -D_LANGUAGE_C -DGBI_BIT_DEPTH=32)\n"
             "file(GLOB_RECURSE ALL_C \"src/*.c\")\n"
             "target_sources(bkawrapper PRIVATE ${ALL_C})\n"
-            "# ------------------------------------------\n"
+            "# ----------------------------------\n"
         )
         with open(self.cmake_file, 'w') as f: f.write(content + injection)
 
@@ -141,8 +140,8 @@ class SourceHarmonizerV24_0:
         self.promote_linkage()
         self.generate_header()
         self.patch_cmake()
-        print("--- v24.0 Singularity-Nexus: Project Scale Unlocked ---")
+        print("--- v25.0 Omni-Core: System Integrity Reached ---")
 
 if __name__ == "__main__":
-    h = SourceHarmonizerV24_0("Android/app/src/main/cpp", "decomp-files")
+    h = SourceHarmonizerV25_0("Android/app/src/main/cpp", "decomp-files")
     h.run()
