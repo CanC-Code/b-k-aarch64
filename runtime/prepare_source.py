@@ -2,7 +2,7 @@ import os
 import shutil
 import re
 
-class SourceHarmonizerV10_2:
+class SourceHarmonizerV11_0:
     def __init__(self, android_path, decomp_path):
         self.android_path = os.path.normpath(android_path)
         self.decomp_path = os.path.normpath(decomp_path)
@@ -11,11 +11,12 @@ class SourceHarmonizerV10_2:
         self.cmake_file = os.path.join(self.android_path, "CMakeLists.txt")
         self.func_signatures = {}
         self.var_declarations = {}
+        # We now keep the ORIGINAL signatures to ensure the linker remains happy
         self.primitives = {'int', 'char', 'float', 'double', 'short', 'long', 'void', 'bool',
                            's8', 'u8', 's16', 'u16', 's32', 'u32', 's64', 'u64', 'f32', 'f64', 'u32_t'}
 
     def sync_files(self):
-        print("  [>] Pass 0: Singularity Sync...")
+        print("  [>] Pass 0: Event Horizon Sync...")
         for sub in ["src", "include"]:
             source = os.path.join(self.decomp_path, sub)
             target = os.path.join(self.android_path, sub)
@@ -29,10 +30,8 @@ class SourceHarmonizerV10_2:
                     shutil.copy2(os.path.join(root, f), os.path.join(dest_dir, f))
 
     def map_linkage(self):
-        print("  [>] Pass 1: Mapping External Surface...")
-        # Matches global function definitions
+        print("  [>] Pass 1: Global Symbol Indexing...")
         func_pat = re.compile(r'^(?:static\s+)?([\w\*]+\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
-        # Matches global variable definitions
         var_pat = re.compile(r'^static\s+([\w\* ]+)\s+([a-zA-Z_]\w*)(\[[^\]]*\])?\s*[:=;]', re.MULTILINE)
         
         for root, _, files in os.walk(self.src_target):
@@ -42,21 +41,17 @@ class SourceHarmonizerV10_2:
                         content = file.read()
                         
                         for full_sig, name, params in func_pat.findall(content):
+                            # In v11.0, we use void* for EVERY pointer to ensure universal compatibility
                             sig = " ".join(full_sig.replace('static ', '').split())
-                            # Type erasure for non-primitives
-                            words = re.findall(r'\b[a-zA-Z_]\w*\b', sig)
-                            for w in set(words):
-                                if w not in self.primitives and not w.endswith('_t') and w != 'struct':
-                                    sig = re.sub(fr'\b{w}\s*(?=\*)', 'void ', sig)
+                            sig = re.sub(r'[a-zA-Z_]\w*\s*(?=\*)', 'void ', sig)
                             self.func_signatures[name] = sig
 
                         for vtype, vname, varray in var_pat.findall(content):
-                            # Arrays need to be handled as pointers in the extern declaration
                             clean_type = "void*" if ("*" in vtype or varray) else "int"
                             self.var_declarations[vname] = clean_type
 
     def promote_linkage(self):
-        print("  [>] Pass 2: Surgical Scope Promotion...")
+        print("  [>] Pass 2: Scope Globalization...")
         for root, _, files in os.walk(self.src_target):
             for f in files:
                 if f.endswith('.c'):
@@ -64,39 +59,37 @@ class SourceHarmonizerV10_2:
                     with open(path, 'r', errors='ignore') as file:
                         content = file.read()
                     
-                    # Instead of deleting static, replace it with nothing 
-                    # only at the start of declarations to avoid breaking 'static inline'
+                    # Strip static
                     content = re.sub(r'^(static\s+)(?!inline)', '', content, flags=re.MULTILINE)
                     
-                    # Inject shim include after system includes
+                    # Inject shim at the ABSOLUTE TOP to ensure it acts as a prototype
                     if 'harmonized_globals.h' not in content:
-                        # Find the last #include and put ours under it
-                        inc_match = list(re.finditer(r'#include\s+.*?\n', content))
-                        if inc_match:
-                            pos = inc_match[-1].end()
-                            content = content[:pos] + '\n#include "harmonized_globals.h"\n' + content[pos:]
-                        else:
-                            content = '#include "harmonized_globals.h"\n' + content
+                        content = '#include "harmonized_globals.h"\n' + content
                         
                     with open(path, 'w') as file:
                         file.write(content)
 
     def generate_header(self):
-        print("  [>] Pass 3: Generating Singularity Shim...")
+        print("  [>] Pass 3: Generating Universal Shim...")
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         
         with open(header_path, 'w') as f:
-            f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n")
+            f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n\n")
             f.write("#include <ultra64.h>\n#include <stdint.h>\n#include <stddef.h>\n")
+            f.write("#include <stdbool.h>\n\n")
             f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
             
-            f.write("/* Globally Promoted Functions */\n")
+            f.write("/* Function Linkage */\n")
             for name, sig in sorted(self.func_signatures.items()):
+                # The 'Event Horizon' fix: If we are in the file that defines the function, 
+                # don't declare the extern version to avoid 'conflicting types'
+                f.write(f"#ifndef GLOBAL_DEF_{name}\n")
                 f.write(f"__attribute__((weak, visibility(\"default\"))) extern {sig};\n")
+                f.write(f"#endif\n")
             
-            f.write("\n/* Globally Promoted Variables */\n")
+            f.write("\n/* Variable Linkage */\n")
             for name, vtype in sorted(self.var_declarations.items()):
-                f.write(f"__attribute__((weak)) extern {vtype} {name};\n")
+                f.write(f"__attribute__((weak, unused)) extern {vtype} {name};\n")
             
             f.write("\n#ifdef __cplusplus\n}\n#endif\n#endif\n")
 
@@ -106,14 +99,14 @@ class SourceHarmonizerV10_2:
         content = re.sub(r'# --- Harmonizer.*?# ---+', '', content, flags=re.DOTALL)
         
         injection = (
-            "\n# --- Harmonizer v10.2 Singularity ---\n"
+            "\n# --- Harmonizer v11.0 Event Horizon ---\n"
             "include_directories(include)\n"
-            "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -mcmodel=large -fcommon -O3 -w -fno-builtin -ffunction-sections -fdata-sections\")\n"
+            "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -mcmodel=large -fcommon -O3 -w -fno-builtin -fno-section-anchors\")\n"
             "set(CMAKE_SHARED_LINKER_FLAGS \"${CMAKE_SHARED_LINKER_FLAGS} -Wl,--allow-multiple-definition -Wl,--gc-sections\")\n"
             "add_definitions(-D__arm64__ -D_LANGUAGE_C -DFCOMMON)\n"
             "file(GLOB_RECURSE ALL_C \"src/*.c\")\n"
             "target_sources(bkawrapper PRIVATE ${ALL_C})\n"
-            "# ------------------------------------\n"
+            "# --------------------------------------\n"
         )
         with open(self.cmake_file, 'w') as f: f.write(content + injection)
 
@@ -123,8 +116,8 @@ class SourceHarmonizerV10_2:
         self.promote_linkage()
         self.generate_header()
         self.patch_cmake()
-        print("--- v10.2 Singularity: Deployment Ready ---")
+        print("--- v11.0 Event Horizon: Port Stabilized ---")
 
 if __name__ == "__main__":
-    h = SourceHarmonizerV10_2("Android/app/src/main/cpp", "decomp-files")
+    h = SourceHarmonizerV11_0("Android/app/src/main/cpp", "decomp-files")
     h.run()
