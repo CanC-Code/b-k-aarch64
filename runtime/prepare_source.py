@@ -2,7 +2,7 @@ import os
 import shutil
 import re
 
-class SourceHarmonizerV9_5:
+class SourceHarmonizerV9_6:
     def __init__(self, android_path, decomp_path):
         self.android_path = android_path
         self.decomp_path = decomp_path
@@ -11,7 +11,6 @@ class SourceHarmonizerV9_5:
         self.cmake_file = os.path.join(android_path, "CMakeLists.txt")
         self.func_signatures = {}
         self.opaque_types = set()
-        # Types that are definitely NOT structs (primitives and N64 typedefs)
         self.protected_types = {
             'void', 'char', 'int', 'long', 'float', 'double', 'short', 'signed', 'unsigned',
             'u8', 's8', 'u16', 's16', 'u32', 's32', 'u64', 's64', 'f32', 'f64',
@@ -20,7 +19,7 @@ class SourceHarmonizerV9_5:
         }
 
     def sync_files(self):
-        print("  [>] Pass 0: Robust Syncing...")
+        print("  [>] Pass 0: Syncing...")
         for sub in ["src", "include"]:
             source = os.path.join(self.decomp_path, sub)
             target = os.path.join(self.android_path, sub)
@@ -34,10 +33,10 @@ class SourceHarmonizerV9_5:
                     shutil.copy2(os.path.join(root, f), os.path.join(dest_dir, f))
 
     def map_linkage(self):
-        print("  [>] Pass 1: Universal Symbol Mapping...")
-        # Catch function definitions (handles multiline and static)
+        print("  [>] Pass 1: Final Linkage Mapping...")
+        # Catch function definitions
         func_pat = re.compile(r'^(?:static\s+)?([\w\*]+\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
-        # Deep pointer discovery: any word followed by a space and an asterisk
+        # Deep pointer discovery for every word before a '*'
         ptr_find = re.compile(r'\b([a-zA-Z_]\w*)\s*(?=\*)')
         
         for root, _, files in os.walk(self.src_target):
@@ -46,21 +45,20 @@ class SourceHarmonizerV9_5:
                     with open(os.path.join(root, f), 'r', errors='ignore') as file:
                         content = file.read()
                         for full_sig, name, params in func_pat.findall(content):
-                            # Clean up whitespace
+                            # Normalize whitespace
                             sig = " ".join(full_sig.replace('static ', '').split())
                             
-                            # Find every type being used as a pointer in this signature
-                            potential_types = ptr_find.findall(sig)
-                            for t in potential_types:
+                            # Extract and tag unknown types
+                            for t in ptr_find.findall(sig):
                                 if t not in self.protected_types and not t.endswith('_t'):
                                     self.opaque_types.add(t)
-                                    # Use a negative lookbehind to avoid "struct struct T"
+                                    # Regex replace only if not already prefixed by 'struct'
                                     sig = re.sub(fr'(?<!struct\s)\b{t}\b', f'struct {t}', sig)
                             
                             self.func_signatures[name] = sig
 
     def promote_linkage(self):
-        print("  [>] Pass 2: Scope Globalization...")
+        print("  [>] Pass 2: Globalization...")
         for root, _, files in os.walk(self.src_target):
             for f in files:
                 if f.endswith('.c'):
@@ -70,34 +68,34 @@ class SourceHarmonizerV9_5:
                     
                     output = []
                     for line in lines:
-                        # Strip static from global functions AND global variables
-                        # Only strips if it's the very first word on the line
+                        # Strip static from global scope
                         processed = re.sub(r'^static\s+', '', line)
                         output.append(processed)
                     
-                    # Force our harmonized header to the very end of the file
-                    # This ensures it acts as a weak fallback for missing declarations
+                    # Essential: The harmonized header MUST be at the end to avoid 
+                    # conflicting with internal headers that have better info
                     output.append('\n#include "harmonized_globals.h"\n')
                         
                     with open(path, 'w') as file:
                         file.writelines(output)
 
     def generate_header(self):
-        print("  [>] Pass 3: Generating Universal Header...")
+        print("  [>] Pass 3: Generating Final Ultimate Header...")
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         
         with open(header_path, 'w') as f:
             f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n\n")
-            f.write("#include <ultra64.h>\n#include <stdint.h>\n#include <stddef.h>\n\n")
+            f.write("#include <ultra64.h>\n#include <stdint.h>\n#include <stddef.h>\n#include <stdbool.h>\n\n")
             f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
             
-            f.write("/* Opaque Forward Tags (No Typedefs needed) */\n")
+            f.write("/* Opaque Tag Forwarding */\n")
             for t in sorted(self.opaque_types):
+                # Use a tag-based approach that works even if the user later typedefs it
                 f.write(f"struct {t};\n")
             
-            f.write("\n/* Globally Promoted Weak Symbols */\n")
+            f.write("\n/* Weak Symbols for Linker Resolution */\n")
             for name, sig in sorted(self.func_signatures.items()):
-                # weak visibility ensures no 'multiple definition' errors
+                # Weak attribute ensures this is only used if no other definition exists
                 f.write(f"__attribute__((weak)) extern {sig};\n")
             
             f.write("\n#ifdef __cplusplus\n}\n#endif\n#endif\n")
@@ -108,9 +106,9 @@ class SourceHarmonizerV9_5:
         content = re.sub(r'# --- Harmonizer.*?# ---+', '', content, flags=re.DOTALL)
         
         injection = (
-            "\n# --- Harmonizer v9.5 Universal Link ---\n"
+            "\n# --- Harmonizer v9.6 Final Ultimate ---\n"
             "include_directories(include)\n"
-            "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -mcmodel=large -fcommon -w -O3 -fno-strict-aliasing\")\n"
+            "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -mcmodel=large -fcommon -w -O3 -fno-strict-aliasing -fpermissive\")\n"
             "set(CMAKE_SHARED_LINKER_FLAGS \"${CMAKE_SHARED_LINKER_FLAGS} -Wl,--allow-multiple-definition\")\n"
             "add_definitions(-D__arm64__ -D_LANGUAGE_C -DFCOMMON)\n"
             "file(GLOB_RECURSE ALL_C \"src/*.c\")\n"
@@ -125,8 +123,8 @@ class SourceHarmonizerV9_5:
         self.promote_linkage()
         self.generate_header()
         self.patch_cmake()
-        print("--- v9.5 Universal Link: Deployment Ready ---")
+        print("--- v9.6 Final Ultimate: Build Ready ---")
 
 if __name__ == "__main__":
-    h = SourceHarmonizerV9_5("Android/app/src/main/cpp", "decomp-files")
+    h = SourceHarmonizerV9_6("Android/app/src/main/cpp", "decomp-files")
     h.run()
