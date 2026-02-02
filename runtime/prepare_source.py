@@ -13,8 +13,9 @@ class SymbolMapping:
     file_id: str
     is_function: bool
     params: str = ""
+    section: str = "" # New for v69: Tracks memory placement
 
-class SourceHarmonizerV68:
+class SourceHarmonizerV69:
     def __init__(self, android_path: str, decomp_path: str):
         self.android_path = os.path.normpath(android_path)
         self.decomp_path = os.path.normpath(decomp_path)
@@ -37,7 +38,7 @@ class SourceHarmonizerV68:
         return hashlib.md5(rel_path.encode()).hexdigest()[:8]
 
     def setup_workspace(self):
-        print("[>] Pass 0: Initializing Nebula-Shift Workspace...")
+        print("[>] Pass 0: Initializing Event-Horizon Workspace...")
         for folder in [self.src_target, self.include_target]:
             if os.path.exists(folder): shutil.rmtree(folder)
             os.makedirs(folder, exist_ok=True)
@@ -52,7 +53,7 @@ class SourceHarmonizerV68:
                     for f in files: shutil.copy2(os.path.join(root, f), os.path.join(target_dir, f))
 
     def perform_introspection(self):
-        print("[>] Pass 0.5: Indexing SDK Symbols...")
+        print("[>] Pass 0.5: Indexing SDK & Type Layouts...")
         patterns = [
             re.compile(r'#define\s+([A-Za-z_]\w+)'),
             re.compile(r'typedef\s+.*?\s+(\w+);'),
@@ -68,13 +69,12 @@ class SourceHarmonizerV68:
                             self.conflict_registry.update(p.findall(content))
 
     def harmonize_logic(self):
-        print("[>] Pass 1 & 2: Executing Nebula-Shift Redirection...")
+        print("[>] Pass 1 & 2: Executing Event-Horizon Mapping...")
         type_pat = re.compile(r'\b([A-Z][a-zA-Z0-9_]+)\b')
         
-        # Enhanced Regex to capture both Functions and Global Data Definitions
-        # Logic: Matches (static) [Type] [Name] (Parameters/Assignment)
+        # v69 Logic: Differentiate between functions, initialized data (.data), and uninitialized data (.bss)
         func_pat = re.compile(r'^(static)\s+(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
-        data_pat = re.compile(r'^([a-zA-Z_][\w\* ]+?)\s+([a-zA-Z_]\w*)\s*=\s*[^;]+;', re.MULTILINE)
+        data_pat = re.compile(r'^([a-zA-Z_][\w\* ]+?)\s+([a-zA-Z_]\w*)\s*(?:=\s*([^;]+))?;', re.MULTILINE)
 
         for root, _, files in os.walk(self.src_target):
             for f in files:
@@ -87,21 +87,30 @@ class SourceHarmonizerV68:
                     if t not in self.conflict_registry and t not in self.immutables:
                         self.discovered_types.add(t)
 
-                # Function Redirection
                 def func_repl(m):
                     name = m.group(4).strip()
                     if name in ('main', 'Entry'): return m.group(0)
                     params = re.sub(r'\s+', ' ', m.group(5).strip()) or "void"
-                    self.mappings.append(SymbolMapping(name, m.group(3).strip(), fid, True, params))
-                    return f"\n#undef {name}\n__attribute__((used)) {m.group(2).replace(name, f'{name} __asm__(\"NS_{fid}_{name}\")', 1)} "
+                    self.mappings.append(SymbolMapping(name, m.group(3).strip(), fid, True, params, ".text"))
+                    return f"\n#undef {name}\n__attribute__((used)) {m.group(2).replace(name, f'{name} __asm__(\"EH_{fid}_{name}\")', 1)} "
 
-                # Data Redirection (Virtualizes global variables to prevent Linker duplication)
                 def data_repl(m):
                     name = m.group(2).strip()
                     dtype = m.group(1).strip()
-                    if "static" in dtype or name in self.conflict_registry: return m.group(0)
-                    self.mappings.append(SymbolMapping(name, dtype, fid, False))
-                    return f"\n#undef {name}\n{m.group(0).replace(name, f'{name} __asm__(\"NS_{fid}_{name}\")', 1)}"
+                    value = m.group(3)
+                    
+                    if "static" in dtype or name in self.conflict_registry or "extern" in dtype:
+                        return m.group(0)
+                    
+                    # Determine target section based on initialization
+                    section = ".bss" if value is None else ".data"
+                    if "const" in dtype: section = ".rodata"
+                    
+                    self.mappings.append(SymbolMapping(name, dtype, fid, False, "", section))
+                    
+                    # Apply asm label and section attribute to maintain memory layout integrity
+                    attr = f"__attribute__((section(\"{section}\")))"
+                    return f"\n#undef {name}\n{attr} {m.group(0).replace(name, f'{name} __asm__(\"EH_{fid}_{name}\")', 1)}"
 
                 patched = re.sub(func_pat, func_repl, content)
                 patched = re.sub(data_pat, data_repl, patched)
@@ -110,7 +119,7 @@ class SourceHarmonizerV68:
                     file.write('#include <ultra64.h>\n#include "harmonized_globals.h"\n' + patched)
 
     def generate_header(self):
-        print("[>] Pass 3: Constructing Nebula-Shift Global Bridge...")
+        print("[>] Pass 3: Constructing Event-Horizon Linker Bridge...")
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         with open(header_path, 'w') as f:
             f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n")
@@ -120,28 +129,29 @@ class SourceHarmonizerV68:
             for t in sorted(self.discovered_types):
                 f.write(f"#if !defined({t}_DEFINED) && !defined({t})\n  typedef struct {t} {t};\n  #define {t}_DEFINED\n#endif\n")
             
-            f.write("\n/* Bi-Directional Symbol Mapping */\n")
+            f.write("\n/* Bi-Directional Event-Horizon Mapping */\n")
             for m in self.mappings:
                 f.write(f"#undef {m.name}\n")
                 if m.is_function:
-                    f.write(f"extern {m.type_info} {m.name}({m.params}) __asm__(\"NS_{m.file_id}_{m.name}\");\n")
+                    f.write(f"extern {m.type_info} {m.name}({m.params}) __asm__(\"EH_{m.file_id}_{m.name}\");\n")
                 else:
-                    f.write(f"extern {m.type_info} {m.name} __asm__(\"NS_{m.file_id}_{m.name}\");\n")
+                    # Extern declarations do not need section attributes, only the definitions in .c files do
+                    f.write(f"extern {m.type_info} {m.name} __asm__(\"EH_{m.file_id}_{m.name}\");\n")
             
             f.write("\n#ifdef __cplusplus\n}\n#endif\n#endif\n")
 
     def run(self):
         print("\n" + "="*60)
-        print("Banjo-Kazooie Harmonizer v68.0 NEBULA-SHIFT")
+        print("Banjo-Kazooie Harmonizer v69.0 EVENT-HORIZON")
         print("="*60)
         self.setup_workspace()
         self.perform_introspection()
         self.harmonize_logic()
         self.generate_header()
         print("\n" + "="*60)
-        print(f"✓ NEBULA-SHIFT COMPLETE: {len(self.mappings)} Symbols Shifted")
+        print(f"✓ EVENT-HORIZON COMPLETE: {len(self.mappings)} Symbols Stabilized")
         print("="*60 + "\n")
 
 if __name__ == "__main__":
-    harmonizer = SourceHarmonizerV68("Android/app/src/main/cpp", "decomp-files")
+    harmonizer = SourceHarmonizerV69("Android/app/src/main/cpp", "decomp-files")
     harmonizer.run()
