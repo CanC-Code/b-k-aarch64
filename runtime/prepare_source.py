@@ -2,7 +2,7 @@ import os
 import shutil
 import re
 
-class SourceHarmonizerV26_0:
+class SourceHarmonizerV27_0:
     def __init__(self, android_path, decomp_path):
         self.android_path = os.path.normpath(android_path)
         self.decomp_path = os.path.normpath(decomp_path)
@@ -14,7 +14,7 @@ class SourceHarmonizerV26_0:
         self.discovered_types = set()
 
     def sync_files(self):
-        print("  [>] Pass 0: Stellar-Lattice Clean Sync...")
+        print("  [>] Pass 0: Event-Horizon Clean Sync...")
         for folder in [self.src_target, self.include_target]:
             if os.path.exists(folder):
                 shutil.rmtree(folder)
@@ -32,7 +32,7 @@ class SourceHarmonizerV26_0:
                     shutil.copy2(os.path.join(root, f), os.path.join(dest_dir, f))
 
     def map_linkage(self):
-        print("  [>] Pass 1: Global Semantic Mapping...")
+        print("  [>] Pass 1: Semantic Symbol Mapping...")
         func_pat = re.compile(r'^(?!static\s+inline)static\s+(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
         var_pat = re.compile(r'^static\s+(const\s+)?([\w\* ]+)\s+([a-zA-Z_]\w*)(\s*\[[^\]]*\])*\s*([:=;])', re.MULTILINE)
         
@@ -56,7 +56,7 @@ class SourceHarmonizerV26_0:
                                 self.var_declarations[vname] = (qualifier + vtype.strip(), varr.strip(), suffix == ';')
 
     def promote_linkage(self):
-        print("  [>] Pass 2: Anchor-Aware Promotion...")
+        print("  [>] Pass 2: Adaptive Linkage Promotion...")
         for root, _, files in os.walk(self.src_target):
             for f in files:
                 if f.endswith('.c'):
@@ -67,7 +67,7 @@ class SourceHarmonizerV26_0:
                     def replacer(m):
                         name = m.group(3)
                         if name.startswith('G_'): return m.group(0)
-                        # v26.0: Weak hidden visibility to allow section anchor grouping
+                        # v27.0: Explicit hidden visibility with weak linkage
                         promoted = m.group(0).replace('static ', '__attribute__((weak, visibility("hidden"))) ', 1).replace(name, f"G_{name}", 1)
                         return f"#undef {name}\n#define GLOBAL_DEF_{name}\n{promoted}"
 
@@ -90,13 +90,14 @@ class SourceHarmonizerV26_0:
                         file.write(content)
 
     def generate_header(self):
-        print("  [>] Pass 3: Generating v26 Stellar-Lattice Header...")
+        print("  [>] Pass 3: Generating v27 Event-Horizon Header...")
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         with open(header_path, 'w') as f:
             f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n")
             f.write("#include <ultra64.h>\n#include <stdint.h>\n#include <stddef.h>\n")
             f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
             
+            # Type safety and forward declarations
             forbidden = {'Vtx', 'Mtx', 'u32', 's32', 'u64', 's64', 'f32', 'f64', 'Addr', 'Gfx', 'Lights', 'LookAt', 'Hilite', 'Vp'}
             for t in sorted(self.discovered_types):
                 if t not in forbidden:
@@ -108,7 +109,8 @@ class SourceHarmonizerV26_0:
             
             for name, (vtype, varr, _) in sorted(self.var_declarations.items()):
                 f.write(f"#ifndef GLOBAL_DEF_{name}\n  #undef {name}\n  #define {name} G_{name}\n")
-                f.write(f"  __attribute__((visibility(\"hidden\"), aligned(64))) extern {vtype} G_{name}{varr};\n#endif\n")
+                # v27.0: 16-byte alignment to satisfy Android TLS/Stack constraints while maintaining some cache gain
+                f.write(f"  __attribute__((visibility(\"hidden\"), aligned(16))) extern {vtype} G_{name}{varr};\n#endif\n")
             
             f.write("\n#ifdef __cplusplus\n}\n#endif\n#endif\n")
 
@@ -117,20 +119,21 @@ class SourceHarmonizerV26_0:
         with open(self.cmake_file, 'r') as f: content = f.read()
         content = re.sub(r'# --- Harmonizer.*?# ---+', '', content, flags=re.DOTALL)
         
-        # v26.0: Section Anchors and Stub Grouping for relay safety
+        # v27.0: ThinLTO and RELRO for absolute stability
         injection = (
-            "\n# --- Harmonizer v26.0 Stellar-Lattice ---\n"
+            "\n# --- Harmonizer v27.0 Event-Horizon ---\n"
             "include_directories(include)\n"
             "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -O3 -fPIC -fno-common -w -fvisibility=hidden "
             "-ffunction-sections -fdata-sections -falign-functions=32 -falign-loops=32 "
-            "-fno-plt -mstrict-align -flto -mcmodel=large -fno-semantic-interposition -fsection-anchors\")\n"
+            "-fno-plt -mstrict-align -flto=thin -mcmodel=large -fno-semantic-interposition -fsection-anchors\")\n"
             "set(CMAKE_SHARED_LINKER_FLAGS \"${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections -Wl,--icf=all -s "
             "-Wl,-Bsymbolic -Wl,--fix-cortex-a53-843419 -Wl,--fix-cortex-a53-835769 -Wl,--hash-style=gnu "
-            "-flto -Wl,--allow-multiple-definition -Wl,--no-relax -Wl,--exclude-libs,ALL -Wl,--stub-group-size=0x100000\")\n"
+            "-flto=thin -Wl,--allow-multiple-definition -Wl,--no-relax -Wl,--exclude-libs,ALL "
+            "-Wl,--stub-group-size=0x100000 -Wl,-z,relro -Wl,-z,now\")\n"
             "add_definitions(-D__arm64__ -D_LANGUAGE_C -DGBI_BIT_DEPTH=32)\n"
             "file(GLOB_RECURSE ALL_C \"src/*.c\")\n"
             "target_sources(bkawrapper PRIVATE ${ALL_C})\n"
-            "# ----------------------------------------\n"
+            "# --------------------------------------\n"
         )
         with open(self.cmake_file, 'w') as f: f.write(content + injection)
 
@@ -140,8 +143,8 @@ class SourceHarmonizerV26_0:
         self.promote_linkage()
         self.generate_header()
         self.patch_cmake()
-        print("--- v26.0 Stellar-Lattice: Binary Relocation Solved ---")
+        print("--- v27.0 Event-Horizon: Final Stabilization Complete ---")
 
 if __name__ == "__main__":
-    h = SourceHarmonizerV26_0("Android/app/src/main/cpp", "decomp-files")
+    h = SourceHarmonizerV27_0("Android/app/src/main/cpp", "decomp-files")
     h.run()
