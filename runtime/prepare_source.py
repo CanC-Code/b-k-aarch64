@@ -3,25 +3,28 @@ import shutil
 import re
 import hashlib
 
-class SourceHarmonizerV35_0:
+class SourceHarmonizerV35_1:
     def __init__(self, android_path, decomp_path):
         self.android_path = os.path.normpath(android_path)
         self.decomp_path = os.path.normpath(decomp_path)
         self.src_target = os.path.join(self.android_path, "src")
         self.include_target = os.path.join(self.android_path, "include")
         self.cmake_file = os.path.join(self.android_path, "CMakeLists.txt")
-        # Store metadata for Pass 2
         self.func_signatures = {} 
         self.var_declarations = {} 
         self.discovered_types = set()
-        self.reserved = {'memcpy', 'memset', 'printf', 'sprintf', 'sqrt', 'sqrtf', 'fabs', 'sin', 'cos'}
+        self.reserved = {'memcpy', 'memset', 'printf', 'sprintf', 'sqrt', 'sqrtf', 'fabs', 'sin', 'cos', 'atan2', 'atan2f'}
 
     def get_file_id(self, filepath):
         rel = os.path.relpath(filepath, self.src_target)
         return hashlib.md5(rel.encode()).hexdigest()[:4]
 
     def sync_files(self):
-        print("  [>] Pass 0: Singularity-X Clean Sync...")
+        print("  [>] Pass 0: Singularity-X Sync & Cache Purge...")
+        # Clear LTO cache to prevent relocation corruption from previous failed runs
+        lto_cache = os.path.join(self.android_path, ".cxx", "lto_cache")
+        if os.path.exists(lto_cache): shutil.rmtree(lto_cache)
+        
         for folder in [self.src_target, self.include_target]:
             if os.path.exists(folder): shutil.rmtree(folder)
             os.makedirs(folder, exist_ok=True)
@@ -77,22 +80,24 @@ class SourceHarmonizerV35_0:
                     
                     for key, (vname, vtype, varr, is_bss) in self.var_declarations.items():
                         if not key.startswith(fid): continue
-                        # Force all globals into a specific high-density section
-                        attr = '__attribute__((visibility("hidden"), section(".data.harmonized")))'
+                        # Clustering all globals into specific memory pages to fix Relocation Truncation
+                        attr = '__attribute__((visibility("hidden"), section(".data.harmonized"), aligned(8)))'
                         if is_bss:
-                            content = re.sub(rf'^static\s+.*?{re.escape(vname)}\s*{re.escape(v_arr)}\s*;', f"#undef {vname}\n#define GLOBAL_DEF_{key}\n{attr} {vtype} G_{key}{varr};", content, flags=re.MULTILINE)
+                            # Corrected v_arr to varr here
+                            content = re.sub(rf'^static\s+.*?{re.escape(vname)}\s*{re.escape(varr)}\s*;', f"#undef {vname}\n#define GLOBAL_DEF_{key}\n{attr} {vtype} G_{key}{varr};", content, flags=re.MULTILINE)
                         else:
                             content = re.sub(rf'^static\s+(.*?{re.escape(vname)}\s*{re.escape(varr)}\s*[:=])', f"#undef {vname}\n#define GLOBAL_DEF_{key}\n{attr} {vtype} G_{key}{varr} \\1", content, flags=re.MULTILINE)
 
                     with open(path, 'w') as file: file.write('#include "harmonized_globals.h"\n' + content)
 
     def generate_header(self):
-        print("  [>] Pass 3: Finalizing v35 Singularity-X Header...")
+        print("  [>] Pass 3: Finalizing v35.1 Singularity-X Header...")
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         with open(header_path, 'w') as f:
-            f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n#include <ultra64.h>\n#ifdef __cplusplus\nextern \"C\" {\n#endif\n")
+            f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n#include <ultra64.h>\n#include <stdint.h>\n#include <stddef.h>\n")
+            f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n")
             for t in sorted(self.discovered_types):
-                if t not in {'u32', 's32', 'f32', 'Vtx', 'Mtx', 'Gfx'}: f.write(f"typedef struct {t} {t};\n")
+                if t not in {'u32', 's32', 'f32', 'Vtx', 'Mtx', 'Gfx', 'u64', 's64'}: f.write(f"typedef struct {t} {t};\n")
             for key, (name, ret, params) in sorted(self.func_signatures.items()):
                 f.write(f"#ifndef GLOBAL_DEF_{key}\n  #undef {name}\n  #define {name} G_{key}\n  extern {ret} G_{key}({params});\n#endif\n")
             for key, (vname, vtype, varr, _) in sorted(self.var_declarations.items()):
@@ -104,9 +109,10 @@ class SourceHarmonizerV35_0:
         with open(self.cmake_file, 'r') as f: content = f.read()
         content = re.sub(r'# --- Harmonizer.*?# ---+', '', content, flags=re.DOTALL)
         injection = (
-            "\n# --- Harmonizer v35.0 Singularity-X ---\n"
-            "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -O3 -fno-common -fvisibility=hidden -ffunction-sections -fdata-sections -flto=thin -mstrict-align\")\n"
-            "set(CMAKE_SHARED_LINKER_FLAGS \"${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections -Wl,-Bsymbolic -flto=thin -Wl,--relax -Wl,--no-rosegment\")\n"
+            "\n# --- Harmonizer v35.1 Singularity-X ---\n"
+            "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -O3 -fno-common -fvisibility=hidden -ffunction-sections -fdata-sections -flto=thin -mstrict-align -fno-builtin\")\n"
+            "set(CMAKE_SHARED_LINKER_FLAGS \"${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections -Wl,-Bsymbolic -flto=thin -Wl,--relax -Wl,--no-rosegment -Wl,--no-undefined\")\n"
+            "add_definitions(-D__arm64__ -D_LANGUAGE_C)\n"
             "file(GLOB_RECURSE ALL_C \"src/*.c\")\n"
             "target_sources(bkawrapper PRIVATE ${ALL_C})\n"
             "# --------------------------------------\n"
@@ -115,8 +121,8 @@ class SourceHarmonizerV35_0:
 
     def run(self):
         self.sync_files(); self.map_linkage(); self.promote_linkage(); self.generate_header(); self.patch_cmake()
-        print("--- v35.0 Singularity-X: High-Density Relocation Model Active ---")
+        print("--- v35.1 Singularity-X: Typo Fixed & Section Clustering Active ---")
 
 if __name__ == "__main__":
-    h = SourceHarmonizerV35_0("Android/app/src/main/cpp", "decomp-files")
+    h = SourceHarmonizerV35_1("Android/app/src/main/cpp", "decomp-files")
     h.run()
