@@ -3,15 +3,15 @@ import shutil
 import re
 import hashlib
 
-class SourceHarmonizerV32_0:
+class SourceHarmonizerV33_0:
     def __init__(self, android_path, decomp_path):
         self.android_path = os.path.normpath(android_path)
         self.decomp_path = os.path.normpath(decomp_path)
         self.src_target = os.path.join(self.android_path, "src")
         self.include_target = os.path.join(self.android_path, "include")
         self.cmake_file = os.path.join(self.android_path, "CMakeLists.txt")
-        self.func_signatures = {} # Store as (file_id, ret, params)
-        self.var_declarations = {} # Store as (file_id, type, arr, bss)
+        self.func_signatures = {} 
+        self.var_declarations = {} 
         self.discovered_types = set()
         self.reserved = {
             'atan2', 'atan2f', 'floor', 'floorf', 'ceil', 'ceilf', 'exp', 'log', 
@@ -24,7 +24,7 @@ class SourceHarmonizerV32_0:
         return hashlib.md5(rel.encode()).hexdigest()[:4]
 
     def sync_files(self):
-        print("  [>] Pass 0: Pulsar Sync...")
+        print("  [>] Pass 0: Quasar Sync...")
         for folder in [self.src_target, self.include_target]:
             if os.path.exists(folder):
                 shutil.rmtree(folder)
@@ -42,7 +42,7 @@ class SourceHarmonizerV32_0:
                     shutil.copy2(os.path.join(root, f), os.path.join(dest_dir, f))
 
     def map_linkage(self):
-        print("  [>] Pass 1: Unique Path Indexing...")
+        print("  [>] Pass 1: Semantic Structural Analysis...")
         func_pat = re.compile(r'^(?!static\s+inline)static\s+(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
         var_pat = re.compile(r'^static\s+(const\s+)?([\w\* ]+)\s+([a-zA-Z_]\w*)(\s*\[[^\]]*\])*\s*([:=;])', re.MULTILINE)
         
@@ -54,22 +54,17 @@ class SourceHarmonizerV32_0:
                     with open(path, 'r', errors='ignore') as file:
                         content = file.read()
                         for _, ret_type, name, params in func_pat.findall(content):
-                            name = name.strip()
-                            if name in self.reserved: continue
-                            clean_ret = re.sub(r'\s+', ' ', ret_type.strip()).replace(' *', '*')
-                            clean_params = re.sub(r'\s+', ' ', params.strip()) if params.strip() else "void"
-                            self.func_signatures[f"{fid}_{name}"] = (name, clean_ret, clean_params)
-                            for t in re.findall(r'\b([A-Z][a-zA-Z0-9_]+)\b', clean_ret + clean_params):
+                            if name.strip() in self.reserved: continue
+                            self.func_signatures[f"{fid}_{name.strip()}"] = (name.strip(), re.sub(r'\s+', ' ', ret_type.strip()), re.sub(r'\s+', ' ', params.strip()) if params.strip() else "void")
+                            for t in re.findall(r'\b([A-Z][a-zA-Z0-9_]+)\b', ret_type + params):
                                 self.discovered_types.add(t)
 
                         for is_const, vtype, vname, varr, suffix in var_pat.findall(content):
-                            vname = vname.strip()
-                            if vname not in self.reserved:
-                                qualifier = "const " if is_const else ""
-                                self.var_declarations[f"{fid}_{vname}"] = (vname, qualifier + vtype.strip(), varr.strip(), suffix == ';')
+                            if vname.strip() not in self.reserved:
+                                self.var_declarations[f"{fid}_{vname.strip()}"] = (vname.strip(), ("const " if is_const else "") + vtype.strip(), varr.strip(), suffix == ';')
 
     def promote_linkage(self):
-        print("  [>] Pass 2: Pulsar Shadow Promotion...")
+        print("  [>] Pass 2: Quasar Visibility & Alignment...")
         for root, _, files in os.walk(self.src_target):
             for f in files:
                 if f.endswith('.c'):
@@ -81,37 +76,33 @@ class SourceHarmonizerV32_0:
                     def replacer(m):
                         name = m.group(3).strip()
                         if name in self.reserved: return m.group(0)
-                        # v32.0: Unique ID shadow to prevent LTO collisions
                         promoted = m.group(0).replace('static ', '__attribute__((visibility("hidden"))) ', 1).replace(name, f"G_{fid}_{name}", 1)
                         return f"#undef {name}\n#define GLOBAL_DEF_{fid}_{name}\n{promoted}"
 
-                    pattern = r'^(?!static\s+inline)static\s+(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(.*?\)\s*\{)'
-                    content = re.sub(pattern, replacer, content, flags=re.MULTILINE | re.DOTALL)
+                    content = re.sub(r'^(?!static\s+inline)static\s+(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(.*?\)\s*\{)', replacer, content, flags=re.MULTILINE | re.DOTALL)
                     
-                    # Apply variable promotions with File ID scoping
                     for key, (vname, full_type, v_arr, is_bss) in self.var_declarations.items():
                         if not key.startswith(fid): continue
-                        prefix = '__attribute__((visibility("hidden"))) '
+                        prefix = '__attribute__((visibility("hidden"), aligned(32))) '
                         if is_bss:
-                            bss_pat = rf'^static\s+.*?{re.escape(vname)}\s*{re.escape(v_arr)}\s*;'
-                            content = re.sub(bss_pat, f"#undef {vname}\n#define GLOBAL_DEF_{key}\n{prefix}{full_type} G_{key}{v_arr} = {{0}};", content, flags=re.MULTILINE)
+                            content = re.sub(rf'^static\s+.*?{re.escape(vname)}\s*{re.escape(v_arr)}\s*;', f"#undef {vname}\n#define GLOBAL_DEF_{key}\n{prefix}{full_type} G_{key}{v_arr} = {{0}};", content, flags=re.MULTILINE)
                         else:
-                            init_pat = rf'^static\s+(.*?{re.escape(vname)}\s*{re.escape(v_arr)}\s*[:=])'
-                            content = re.sub(init_pat, f"#undef {vname}\n#define GLOBAL_DEF_{key}\n{prefix}{full_type} G_{key}{v_arr} \\1", content, flags=re.MULTILINE)
+                            content = re.sub(rf'^static\s+(.*?{re.escape(vname)}\s*{re.escape(v_arr)}\s*[:=])', f"#undef {vname}\n#define GLOBAL_DEF_{key}\n{prefix}{full_type} G_{key}{v_arr} \\1", content, flags=re.MULTILINE)
 
                     content = '#include "harmonized_globals.h"\n' + content
                     with open(path, 'w') as file: file.write(content)
 
     def generate_header(self):
-        print("  [>] Pass 3: Generating v32 Pulsar Header...")
+        print("  [>] Pass 3: Generating v33 Quasar Header...")
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         with open(header_path, 'w') as f:
             f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n")
             f.write("#include <math.h>\n#include <string.h>\n#include <ultra64.h>\n#include <stdint.h>\n#include <stddef.h>\n")
-            f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
+            f.write("#pragma pack(push, 16)\n#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
             
             for t in sorted(self.discovered_types):
-                if t not in {'u32', 's32', 'f32', 'Vtx', 'Mtx', 'Gfx'}: f.write(f"typedef struct {t} {t};\n")
+                if t not in {'u32', 's32', 'f32', 'Vtx', 'Mtx', 'Gfx', 'u64', 's64'}:
+                    f.write(f"#ifndef DEFINED_{t}\n  typedef struct {t} {t};\n  #define DEFINED_{t}\n#endif\n")
             
             for key, (name, ret, params) in sorted(self.func_signatures.items()):
                 f.write(f"#ifndef GLOBAL_DEF_{key}\n  #undef {name}\n  #define {name} G_{key}\n")
@@ -119,17 +110,18 @@ class SourceHarmonizerV32_0:
             
             for key, (vname, vtype, varr, _) in sorted(self.var_declarations.items()):
                 f.write(f"#ifndef GLOBAL_DEF_{key}\n  #undef {vname}\n  #define {vname} G_{key}\n")
-                f.write(f"  __attribute__((visibility(\"hidden\"), aligned(16))) extern {vtype} G_{key}{varr};\n#endif\n")
-            f.write("\n#ifdef __cplusplus\n}\n#endif\n#endif\n")
+                f.write(f"  __attribute__((visibility(\"hidden\"), aligned(32))) extern {vtype} G_{key}{varr};\n#endif\n")
+            
+            f.write("\n#ifdef __cplusplus\n}\n#endif\n#pragma pack(pop)\n#endif\n")
 
     def patch_cmake(self):
         if not os.path.exists(self.cmake_file): return
         with open(self.cmake_file, 'r') as f: content = f.read()
         content = re.sub(r'# --- Harmonizer.*?# ---+', '', content, flags=re.DOTALL)
         
-        # v32.0: Section anchors and No-Builtins for environment stability
+        # v33.0: Forcing Single-Partition LTO and strict alignment anchoring
         injection = (
-            "\n# --- Harmonizer v32.0 Pulsar ---\n"
+            "\n# --- Harmonizer v33.0 Quasar ---\n"
             "include_directories(include)\n"
             "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -O3 -fPIC -fno-common -w -fvisibility=hidden "
             "-ffunction-sections -fdata-sections -falign-functions=32 -falign-loops=32 "
@@ -140,7 +132,7 @@ class SourceHarmonizerV32_0:
             "-Wl,-Bsymbolic -Wl,--fix-cortex-a53-843419 -Wl,--fix-cortex-a53-835769 -Wl,--hash-style=gnu "
             "-flto=thin -Wl,--thinlto-cache-dir=${CMAKE_BINARY_DIR}/lto_cache -Wl,--allow-multiple-definition "
             "-Wl,--no-relax -Wl,--exclude-libs,ALL -Wl,--stub-group-size=0x100000 -Wl,-z,relro -Wl,-z,now "
-            "-Wl,--plugin-opt=-import-instr-limit=100\")\n"
+            "-Wl,--plugin-opt=-import-instr-limit=100 -Wl,--plugin-opt=-lto-partitions=1\")\n"
             "add_definitions(-D__arm64__ -D_LANGUAGE_C -DGBI_BIT_DEPTH=32)\n"
             "file(GLOB_RECURSE ALL_C \"src/*.c\")\n"
             "target_sources(bkawrapper PRIVATE ${ALL_C})\n"
@@ -154,8 +146,8 @@ class SourceHarmonizerV32_0:
         self.promote_linkage()
         self.generate_header()
         self.patch_cmake()
-        print("--- v32.0 Pulsar: Symbol Shadowing & Section Anchors Enabled ---")
+        print("--- v33.0 Quasar: Struct Padding & LTO Partitioning Fixed ---")
 
 if __name__ == "__main__":
-    h = SourceHarmonizerV32_0("Android/app/src/main/cpp", "decomp-files")
+    h = SourceHarmonizerV33_0("Android/app/src/main/cpp", "decomp-files")
     h.run()
