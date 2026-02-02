@@ -3,7 +3,7 @@ import os
 import re
 import shutil
 import hashlib
-from typing import Dict, Set, List
+from typing import Set, List
 from dataclasses import dataclass
 
 @dataclass
@@ -24,7 +24,6 @@ class SourceHarmonizerV73:
         self.src_target = os.path.join(self.android_path, "src")
         self.include_target = os.path.join(self.android_path, "include")
 
-        # Extended list of primitives and SDK base types
         self.immutables = {
             'bool', 'void', 'int', 'char', 'long', 'float', 'double',
             'u8', 'u16', 'u32', 'u64', 's8', 's16', 's32', 's64', 'f32', 'f64',
@@ -47,7 +46,6 @@ class SourceHarmonizerV73:
                 shutil.rmtree(folder)
             os.makedirs(folder, exist_ok=True)
 
-        # Copy files from decomp-files to Android project directory
         for sub in ["src", "include"]:
             src, dst = os.path.join(self.decomp_path, sub), os.path.join(self.android_path, sub)
             if os.path.exists(src):
@@ -60,7 +58,6 @@ class SourceHarmonizerV73:
 
     def perform_introspection(self):
         print("[>] Pass 0.5: Executing Semantic Filtering (SDK Protection)...")
-        # Patterns to identify and protect SDK symbols
         patterns = [
             re.compile(r'#define\s+([A-Za-z_]\w+)'),
             re.compile(r'typedef\s+.*?\s+(\w+);'),
@@ -79,12 +76,10 @@ class SourceHarmonizerV73:
 
     def harmonize_logic(self):
         print("[>] Pass 1 & 2: Weaving Stabilized Linkage...")
-        # Patterns to identify types, functions, and data
         type_pat = re.compile(r'\b([A-Z][a-zA-Z0-9_]+)\b')
         func_pat = re.compile(r'^(static\s+)?(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
         data_pat = re.compile(r'^(static\s+)?([a-zA-Z_][\w\* ]+?)\s+([a-zA-Z_]\w*)\s*(?:=\s*([^;]+))?;', re.MULTILINE)
 
-        # Process each C file
         for root, _, files in os.walk(self.src_target):
             for f in files:
                 if not f.endswith('.c'): continue
@@ -93,12 +88,10 @@ class SourceHarmonizerV73:
                 with open(path, 'r', errors='ignore') as file:
                     content = file.read()
 
-                # Identify types
                 for t in type_pat.findall(content):
                     if t not in self.conflict_registry and t not in self.immutables and not t.isupper():
                         self.discovered_types.add(t)
 
-                # Replace function definitions
                 def func_repl(m):
                     is_static = m.group(1) is not None
                     name = m.group(4).strip()
@@ -111,7 +104,6 @@ class SourceHarmonizerV73:
 
                     return f"\n#undef {name}\n__attribute__((used, visibility(\"protected\"))) {m.group(2).replace(name, f'{name} __asm__(\"{label}\")', 1)} "
 
-                # Replace data definitions
                 def data_repl(m):
                     is_static = m.group(1) is not None
                     dtype = m.group(2).strip()
@@ -131,27 +123,22 @@ class SourceHarmonizerV73:
                     attr = f"__attribute__((used, section(\"{section}\"), visibility(\"protected\")))"
                     return f"\n#undef {name}\n{attr} {m.group(0).replace(name, f'{name} __asm__(\"{label}\")', 1)}"
 
-                # Apply replacements
                 patched = re.sub(func_pat, func_repl, content)
                 patched = re.sub(data_pat, data_repl, patched)
 
-                # Write patched content back to file
                 with open(path, 'w') as file:
                     file.write('#include <ultra64.h>\n#include "harmonized_globals.h"\n' + patched)
 
     def generate_artifacts(self):
         print("[>] Pass 3: Finalizing Stabilized Artifacts...")
-        # Generate the harmonized_globals.h file
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         with open(header_path, 'w') as f:
             f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n#include <ultra64.h>\n")
             f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
 
-            # Add opaque type definitions
             for t in sorted(self.discovered_types):
                 f.write(f"#if !defined({t}_DEFINED) && !defined({t})\n  typedef struct {t} {t};\n  #define {t}_DEFINED\n#endif\n")
 
-            # Add global linkage declarations
             for m in self.mappings:
                 if m.is_static: continue
                 f.write(f"#undef {m.name}\n")
@@ -161,7 +148,6 @@ class SourceHarmonizerV73:
                     f.write(f"extern {m.type_info} {m.name} __asm__(\"{m.asm_label}\");\n")
             f.write("\n#ifdef __cplusplus\n}\n#endif\n#endif\n")
 
-        # Generate the symbol map
         map_path = os.path.join(self.android_path, "symbol_map.txt")
         with open(map_path, 'w') as f:
             f.write("{\n  global:\n")
