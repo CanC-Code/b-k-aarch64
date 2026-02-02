@@ -3,7 +3,7 @@ import shutil
 import re
 import hashlib
 
-class SourceHarmonizerV38_0:
+class SourceHarmonizerV39_0:
     def __init__(self, android_path, decomp_path):
         self.android_path = os.path.normpath(android_path)
         self.decomp_path = os.path.normpath(decomp_path)
@@ -17,21 +17,22 @@ class SourceHarmonizerV38_0:
             'memcpy', 'memset', 'printf', 'sprintf', 'sqrt', 'sqrtf', 'fabs', 
             'sin', 'cos', 'atan2', 'atan2f', 'floor', 'ceil', 'pow', 'exp',
             '__builtin_sqrt', '__builtin_fabs', '__builtin_sin', '__builtin_cos',
-            '__attribute__', '__asm__', '__volatile__'
+            '__attribute__', '__asm__', '__volatile__', 'main'
         }
         self.reserved_types = {
             'u32', 's32', 'u16', 's16', 'u8', 's8', 'f32', 'f64', 'u64', 's64',
             'Vtx', 'Mtx', 'Gfx', 'Acmd', 'OSIntMask', 'OSPri', 'OSMesgQueue',
             'OSPiHandle', 'OSThread', 'OSMesg', 'uintptr_t', 'intptr_t', 'size_t',
-            'bool', 'void', 'char', 'int', 'float', 'long', 'short', 'double'
+            'bool', 'void', 'char', 'int', 'float', 'long', 'short', 'double',
+            'const', 'static', 'volatile', 'signed', 'unsigned'
         }
 
     def get_file_id(self, filepath):
         rel = os.path.relpath(filepath, self.src_target)
-        return hashlib.md5(rel.encode()).hexdigest()[:4]
+        return hashlib.md5(rel.encode()).hexdigest()[:6] # Increased length for safer collisions
 
     def sync_files(self):
-        print("  [>] Pass 0: Cosmic-Lattice Sync & LTO Purge...")
+        print("  [>] Pass 0: Aether-Gate Sync & Cache Optimization...")
         lto_cache = os.path.join(self.android_path, ".cxx", "lto_cache")
         if os.path.exists(lto_cache): shutil.rmtree(lto_cache)
         
@@ -50,7 +51,7 @@ class SourceHarmonizerV38_0:
                 for f in files: shutil.copy2(os.path.join(root, f), os.path.join(dest_dir, f))
 
     def map_linkage(self):
-        print("  [>] Pass 1: Fragmentation Mapping...")
+        print("  [>] Pass 1: Semantic Aether-Mapping...")
         func_pat = re.compile(r'^(?!.*inline)static\s+(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
         var_pat = re.compile(r'^static\s+(const\s+)?([\w\* ]+)\s+([a-zA-Z_]\w*)(\s*\[[^\]]*\])*\s*([:=;])', re.MULTILINE)
         
@@ -65,7 +66,8 @@ class SourceHarmonizerV38_0:
                             name = name.strip()
                             if name in self.reserved: continue
                             self.func_signatures[f"{fid}_{name}"] = (name, ret.strip(), params.strip() or "void")
-                            for t in re.findall(r'\b([A-Z][a-zA-Z0-9_]+)\b', ret + params):
+                            # Detect types while excluding qualifiers
+                            for t in re.findall(r'\b(?<!const\s)(?<!static\s)([A-Z][a-zA-Z0-9_]+)\b', ret + params):
                                 if t not in self.reserved_types: self.discovered_types.add(t)
 
                         for is_const, vtype, vname, varr, suffix in var_pat.findall(content):
@@ -74,7 +76,7 @@ class SourceHarmonizerV38_0:
                                 self.var_declarations[f"{fid}_{vname}"] = (vname, ("const " if is_const else "") + vtype.strip(), varr.strip(), suffix == ';')
 
     def promote_linkage(self):
-        print("  [>] Pass 2: GOT-Safe Sub-Clustering...")
+        print("  [>] Pass 2: Cache-Aligned Section Injection...")
         for root, _, files in os.walk(self.src_target):
             for f in files:
                 if f.endswith('.c'):
@@ -85,27 +87,27 @@ class SourceHarmonizerV38_0:
                     def func_repl(m):
                         name = m.group(3).strip()
                         if name in self.reserved: return m.group(0)
-                        return f"#undef {name}\n#define GLOBAL_DEF_{fid}_{name}\n__attribute__((visibility(\"hidden\"), used)) {m.group(1).replace(name, f'G_{fid}_{name}', 1)} "
+                        return f"#undef {name}\n#define GLOBAL_DEF_{fid}_{name}\n__attribute__((visibility(\"hidden\"), used)) {m.group(1).replace(name, f'AG_{fid}_{name}', 1)} "
 
                     content = re.sub(r'^(?!.*inline)static\s+(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(.*?\)\s*\{)', func_repl, content, flags=re.MULTILINE | re.DOTALL)
                     
                     for key, (vname, vtype, varr, is_bss) in self.var_declarations.items():
                         if not key.startswith(fid): continue
-                        # Use Fragmented sections to keep symbols close to the code that uses them
-                        base_sec = ".bss.harmonized" if is_bss else ".data.harmonized"
-                        attr = f'__attribute__((visibility(\"hidden\"), used, section(\"{base_sec}.{fid}\"), aligned(16)))'
+                        base_sec = ".bss.aether" if is_bss else ".data.aether"
+                        # Aligned to 64 to match AArch64 cache lines, minimizing false sharing
+                        attr = f'__attribute__((visibility(\"hidden\"), used, section(\"{base_sec}.{fid}\"), aligned(64)))'
                         
                         if is_bss:
                             content = re.sub(rf'^static\s+.*?{re.escape(vname)}\s*{re.escape(varr)}\s*;', 
-                                            f"#undef {vname}\n#define GLOBAL_DEF_{key}\n{attr} {vtype} G_{key}{varr};", content, flags=re.MULTILINE)
+                                            f"#undef {vname}\n#define GLOBAL_DEF_{key}\n{attr} {vtype} AG_{key}{varr};", content, flags=re.MULTILINE)
                         else:
                             content = re.sub(rf'^static\s+(.*?{re.escape(vname)}\s*{re.escape(varr)}\s*[:=])', 
-                                            f"#undef {vname}\n#define GLOBAL_DEF_{key}\n{attr} {vtype} G_{key}{varr} \\1", content, flags=re.MULTILINE)
+                                            f"#undef {vname}\n#define GLOBAL_DEF_{key}\n{attr} {vtype} AG_{key}{varr} \\1", content, flags=re.MULTILINE)
 
                     with open(path, 'w') as file: file.write('#include "harmonized_globals.h"\n' + content)
 
     def generate_header(self):
-        print("  [>] Pass 3: Finalizing v38.0 Cosmic-Lattice Header...")
+        print("  [>] Pass 3: Finalizing v39.0 Aether-Gate Header...")
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         with open(header_path, 'w') as f:
             f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n#include <ultra64.h>\n#include <stdint.h>\n#include <stddef.h>\n")
@@ -114,20 +116,20 @@ class SourceHarmonizerV38_0:
                 f.write(f"#ifndef DEFINED_{t}\n  typedef struct {t} {t};\n  #define DEFINED_{t}\n#endif\n")
             
             for key, (name, ret, params) in sorted(self.func_signatures.items()):
-                f.write(f"#ifndef GLOBAL_DEF_{key}\n  #undef {name}\n  #define {name} G_{key}\n  extern {ret} G_{key}({params});\n#endif\n")
+                f.write(f"#ifndef GLOBAL_DEF_{key}\n  #undef {name}\n  #define {name} AG_{key}\n  extern {ret} AG_{key}({params});\n#endif\n")
             for key, (vname, vtype, varr, _) in sorted(self.var_declarations.items()):
-                f.write(f"#ifndef GLOBAL_DEF_{key}\n  #undef {vname}\n  #define {vname} G_{key}\n  extern {vtype} G_{key}{varr};\n#endif\n")
+                f.write(f"#ifndef GLOBAL_DEF_{key}\n  #undef {vname}\n  #define {vname} AG_{key}\n  extern {vtype} AG_{key}{varr};\n#endif\n")
             f.write("#ifdef __cplusplus\n}\n#endif\n#endif\n")
 
     def patch_cmake(self):
         if not os.path.exists(self.cmake_file): return
         with open(self.cmake_file, 'r') as f: content = f.read()
         content = re.sub(r'# --- Harmonizer.*?# ---+', '', content, flags=re.DOTALL)
-        # Added -fPIC and -mcmodel=small (default) but fragmented to fix ADRP range issues
+        # Added ThinLTO cache and aggressive alignment flags
         injection = (
-            "\n# --- Harmonizer v38.0 Cosmic-Lattice ---\n"
+            "\n# --- Harmonizer v39.0 Aether-Gate ---\n"
             "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -O3 -fPIC -fno-common -fvisibility=hidden -ffunction-sections -fdata-sections -flto=thin -mstrict-align -fno-builtin\")\n"
-            "set(CMAKE_SHARED_LINKER_FLAGS \"${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections -Wl,-Bsymbolic -flto=thin -Wl,--relax -Wl,--no-rosegment -Wl,--no-undefined -lm\")\n"
+            "set(CMAKE_SHARED_LINKER_FLAGS \"${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections -Wl,-Bsymbolic -flto=thin -Wl,--thinlto-cache-dir=${CMAKE_BINARY_DIR}/lto_cache -Wl,--relax -Wl,--no-rosegment -lm\")\n"
             "add_definitions(-D__arm64__ -D_LANGUAGE_C)\n"
             "file(GLOB_RECURSE ALL_C \"src/*.c\")\n"
             "target_sources(bkawrapper PRIVATE ${ALL_C})\n"
@@ -137,8 +139,8 @@ class SourceHarmonizerV38_0:
 
     def run(self):
         self.sync_files(); self.map_linkage(); self.promote_linkage(); self.generate_header(); self.patch_cmake()
-        print("--- v38.0 Cosmic-Lattice: ADRP Fragmenting Active ---")
+        print("--- v39.0 Aether-Gate: Collision-Free Cache-Aligned ---")
 
 if __name__ == "__main__":
-    h = SourceHarmonizerV38_0("Android/app/src/main/cpp", "decomp-files")
+    h = SourceHarmonizerV39_0("Android/app/src/main/cpp", "decomp-files")
     h.run()
