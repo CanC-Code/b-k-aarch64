@@ -2,6 +2,7 @@
 import os
 import re
 import shutil
+import hashlib
 from typing import Dict, Set, List
 from dataclasses import dataclass
 
@@ -11,84 +12,107 @@ class FunctionSignature:
     return_type: str
     parameters: str
 
-class SourceHarmonizerV50:
-    def __init__(self, android_cpp_path: str, original_src_path: str):
-        self.target_path = os.path.normpath(android_cpp_path)
-        self.src_path = os.path.normpath(original_src_path)
-        self.include_dir = os.path.join(self.target_path, "include")
-        self.src_dir = os.path.join(self.target_path, "src")
+class SourceHarmonizerV51:
+    def __init__(self, android_path: str, decomp_path: str):
+        self.android_path = os.path.normpath(android_path)
+        self.decomp_path = os.path.normpath(decomp_path)
+        self.src_target = os.path.join(self.android_path, "src")
+        self.include_target = os.path.join(self.android_path, "include")
         
-        self.reserved_identifiers = {'bool', 'true', 'false', 'void', 'int', 'char', 'long', 'float', 'double'}
+        self.reserved_identifiers = {'bool', 'true', 'false', 'void', 'int', 'char', 'long', 'float', 'double', 'static', 'extern'}
         self.sdk_defined_types: Set[str] = set()
         self.project_enums: Set[str] = set()
         self.discovered_types: Set[str] = set()
         self.func_signatures: Dict[str, FunctionSignature] = {}
 
-    def extract_sdk_types(self):
-        """Pass 0.5: Scan NDK headers to prevent hijacking system types."""
-        print("[>] Pass 0.5: Protecting SDK Types...")
-        # Simulating the scan that found 337 types in your log
-        self.sdk_defined_types.update(['size_t', 'ssize_t', 'uintptr_t', 'intptr_t', 'off_t'])
+    def get_file_id(self, filepath: str) -> str:
+        rel_path = os.path.relpath(filepath, self.src_target)
+        return hashlib.md5(rel_path.encode()).hexdigest()[:12]
+
+    def sync_files(self):
+        """Pass 0: Ensure directories exist and copy fresh files."""
+        print("[>] Pass 0: Synchronizing Directories...")
+        for folder in [self.src_target, self.include_target]:
+            if os.path.exists(folder): shutil.rmtree(folder)
+            os.makedirs(folder, exist_ok=True)
+
+        for sub in ["src", "include"]:
+            source = os.path.join(self.decomp_path, sub)
+            target = os.path.join(self.android_path, sub)
+            if os.path.exists(source):
+                for root, _, files in os.walk(source):
+                    rel = os.path.relpath(root, source)
+                    dest = os.path.join(target, rel)
+                    os.makedirs(dest, exist_ok=True)
+                    for f in files: shutil.copy2(os.path.join(root, f), os.path.join(dest, f))
 
     def scan_project_enums(self):
-        """Pass 0.75: Critical fix for ABILITY_X redefinition errors."""
+        """Pass 0.75: Critical fix for enum constant vs struct conflicts."""
         print("[>] Pass 0.75: Protecting Project Enums...")
         enum_pattern = re.compile(r'\b([A-Z][A-Z0-9_]{3,})\b')
-        for root, _, files in os.walk(self.include_dir):
+        for root, _, files in os.walk(self.include_target):
             for file in files:
                 if file.endswith('.h'):
                     with open(os.path.join(root, file), 'r', errors='ignore') as f:
                         content = f.read()
                         if 'enum' in content:
-                            matches = enum_pattern.findall(content)
-                            self.project_enums.update(matches)
+                            self.project_enums.update(enum_pattern.findall(content))
 
-    def harmonize_types(self):
-        """Pass 1: Mapping all 11,402 type references."""
-        print("[>] Pass 1: Discovering Types...")
-        type_regex = re.compile(r'\b([A-Z][A-Z0-9_]+)\b')
-        for root, _, files in os.walk(self.src_dir):
-            for file in files:
-                if file.endswith('.c'):
-                    with open(os.path.join(root, file), 'r') as f:
-                        for match in type_regex.findall(f.read()):
-                            if match not in self.project_enums and match not in self.sdk_defined_types:
-                                self.discovered_types.add(match)
+    def map_and_promote(self):
+        """Pass 1 & 2: Discover types and rename static symbols for global visibility."""
+        print("[>] Pass 1 & 2: Symbol Extraction & Promotion...")
+        # Matches static functions that are not inline
+        func_pat = re.compile(r'^(?!.*inline)(?!.*extern)static\s+(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
+        type_regex = re.compile(r'\b([A-Z][a-zA-Z0-9_]+)\b')
 
-    def generate_gold_header(self):
-        """Pass 3: Generating the Shielded Global Header."""
-        print("[>] Pass 3: Generating Gold-Standard Header...")
-        header_path = os.path.join(self.include_dir, "harmonized_globals.h")
+        for root, _, files in os.walk(self.src_target):
+            for f in files:
+                if not f.endswith('.c'): continue
+                path = os.path.join(root, f)
+                fid = self.get_file_id(path)
+                with open(path, 'r', errors='ignore') as file: content = file.read()
+
+                # Extract Types
+                for t in type_regex.findall(content):
+                    if t not in self.project_enums and t not in self.reserved_identifiers:
+                        self.discovered_types.add(t)
+
+                # Promote Static Functions to Global (Protected Visibility)
+                def func_repl(m):
+                    name = m.group(3).strip()
+                    if name in ['main']: return m.group(0)
+                    self.func_signatures[f"{fid}_{name}"] = FunctionSignature(name, m.group(2).strip(), m.group(4).strip() or "void")
+                    return f"#undef {name}\n#define GLOBAL_DEF_{fid}_{name}\n__attribute__((visibility(\"protected\"), used)) {m.group(1).replace(name, f'OM_{fid}_{name}', 1)} "
+
+                new_content = re.sub(func_pat, func_repl, content)
+                with open(path, 'w') as file:
+                    file.write('#include <ultra64.h>\n#include "harmonized_globals.h"\n' + new_content)
+
+    def generate_header(self):
+        """Pass 3: Finalize the shielded global header."""
+        print("[>] Pass 3: Generating Shielded Header...")
+        header_path = os.path.join(self.include_target, "harmonized_globals.h")
         with open(header_path, 'w') as f:
-            f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n\n")
+            f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n")
+            f.write("#undef bool\n#include <stdbool.h>\n#define bool _Bool\n")
+            f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n")
             
-            # [span_5](start_span)Shield for the 'bool' collision found in log.txt[span_5](end_span)
-            f.write("/* Boolean Collision Shield */\n")
-            f.write("#undef bool\n")
-            f.write("#include <stdbool.h>\n")
-            f.write("#ifndef bool\n  #define bool _Bool\n#endif\n\n")
-            
-            f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
-            
-            # Opaque struct declarations with redefinition guards
             for t in sorted(self.discovered_types):
-                if t not in self.reserved_identifiers:
-                    f.write(f"#ifndef {t}_DEFINED\n")
-                    f.write(f"  typedef struct {t} {t};\n")
-                    f.write(f"  #define {t}_DEFINED\n")
-                    f.write(f"#endif\n")
+                f.write(f"#ifndef {t}_DEF\n  typedef struct {t} {t};\n  #define {t}_DEF\n#endif\n")
             
-            f.write("\n#ifdef __cplusplus\n}\n#endif\n#endif\n")
+            for key, sig in sorted(self.func_signatures.items()):
+                f.write(f"#ifndef GLOBAL_DEF_{key}\n  #undef {sig.name}\n  #define {sig.name} OM_{key}\n  extern {sig.return_type} OM_{key}({sig.parameters});\n#endif\n")
+            
+            f.write("#ifdef __cplusplus\n}\n#endif\n#endif\n")
 
     def run(self):
-        print("Banjo-Kazooie Source Harmonizer v50.0 GOLD")
-        self.extract_sdk_types()
+        print("Banjo-Kazooie Source Harmonizer v51.0 OMEGA")
+        self.sync_files()
         self.scan_project_enums()
-        self.harmonize_types()
-        self.generate_gold_header()
-        print("✓ Harmonization Complete: v50.0 Applied")
+        self.map_and_promote()
+        self.generate_header()
+        print("✓ Harmonization Complete: v51.0 Applied")
 
 if __name__ == "__main__":
-    # Update these paths to your environment
-    harmonizer = SourceHarmonizerV50("./Android/app/src/main/cpp", "./src")
+    harmonizer = SourceHarmonizerV51("Android/app/src/main/cpp", "decomp-files")
     harmonizer.run()
