@@ -13,16 +13,20 @@ class FunctionSignature:
     parameters: str
     file_id: str
 
-class SourceHarmonizerV62:
+class SourceHarmonizerV63:
     def __init__(self, android_path: str, decomp_path: str):
         self.android_path = os.path.normpath(android_path)
         self.decomp_path = os.path.normpath(decomp_path)
         self.src_target = os.path.join(self.android_path, "src")
         self.include_target = os.path.join(self.android_path, "include")
         
-        # State Management
-        self.system_types = {'bool', 'void', 'int', 'char', 'long', 'float', 'double', 'u8', 'u16', 'u32', 'u64', 's8', 's16', 's32', 's64', 'f32', 'f64'}
-        self.forbidden_symbols: Set[str] = set() 
+        # Comprehensive System Blacklist
+        self.blacklist = {
+            'bool', 'void', 'int', 'char', 'long', 'float', 'double', 
+            'u8', 'u16', 'u32', 'u64', 's8', 's16', 's32', 's64', 'f32', 'f64',
+            'size_t', 'uintptr_t', 'intptr_t', 'Mtx', 'Gfx', 'Vtx', 'u_long'
+        }
+        self.known_symbols: Set[str] = set() 
         self.discovered_types: Set[str] = set()
         self.func_signatures: List[FunctionSignature] = []
 
@@ -31,8 +35,8 @@ class SourceHarmonizerV62:
         return hashlib.md5(rel_path.encode()).hexdigest()[:8]
 
     def setup_workspace(self):
-        """Pass 0: Full sync with path preservation."""
-        print("[>] Pass 0: Syncing Workspace...")
+        """Pass 0: Mirror environment with absolute path safety."""
+        print("[>] Pass 0: Initializing Event-Horizon Workspace...")
         for folder in [self.src_target, self.include_target]:
             if os.path.exists(folder): shutil.rmtree(folder)
             os.makedirs(folder, exist_ok=True)
@@ -46,14 +50,14 @@ class SourceHarmonizerV62:
                     os.makedirs(target_dir, exist_ok=True)
                     for f in files: shutil.copy2(os.path.join(root, f), os.path.join(target_dir, f))
 
-    def build_registry(self):
-        """Pass 0.5: Indexing existing symbols to prevent 'kind of symbol' errors."""
-        print("[>] Pass 0.5: Indexing Existing Symbol Registry...")
+    def scan_for_conflicts(self):
+        """Pass 0.5: Registry of every macro, enum, and typedef in the project."""
+        print("[>] Pass 0.5: Mapping Global Conflict Registry...")
         patterns = [
             re.compile(r'#define\s+([A-Za-z_]\w+)'),
-            re.compile(r'(\w+)\s*=\s*-?\d+'), # Enums
+            re.compile(r'(\w+)\s*=\s*-?\d+'), 
             re.compile(r'typedef\s+.*?\s+(\w+);'),
-            re.compile(r'(?:struct|union|enum)\s+(\w+)\s*\{')
+            re.compile(r'(?:struct|union|enum)\s+(\w+)')
         ]
         for root, _, files in os.walk(self.include_target):
             for file in files:
@@ -61,14 +65,13 @@ class SourceHarmonizerV62:
                     with open(os.path.join(root, file), 'r', errors='ignore') as f:
                         content = f.read()
                         for p in patterns:
-                            self.forbidden_symbols.update(p.findall(content))
+                            self.known_symbols.update(p.findall(content))
 
-    def harmonize(self):
-        """Pass 1 & 2: Linker-level symbol redirection."""
-        print("[>] Pass 1 & 2: Applying Linker Redirection...")
-        # Static function detection
+    def harmonize_c_files(self):
+        """Pass 1 & 2: Static Symbol Redirection using ASM Labels."""
+        print("[>] Pass 1 & 2: Harmonizing C Logic and Linkage...")
         func_pat = re.compile(r'^(static)\s+(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
-        type_pat = re.compile(r'\b([A-Z]\w+)\b')
+        type_pat = re.compile(r'\b([A-Z][a-zA-Z0-9_]+)\b')
 
         for root, _, files in os.walk(self.src_target):
             for f in files:
@@ -77,59 +80,67 @@ class SourceHarmonizerV62:
                 fid = self.get_file_id(path)
                 with open(path, 'r', errors='ignore') as file: content = file.read()
 
-                # Collect types used in this file
+                # Collect custom types to forward declare
                 for t in type_pat.findall(content):
-                    if t not in self.forbidden_symbols and t not in self.system_types:
+                    if t not in self.known_symbols and t not in self.blacklist:
                         self.discovered_types.add(t)
 
                 def func_repl(m):
                     name = m.group(4).strip()
-                    if name == 'main': return m.group(0)
+                    if name in ('main', 'Entry'): return m.group(0)
                     
-                    sig = FunctionSignature(name, m.group(3).strip(), m.group(5).strip() or "void", fid)
-                    self.func_signatures.append(sig)
+                    # Store signature for global header
+                    self.func_signatures.append(FunctionSignature(
+                        name, m.group(3).strip(), 
+                        re.sub(r'\s+', ' ', m.group(5).strip()) or "void", 
+                        fid
+                    ))
                     
-                    # Instead of #define, we use ASM Labels to rename the symbol at the object level
-                    # This prevents macro collisions entirely.
-                    return f"__attribute__((visibility(\"default\"))) {m.group(2).replace(name, f'SC_{fid}_{name}', 1)} "
+                    # Direct Linker Assignment: Original Name -> Hashed Name
+                    return f"__attribute__((visibility(\"default\"))) {m.group(2).replace(name, f'EH_{fid}_{name}', 1)} "
 
                 patched = re.sub(func_pat, func_repl, content)
                 with open(path, 'w') as file:
-                    file.write('#include "harmonized_globals.h"\n' + patched)
+                    # Explicit order to solve type shadowing
+                    file.write('#include <ultra64.h>\n#include "harmonized_globals.h"\n' + patched)
 
-    def generate_header(self):
-        """Pass 3: Generate the Core Linkage Header."""
-        print("[>] Pass 3: Finalizing Singularity-Core Header...")
+    def generate_final_header(self):
+        """Pass 3: Final Global Header with Atomic Protection."""
+        print("[>] Pass 3: Constructing Atomic Linkage Header...")
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         with open(header_path, 'w') as f:
             f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n")
-            f.write("#include <ultra64.h>\n#include <stdbool.h>\n")
+            f.write("#include <stdbool.h>\n")
             f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
             
-            f.write("/* Opaque Type Foundation */\n")
+            f.write("/* Pass A: Opaque Type Foundation */\n")
             for t in sorted(self.discovered_types):
-                f.write(f"#if !defined({t}_DEFINED) && !defined({t})\n  typedef struct {t} {t};\n  #define {t}_DEFINED\n#endif\n")
+                f.write(f"#if !defined({t}_DEFINED) && !defined({t})\n")
+                f.write(f"  typedef struct {t} {t};\n")
+                f.write(f"  #define {t}_DEFINED\n")
+                f.write(f"#endif\n")
             
-            f.write("\n/* Linker-Level Function Mapping */\n")
+            f.write("\n/* Pass B: ASM Linker Mapping */\n")
             for sig in self.func_signatures:
-                # We use the 'asm' label to map the original name to the unique hashed name
-                # This is "Smart" because it doesn't use the preprocessor, avoiding redefinition errors.
-                f.write(f"extern {sig.return_type} {sig.name}({sig.parameters}) __asm__(\"SC_{sig.file_id}_{sig.name}\");\n")
+                # ASM labels bypass the C preprocessor, making them collision-proof
+                f.write(f"extern {sig.return_type} {sig.name}({sig.parameters}) __asm__(\"EH_{sig.file_id}_{sig.name}\");\n")
             
             f.write("\n#ifdef __cplusplus\n}\n#endif\n#endif\n")
 
     def run(self):
         print("\n" + "="*60)
-        print("Banjo-Kazooie Harmonizer v62.0 SINGULARITY-CORE")
+        print("Banjo-Kazooie Harmonizer v63.0 EVENT-HORIZON")
         print("="*60)
         self.setup_workspace()
-        self.build_registry()
-        self.harmonize()
-        self.generate_header()
+        self.scan_for_conflicts()
+        self.harmonize_c_files()
+        self.generate_final_header()
         print("\n" + "="*60)
-        print("✓ SINGULARITY-CORE HARMONIZATION COMPLETE")
+        print("✓ EVENT-HORIZON HARMONIZATION SUCCESSFUL")
+        print(f"  Linker Mappings Generated: {len(self.func_signatures)}")
+        print(f"  Opaque Types Protected:    {len(self.discovered_types)}")
         print("="*60 + "\n")
 
 if __name__ == "__main__":
-    harmonizer = SourceHarmonizerV62("Android/app/src/main/cpp", "decomp-files")
+    harmonizer = SourceHarmonizerV63("Android/app/src/main/cpp", "decomp-files")
     harmonizer.run()
