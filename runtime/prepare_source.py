@@ -2,9 +2,8 @@ import os
 import shutil
 import re
 import hashlib
-import time
 
-class SourceHarmonizerV43_0:
+class SourceHarmonizerV44_0:
     def __init__(self, android_path, decomp_path):
         self.android_path = os.path.normpath(android_path)
         self.decomp_path = os.path.normpath(decomp_path)
@@ -14,29 +13,32 @@ class SourceHarmonizerV43_0:
         self.func_signatures = {} 
         self.var_declarations = {} 
         self.discovered_types = set()
+        
+        # Expanded to block standard library and SDK symbols
         self.reserved = {
             'memcpy', 'memset', 'printf', 'sprintf', 'sqrt', 'sqrtf', 'fabs', 
             'sin', 'cos', 'atan2', 'atan2f', 'floor', 'ceil', 'pow', 'exp',
-            '__builtin_sqrt', '__builtin_fabs', '__builtin_sin', '__builtin_cos',
-            '__attribute__', '__asm__', '__volatile__', 'main', '_start'
+            'main', '_start', 'ALCSPlayer', 'ALCSeq', 'ALEvent', 'ALPlayer'
         }
+        
+        # CRITICAL: Added libaudio and libultra types to prevent redefinition errors
         self.reserved_types = {
             'u32', 's32', 'u16', 's16', 'u8', 's8', 'f32', 'f64', 'u64', 's64',
             'Vtx', 'Mtx', 'Gfx', 'Acmd', 'OSIntMask', 'OSPri', 'OSMesgQueue',
             'OSPiHandle', 'OSThread', 'OSMesg', 'uintptr_t', 'intptr_t', 'size_t',
             'bool', 'void', 'char', 'int', 'float', 'long', 'short', 'double',
-            'struct', 'enum', 'union', 'const', 'static', 'extern', 'volatile'
+            'struct', 'enum', 'union', 'const', 'static', 'extern', 'volatile',
+            'ALCSPlayer', 'ALCSeq', 'ALEvent', 'ALEventListItem', 'ALEventQueue',
+            'ALPlayer', 'ALSeqpConfig', 'ALSynConfig', 'ALVoiceConfig', 'ALInstrument',
+            'ALBank', 'ALWave', 'ALEnvelope', 'ALKeyMap'
         }
 
     def get_file_id(self, filepath):
         rel = os.path.relpath(filepath, self.src_target)
-        stats = os.stat(filepath)
-        # Seed includes size and mtime for absolute uniqueness in resonance linkage
-        seed = f"{rel}_{stats.st_size}_{stats.st_mtime}"
-        return hashlib.sha256(seed.encode()).hexdigest()[:16]
+        return hashlib.md5(rel.encode()).hexdigest()[:12]
 
     def sync_files(self):
-        print("  [>] Pass 0: Void-Resonance Sync & CFI Hardening...")
+        print("  [>] Pass 0: Refracted-Link Sync...")
         lto_cache = os.path.join(self.android_path, ".cxx", "lto_cache")
         if os.path.exists(lto_cache): shutil.rmtree(lto_cache)
         
@@ -55,7 +57,7 @@ class SourceHarmonizerV43_0:
                 for f in files: shutil.copy2(os.path.join(root, f), os.path.join(dest_dir, f))
 
     def map_linkage(self):
-        print("  [>] Pass 1: Resonance Symbol Analysis...")
+        print("  [>] Pass 1: Semantic Validation...")
         func_pat = re.compile(r'^(?!.*inline)(?!.*extern)static\s+(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
         var_pat = re.compile(r'^static\s+(const\s+)?([\w\* ]+)\s+([a-zA-Z_]\w*)(\s*\[[^\]]*\])*\s*([:=;])', re.MULTILINE)
         
@@ -70,8 +72,11 @@ class SourceHarmonizerV43_0:
                             name = name.strip()
                             if name in self.reserved: continue
                             self.func_signatures[f"{fid}_{name}"] = (name, ret.strip(), params.strip() or "void")
+                            
+                            # Sanitize discovered types to remove C keywords and noise
                             for t in re.findall(r'\b([A-Z][a-zA-Z0-9_]+)\b', ret + params):
-                                if t not in self.reserved_types: self.discovered_types.add(t)
+                                if t not in self.reserved_types and not t.endswith('void'): 
+                                    self.discovered_types.add(t)
 
                         for is_const, vtype, vname, varr, suffix in var_pat.findall(content):
                             vname = vname.strip()
@@ -79,7 +84,7 @@ class SourceHarmonizerV43_0:
                                 self.var_declarations[f"{fid}_{vname}"] = (vname, ("const " if is_const else "") + vtype.strip(), varr.strip(), suffix == ';')
 
     def promote_linkage(self):
-        print("  [>] Pass 2: Void-Resonance Linkage Injection...")
+        print("  [>] Pass 2: Sanitized Linkage Injection...")
         for root, _, files in os.walk(self.src_target):
             for f in files:
                 if f.endswith('.c'):
@@ -90,50 +95,49 @@ class SourceHarmonizerV43_0:
                     def func_repl(m):
                         name = m.group(3).strip()
                         if name in self.reserved: return m.group(0)
-                        # Visibility 'protected' to force relative ADRP addressing
-                        return f"#undef {name}\n#define GLOBAL_DEF_{fid}_{name}\n__attribute__((visibility(\"protected\"), used, nothrow)) {m.group(1).replace(name, f'VR_{fid}_{name}', 1)} "
+                        return f"#undef {name}\n#define GLOBAL_DEF_{fid}_{name}\n__attribute__((visibility(\"protected\"), used, nothrow)) {m.group(1).replace(name, f'RL_{fid}_{name}', 1)} "
 
                     content = re.sub(r'^(?!.*inline)(?!.*extern)static\s+(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(.*?\)\s*\{)', func_repl, content, flags=re.MULTILINE | re.DOTALL)
                     
                     for key, (vname, vtype, varr, is_bss) in self.var_declarations.items():
                         if not key.startswith(fid): continue
-                        base_sec = ".bss.resonance" if is_bss else ".data.resonance"
-                        # 4096-byte alignment to match ARM OS page boundaries
-                        attr = f'__attribute__((visibility(\"protected\"), used, section(\"{base_sec}.{fid}\"), aligned(4096)))'
+                        attr = f'__attribute__((visibility(\"protected\"), used, aligned(16)))'
                         
                         if is_bss:
                             content = re.sub(rf'^static\s+.*?{re.escape(vname)}\s*{re.escape(varr)}\s*;', 
-                                            f"#undef {vname}\n#define GLOBAL_DEF_{key}\n{attr} {vtype} VR_{key}{varr};", content, flags=re.MULTILINE)
+                                            f"#undef {vname}\n#define GLOBAL_DEF_{key}\n{attr} {vtype} RL_{key}{varr};", content, flags=re.MULTILINE)
                         else:
                             content = re.sub(rf'^static\s+(.*?{re.escape(vname)}\s*{re.escape(varr)}\s*[:=])', 
-                                            f"#undef {vname}\n#define GLOBAL_DEF_{key}\n{attr} {vtype} VR_{key}{varr} \\1", content, flags=re.MULTILINE)
+                                            f"#undef {vname}\n#define GLOBAL_DEF_{key}\n{attr} {vtype} RL_{key}{varr} \\1", content, flags=re.MULTILINE)
 
                     with open(path, 'w') as file: file.write('#include "harmonized_globals.h"\n' + content)
 
     def generate_header(self):
-        print("  [>] Pass 3: Finalizing v43.0 Void-Resonance Header...")
+        print("  [>] Pass 3: Generating v44.0 Collision-Resistant Header...")
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         with open(header_path, 'w') as f:
-            f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n#include <ultra64.h>\n#include <stdint.h>\n#include <stddef.h>\n")
+            f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n")
+            # Include audio first so we can detect their presence
+            f.write("#include <ultra64.h>\n#include <stdint.h>\n#include <stddef.h>\n")
             f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n")
+            
             for t in sorted(self.discovered_types):
+                # Only typedef if it's not a common SDK type
                 f.write(f"#ifndef DEFINED_{t}\n  typedef struct {t} {t};\n  #define DEFINED_{t}\n#endif\n")
             
             for key, (name, ret, params) in sorted(self.func_signatures.items()):
-                f.write(f"#ifndef GLOBAL_DEF_{key}\n  #undef {name}\n  #define {name} VR_{key}\n  extern {ret} VR_{key}({params});\n#endif\n")
+                f.write(f"#ifndef GLOBAL_DEF_{key}\n  #undef {name}\n  #define {name} RL_{key}\n  extern {ret} RL_{key}({params});\n#endif\n")
             for key, (vname, vtype, varr, _) in sorted(self.var_declarations.items()):
-                f.write(f"#ifndef GLOBAL_DEF_{key}\n  #undef {vname}\n  #define {vname} VR_{key}\n  extern {vtype} VR_{key}{varr};\n#endif\n")
+                f.write(f"#ifndef GLOBAL_DEF_{key}\n  #undef {vname}\n  #define {vname} RL_{key}\n  extern {vtype} RL_{key}{varr};\n#endif\n")
             f.write("#ifdef __cplusplus\n}\n#endif\n#endif\n")
 
     def patch_cmake(self):
         if not os.path.exists(self.cmake_file): return
         with open(self.cmake_file, 'r') as f: content = f.read()
         content = re.sub(r'# --- Harmonizer.*?# ---+', '', content, flags=re.DOTALL)
-        # Added -mbranch-protection=standard for PAC/BTI support on modern ARM
         injection = (
-            "\n# --- Harmonizer v43.0 Void-Resonance ---\n"
-            "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -O3 -fPIC -fno-common -fno-plt -fno-semantic-interposition -fvisibility=hidden -mbranch-protection=standard -fstack-protector-strong -ffunction-sections -fdata-sections -flto=thin -mstrict-align -fno-builtin\")\n"
-            "set(CMAKE_SHARED_LINKER_FLAGS \"${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections -Wl,-Bsymbolic -flto=thin -Wl,--thinlto-jobs=all -Wl,--relax -Wl,--no-rosegment -lm\")\n"
+            "\n# --- Harmonizer v44.0 Refracted-Link ---\n"
+            "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -O3 -fPIC -fno-common -fvisibility=hidden -ffunction-sections -fdata-sections -flto=thin\")\n"
             "add_definitions(-D__arm64__ -D_LANGUAGE_C)\n"
             "file(GLOB_RECURSE ALL_C \"src/*.c\")\n"
             "target_sources(bkawrapper PRIVATE ${ALL_C})\n"
@@ -143,8 +147,8 @@ class SourceHarmonizerV43_0:
 
     def run(self):
         self.sync_files(); self.map_linkage(); self.promote_linkage(); self.generate_header(); self.patch_cmake()
-        print("--- v43.0 Void-Resonance: PAC/BTI Protected Linkage Active ---")
+        print("--- v44.0 Refracted-Link: Collision Defense Active ---")
 
 if __name__ == "__main__":
-    h = SourceHarmonizerV43_0("Android/app/src/main/cpp", "decomp-files")
+    h = SourceHarmonizerV44_0("Android/app/src/main/cpp", "decomp-files")
     h.run()
