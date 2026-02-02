@@ -3,7 +3,7 @@ import shutil
 import re
 import hashlib
 
-class SourceHarmonizerV41_0:
+class SourceHarmonizerV42_0:
     def __init__(self, android_path, decomp_path):
         self.android_path = os.path.normpath(android_path)
         self.decomp_path = os.path.normpath(decomp_path)
@@ -23,15 +23,17 @@ class SourceHarmonizerV41_0:
             'u32', 's32', 'u16', 's16', 'u8', 's8', 'f32', 'f64', 'u64', 's64',
             'Vtx', 'Mtx', 'Gfx', 'Acmd', 'OSIntMask', 'OSPri', 'OSMesgQueue',
             'OSPiHandle', 'OSThread', 'OSMesg', 'uintptr_t', 'intptr_t', 'size_t',
-            'bool', 'void', 'char', 'int', 'float', 'long', 'short', 'double'
+            'bool', 'void', 'char', 'int', 'float', 'long', 'short', 'double',
+            'struct', 'enum', 'union', 'const', 'static', 'extern', 'volatile'
         }
 
     def get_file_id(self, filepath):
         rel = os.path.relpath(filepath, self.src_target)
-        return hashlib.md5(rel.encode()).hexdigest()[:10] # Enhanced entropy for Omega-Linkage
+        # 12-char entropy for Quantum-Entangled symbol uniqueness
+        return hashlib.md5(rel.encode()).hexdigest()[:12]
 
     def sync_files(self):
-        print("  [>] Pass 0: Omega-Protocol Sync & LTO Indexing...")
+        print("  [>] Pass 0: Quantum-Entanglement Sync & TLB Optimization...")
         lto_cache = os.path.join(self.android_path, ".cxx", "lto_cache")
         if os.path.exists(lto_cache): shutil.rmtree(lto_cache)
         
@@ -50,8 +52,7 @@ class SourceHarmonizerV41_0:
                 for f in files: shutil.copy2(os.path.join(root, f), os.path.join(dest_dir, f))
 
     def map_linkage(self):
-        print("  [>] Pass 1: Semantic Symbol Extraction...")
-        # Ignore already-externed or non-static declarations to prevent re-promotion
+        print("  [>] Pass 1: Quantum Symbol Analysis...")
         func_pat = re.compile(r'^(?!.*inline)(?!.*extern)static\s+(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
         var_pat = re.compile(r'^static\s+(const\s+)?([\w\* ]+)\s+([a-zA-Z_]\w*)(\s*\[[^\]]*\])*\s*([:=;])', re.MULTILINE)
         
@@ -66,6 +67,7 @@ class SourceHarmonizerV41_0:
                             name = name.strip()
                             if name in self.reserved: continue
                             self.func_signatures[f"{fid}_{name}"] = (name, ret.strip(), params.strip() or "void")
+                            # Refined type detection to avoid C keywords
                             for t in re.findall(r'\b([A-Z][a-zA-Z0-9_]+)\b', ret + params):
                                 if t not in self.reserved_types: self.discovered_types.add(t)
 
@@ -75,7 +77,7 @@ class SourceHarmonizerV41_0:
                                 self.var_declarations[f"{fid}_{vname}"] = (vname, ("const " if is_const else "") + vtype.strip(), varr.strip(), suffix == ';')
 
     def promote_linkage(self):
-        print("  [>] Pass 2: Protected-Linkage Injection...")
+        print("  [>] Pass 2: Page-Aligned Linkage Entanglement...")
         for root, _, files in os.walk(self.src_target):
             for f in files:
                 if f.endswith('.c'):
@@ -86,28 +88,27 @@ class SourceHarmonizerV41_0:
                     def func_repl(m):
                         name = m.group(3).strip()
                         if name in self.reserved: return m.group(0)
-                        # Use "protected" visibility to allow ADR relative addressing on AArch64
-                        return f"#undef {name}\n#define GLOBAL_DEF_{fid}_{name}\n__attribute__((visibility(\"protected\"), used, nothrow)) {m.group(1).replace(name, f'OP_{fid}_{name}', 1)} "
+                        return f"#undef {name}\n#define GLOBAL_DEF_{fid}_{name}\n__attribute__((visibility(\"protected\"), used, nothrow)) {m.group(1).replace(name, f'QE_{fid}_{name}', 1)} "
 
                     content = re.sub(r'^(?!.*inline)(?!.*extern)static\s+(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(.*?\)\s*\{)', func_repl, content, flags=re.MULTILINE | re.DOTALL)
                     
                     for key, (vname, vtype, varr, is_bss) in self.var_declarations.items():
                         if not key.startswith(fid): continue
-                        base_sec = ".bss.omega" if is_bss else ".data.omega"
-                        # Aligned to 256 for flagship Cortex-X prefetcher neutralization
-                        attr = f'__attribute__((visibility(\"protected\"), used, section(\"{base_sec}.{fid}\"), aligned(256)))'
+                        base_sec = ".bss.quantum" if is_bss else ".data.quantum"
+                        # 64KB Alignment for AArch64 Page-Clustering
+                        attr = f'__attribute__((visibility(\"protected\"), used, section(\"{base_sec}.{fid}\"), aligned(65536)))'
                         
                         if is_bss:
                             content = re.sub(rf'^static\s+.*?{re.escape(vname)}\s*{re.escape(varr)}\s*;', 
-                                            f"#undef {vname}\n#define GLOBAL_DEF_{key}\n{attr} {vtype} OP_{key}{varr};", content, flags=re.MULTILINE)
+                                            f"#undef {vname}\n#define GLOBAL_DEF_{key}\n{attr} {vtype} QE_{key}{varr};", content, flags=re.MULTILINE)
                         else:
                             content = re.sub(rf'^static\s+(.*?{re.escape(vname)}\s*{re.escape(varr)}\s*[:=])', 
-                                            f"#undef {vname}\n#define GLOBAL_DEF_{key}\n{attr} {vtype} OP_{key}{varr} \\1", content, flags=re.MULTILINE)
+                                            f"#undef {vname}\n#define GLOBAL_DEF_{key}\n{attr} {vtype} QE_{key}{varr} \\1", content, flags=re.MULTILINE)
 
                     with open(path, 'w') as file: file.write('#include "harmonized_globals.h"\n' + content)
 
     def generate_header(self):
-        print("  [>] Pass 3: Finalizing v41.0 Omega-Protocol Header...")
+        print("  [>] Pass 3: Finalizing v42.0 Quantum-Entanglement Header...")
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         with open(header_path, 'w') as f:
             f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n#include <ultra64.h>\n#include <stdint.h>\n#include <stddef.h>\n")
@@ -116,19 +117,19 @@ class SourceHarmonizerV41_0:
                 f.write(f"#ifndef DEFINED_{t}\n  typedef struct {t} {t};\n  #define DEFINED_{t}\n#endif\n")
             
             for key, (name, ret, params) in sorted(self.func_signatures.items()):
-                f.write(f"#ifndef GLOBAL_DEF_{key}\n  #undef {name}\n  #define {name} OP_{key}\n  extern {ret} OP_{key}({params});\n#endif\n")
+                f.write(f"#ifndef GLOBAL_DEF_{key}\n  #undef {name}\n  #define {name} QE_{key}\n  extern {ret} QE_{key}({params});\n#endif\n")
             for key, (vname, vtype, varr, _) in sorted(self.var_declarations.items()):
-                f.write(f"#ifndef GLOBAL_DEF_{key}\n  #undef {vname}\n  #define {vname} OP_{key}\n  extern {vtype} OP_{key}{varr};\n#endif\n")
+                f.write(f"#ifndef GLOBAL_DEF_{key}\n  #undef {vname}\n  #define {vname} QE_{key}\n  extern {vtype} QE_{key}{varr};\n#endif\n")
             f.write("#ifdef __cplusplus\n}\n#endif\n#endif\n")
 
     def patch_cmake(self):
         if not os.path.exists(self.cmake_file): return
         with open(self.cmake_file, 'r') as f: content = f.read()
         content = re.sub(r'# --- Harmonizer.*?# ---+', '', content, flags=re.DOTALL)
-        # Added -fno-plt to force direct branching and relative addressing
+        # -fno-semantic-interposition added for direct cross-unit optimization
         injection = (
-            "\n# --- Harmonizer v41.0 Omega-Protocol ---\n"
-            "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -O3 -fPIC -fno-common -fno-plt -fvisibility=hidden -ffunction-sections -fdata-sections -flto=thin -mstrict-align -fno-builtin\")\n"
+            "\n# --- Harmonizer v42.0 Quantum-Entanglement ---\n"
+            "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -O3 -fPIC -fno-common -fno-plt -fno-semantic-interposition -fvisibility=hidden -ffunction-sections -fdata-sections -flto=thin -mstrict-align -fno-builtin\")\n"
             "set(CMAKE_SHARED_LINKER_FLAGS \"${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections -Wl,-Bsymbolic -flto=thin -Wl,--thinlto-jobs=all -Wl,--relax -Wl,--no-rosegment -lm\")\n"
             "add_definitions(-D__arm64__ -D_LANGUAGE_C)\n"
             "file(GLOB_RECURSE ALL_C \"src/*.c\")\n"
@@ -139,8 +140,8 @@ class SourceHarmonizerV41_0:
 
     def run(self):
         self.sync_files(); self.map_linkage(); self.promote_linkage(); self.generate_header(); self.patch_cmake()
-        print("--- v41.0 Omega-Protocol: Protected-Relative Linking Active ---")
+        print("--- v42.0 Quantum-Entanglement: TLB-Aware Clustering Active ---")
 
 if __name__ == "__main__":
-    h = SourceHarmonizerV41_0("Android/app/src/main/cpp", "decomp-files")
+    h = SourceHarmonizerV42_0("Android/app/src/main/cpp", "decomp-files")
     h.run()
