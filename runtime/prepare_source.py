@@ -12,7 +12,7 @@ class FunctionSignature:
     return_type: str
     parameters: str
 
-class SourceHarmonizerV59:
+class SourceHarmonizerV60:
     def __init__(self, android_path: str, decomp_path: str):
         self.android_path = os.path.normpath(android_path)
         self.decomp_path = os.path.normpath(decomp_path)
@@ -20,8 +20,8 @@ class SourceHarmonizerV59:
         self.include_target = os.path.join(self.android_path, "include")
         
         # Guard State
-        self.reserved = {'bool', 'true', 'false', 'void', 'int', 'char', 'long', 'float', 'double', 'u8', 'u16', 'u32', 'u64', 's8', 's16', 's32', 's64'}
-        self.forbidden_symbols: Set[str] = set() # Macros, Enums, and existing Types
+        self.reserved = {'bool', 'true', 'false', 'void', 'int', 'char', 'long', 'float', 'double', 'u8', 'u16', 'u32', 'u64', 's8', 's16', 's32', 's64', 'f32', 'f64', 's32'}
+        self.forbidden_symbols: Set[str] = set() 
         self.discovered_types: Set[str] = set()
         self.func_signatures: Dict[str, FunctionSignature] = {}
 
@@ -30,8 +30,7 @@ class SourceHarmonizerV59:
         return hashlib.md5(rel_path.encode()).hexdigest()[:12]
 
     def setup_workspace(self):
-        """Pass 0: Mirror environment setup."""
-        print("[>] Pass 0: Syncing Workspace...")
+        """Pass 0: Clean and sync workspace."""
         for folder in [self.src_target, self.include_target]:
             if os.path.exists(folder): shutil.rmtree(folder)
             os.makedirs(folder, exist_ok=True)
@@ -45,18 +44,14 @@ class SourceHarmonizerV59:
                     os.makedirs(target_dir, exist_ok=True)
                     for f in files: shutil.copy2(os.path.join(root, f), os.path.join(target_dir, f))
 
-    def deep_semantic_scan(self):
-        """Pass 0.5: Neutralizes Enumerators and Macros to prevent 'different kind of symbol' errors."""
-        print("[>] Pass 0.5: Building Neural Symbol Registry...")
-        # Regex to catch: 
-        # 1. #define MACRO
-        # 2. enum { CONSTANT }
-        # 3. typedef ExistingType
+    def build_symbol_registry(self):
+        """Pass 0.5: Index existing types and constants to prevent conflicts."""
         patterns = [
             re.compile(r'#define\s+([A-Za-z_]\w+)'),
-            re.compile(r'(\w+)\s*=\s*\d+'), # Enum values
+            re.compile(r'(\w+)\s*=\s*\d+'), # Enums
             re.compile(r'typedef\s+.*?\s+(\w+);'),
-            re.compile(r'\}\s*(\w+);')
+            re.compile(r'\}\s*(\w+);'),
+            re.compile(r'struct\s+(\w+)\s*\{')
         ]
         for root, _, files in os.walk(self.include_target):
             for file in files:
@@ -66,12 +61,13 @@ class SourceHarmonizerV59:
                         for p in patterns:
                             self.forbidden_symbols.update(p.findall(content))
 
-    def process_logic(self):
-        """Pass 1 & 2: Discover and link symbols with collision avoidance."""
-        print("[>] Pass 1 & 2: Harmonizing Logic Flow...")
+    def harmonize_logic(self):
+        """Pass 1 & 2: Identify symbols and apply PD (Synapse Flow) namespaces."""
+        # Matches typical N64 static functions
         func_pat = re.compile(r'^(?!.*inline)(?!.*extern)static\s+(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
-        # We only look for CamelCase or types with _t, but exclude all-caps (usually macros/enums)
-        type_pat = re.compile(r'\b([A-Z][a-z][a-zA-Z0-9_]+)\b')
+        
+        # Extract types from function parameters (e.g., 'Actor *this' -> 'Actor')
+        type_in_param_pat = re.compile(r'\b([A-Z]\w+)\s*\*')
 
         for root, _, files in os.walk(self.src_target):
             for f in files:
@@ -80,7 +76,8 @@ class SourceHarmonizerV59:
                 fid = self.get_file_id(path)
                 with open(path, 'r', errors='ignore') as file: content = file.read()
 
-                for t in type_pat.findall(content):
+                # Search for potential types in function signatures
+                for t in type_in_param_pat.findall(content):
                     if t not in self.forbidden_symbols and t not in self.reserved:
                         self.discovered_types.add(t)
 
@@ -88,46 +85,46 @@ class SourceHarmonizerV59:
                     name = m.group(3).strip()
                     if name == 'main': return m.group(0)
                     self.func_signatures[f"{fid}_{name}"] = FunctionSignature(name, m.group(2).strip(), m.group(4).strip() or "void")
-                    return f"#undef {name}\n#define GLOBAL_DEF_{fid}_{name}\n__attribute__((visibility(\"protected\"), used)) {m.group(1).replace(name, f'NL_{fid}_{name}', 1)} "
+                    return f"#undef {name}\n#define GLOBAL_DEF_{fid}_{name}\n__attribute__((visibility(\"protected\"), used)) {m.group(1).replace(name, f'SF_{fid}_{name}', 1)} "
 
                 patched = re.sub(func_pat, func_repl, content)
                 with open(path, 'w') as file:
                     file.write('#include <ultra64.h>\n#include "harmonized_globals.h"\n' + patched)
 
-    def generate_header(self):
-        """Pass 3: Final Opaque Linkage Header."""
-        print("[>] Pass 3: Generating Neural-Link Header...")
+    def generate_synapse_header(self):
+        """Pass 3: Generate a header with a strict 'Types First' architecture."""
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         with open(header_path, 'w') as f:
             f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n")
-            f.write("#include <stdbool.h>\n#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
+            f.write("#include <stdbool.h>\n#include <ultra64.h>\n")
+            f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
             
+            f.write("/* --- STAGE 1: GLOBAL TYPE FOUNDATION --- */\n")
             for t in sorted(self.discovered_types):
                 f.write(f"#if !defined({t}_DEFINED) && !defined({t})\n")
                 f.write(f"  typedef struct {t} {t};\n  #define {t}_DEFINED\n#endif\n")
             
+            f.write("\n/* --- STAGE 2: GLOBAL SYMBOL LINKAGE --- */\n")
             for key, sig in sorted(self.func_signatures.items()):
-                f.write(f"#ifndef GLOBAL_DEF_{key}\n  #undef {sig.name}\n  #define {sig.name} NL_{key}\n  extern {sig.return_type} NL_{key}({sig.parameters});\n#endif\n")
+                f.write(f"#ifndef GLOBAL_DEF_{key}\n  #undef {sig.name}\n  #define {sig.name} SF_{key}\n  extern {sig.return_type} SF_{key}({sig.parameters});\n#endif\n")
             
             f.write("\n#ifdef __cplusplus\n}\n#endif\n#endif\n")
 
     def run(self):
         print("\n" + "="*60)
-        print("Banjo-Kazooie Harmonizer v59.0 NEURAL-LINK")
+        print("Banjo-Kazooie Harmonizer v60.0 SYNAPSE-FLOW")
         print("="*60)
         self.setup_workspace()
-        self.deep_semantic_scan()
-        self.process_logic()
-        self.generate_header()
-        
+        self.build_symbol_registry()
+        self.harmonize_logic()
+        self.generate_synapse_header()
         print("\n" + "="*60)
-        print("✓ NEURAL-LINK HARMONIZATION SUCCESSFUL")
+        print("✓ SYNAPSE-FLOW HARMONIZATION COMPLETE")
         print("="*60)
-        print(f"  [GUARD] Blocked Macros/Enums: {len(self.forbidden_symbols)}")
-        print(f"  [TYPE] Validated Opaque Types: {len(self.discovered_types)}")
-        print(f"  [FUNC] Globalized Symbols: {len(self.func_signatures)}")
+        print(f"  Types Foundation: {len(self.discovered_types)}")
+        print(f"  Function Linkage: {len(self.func_signatures)}")
         print("="*60 + "\n")
 
 if __name__ == "__main__":
-    harmonizer = SourceHarmonizerV59("Android/app/src/main/cpp", "decomp-files")
+    harmonizer = SourceHarmonizerV60("Android/app/src/main/cpp", "decomp-files")
     harmonizer.run()
