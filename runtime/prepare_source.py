@@ -14,9 +14,10 @@ class SymbolMapping:
     is_function: bool
     params: str = ""
     section: str = ""
-    is_static: bool = False # New for v71: Tracks internal linkage
+    is_static: bool = False
+    asm_label: str = ""
 
-class SourceHarmonizerV71:
+class SourceHarmonizerV72:
     def __init__(self, android_path: str, decomp_path: str):
         self.android_path = os.path.normpath(android_path)
         self.decomp_path = os.path.normpath(decomp_path)
@@ -39,7 +40,7 @@ class SourceHarmonizerV71:
         return hashlib.md5(rel_path.encode()).hexdigest()[:8]
 
     def setup_workspace(self):
-        print("[>] Pass 0: Initializing Event-Horizon-X Workspace...")
+        print("[>] Pass 0: Initializing Quantum-Entanglement Workspace...")
         for folder in [self.src_target, self.include_target]:
             if os.path.exists(folder): shutil.rmtree(folder)
             os.makedirs(folder, exist_ok=True)
@@ -54,7 +55,7 @@ class SourceHarmonizerV71:
                     for f in files: shutil.copy2(os.path.join(root, f), os.path.join(target_dir, f))
 
     def perform_introspection(self):
-        print("[>] Pass 0.5: Global Symbol Registry...")
+        print("[>] Pass 0.5: Indexing Conflict Registry...")
         patterns = [
             re.compile(r'#define\s+([A-Za-z_]\w+)'),
             re.compile(r'typedef\s+.*?\s+(\w+);'),
@@ -70,11 +71,8 @@ class SourceHarmonizerV71:
                             self.conflict_registry.update(p.findall(content))
 
     def harmonize_logic(self):
-        print("[>] Pass 1 & 2: Executing Scoped Internalization...")
+        print("[>] Pass 1 & 2: Weaving Quantum Linkage...")
         type_pat = re.compile(r'\b([A-Z][a-zA-Z0-9_]+)\b')
-        
-        # v71 Regex: Now captures both static and global functions/data
-        # Capture Group 1: Optional 'static' keyword
         func_pat = re.compile(r'^(static\s+)?(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
         data_pat = re.compile(r'^(static\s+)?([a-zA-Z_][\w\* ]+?)\s+([a-zA-Z_]\w*)\s*(?:=\s*([^;]+))?;', re.MULTILINE)
 
@@ -95,11 +93,12 @@ class SourceHarmonizerV71:
                     if name in ('main', 'Entry'): return m.group(0)
                     
                     params = re.sub(r'\s+', ' ', m.group(5).strip()) or "void"
-                    self.mappings.append(SymbolMapping(name, m.group(3).strip(), fid, True, params, ".text", is_static))
+                    label = f"QE_{'S' if is_static else 'G'}_{fid}_{name}"
+                    self.mappings.append(SymbolMapping(name, m.group(3).strip(), fid, True, params, ".text", is_static, label))
                     
-                    # Apply asm labels to EVERYTHING to ensure absolute uniqueness
-                    prefix = "EHX_S" if is_static else "EHX_G"
-                    return f"\n#undef {name}\n__attribute__((used, visibility(\"default\"))) {m.group(2).replace(name, f'{name} __asm__(\"{prefix}_{fid}_{name}\")', 1)} "
+                    # New: visibility("protected") prevents GOT/PLT indirection for faster calls
+                    attr = "__attribute__((used, visibility(\"protected\")))"
+                    return f"\n#undef {name}\n{attr} {m.group(2).replace(name, f'{name} __asm__(\"{label}\")', 1)} "
 
                 def data_repl(m):
                     is_static = m.group(1) is not None
@@ -113,11 +112,11 @@ class SourceHarmonizerV71:
                     section = ".bss" if value is None else ".data"
                     if "const" in dtype: section = ".rodata"
                     
-                    self.mappings.append(SymbolMapping(name, dtype, fid, False, "", section, is_static))
+                    label = f"QE_{'S' if is_static else 'G'}_{fid}_{name}"
+                    self.mappings.append(SymbolMapping(name, dtype, fid, False, "", section, is_static, label))
                     
-                    prefix = "EHX_S" if is_static else "EHX_G"
-                    attr = f"__attribute__((used, section(\"{section}\"), visibility(\"default\")))"
-                    return f"\n#undef {name}\n{attr} {m.group(0).replace(name, f'{name} __asm__(\"{prefix}_{fid}_{name}\")', 1)}"
+                    attr = f"__attribute__((used, section(\"{section}\"), visibility(\"protected\")))"
+                    return f"\n#undef {name}\n{attr} {m.group(0).replace(name, f'{name} __asm__(\"{label}\")', 1)}"
 
                 patched = re.sub(func_pat, func_repl, content)
                 patched = re.sub(data_pat, data_repl, patched)
@@ -125,41 +124,45 @@ class SourceHarmonizerV71:
                 with open(path, 'w') as file:
                     file.write('#include <ultra64.h>\n#include "harmonized_globals.h"\n' + patched)
 
-    def generate_header(self):
-        print("[>] Pass 3: Constructing Scoped Global Bridge...")
+    def generate_artifacts(self):
+        print("[>] Pass 3: Generating Entanglement Artifacts...")
+        
+        # 1. Global Header
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         with open(header_path, 'w') as f:
-            f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n")
-            f.write("#include <stdbool.h>\n#include <ultra64.h>\n")
+            f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n#include <ultra64.h>\n")
             f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
-            
             for t in sorted(self.discovered_types):
                 f.write(f"#if !defined({t}_DEFINED) && !defined({t})\n  typedef struct {t} {t};\n  #define {t}_DEFINED\n#endif\n")
-            
-            f.write("\n/* Bi-Directional Event-Horizon-X Mapping */\n")
             for m in self.mappings:
-                if m.is_static: continue # Static symbols remain local to their files
-                
+                if m.is_static: continue
                 f.write(f"#undef {m.name}\n")
                 if m.is_function:
-                    f.write(f"extern {m.type_info} {m.name}({m.params}) __asm__(\"EHX_G_{m.file_id}_{m.name}\");\n")
+                    f.write(f"extern {m.type_info} {m.name}({m.params}) __asm__(\"{m.asm_label}\");\n")
                 else:
-                    f.write(f"extern {m.type_info} {m.name} __asm__(\"EHX_G_{m.file_id}_{m.name}\");\n")
-            
+                    f.write(f"extern {m.type_info} {m.name} __asm__(\"{m.asm_label}\");\n")
             f.write("\n#ifdef __cplusplus\n}\n#endif\n#endif\n")
+
+        # 2. Linker Export Map (Essential for Android NDK to keep symbols alive)
+        map_path = os.path.join(self.android_path, "symbol_map.txt")
+        with open(map_path, 'w') as f:
+            f.write("{\n  global:\n")
+            for m in self.mappings:
+                if not m.is_static: f.write(f"    {m.asm_label};\n")
+            f.write("  local: *;\n};")
 
     def run(self):
         print("\n" + "="*60)
-        print("Banjo-Kazooie Harmonizer v71.0 EVENT-HORIZON-X")
+        print("Banjo-Kazooie Harmonizer v72.0 QUANTUM-ENTANGLEMENT")
         print("="*60)
         self.setup_workspace()
         self.perform_introspection()
         self.harmonize_logic()
-        self.generate_header()
+        self.generate_artifacts()
         print("\n" + "="*60)
-        print(f"✓ INTERNALIZED SCOPING COMPLETE: {len(self.mappings)} Symbols Scoped")
+        print(f"✓ ENTANGLEMENT COMPLETE: {len(self.mappings)} Anchors Synchronized")
         print("="*60 + "\n")
 
 if __name__ == "__main__":
-    harmonizer = SourceHarmonizerV71("Android/app/src/main/cpp", "decomp-files")
+    harmonizer = SourceHarmonizerV72("Android/app/src/main/cpp", "decomp-files")
     harmonizer.run()
