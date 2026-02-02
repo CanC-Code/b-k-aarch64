@@ -2,7 +2,7 @@ import os
 import shutil
 import re
 
-class SourceHarmonizerV22_0:
+class SourceHarmonizerV23_0:
     def __init__(self, android_path, decomp_path):
         self.android_path = os.path.normpath(android_path)
         self.decomp_path = os.path.normpath(decomp_path)
@@ -14,7 +14,7 @@ class SourceHarmonizerV22_0:
         self.discovered_types = set()
 
     def sync_files(self):
-        print("  [>] Pass 0: Event-Horizon Clean Sync...")
+        print("  [>] Pass 0: Absolute-Zero Clean Sync...")
         for folder in [self.src_target, self.include_target]:
             if os.path.exists(folder):
                 shutil.rmtree(folder)
@@ -32,10 +32,10 @@ class SourceHarmonizerV22_0:
                     shutil.copy2(os.path.join(root, f), os.path.join(dest_dir, f))
 
     def map_linkage(self):
-        print("  [>] Pass 1: Const-Aware Semantic Analysis...")
+        print("  [>] Pass 1: BSS-Aware Semantic Analysis...")
         func_pat = re.compile(r'^(?!static\s+inline)static\s+(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
-        # v22.0: Specifically captures 'const' to prevent section mismatch
-        var_pat = re.compile(r'^static\s+(const\s+)?([\w\* ]+)\s+([a-zA-Z_]\w*)(\s*\[[^\]]*\])*\s*[:=;]', re.MULTILINE)
+        # v23.0: Now captures the initialization state to prevent Common-Linker overlaps
+        var_pat = re.compile(r'^static\s+(const\s+)?([\w\* ]+)\s+([a-zA-Z_]\w*)(\s*\[[^\]]*\])*\s*([:=;])', re.MULTILINE)
         
         for root, _, files in os.walk(self.src_target):
             for f in files:
@@ -51,13 +51,14 @@ class SourceHarmonizerV22_0:
                             for t in re.findall(r'\b([A-Z][a-zA-Z0-9_]+)\b', clean_ret + clean_params):
                                 self.discovered_types.add(t)
 
-                        for is_const, vtype, vname, varr in var_pat.findall(content):
+                        for is_const, vtype, vname, varr, suffix in var_pat.findall(content):
                             if not vname.startswith('G_'):
                                 qualifier = "const " if is_const else ""
-                                self.var_declarations[vname] = (qualifier + vtype.strip(), varr.strip())
+                                # If suffix is ';', it's uninitialized BSS data
+                                self.var_declarations[vname] = (qualifier + vtype.strip(), varr.strip(), suffix == ';')
 
     def promote_linkage(self):
-        print("  [>] Pass 2: Definitive Symbol Isolation...")
+        print("  [>] Pass 2: Definitive Symbol Isolation & Zero-Init...")
         for root, _, files in os.walk(self.src_target):
             for f in files:
                 if f.endswith('.c'):
@@ -71,9 +72,21 @@ class SourceHarmonizerV22_0:
                         promoted = m.group(0).replace('static ', '', 1).replace(name, f"G_{name}", 1)
                         return f"#undef {name}\n#define GLOBAL_DEF_{name}\n{promoted}"
 
+                    # Function Promotion
                     pattern = r'^(?!static\s+inline)static\s+(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(.*?\)\s*\{)'
                     content = re.sub(pattern, replacer, content, flags=re.MULTILINE | re.DOTALL)
                     
+                    # v23.0: Variable Promotion with explicit Zero-Init for BSS safety
+                    for vname, (full_type, v_arr, is_bss) in self.var_declarations.items():
+                        if is_bss:
+                            # Replace 'static int myVar;' with 'int G_myVar = {0};'
+                            bss_pat = rf'^static\s+.*?{re.escape(vname)}\s*{re.escape(v_arr)}\s*;'
+                            content = re.sub(bss_pat, f"#undef {vname}\n#define GLOBAL_DEF_{vname}\n{full_type} G_{vname}{v_arr} = {{0}};", content, flags=re.MULTILINE)
+                        else:
+                            # Standard promotion for already initialized data
+                            init_pat = rf'^static\s+(.*?{re.escape(vname)}\s*{re.escape(v_arr)}\s*[:=])'
+                            content = re.sub(init_pat, f"#undef {vname}\n#define GLOBAL_DEF_{vname}\n{full_type} G_{vname}{v_arr} \\1", content, flags=re.MULTILINE)
+
                     if 'harmonized_globals.h' not in content:
                         content = '#include "harmonized_globals.h"\n' + content
                         
@@ -81,7 +94,7 @@ class SourceHarmonizerV22_0:
                         file.write(content)
 
     def generate_header(self):
-        print("  [>] Pass 3: Generating v22 Event-Horizon Header...")
+        print("  [>] Pass 3: Generating v23 Absolute-Zero Header...")
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         with open(header_path, 'w') as f:
             f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n")
@@ -97,10 +110,10 @@ class SourceHarmonizerV22_0:
                 f.write(f"#ifndef GLOBAL_DEF_{name}\n  #undef {name}\n  #define {name} G_{name}\n")
                 f.write(f"  __attribute__((visibility(\"internal\"))) extern {ret} G_{name}({params});\n#endif\n")
             
-            for name, (vtype, varr) in sorted(self.var_declarations.items()):
+            for name, (vtype, varr, _) in sorted(self.var_declarations.items()):
                 f.write(f"#ifndef GLOBAL_DEF_{name}\n  #undef {name}\n  #define {name} G_{name}\n")
-                # v22.0: Exact type matching (const vs non-const) is critical for linker RELA alignment
-                f.write(f"  __attribute__((visibility(\"internal\"))) extern {vtype} G_{name}{varr};\n#endif\n")
+                # v23.0: Enforced 16-byte alignment for ARM64 memory safety
+                f.write(f"  __attribute__((visibility(\"internal\"), aligned(16))) extern {vtype} G_{name}{varr};\n#endif\n")
             
             f.write("\n#ifdef __cplusplus\n}\n#endif\n#endif\n")
 
@@ -109,16 +122,16 @@ class SourceHarmonizerV22_0:
         with open(self.cmake_file, 'r') as f: content = f.read()
         content = re.sub(r'# --- Harmonizer.*?# ---+', '', content, flags=re.DOTALL)
         
-        # v22.0: Bsymbolic and fno-common for maximum binary stability
+        # v23.0: LTO enabled for massive binary shrinkage and performance
         injection = (
-            "\n# --- Harmonizer v22.0 Event-Horizon ---\n"
+            "\n# --- Harmonizer v23.0 Absolute-Zero ---\n"
             "include_directories(include)\n"
             "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -O3 -fPIC -fno-common -w -fvisibility=hidden "
             "-ffunction-sections -fdata-sections -falign-functions=16 -falign-loops=16 "
-            "-fno-plt -mstrict-align\")\n"
+            "-fno-plt -mstrict-align -flto\")\n"
             "set(CMAKE_SHARED_LINKER_FLAGS \"${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections -Wl,--icf=all -s "
             "-Wl,-Bsymbolic -Wl,--fix-cortex-a53-843419 -Wl,--fix-cortex-a53-835769 "
-            "-Wl,--allow-multiple-definition -Wl,--no-relax -Wl,--exclude-libs,ALL\")\n"
+            "-flto -Wl,--allow-multiple-definition -Wl,--no-relax -Wl,--exclude-libs,ALL\")\n"
             "add_definitions(-D__arm64__ -D_LANGUAGE_C -DGBI_BIT_DEPTH=32)\n"
             "file(GLOB_RECURSE ALL_C \"src/*.c\")\n"
             "target_sources(bkawrapper PRIVATE ${ALL_C})\n"
@@ -132,8 +145,8 @@ class SourceHarmonizerV22_0:
         self.promote_linkage()
         self.generate_header()
         self.patch_cmake()
-        print("--- v22.0 Event-Horizon: Binary Integrity Secured ---")
+        print("--- v23.0 Absolute-Zero: System Fully Harmonized ---")
 
 if __name__ == "__main__":
-    h = SourceHarmonizerV22_0("Android/app/src/main/cpp", "decomp-files")
+    h = SourceHarmonizerV23_0("Android/app/src/main/cpp", "decomp-files")
     h.run()
