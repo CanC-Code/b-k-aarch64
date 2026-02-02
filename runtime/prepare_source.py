@@ -3,7 +3,7 @@ import shutil
 import re
 import hashlib
 
-class SourceHarmonizerV36_0:
+class SourceHarmonizerV36_1:
     def __init__(self, android_path, decomp_path):
         self.android_path = os.path.normpath(android_path)
         self.decomp_path = os.path.normpath(decomp_path)
@@ -16,6 +16,12 @@ class SourceHarmonizerV36_0:
         self.reserved = {
             'memcpy', 'memset', 'printf', 'sprintf', 'sqrt', 'sqrtf', 'fabs', 
             'sin', 'cos', 'atan2', 'atan2f', 'floor', 'ceil', 'pow', 'exp'
+        }
+        # NEW: Explicitly ignore these types to prevent "typedef redefinition" errors
+        self.reserved_types = {
+            'u32', 's32', 'u16', 's16', 'u8', 's8', 'f32', 'f64', 'u64', 's64',
+            'Vtx', 'Mtx', 'Gfx', 'Acmd', 'OSIntMask', 'OSPri', 'OSMesgQueue',
+            'OSPiHandle', 'OSThread', 'OSMesg', 'uintptr_t', 'intptr_t', 'size_t'
         }
 
     def get_file_id(self, filepath):
@@ -57,7 +63,9 @@ class SourceHarmonizerV36_0:
                             name = name.strip()
                             if name in self.reserved: continue
                             self.func_signatures[f"{fid}_{name}"] = (name, ret.strip(), params.strip() or "void")
-                            for t in re.findall(r'\b([A-Z][a-zA-Z0-9_]+)\b', ret + params): self.discovered_types.add(t)
+                            # Detect types but filter out reserved N64/OS types
+                            for t in re.findall(r'\b([A-Z][a-zA-Z0-9_]+)\b', ret + params):
+                                if t not in self.reserved_types: self.discovered_types.add(t)
 
                         for is_const, vtype, vname, varr, suffix in var_pat.findall(content):
                             vname = vname.strip()
@@ -82,8 +90,6 @@ class SourceHarmonizerV36_0:
                     
                     for key, (vname, vtype, varr, is_bss) in self.var_declarations.items():
                         if not key.startswith(fid): continue
-                        
-                        # Use BSS for zero-init, DATA for values, aligned to 16 for AArch64 SIMD safety
                         section = ".bss.harmonized" if is_bss else ".data.harmonized"
                         attr = f'__attribute__((visibility("hidden"), used, section("{section}"), aligned(16)))'
                         
@@ -97,14 +103,13 @@ class SourceHarmonizerV36_0:
                     with open(path, 'w') as file: file.write('#include "harmonized_globals.h"\n' + content)
 
     def generate_header(self):
-        print("  [>] Pass 3: Finalizing v36.0 Neutrino-Link Header...")
+        print("  [>] Pass 3: Finalizing v36.1 Neutrino-Link Header...")
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         with open(header_path, 'w') as f:
             f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n#include <ultra64.h>\n#include <stdint.h>\n#include <stddef.h>\n")
             f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n")
             for t in sorted(self.discovered_types):
-                if t not in {'u32', 's32', 'f32', 'Vtx', 'Mtx', 'Gfx', 'u64', 's64'}: 
-                    f.write(f"#ifndef DEFINED_{t}\n  typedef struct {t} {t};\n  #define DEFINED_{t}\n#endif\n")
+                f.write(f"#ifndef DEFINED_{t}\n  typedef struct {t} {t};\n  #define DEFINED_{t}\n#endif\n")
             for key, (name, ret, params) in sorted(self.func_signatures.items()):
                 f.write(f"#ifndef GLOBAL_DEF_{key}\n  #undef {name}\n  #define {name} G_{key}\n  extern {ret} G_{key}({params});\n#endif\n")
             for key, (vname, vtype, varr, _) in sorted(self.var_declarations.items()):
@@ -116,7 +121,7 @@ class SourceHarmonizerV36_0:
         with open(self.cmake_file, 'r') as f: content = f.read()
         content = re.sub(r'# --- Harmonizer.*?# ---+', '', content, flags=re.DOTALL)
         injection = (
-            "\n# --- Harmonizer v36.0 Neutrino-Link ---\n"
+            "\n# --- Harmonizer v36.1 Neutrino-Link ---\n"
             "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -O3 -fno-common -fvisibility=hidden -ffunction-sections -fdata-sections -flto=thin -mstrict-align -fno-builtin\")\n"
             "set(CMAKE_SHARED_LINKER_FLAGS \"${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections -Wl,-Bsymbolic -flto=thin -Wl,--relax -Wl,--no-rosegment -Wl,--no-undefined -lm\")\n"
             "add_definitions(-D__arm64__ -D_LANGUAGE_C)\n"
@@ -128,8 +133,8 @@ class SourceHarmonizerV36_0:
 
     def run(self):
         self.sync_files(); self.map_linkage(); self.promote_linkage(); self.generate_header(); self.patch_cmake()
-        print("--- v36.0 Neutrino-Link: Dual-Cluster Relocation Active ---")
+        print("--- v36.1 Neutrino-Link: Typedef Hotfix Applied ---")
 
 if __name__ == "__main__":
-    h = SourceHarmonizerV36_0("Android/app/src/main/cpp", "decomp-files")
+    h = SourceHarmonizerV36_1("Android/app/src/main/cpp", "decomp-files")
     h.run()
