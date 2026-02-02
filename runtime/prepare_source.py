@@ -2,7 +2,7 @@ import os
 import shutil
 import re
 
-class SourceHarmonizerV30_0:
+class SourceHarmonizerV31_0:
     def __init__(self, android_path, decomp_path):
         self.android_path = os.path.normpath(android_path)
         self.decomp_path = os.path.normpath(decomp_path)
@@ -12,15 +12,14 @@ class SourceHarmonizerV30_0:
         self.func_signatures = {}
         self.var_declarations = {}
         self.discovered_types = set()
-        # Expanded reserved list to cover NDK-specific math aliases
         self.reserved = {
             'atan2', 'atan2f', 'floor', 'floorf', 'ceil', 'ceilf', 'exp', 'log', 
             'sqrt', 'sqrtf', 'abs', 'sin', 'cos', 'tan', 'memcpy', 'memset',
-            'round', 'pow', 'fabs', 'fmod', 'printf', 'sprintf'
+            'round', 'pow', 'fabs', 'fmod', 'printf', 'sprintf', 'longjmp', 'setjmp'
         }
 
     def sync_files(self):
-        print("  [>] Pass 0: Void-Walker Sync...")
+        print("  [>] Pass 0: Singularity Sync...")
         for folder in [self.src_target, self.include_target]:
             if os.path.exists(folder):
                 shutil.rmtree(folder)
@@ -38,7 +37,7 @@ class SourceHarmonizerV30_0:
                     shutil.copy2(os.path.join(root, f), os.path.join(dest_dir, f))
 
     def map_linkage(self):
-        print("  [>] Pass 1: Symbol Sanitization...")
+        print("  [>] Pass 1: Semantic Symbol Mapping...")
         func_pat = re.compile(r'^(?!static\s+inline)static\s+(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
         var_pat = re.compile(r'^static\s+(const\s+)?([\w\* ]+)\s+([a-zA-Z_]\w*)(\s*\[[^\]]*\])*\s*([:=;])', re.MULTILINE)
         
@@ -63,7 +62,7 @@ class SourceHarmonizerV30_0:
                                 self.var_declarations[vname] = (qualifier + vtype.strip(), varr.strip(), suffix == ';')
 
     def promote_linkage(self):
-        print("  [>] Pass 2: Void-Walker Linkage Promotion...")
+        print("  [>] Pass 2: Definitive Symbol Isolation...")
         for root, _, files in os.walk(self.src_target):
             for f in files:
                 if f.endswith('.c'):
@@ -74,15 +73,15 @@ class SourceHarmonizerV30_0:
                     def replacer(m):
                         name = m.group(3).strip()
                         if name.startswith('G_') or name in self.reserved: return m.group(0)
-                        # v30.0: Unified visibility with weak linkage to prevent duplicate symbol traps
-                        promoted = m.group(0).replace('static ', '__attribute__((weak, visibility("hidden"))) ', 1).replace(name, f"G_{name}", 1)
+                        # v31.0: Removed 'weak' to allow ADRP relocation optimization
+                        promoted = m.group(0).replace('static ', '__attribute__((visibility("hidden"))) ', 1).replace(name, f"G_{name}", 1)
                         return f"#undef {name}\n#define GLOBAL_DEF_{name}\n{promoted}"
 
                     pattern = r'^(?!static\s+inline)static\s+(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(.*?\)\s*\{)'
                     content = re.sub(pattern, replacer, content, flags=re.MULTILINE | re.DOTALL)
                     
                     for vname, (full_type, v_arr, is_bss) in self.var_declarations.items():
-                        prefix = '__attribute__((weak, visibility("hidden"))) '
+                        prefix = '__attribute__((visibility("hidden"))) '
                         if is_bss:
                             bss_pat = rf'^static\s+.*?{re.escape(vname)}\s*{re.escape(v_arr)}\s*;'
                             content = re.sub(bss_pat, f"#undef {vname}\n#define GLOBAL_DEF_{vname}\n{prefix}{full_type} G_{vname}{v_arr} = {{0}};", content, flags=re.MULTILINE)
@@ -95,14 +94,13 @@ class SourceHarmonizerV30_0:
                     with open(path, 'w') as file: file.write(content)
 
     def generate_header(self):
-        print("  [>] Pass 3: Generating v30 Void-Walker Header...")
+        print("  [>] Pass 3: Generating v31 Singularity Header...")
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         with open(header_path, 'w') as f:
             f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n")
             f.write("#include <math.h>\n#include <string.h>\n#include <ultra64.h>\n#include <stdint.h>\n#include <stddef.h>\n")
             f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
             
-            # Type safety
             forbidden = {'Vtx', 'Mtx', 'u32', 's32', 'u64', 's64', 'f32', 'f64', 'Addr', 'Gfx', 'Lights', 'LookAt', 'Hilite', 'Vp'}
             for t in sorted(self.discovered_types):
                 if t not in forbidden: f.write(f"typedef struct {t} {t};\n")
@@ -121,18 +119,19 @@ class SourceHarmonizerV30_0:
         with open(self.cmake_file, 'r') as f: content = f.read()
         content = re.sub(r'# --- Harmonizer.*?# ---+', '', content, flags=re.DOTALL)
         
-        # v30.0: Constant merging and LTO caching for stability
+        # v31.0: Stripping unwind tables and limiting ThinLTO imports to fix branch range
         injection = (
-            "\n# --- Harmonizer v30.0 Void-Walker ---\n"
+            "\n# --- Harmonizer v31.0 Singularity ---\n"
             "include_directories(include)\n"
             "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -O3 -fPIC -fno-common -w -fvisibility=hidden "
             "-ffunction-sections -fdata-sections -falign-functions=32 -falign-loops=32 "
             "-fno-plt -mstrict-align -flto=thin -mcmodel=large -fno-jump-tables "
-            "-fmerge-all-constants -fno-strict-aliasing\")\n"
+            "-fmerge-all-constants -fno-asynchronous-unwind-tables -fno-strict-aliasing\")\n"
             "set(CMAKE_SHARED_LINKER_FLAGS \"${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections -Wl,--icf=all -s "
             "-Wl,-Bsymbolic -Wl,--fix-cortex-a53-843419 -Wl,--fix-cortex-a53-835769 -Wl,--hash-style=gnu "
             "-flto=thin -Wl,--thinlto-cache-dir=${CMAKE_BINARY_DIR}/lto_cache -Wl,--allow-multiple-definition "
-            "-Wl,--no-relax -Wl,--exclude-libs,ALL -Wl,--stub-group-size=0x100000 -Wl,-z,relro -Wl,-z,now\")\n"
+            "-Wl,--no-relax -Wl,--exclude-libs,ALL -Wl,--stub-group-size=0x100000 -Wl,-z,relro -Wl,-z,now "
+            "-Wl,--plugin-opt=-import-instr-limit=100\")\n"
             "add_definitions(-D__arm64__ -D_LANGUAGE_C -DGBI_BIT_DEPTH=32)\n"
             "file(GLOB_RECURSE ALL_C \"src/*.c\")\n"
             "target_sources(bkawrapper PRIVATE ${ALL_C})\n"
@@ -146,8 +145,8 @@ class SourceHarmonizerV30_0:
         self.promote_linkage()
         self.generate_header()
         self.patch_cmake()
-        print("--- v30.0 Void-Walker: Math Collisions & Relocation Range Fixed ---")
+        print("--- v31.0 Singularity: Relocation Bloat & Branch Limits Resolved ---")
 
 if __name__ == "__main__":
-    h = SourceHarmonizerV30_0("Android/app/src/main/cpp", "decomp-files")
+    h = SourceHarmonizerV31_0("Android/app/src/main/cpp", "decomp-files")
     h.run()
