@@ -2,7 +2,7 @@ import os
 import shutil
 import re
 
-class SourceHarmonizerV12_0:
+class SourceHarmonizerV12_1:
     def __init__(self, android_path, decomp_path):
         self.android_path = os.path.normpath(android_path)
         self.decomp_path = os.path.normpath(decomp_path)
@@ -11,11 +11,9 @@ class SourceHarmonizerV12_0:
         self.cmake_file = os.path.join(self.android_path, "CMakeLists.txt")
         self.func_signatures = {}
         self.var_declarations = {}
-        self.primitives = {'int', 'char', 'float', 'double', 'short', 'long', 'void', 'bool',
-                           's8', 'u8', 's16', 'u16', 's32', 'u32', 's64', 'u64', 'f32', 'f64', 'u32_t'}
 
     def sync_files(self):
-        print("  [>] Pass 0: Hypernova Sync...")
+        print("  [>] Pass 0: Pulsar Sync...")
         for sub in ["src", "include"]:
             source = os.path.join(self.decomp_path, sub)
             target = os.path.join(self.android_path, sub)
@@ -29,8 +27,7 @@ class SourceHarmonizerV12_0:
                     shutil.copy2(os.path.join(root, f), os.path.join(dest_dir, f))
 
     def map_linkage(self):
-        print("  [>] Pass 1: Global Indexing...")
-        # Strict pattern: must be at start of line, skip inlines
+        print("  [>] Pass 1: Linkage Indexing...")
         func_pat = re.compile(r'^(?!static\s+inline)static\s+([\w\*]+\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
         var_pat = re.compile(r'^static\s+([\w\* ]+)\s+([a-zA-Z_]\w*)(\[[^\]]*\])?\s*[:=;]', re.MULTILINE)
         
@@ -41,18 +38,16 @@ class SourceHarmonizerV12_0:
                         content = file.read()
                         for full_sig, name, params in func_pat.findall(content):
                             sig = " ".join(full_sig.split())
-                            # Better pointer erasure: keep the pointer level
                             sig = re.sub(r'[a-zA-Z_]\w*(?=\s*\*+)', 'void', sig)
                             self.func_signatures[name] = sig
 
                         for vtype, vname, varray in var_pat.findall(content):
-                            # Preserve pointer levels for variables (e.g. void** vs void*)
                             stars = "*" * vtype.count("*")
                             clean_type = f"void{stars}" if (stars or varray) else "int"
                             self.var_declarations[vname] = clean_type
 
     def promote_linkage(self):
-        print("  [>] Pass 2: Surgical Globalization...")
+        print("  [>] Pass 2: Context-Aware Globalization...")
         for root, _, files in os.walk(self.src_target):
             for f in files:
                 if f.endswith('.c'):
@@ -60,30 +55,32 @@ class SourceHarmonizerV12_0:
                     with open(path, 'r', errors='ignore') as file:
                         content = file.read()
                     
-                    # Regex to find global static definitions and inject guard + strip
-                    # This ensures we don't hit 'static' inside structs or locals
+                    # Strip static and inject guards
                     def replacer(m):
                         name = m.group(2)
-                        full_match = m.group(0)
-                        return f"#define GLOBAL_DEF_{name}\n{full_match.replace('static ', '', 1)}"
+                        return f"#define GLOBAL_DEF_{name}\n{m.group(0).replace('static ', '', 1)}"
 
                     content = re.sub(r'^(?!static\s+inline)static\s+([\w\*]+\s+([a-zA-Z_]\w*)\s*\(.*?\)\s*\{)', 
                                     replacer, content, flags=re.MULTILINE | re.DOTALL)
                     
-                    # Inject header if missing
+                    # v12.1 Late-Injection: Place shim AFTER the last include
                     if 'harmonized_globals.h' not in content:
-                        content = '#include "harmonized_globals.h"\n' + content
+                        inc_matches = list(re.finditer(r'^#include\s+[<"].*?[>"]', content, re.MULTILINE))
+                        if inc_matches:
+                            insert_pos = inc_matches[-1].end()
+                            content = content[:insert_pos] + '\n#include "harmonized_globals.h"' + content[insert_pos:]
+                        else:
+                            content = '#include "harmonized_globals.h"\n' + content
                         
                     with open(path, 'w') as file:
                         file.write(content)
 
     def generate_header(self):
-        print("  [>] Pass 3: Generating Final Pro-Shim...")
+        print("  [>] Pass 3: Generating Optimized Shim...")
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         with open(header_path, 'w') as f:
             f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n")
-            f.write("#include <ultra64.h>\n#include <stdint.h>\n#include <stddef.h>\n")
-            f.write("#include <stdbool.h>\n")
+            f.write("#include <ultra64.h>\n#include <stdint.h>\n#include <stddef.h>\n#include <stdbool.h>\n")
             f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
             
             for name, sig in sorted(self.func_signatures.items()):
@@ -92,7 +89,8 @@ class SourceHarmonizerV12_0:
                 f.write(f"#endif\n")
             
             for name, vtype in sorted(self.var_declarations.items()):
-                f.write(f"__attribute__((weak, unused)) extern {vtype} {name};\n")
+                # v12.1 Common Attribute: Merge duplicate variable definitions
+                f.write(f"__attribute__((weak, unused, common)) extern {vtype} {name};\n")
             
             f.write("\n#ifdef __cplusplus\n}\n#endif\n#endif\n")
 
@@ -102,14 +100,14 @@ class SourceHarmonizerV12_0:
         content = re.sub(r'# --- Harmonizer.*?# ---+', '', content, flags=re.DOTALL)
         
         injection = (
-            "\n# --- Harmonizer v12.0 Hypernova ---\n"
+            "\n# --- Harmonizer v12.1 Pulsar ---\n"
             "include_directories(include)\n"
             "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -mcmodel=large -fPIC -fcommon -O3 -w -fno-builtin -fno-section-anchors\")\n"
-            "set(CMAKE_SHARED_LINKER_FLAGS \"${CMAKE_SHARED_LINKER_FLAGS} -Wl,--allow-multiple-definition -Wl,--gc-sections\")\n"
+            "set(CMAKE_SHARED_LINKER_FLAGS \"${CMAKE_SHARED_LINKER_FLAGS} -Wl,--allow-multiple-definition -Wl,--gc-sections -Wl,--no-relax\")\n"
             "add_definitions(-D__arm64__ -D_LANGUAGE_C -DFCOMMON -D_FINALROM -DGBI_BIT_DEPTH=32)\n"
             "file(GLOB_RECURSE ALL_C \"src/*.c\")\n"
             "target_sources(bkawrapper PRIVATE ${ALL_C})\n"
-            "# ------------------------------------\n"
+            "# -------------------------------\n"
         )
         with open(self.cmake_file, 'w') as f: f.write(content + injection)
 
@@ -119,8 +117,8 @@ class SourceHarmonizerV12_0:
         self.promote_linkage()
         self.generate_header()
         self.patch_cmake()
-        print("--- v12.0 Hypernova: System Stabilized ---")
+        print("--- v12.1 Pulsar: Deployment Stabilized ---")
 
 if __name__ == "__main__":
-    h = SourceHarmonizerV12_0("Android/app/src/main/cpp", "decomp-files")
+    h = SourceHarmonizerV12_1("Android/app/src/main/cpp", "decomp-files")
     h.run()
