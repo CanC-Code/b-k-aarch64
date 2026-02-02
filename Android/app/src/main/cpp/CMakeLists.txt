@@ -1,64 +1,134 @@
-cmake_minimum_required(VERSION 3.22.1)
-project(bkawrapper LANGUAGES C CXX)
+#include <jni.h>
+#include <string>
+#include <mutex>
+#include <vector>
+#include <android/log.h>
 
-# Use C++17 for NativeBridge and modern OTR logic
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+// Include the public llama.cpp API
+#include "llama.h"
 
-set(CPP_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
-set(ULTRA_DIR "${CPP_ROOT}/ultra")
-set(GAME_SRC_DIR "${CPP_ROOT}/src")
-set(GAME_INC_DIR "${CPP_ROOT}/include")
+#define LOG_TAG "llama_jni"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-# --- Harmonizer v6.3 Smart Discovery ---
-# We discover all files but filter out NDK/Platform duplicates
-file(GLOB_RECURSE ALL_C_FILES 
-    "${GAME_SRC_DIR}/*.c" 
-    "${GAME_SRC_DIR}/*.cpp"
-)
+static std::mutex g_mutex;
+static llama_model * g_model = nullptr;
+static llama_context * g_ctx = nullptr;
+static llama_sampler * g_sampler = nullptr;
 
-foreach(FILE_PATH ${ALL_C_FILES})
-    # Exclude lib/ and specific duplicates identified in build logs
-    if(NOT FILE_PATH MATCHES "src/lib/" AND 
-       NOT FILE_PATH MATCHES "inflate.c" AND 
-       NOT FILE_PATH MATCHES "rarezip.c" AND
-       NOT FILE_PATH MATCHES "gu")
-        list(APPEND FILTERED_GAME_SOURCES ${FILE_PATH})
-    endif()
-endforeach()
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_io_canccode_aca_LlamaBridge_initNative(JNIEnv * env, jobject, jstring modelPath, jint nCtx) {
+    std::lock_guard<std::mutex> lock(g_mutex);
 
-add_library(bkawrapper SHARED
-    ${FILTERED_GAME_SOURCES}
-    "${ULTRA_DIR}/NativeBridge.cpp"
-    "${ULTRA_DIR}/otr_builder.cpp"
-    "${ULTRA_DIR}/audio_helper.cpp"
-    "${ULTRA_DIR}/exceptasm.cpp"
-    # Essential low-level assembly
-    "${ULTRA_DIR}/setintmask.s"
-    "${ULTRA_DIR}/libm_vals.s"
-    "${ULTRA_DIR}/parameters.s"
-)
+    const char * path = env->GetStringUTFChars(modelPath, nullptr);
 
-target_include_directories(bkawrapper PRIVATE
-    ${CPP_ROOT}
-    ${ULTRA_DIR}
-    ${GAME_INC_DIR}
-    ${GAME_INC_DIR}/2.0L
-    ${GAME_INC_DIR}/2.0L/PR
-    ${GAME_INC_DIR}/core1
-    ${GAME_INC_DIR}/core2
-)
+    // Initialize model
+    llama_model_params mparams = llama_model_default_params();
+    g_model = llama_model_load_from_file(path, mparams);
 
-# _LANGUAGE_C is needed for the decompiled headers to behave correctly
-target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
+    if (!g_model) {
+        LOGE("Failed to load model: %s", path);
+        env->ReleaseStringUTFChars(modelPath, path);
+        return JNI_FALSE;
+    }
 
-# -fcommon handles multiple global definitions in decomp projects
-# -w suppresses non-critical warnings from legacy source
-target_compile_options(bkawrapper PRIVATE -w -fcommon -O3)
+    // Initialize context
+    llama_context_params cparams = llama_context_default_params();
+    cparams.n_ctx = nCtx;
+    g_ctx = llama_init_from_model(g_model, cparams);
 
-find_library(log-lib log)
-find_library(android-lib android)
-find_library(z-lib z)
+    if (!g_ctx) {
+        LOGE("Failed to create context");
+        llama_model_free(g_model);
+        g_model = nullptr;
+        env->ReleaseStringUTFChars(modelPath, path);
+        return JNI_FALSE;
+    }
 
-# 'm' (math) and 'atomic' are required for the emulator/bridge logic
-target_link_libraries(bkawrapper ${log-lib} ${android-lib} ${z-lib} atomic m)
+    // Modern Sampler initialization (Chain API)
+    g_sampler = llama_sampler_chain_init(llama_sampler_chain_default_params());
+    llama_sampler_chain_add(g_sampler, llama_sampler_init_temp(0.8f));
+    llama_sampler_chain_add(g_sampler, llama_sampler_init_top_k(40));
+    llama_sampler_chain_add(g_sampler, llama_sampler_init_top_p(0.95f, 1));
+    llama_sampler_chain_add(g_sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
+
+    env->ReleaseStringUTFChars(modelPath, path);
+    LOGI("Llama initialized successfully");
+    return JNI_TRUE;
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_io_canccode_aca_LlamaBridge_generateNative(JNIEnv * env, jobject, jstring prompt, jint maxTokens, jobject callback) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+
+    if (!g_ctx || !g_model) return;
+
+    // CORRECTED: Replaced llama_kv_cache_seq_rm with llama_kv_cache_clear
+    // to fix the "undeclared identifier" error found in the build logs.
+    llama_kv_cache_clear(g_ctx);
+
+    const char * c_prompt = env->GetStringUTFChars(prompt, nullptr);
+    const struct llama_vocab * vocab = llama_model_get_vocab(g_model);
+
+    // Tokenize prompt
+    std::vector<llama_token> tokens(strlen(c_prompt) + 1);
+    int n_tokens = llama_tokenize(vocab, c_prompt, strlen(c_prompt), tokens.data(), tokens.size(), true, false);
+    tokens.resize(n_tokens);
+    env->ReleaseStringUTFChars(prompt, c_prompt);
+
+    // Prepare batch for initial prompt
+    llama_batch batch = llama_batch_init(tokens.size(), 0, 1);
+    for (int i = 0; i < (int)tokens.size(); i++) {
+        batch.token[i] = tokens[i];
+        batch.pos[i] = i;
+        batch.n_seq_id[i] = 1;
+        batch.seq_id[i][0] = 0;
+        batch.logits[i] = false;
+    }
+    batch.logits[tokens.size() - 1] = true;
+
+    if (llama_decode(g_ctx, batch) != 0) {
+        llama_batch_free(batch);
+        return;
+    }
+    llama_batch_free(batch);
+
+    // Get Java callback method
+    jclass cls = env->GetObjectClass(callback);
+    jmethodID onToken = env->GetMethodID(cls, "onToken", "(Ljava/lang/String;)V");
+
+    // Autoregressive generation loop
+    int n_past = tokens.size();
+    for (int i = 0; i < maxTokens; i++) {
+        // Sample next token
+        llama_token tok = llama_sampler_sample(g_sampler, g_ctx, -1);
+
+        // Check for End-of-Generation
+        if (llama_vocab_is_eog(vocab, tok)) break;
+
+        // Convert token to string piece
+        char buf[128];
+        int len = llama_token_to_piece(vocab, tok, buf, sizeof(buf), 0, true);
+        if (len > 0) {
+            env->CallVoidMethod(callback, onToken, env->NewStringUTF(std::string(buf, len).c_str()));
+        }
+
+        // Decode the single sampled token
+        llama_batch next = llama_batch_get_one(&tok, 1);
+        next.pos[0] = n_past;
+        if (llama_decode(g_ctx, next) != 0) break;
+        n_past++;
+    }
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_io_canccode_aca_LlamaBridge_shutdownNative(JNIEnv *, jobject) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (g_sampler) llama_sampler_free(g_sampler);
+    if (g_ctx) llama_free(g_ctx);
+    if (g_model) llama_model_free(g_model);
+    g_sampler = nullptr; g_ctx = nullptr; g_model = nullptr;
+}
