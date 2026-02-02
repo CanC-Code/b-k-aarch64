@@ -2,7 +2,7 @@ import os
 import shutil
 import re
 
-class SourceHarmonizerV27_0:
+class SourceHarmonizerV28_0:
     def __init__(self, android_path, decomp_path):
         self.android_path = os.path.normpath(android_path)
         self.decomp_path = os.path.normpath(decomp_path)
@@ -12,9 +12,14 @@ class SourceHarmonizerV27_0:
         self.func_signatures = {}
         self.var_declarations = {}
         self.discovered_types = set()
+        # Reserved math/string symbols that cause redefinition errors in NDK
+        self.reserved = {
+            'atan2', 'atan2f', 'floor', 'floorf', 'ceil', 'ceilf', 'exp', 'log', 
+            'sqrt', 'sqrtf', 'abs', 'sin', 'cos', 'tan', 'memcpy', 'memset'
+        }
 
     def sync_files(self):
-        print("  [>] Pass 0: Event-Horizon Clean Sync...")
+        print("  [>] Pass 0: Singularity-Shield Clean Sync...")
         for folder in [self.src_target, self.include_target]:
             if os.path.exists(folder):
                 shutil.rmtree(folder)
@@ -32,7 +37,7 @@ class SourceHarmonizerV27_0:
                     shutil.copy2(os.path.join(root, f), os.path.join(dest_dir, f))
 
     def map_linkage(self):
-        print("  [>] Pass 1: Semantic Symbol Mapping...")
+        print("  [>] Pass 1: Reserved Symbol Mapping...")
         func_pat = re.compile(r'^(?!static\s+inline)static\s+(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
         var_pat = re.compile(r'^static\s+(const\s+)?([\w\* ]+)\s+([a-zA-Z_]\w*)(\s*\[[^\]]*\])*\s*([:=;])', re.MULTILINE)
         
@@ -42,21 +47,20 @@ class SourceHarmonizerV27_0:
                     with open(os.path.join(root, f), 'r', errors='ignore') as file:
                         content = file.read()
                         for _, ret_type, name, params in func_pat.findall(content):
-                            if name.startswith('G_'): continue
+                            if name.startswith('G_') or name in self.reserved: continue
                             clean_ret = re.sub(r'\s+', ' ', ret_type.strip()).replace(' *', '*')
                             clean_params = re.sub(r'\s+', ' ', params.strip()) if params.strip() else "void"
-                            clean_params = re.sub(r'\bUNUSED\b', '', clean_params).strip()
                             self.func_signatures[name] = (clean_ret, clean_params)
                             for t in re.findall(r'\b([A-Z][a-zA-Z0-9_]+)\b', clean_ret + clean_params):
                                 self.discovered_types.add(t)
 
                         for is_const, vtype, vname, varr, suffix in var_pat.findall(content):
-                            if not vname.startswith('G_'):
+                            if not vname.startswith('G_') and vname not in self.reserved:
                                 qualifier = "const " if is_const else ""
                                 self.var_declarations[vname] = (qualifier + vtype.strip(), varr.strip(), suffix == ';')
 
     def promote_linkage(self):
-        print("  [>] Pass 2: Adaptive Linkage Promotion...")
+        print("  [>] Pass 2: Collision-Aware Promotion...")
         for root, _, files in os.walk(self.src_target):
             for f in files:
                 if f.endswith('.c'):
@@ -66,8 +70,7 @@ class SourceHarmonizerV27_0:
                     
                     def replacer(m):
                         name = m.group(3)
-                        if name.startswith('G_'): return m.group(0)
-                        # v27.0: Explicit hidden visibility with weak linkage
+                        if name.startswith('G_') or name in self.reserved: return m.group(0)
                         promoted = m.group(0).replace('static ', '__attribute__((weak, visibility("hidden"))) ', 1).replace(name, f"G_{name}", 1)
                         return f"#undef {name}\n#define GLOBAL_DEF_{name}\n{promoted}"
 
@@ -90,14 +93,14 @@ class SourceHarmonizerV27_0:
                         file.write(content)
 
     def generate_header(self):
-        print("  [>] Pass 3: Generating v27 Event-Horizon Header...")
+        print("  [>] Pass 3: Generating v28 Singularity-Shield Header...")
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         with open(header_path, 'w') as f:
             f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n")
-            f.write("#include <ultra64.h>\n#include <stdint.h>\n#include <stddef.h>\n")
+            # Force system headers first to lock their definitions
+            f.write("#include <math.h>\n#include <string.h>\n#include <ultra64.h>\n#include <stdint.h>\n#include <stddef.h>\n")
             f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
             
-            # Type safety and forward declarations
             forbidden = {'Vtx', 'Mtx', 'u32', 's32', 'u64', 's64', 'f32', 'f64', 'Addr', 'Gfx', 'Lights', 'LookAt', 'Hilite', 'Vp'}
             for t in sorted(self.discovered_types):
                 if t not in forbidden:
@@ -109,7 +112,6 @@ class SourceHarmonizerV27_0:
             
             for name, (vtype, varr, _) in sorted(self.var_declarations.items()):
                 f.write(f"#ifndef GLOBAL_DEF_{name}\n  #undef {name}\n  #define {name} G_{name}\n")
-                # v27.0: 16-byte alignment to satisfy Android TLS/Stack constraints while maintaining some cache gain
                 f.write(f"  __attribute__((visibility(\"hidden\"), aligned(16))) extern {vtype} G_{name}{varr};\n#endif\n")
             
             f.write("\n#ifdef __cplusplus\n}\n#endif\n#endif\n")
@@ -119,21 +121,22 @@ class SourceHarmonizerV27_0:
         with open(self.cmake_file, 'r') as f: content = f.read()
         content = re.sub(r'# --- Harmonizer.*?# ---+', '', content, flags=re.DOTALL)
         
-        # v27.0: ThinLTO and RELRO for absolute stability
+        # v28.0: Adding LTO Cache and strictly removing relaxed aliasing
         injection = (
-            "\n# --- Harmonizer v27.0 Event-Horizon ---\n"
+            "\n# --- Harmonizer v28.0 Singularity-Shield ---\n"
             "include_directories(include)\n"
             "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -O3 -fPIC -fno-common -w -fvisibility=hidden "
             "-ffunction-sections -fdata-sections -falign-functions=32 -falign-loops=32 "
-            "-fno-plt -mstrict-align -flto=thin -mcmodel=large -fno-semantic-interposition -fsection-anchors\")\n"
+            "-fno-plt -mstrict-align -flto=thin -mcmodel=large -fno-semantic-interposition "
+            "-fsection-anchors -fno-strict-aliasing\")\n"
             "set(CMAKE_SHARED_LINKER_FLAGS \"${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections -Wl,--icf=all -s "
             "-Wl,-Bsymbolic -Wl,--fix-cortex-a53-843419 -Wl,--fix-cortex-a53-835769 -Wl,--hash-style=gnu "
-            "-flto=thin -Wl,--allow-multiple-definition -Wl,--no-relax -Wl,--exclude-libs,ALL "
-            "-Wl,--stub-group-size=0x100000 -Wl,-z,relro -Wl,-z,now\")\n"
+            "-flto=thin -Wl,--thinlto-cache-dir=${CMAKE_BINARY_DIR}/lto_cache -Wl,--allow-multiple-definition "
+            "-Wl,--no-relax -Wl,--exclude-libs,ALL -Wl,--stub-group-size=0x100000 -Wl,-z,relro -Wl,-z,now\")\n"
             "add_definitions(-D__arm64__ -D_LANGUAGE_C -DGBI_BIT_DEPTH=32)\n"
             "file(GLOB_RECURSE ALL_C \"src/*.c\")\n"
             "target_sources(bkawrapper PRIVATE ${ALL_C})\n"
-            "# --------------------------------------\n"
+            "# ------------------------------------------\n"
         )
         with open(self.cmake_file, 'w') as f: f.write(content + injection)
 
@@ -143,8 +146,8 @@ class SourceHarmonizerV27_0:
         self.promote_linkage()
         self.generate_header()
         self.patch_cmake()
-        print("--- v27.0 Event-Horizon: Final Stabilization Complete ---")
+        print("--- v28.0 Singularity-Shield: Namespace Conflict Resolved ---")
 
 if __name__ == "__main__":
-    h = SourceHarmonizerV27_0("Android/app/src/main/cpp", "decomp-files")
+    h = SourceHarmonizerV28_0("Android/app/src/main/cpp", "decomp-files")
     h.run()
