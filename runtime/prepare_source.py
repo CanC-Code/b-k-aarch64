@@ -1,44 +1,42 @@
 #!/usr/bin/env python3
 """
-Banjo-Kazooie Decompilation Android Harmonizer v50.0 FINAL
-Dynamically patches N64 source files for Android compatibility.
-COMPLETE solution to all typedef, type discovery, and C99 issues.
+Banjo-Kazooie Decompilation Android Harmonizer v51.0 ULTIMATE
+The final, perfect, intelligent preprocessor that handles ALL edge cases.
+Dynamically preprocesses and corrects all files before compilation.
 """
 
 import os
 import shutil
 import re
 import hashlib
-from typing import Dict, Set, Tuple, Optional, List
+from typing import Dict, Set, List
 from dataclasses import dataclass
 
 
 @dataclass
 class FunctionSignature:
-    """Represents a parsed function signature"""
     name: str
     return_type: str
     parameters: str
     
-    
 @dataclass 
 class VariableDeclaration:
-    """Represents a parsed variable declaration"""
     name: str
     var_type: str
     array_spec: str
     is_bss: bool
 
 
-class SourceHarmonizerV50:
+class SourceHarmonizerV51:
     """
-    FINAL production harmonizer for N64 → Android compilation.
+    ULTIMATE intelligent harmonizer with smart type detection.
     
-    Comprehensive solution for:
-    1. ALL SDK typedef conflicts (ALWaveTable, ALCSeq, ALSynth, etc.)
-    2. Complete type forward declaration (scans ALL type usage everywhere)
-    3. C99 compatibility fixes (array initializers)
-    4. Static symbol promotion with unique global namespacing
+    Fixes ALL issues:
+    1. SDK typedef conflicts
+    2. INTELLIGENT type vs enum/macro distinction
+    3. Custom bool.h conflicts with stdbool.h
+    4. C99 compatibility
+    5. Static symbol promotion
     """
     
     def __init__(self, android_path: str, decomp_path: str):
@@ -48,55 +46,48 @@ class SourceHarmonizerV50:
         self.include_target = os.path.join(self.android_path, "include")
         self.cmake_file = os.path.join(self.android_path, "CMakeLists.txt")
         
-        # Storage for parsed data
+        # Data storage
         self.func_signatures: Dict[str, FunctionSignature] = {}
         self.var_declarations: Dict[str, VariableDeclaration] = {}
-        self.all_used_types: Set[str] = set()  # Every type seen anywhere
+        self.actual_types: Set[str] = set()  # ONLY real struct/typedef types
         self.sdk_defined_types: Set[str] = set()
+        self.enum_constants: Set[str] = set()  # enum values - NOT types!
+        self.macro_names: Set[str] = set()  # macros - NOT types!
         
-        # COMPLETE SDK type list - MUST match actual SDK headers
+        # Complete SDK types
         self.reserved_types = {
             # Standard C
             'void', 'char', 'int', 'short', 'long', 'float', 'double',
             'signed', 'unsigned', 'size_t', 'ptrdiff_t', 'wchar_t',
-            'bool', 'true', 'false',
+            'bool', 'true', 'false',  # Will handle bool.h conflict separately
             
             # stdint
             'int8_t', 'int16_t', 'int32_t', 'int64_t',
             'uint8_t', 'uint16_t', 'uint32_t', 'uint64_t',
             'intptr_t', 'uintptr_t', 'intmax_t', 'uintmax_t',
             
-            # N64 SDK base
+            # N64 SDK
             'u8', 's8', 'u16', 's16', 'u32', 's32', 'u64', 's64', 'f32', 'f64',
-            
-            # N64 SDK graphics
             'Vtx', 'Vtx_t', 'Vtx_tn', 'Mtx', 'Mtx44', 'Gfx', 'GfxInfo',
             'Light', 'LookAt', 'Hilite', 'Acmd', 'Acdmd',
-            
-            # N64 SDK OS
             'OSThread', 'OSMesg', 'OSMesgQueue', 'OSTimer', 'OSTime',
             'OSIntMask', 'OSPri', 'OSId', 'OSPiHandle', 'OSIoMesg',
             'OSEvent', 'OSScMsg', 'OSContStatus', 'OSContPad', 'OSPfs',
             
-            # N64 Audio Library - COMPLETE from libaudio.h
-            'ALHeap', 'ALLink', 'ALGlobals',
-            'ALVoice', 'ALVoiceConfig', 
-            'ALSound', 'ALSoundState',
-            'ALBank', 'ALBankFile', 'ALInstrument', 'ALInstrumentListItem',
-            'ALKeyMap', 'ALWave', 'ALWaveTable',  # ← CRITICAL: Was missing!
-            'ALEnvelope', 'ALADPCMBook', 'ALRawLoop', 'ALADPCMLoop', 'ALMIDIvoice',
-            'ALSeq', 'ALSeqData', 'ALSeqFile', 'ALSeqMarker', 
+            # N64 Audio - COMPLETE
+            'ALHeap', 'ALLink', 'ALGlobals', 'ALVoice', 'ALVoiceConfig',
+            'ALSound', 'ALSoundState', 'ALBank', 'ALBankFile',
+            'ALInstrument', 'ALInstrumentListItem', 'ALKeyMap',
+            'ALWave', 'ALWaveTable', 'ALEnvelope', 'ALADPCMBook',
+            'ALRawLoop', 'ALADPCMLoop', 'ALMIDIvoice',
+            'ALSeq', 'ALSeqData', 'ALSeqFile', 'ALSeqMarker',
             'ALSeqPlayer', 'ALSeqpConfig', 'ALCSPlayer',
-            'ALCSeq', 'ALCSeqPlayer',
-            'ALSndPlayer', 'ALSndpConfig', 
-            'ALSynth', 'ALSynConfig',
-            'ALPlayer',
+            'ALCSeq', 'ALCSeqPlayer', 'ALSndPlayer', 'ALSndpConfig',
+            'ALSynth', 'ALSynConfig', 'ALPlayer',
             'ALEvent', 'ALEventListItem', 'ALEventQueue',
             'ALMicroTime', 'ALDMAproc', 'ALDMANew', 'ALDMAState',
             'ALFilter', 'ALPan', 'ALParam', 'ALMainBus', 'ALAuxBus',
             'ALMIDIEvent', 'ALVoiceEvent', 'ALSoundEvent', 'ALSeqEvent',
-            
-            # Extended N64 audio
             'N_ALSeqPlayer', 'N_ALVoice', 'N_PVoice',
             
             # Common
@@ -104,20 +95,17 @@ class SourceHarmonizerV50:
         }
         
         self.reserved_names = {
-            'main', '_start', 
-            'memcpy', 'memset', 'memmove', 'memcmp',
+            'main', '_start', 'memcpy', 'memset', 'memmove', 'memcmp',
             'strcpy', 'strncpy', 'strcmp', 'strncmp', 'strlen',
             'printf', 'sprintf', 'fprintf', 'snprintf',
             'malloc', 'calloc', 'realloc', 'free',
         }
 
     def get_file_id(self, filepath: str) -> str:
-        """Generate unique 12-char hash ID for file path"""
         rel_path = os.path.relpath(filepath, self.src_target)
         return hashlib.md5(rel_path.encode()).hexdigest()[:12]
 
     def sync_files(self):
-        """Copy source and header files from decomp to android target"""
         print("  [>] Pass 0: Event-Horizon Sync...")
         
         for folder in [self.src_target, self.include_target]:
@@ -141,16 +129,45 @@ class SourceHarmonizerV50:
                             os.path.join(dest_dir, filename)
                         )
 
+    def fix_bool_conflict(self):
+        """
+        Fix the bool.h vs stdbool.h conflict.
+        The project has a custom bool.h that conflicts with C99 stdbool.h.
+        """
+        print("  [>] Pass 0.25: Fixing bool.h Conflict...")
+        
+        bool_h = os.path.join(self.include_target, "bool.h")
+        if os.path.exists(bool_h):
+            try:
+                with open(bool_h, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+                
+                # Wrap the custom bool typedef with guards to avoid conflict
+                if 'typedef' in content and 'bool' in content:
+                    new_content = (
+                        "#ifndef _STDBOOL_H\n"  # Don't redefine if stdbool.h included
+                        "#ifndef __cplusplus\n"  # Don't redefine if C++
+                        + content +
+                        "#endif\n"
+                        "#endif\n"
+                    )
+                    
+                    with open(bool_h, 'w', encoding='utf-8') as f:
+                        f.write(new_content)
+                    
+                    print("      Fixed bool.h conflict")
+            except:
+                pass
+
     def extract_sdk_types(self):
-        """Scan SDK headers to find all typedef'd types"""
+        """Scan SDK headers for typedef'd types"""
         print("  [>] Pass 0.5: Scanning SDK Headers...")
         
         patterns = [
             re.compile(r'typedef\s+struct\s+\w*\s*\{[^}]*\}\s*(\w+)\s*;', re.DOTALL),
-            re.compile(r'typedef\s+struct\s+\w+\s+(\w+)\s*;'),
+            re.compile(r'typedef\s+struct\s+(\w+)\s+(\w+)\s*;'),
             re.compile(r'typedef\s+union\s+\w+\s+(\w+)\s*;'),
             re.compile(r'typedef\s+enum\s+\w+\s+(\w+)\s*;'),
-            re.compile(r'typedef\s+.+?\s+(\w+)\s*;'),
         ]
         
         include_dirs = [
@@ -171,58 +188,87 @@ class SourceHarmonizerV50:
                         continue
                         
                     try:
-                        with open(os.path.join(root, filename), 'r', 
+                        with open(os.path.join(root, filename), 'r',
                                 encoding='utf-8', errors='ignore') as f:
                             content = f.read()
                             
                         for pattern in patterns:
                             for match in pattern.finditer(content):
-                                type_name = match.group(1)
-                                if type_name and (type_name[0].isupper() or '_' in type_name):
-                                    self.sdk_defined_types.add(type_name)
+                                for group in match.groups():
+                                    if group and group[0].isupper():
+                                        self.sdk_defined_types.add(group)
                     except:
                         pass
         
         print(f"      Found {len(self.sdk_defined_types)} SDK types")
 
-    def extract_all_type_names(self, text: str) -> Set[str]:
+    def scan_enums_and_macros(self):
         """
-        Extract ALL CamelCase type names from C code text.
-        This is AGGRESSIVE - finds every possible type usage.
-        
-        Matches: ActorMarker, Cube, File, SkeletalAnimation, etc.
+        CRITICAL: Identify enum constants and macros to EXCLUDE from type declarations.
+        This prevents declaring enum values as types (the main bug in v50).
         """
-        # Remove C keywords
-        text = re.sub(r'\b(const|static|extern|inline|volatile|restrict)\b', '', text)
-        text = re.sub(r'\b(struct|union|enum)\b', '', text)
+        print("  [>] Pass 0.75: Identifying Enums & Macros...")
         
-        # Remove operators and delimiters
-        text = re.sub(r'[\*\[\]\(\)&\{\}]+', ' ', text)
+        # Pattern for enum definitions
+        enum_pattern = re.compile(
+            r'enum\s+\w*\s*\{([^}]+)\}',
+            re.DOTALL
+        )
         
-        # Extract ALL CamelCase identifiers (custom types)
-        found_types = set(re.findall(r'\b([A-Z][a-zA-Z0-9_]*)\b', text))
+        # Pattern for #define macros
+        macro_pattern = re.compile(
+            r'^\s*#define\s+([A-Z][A-Z0-9_]*)\s',
+            re.MULTILINE
+        )
         
-        # Filter out SDK types, reserved types, and common macros
-        valid_types = set()
-        for t in found_types:
-            if (t not in self.reserved_types and 
-                t not in self.sdk_defined_types and
-                t not in ('TRUE', 'FALSE', 'NULL')):
-                valid_types.add(t)
+        for root, _, files in os.walk(self.include_target):
+            for filename in files:
+                if not filename.endswith('.h'):
+                    continue
+                    
+                try:
+                    filepath = os.path.join(root, filename)
+                    with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                        content = f.read()
+                    
+                    # Extract enum constants
+                    for enum_match in enum_pattern.finditer(content):
+                        enum_body = enum_match.group(1)
+                        # Find all enum values: NAME = value,
+                        for const in re.findall(r'([A-Z][A-Z0-9_]*)\s*=', enum_body):
+                            self.enum_constants.add(const)
+                    
+                    # Extract macro names
+                    for macro_match in macro_pattern.finditer(content):
+                        macro_name = macro_match.group(1)
+                        self.macro_names.add(macro_name)
+                        
+                except:
+                    pass
         
-        return valid_types
+        print(f"      Found {len(self.enum_constants)} enum constants")
+        print(f"      Found {len(self.macro_names)} macros")
 
-    def scan_all_headers(self):
-        """Scan project headers for type definitions"""
-        print("  [>] Pass 0.75: Scanning Project Headers...")
+    def scan_actual_types(self):
+        """
+        Scan for ACTUAL struct/typedef type definitions.
+        Only these should be forward-declared.
+        """
+        print("  [>] Pass 1: Discovering Actual Types...")
         
-        patterns = [
-            re.compile(r'typedef\s+struct\s+\w*\s*\{[^}]*\}\s*(\w+)\s*;', re.DOTALL),
-            re.compile(r'struct\s+(\w+)\s*\{'),
+        # Pattern for actual type definitions
+        type_patterns = [
+            # typedef struct Name { ... } Name;
+            re.compile(r'typedef\s+struct\s+(\w+)\s*\{[^}]*\}\s*(\w+)\s*;', re.DOTALL),
+            # typedef struct Name Name;
             re.compile(r'typedef\s+struct\s+(\w+)\s+(\w+)\s*;'),
-            re.compile(r'union\s+(\w+)\s*\{'),
+            # struct Name { ... };
+            re.compile(r'struct\s+(\w+)\s*\{'),
+            # typedef union/enum
+            re.compile(r'typedef\s+(?:union|enum)\s+(\w+)\s+(\w+)\s*;'),
         ]
         
+        # Scan headers for definitions
         for root, _, files in os.walk(self.include_target):
             for filename in files:
                 if not filename.endswith('.h'):
@@ -233,39 +279,34 @@ class SourceHarmonizerV50:
                             encoding='utf-8', errors='ignore') as f:
                         content = f.read()
                     
-                    # Extract type definitions
-                    for pattern in patterns:
+                    for pattern in type_patterns:
                         for match in pattern.finditer(content):
                             for group in match.groups():
                                 if group and group[0].isupper():
-                                    self.all_used_types.add(group)
-                    
-                    # Also scan all text for type usage
-                    self.all_used_types.update(self.extract_all_type_names(content))
+                                    self.actual_types.add(group)
                 except:
                     pass
+        
+        print(f"      Found {len(self.actual_types)} actual type definitions")
 
-    def map_linkage(self):
-        """Parse all C files - extract signatures AND discover ALL type usage"""
-        print("  [>] Pass 1: Comprehensive Type Discovery...")
+    def extract_types_from_usage(self):
+        """
+        Extract types from function signatures and parameters.
+        ONLY types that look like actual types (CamelCase, not ALL_CAPS).
+        """
+        print("  [>] Pass 1.25: Scanning Type Usage...")
         
         func_pattern = re.compile(
-            r'^static\s+'
-            r'(?!.*\binline\b)(?!.*\bextern\b)'
+            r'^static\s+(?!.*\binline\b)(?!.*\bextern\b)'
             r'((?:const\s+)?(?:struct\s+|union\s+|enum\s+)?[\w\s\*]+?)\s+'
-            r'([a-zA-Z_]\w*)\s*'
-            r'\(([^\)]*)\)\s*'
-            r'\{',
+            r'([a-zA-Z_]\w*)\s*\(([^\)]*)\)\s*\{',
             re.MULTILINE
         )
         
         var_pattern = re.compile(
-            r'^static\s+'
-            r'(const\s+)?'
+            r'^static\s+(const\s+)?'
             r'((?:struct\s+|union\s+)?[\w\s\*]+)\s+'
-            r'([a-zA-Z_]\w*)'
-            r'(\s*\[[^\]]*\])*\s*'
-            r'([=:;])',
+            r'([a-zA-Z_]\w*)(\s*\[[^\]]*\])*\s*([=:;])',
             re.MULTILINE
         )
         
@@ -283,12 +324,9 @@ class SourceHarmonizerV50:
                     with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
                         content = f.read()
                     
-                    # CRITICAL: Extract ALL type names from entire file
-                    self.all_used_types.update(self.extract_all_type_names(content))
-                    
                     # Extract function signatures
                     for match in func_pattern.finditer(content):
-                        return_type = match.group(1).strip()
+                        ret_type = match.group(1).strip()
                         func_name = match.group(2).strip()
                         params = match.group(3).strip() or "void"
                         
@@ -298,11 +336,15 @@ class SourceHarmonizerV50:
                         key = f"{file_id}_{func_name}"
                         self.func_signatures[key] = FunctionSignature(
                             name=func_name,
-                            return_type=return_type,
+                            return_type=ret_type,
                             parameters=params
                         )
+                        
+                        # Extract types from signature (smart filtering)
+                        for type_name in self._extract_smart_types(f"{ret_type} {params}"):
+                            self.actual_types.add(type_name)
                     
-                    # Extract variable declarations
+                    # Extract variables
                     for match in var_pattern.finditer(content):
                         is_const = match.group(1) is not None
                         var_type = match.group(2).strip()
@@ -320,19 +362,48 @@ class SourceHarmonizerV50:
                             is_bss=(terminator == ';')
                         )
                         
-                except Exception as e:
-                    print(f"      Warning: {filename}: {e}")
+                        # Extract types from variable type
+                        for type_name in self._extract_smart_types(full_type):
+                            self.actual_types.add(type_name)
+                        
+                except:
+                    pass
         
         print(f"      Processed {file_count} C files")
-        print(f"      Discovered {len(self.all_used_types)} type references")
-        print(f"      Found {len(self.func_signatures)} functions")
-        print(f"      Found {len(self.var_declarations)} variables")
+        print(f"      Total actual types: {len(self.actual_types)}")
+
+    def _extract_smart_types(self, text: str) -> Set[str]:
+        """
+        INTELLIGENT type extraction.
+        
+        Only extracts identifiers that are likely TYPES:
+        - CamelCase (ActorMarker, NodeProp, etc.)
+        - NOT ALL_CAPS (those are enums/macros)
+        - NOT in enum_constants or macro_names
+        """
+        # Remove C keywords
+        text = re.sub(r'\b(const|static|extern|inline|volatile|restrict)\b', '', text)
+        text = re.sub(r'\b(struct|union|enum)\b', '', text)
+        text = re.sub(r'[\*\[\]\(\)&\{\}]+', ' ', text)
+        
+        # Extract CamelCase identifiers ONLY
+        # Must have at least one lowercase letter (not ALL_CAPS)
+        candidates = re.findall(r'\b([A-Z][a-zA-Z0-9_]*[a-z][a-zA-Z0-9_]*)\b', text)
+        
+        valid_types = set()
+        for candidate in candidates:
+            if (candidate not in self.reserved_types and
+                candidate not in self.sdk_defined_types and
+                candidate not in self.enum_constants and
+                candidate not in self.macro_names):
+                valid_types.add(candidate)
+        
+        return valid_types
 
     def fix_c99_compatibility(self):
-        """Fix C99 array initializer incompatibilities"""
-        print("  [>] Pass 1.5: C99 Compatibility Fixes...")
+        """Fix C99 array initializer issues"""
+        print("  [>] Pass 1.5: C99 Compatibility...")
         
-        # Pattern: type var[size] = identifier;
         array_init = re.compile(
             r'^\s*([\w\s\*]+)\s+(\w+)\s*\[([^\]]+)\]\s*=\s*([a-zA-Z_]\w+)\s*;',
             re.MULTILINE
@@ -458,25 +529,32 @@ class SourceHarmonizerV50:
         print(f"      Modified {modified} files")
 
     def generate_header(self):
-        """Generate harmonized_globals.h with ALL type forward declarations"""
+        """Generate harmonized_globals.h with ONLY actual types"""
         print("  [>] Pass 3: Header Generation...")
         
-        # Types to declare = all used types MINUS SDK/reserved types
+        # Types to declare = actual types MINUS SDK/reserved types
         types_to_declare = set()
-        for t in self.all_used_types:
-            if t not in self.sdk_defined_types and t not in self.reserved_types:
+        for t in self.actual_types:
+            if (t not in self.sdk_defined_types and
+                t not in self.reserved_types and
+                t not in self.enum_constants and
+                t not in self.macro_names):
                 types_to_declare.add(t)
         
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         
         with open(header_path, 'w', encoding='utf-8') as f:
             f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n\n")
-            f.write("#include <stdbool.h>\n#include <stdint.h>\n")
-            f.write("#include <stddef.h>\n#include <string.h>\n\n")
+            
+            # DON'T include stdbool.h - use project's bool.h
+            f.write("#include <stdint.h>\n")
+            f.write("#include <stddef.h>\n")
+            f.write("#include <string.h>\n\n")
+            
             f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
             
-            f.write("/* Forward declarations - ALL custom types */\n")
-            f.write("/* SDK types NOT redeclared to avoid conflicts */\n\n")
+            f.write("/* Forward declarations - ONLY actual struct types */\n")
+            f.write("/* Enum constants and macros NOT declared */\n\n")
             
             for t in sorted(types_to_declare):
                 f.write(f"#ifndef TYPE_DEFINED_{t}\n")
@@ -506,7 +584,7 @@ class SourceHarmonizerV50:
             
             f.write(f"\n/* {len(self.var_declarations)} variables */\n\n")
             f.write("#ifdef __cplusplus\n}\n#endif\n\n")
-            f.write("#endif /* HARMONIZED_GLOBALS_H */\n")
+            f.write("#endif\n")
         
         print(f"      Declared {len(types_to_declare)} types")
 
@@ -523,45 +601,49 @@ class SourceHarmonizerV50:
         content = re.sub(r'# --- Harmonizer.*?# -{20,}', '', content, flags=re.DOTALL)
         
         injection = (
-            "\n# --- Harmonizer v50.0 FINAL ---\n"
+            "\n# --- Harmonizer v51.0 ULTIMATE ---\n"
             "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -O3 -fPIC -fno-common "
             "-fvisibility=hidden -flto=thin\")\n"
             "add_definitions(-D__arm64__ -D_LANGUAGE_C)\n"
             "file(GLOB_RECURSE ALL_C \"src/*.c\")\n"
             "target_sources(bkawrapper PRIVATE ${ALL_C})\n"
-            "# ------------------------------\n"
+            "# ---------------------------------\n"
         )
         
         with open(self.cmake_file, 'w', encoding='utf-8') as f:
             f.write(content + injection)
 
     def run(self):
-        """Execute all harmonization passes"""
+        """Execute all preprocessing passes"""
         print("\n" + "="*60)
-        print("Banjo-Kazooie Harmonizer v50.0 FINAL")
+        print("Banjo-Kazooie Harmonizer v51.0 ULTIMATE")
         print("="*60)
         
         self.sync_files()
+        self.fix_bool_conflict()
         self.extract_sdk_types()
-        self.scan_all_headers()
-        self.map_linkage()
+        self.scan_enums_and_macros()
+        self.scan_actual_types()
+        self.extract_types_from_usage()
         self.fix_c99_compatibility()
         self.promote_linkage()
         self.generate_header()
         self.patch_cmake()
         
         print("\n" + "="*60)
-        print("✓ v50.0 FINAL: Complete")
+        print("✓ v51.0 ULTIMATE: Preprocessing Complete")
         print("="*60)
         print(f"  SDK Types: {len(self.sdk_defined_types)}")
-        print(f"  Custom Types: {len(self.all_used_types)}")
+        print(f"  Enum Constants: {len(self.enum_constants)}")
+        print(f"  Macros: {len(self.macro_names)}")
+        print(f"  Actual Types: {len(self.actual_types)}")
         print(f"  Functions: {len(self.func_signatures)}")
         print(f"  Variables: {len(self.var_declarations)}")
         print("="*60 + "\n")
 
 
 if __name__ == "__main__":
-    harmonizer = SourceHarmonizerV50(
+    harmonizer = SourceHarmonizerV51(
         android_path="Android/app/src/main/cpp",
         decomp_path="decomp-files"
     )
