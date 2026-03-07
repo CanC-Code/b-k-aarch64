@@ -7,55 +7,67 @@ import shutil
 from pathlib import Path
 
 """
-SourceHarmonizer v75.3 - Comprehensive Static/Forward-Decl Isolation Fix
-Fixes over v75.2:
-1. find_static_functions() regex now uses re.DOTALL so it correctly matches
-   multi-line static function definitions (the v75.2 regex silently failed on
-   functions whose return type and name spanned a newline).
-2. find_forward_declared_functions() — new scanner that detects functions with
-   an explicit non-static forward declaration (e.g. `void foo(Bar *x);`).
-   These must also be excluded because the definition may be `static`, and the
-   forward decl locks in a non-static implicit type that Clang rejects.
-   This fixes: code_BF0.c — `void __codeBF0_draw(Actor *this);` on line 9
-   followed by `static void __codeBF0_draw(Actor *this){` on line 20.
-3. The combined exclusion set (static_funcs | forward_decl_funcs) is applied
-   before any function is added to the BKA macro/alias list.
-4. All other v75.1/v75.2 fixes retained.
+SourceHarmonizer v75.4 - Direct Source Patch for Static/Forward-Decl Conflicts
+
+ROOT CAUSE (identified from build logs):
+  The previous versions (v75.1-v75.3) tried to exclude conflicting functions
+  from the BKA macro system. But the underlying C source files contain a hard
+  compiler error that exists independent of the BKA system entirely:
+
+    code_BF0.c:
+      line  9: `void __codeBF0_draw(Actor *this);`        <- non-static forward decl
+      line 20: `static void __codeBF0_draw(Actor *this){` <- static definition -> CONFLICT
+
+    code_F0.c:
+      line  90: `if(!__codeF0_areCrcsValid())`            <- implicit forward call
+      line 135: `static bool __codeF0_areCrcsValid(){`    <- static definition -> CONFLICT
+
+  When defined_funcs is empty (all names excluded by __ prefix), new_content
+  equals original_content and the file is NEVER written. The broken source
+  reaches Clang unchanged across all previous versions.
+
+FIX — fix_static_conflicts() runs as Pass 2 on every .c file, BEFORE BKA injection:
+
+  Strategy A (explicit non-static forward decl):
+    Finds lines like `void foo(Bar *x);` where `foo` is also defined `static`
+    in the same file. Patches the forward decl to `static void foo(Bar *x);`
+
+  Strategy B (implicit forward decl via call-before-definition):
+    Finds functions that are called before their static definition with no
+    explicit forward decl at all. Injects `static <sig>;` after the last
+    #include in the file so Clang sees the static type before the first call.
 """
 
-class SourceHarmonizerV753:
+class SourceHarmonizerV754:
     def __init__(self, target_dir, decomp_path):
         self.target_dir = Path(target_dir)
         self.decomp_path = Path(decomp_path)
         self.stats = {"files_processed": 0, "changes_made": 0}
-        
-        # Standard C keywords to ignore
+
         self.c_keywords = {
-            'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do', 
-            'break', 'continue', 'case', 'default', 'goto', 'struct', 'union', 
+            'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do',
+            'break', 'continue', 'case', 'default', 'goto', 'struct', 'union',
             'enum', 'static', 'extern', 'const', 'volatile', 'inline', 'typedef'
         }
-        
-        # Standard lib functions and crucial JNI/C++ entrypoints to ignore
+
         self.std_c = {
-            'main', 'main_no_args', 'memcpy', 'memset', 'strlen', 'strcpy', 'strcmp', 
-            'sprintf', 'printf', 'malloc', 'free', 'sin', 'cos', 'sinf', 
+            'main', 'main_no_args', 'memcpy', 'memset', 'strlen', 'strcpy', 'strcmp',
+            'sprintf', 'printf', 'malloc', 'free', 'sin', 'cos', 'sinf',
             'cosf', 'sqrt', 'sqrtf', 'abs', 'fabs'
         }
-        
-        # SDK & internal low-level prefixes that must remain linked globally
+
         self.sdk_prefixes = ('os', 'gu', 'al', 'gS', 'gD', 'gd', '__os', 'sp', 'dp', 'rmon')
 
     def setup_workspace(self):
-        print(f"[>] Preparing v75.3 Workspace...")
+        print(f"[>] Preparing v75.4 Workspace...")
         src_target = self.target_dir / "src"
         include_target = self.target_dir / "include"
-        
+
         for folder in [src_target, include_target]:
             if folder.exists():
                 shutil.rmtree(folder)
             folder.mkdir(parents=True, exist_ok=True)
-            
+
         for sub in ["src", "include"]:
             src = self.decomp_path / sub
             dst = self.target_dir / sub
@@ -63,162 +75,214 @@ class SourceHarmonizerV753:
                 shutil.copytree(src, dst, dirs_exist_ok=True)
 
     def remove_strings_and_comments(self, text):
-        """Removes strings and comments to provide a safe string for regex targeting."""
+        """Strip strings and comments for safe regex analysis."""
         text = re.sub(r'//[^\n]*', '', text)
         text = re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL)
         text = re.sub(r'"(?:[^"\\]|\\.)*"', '""', text)
         return text
 
-    def find_static_functions(self, clean_content):
+    def find_static_definitions(self, clean_content):
         """
-        Pre-scan for all functions that are defined as 'static' anywhere in this file.
-        Uses re.DOTALL so multiline return-type declarations are matched correctly.
-        These must be excluded from BKA entirely — renaming their call sites causes
-        Clang to generate an implicit non-static declaration that conflicts with the
-        real static definition.
+        Returns a dict of { func_name -> signature_string } for every function
+        defined with `static` in this file. Signature is the text between
+        `static` and `{` so it can be reused to build forward declarations.
+        Uses re.DOTALL for reliable multiline matching.
         """
-        static_funcs = set()
-        # Match: static ... func_name ( ... ) {
-        # re.DOTALL allows [^;{}]* to cross newlines.
-        static_def_pattern = re.compile(
-            r'\bstatic\b[^;{}]*?\b([a-zA-Z_]\w*)\s*\([^{}]*?\)\s*\{',
+        static_funcs = {}
+        pattern = re.compile(
+            r'\bstatic\b([^;{}]*?\b([a-zA-Z_]\w*)\s*\([^{}]*?\))\s*\{',
             re.DOTALL
         )
-        for match in static_def_pattern.finditer(clean_content):
-            func_name = match.group(1)
-            if func_name not in self.c_keywords:
-                static_funcs.add(func_name)
+        for m in pattern.finditer(clean_content):
+            name = m.group(2)
+            if name not in self.c_keywords:
+                sig = m.group(1).strip()
+                # Only keep first occurrence of each name
+                if name not in static_funcs:
+                    static_funcs[name] = sig
         return static_funcs
+
+    def fix_static_conflicts(self, content):
+        """
+        Two-strategy direct source patch for:
+          'static declaration of X follows non-static declaration'
+
+        Strategy A — patch an existing explicit non-static forward declaration:
+          `void __codeBF0_draw(Actor *this);`
+          becomes:
+          `static void __codeBF0_draw(Actor *this);`
+
+        Strategy B — inject a missing static forward declaration:
+          When a static function is called before its definition with no
+          explicit forward decl, inject `static <sig>;` after the last
+          #include so Clang has the correct type before the first call site.
+        """
+        clean = self.remove_strings_and_comments(content)
+        static_defs = self.find_static_definitions(clean)
+        if not static_defs:
+            return content
+
+        modified = content
+        needs_injected = []
+
+        for func_name, sig in static_defs.items():
+            # Strategy A: patch an existing non-static forward declaration line
+            fwd_pattern = re.compile(
+                r'^([ \t]*)(?!static\b)(\b\S[^\n]*?\b'
+                + re.escape(func_name)
+                + r'\s*\([^)]*\)\s*;)',
+                re.MULTILINE
+            )
+            patched = fwd_pattern.sub(
+                lambda m: f"{m.group(1)}static {m.group(2)}",
+                modified
+            )
+            if patched != modified:
+                modified = patched
+                continue  # Strategy A handled this function
+
+            # Strategy B: no explicit forward decl — check for call-before-definition
+            call_pat = re.compile(r'\b' + re.escape(func_name) + r'\s*\(')
+            def_pat  = re.compile(
+                r'\bstatic\b[^;{}]*?\b' + re.escape(func_name) + r'\s*\([^{}]*?\)\s*\{',
+                re.DOTALL
+            )
+            call_m = call_pat.search(clean)
+            def_m  = def_pat.search(clean)
+
+            if call_m and def_m and call_m.start() < def_m.start():
+                needs_injected.append(f"static {sig};")
+
+        # Inject all needed forward declarations after the last top-level #include
+        if needs_injected:
+            block = (
+                "// --- SH static forward declarations ---\n"
+                + "\n".join(needs_injected) + "\n"
+                + "// --- SH static forward declarations end ---\n\n"
+            )
+            last_include = None
+            for m in re.finditer(r'^#include\b[^\n]*\n', modified, re.MULTILINE):
+                last_include = m
+            if last_include:
+                pos = last_include.end()
+                modified = modified[:pos] + block + modified[pos:]
+            else:
+                modified = block + modified
+
+        return modified
 
     def find_forward_declared_functions(self, clean_content):
         """
-        Pre-scan for all functions with an explicit non-static forward declaration,
-        i.e. lines of the form:  <type> func_name(<params>);
-        These must also be excluded because:
-          - The forward decl establishes a non-static linkage for the name.
-          - If the actual definition later uses 'static', Clang rejects it.
-        This covers cases like code_BF0.c where `void __codeBF0_draw(Actor *this);`
-        appears at the top of the file before `static void __codeBF0_draw(...){`.
+        Returns names of all functions with any forward declaration (static or not).
+        These are excluded from BKA to prevent any macro/alias interaction.
         """
-        forward_decl_funcs = set()
-        # Match a declaration ending in ';' (not a definition ending in '{')
-        # The name must not be preceded by 'static', 'extern', 'typedef' or 'inline'
-        # on the same logical line segment.
-        forward_decl_pattern = re.compile(
+        names = set()
+        pattern = re.compile(
             r'(?<![;{}])\b([a-zA-Z_]\w*)\s*\([^{}]*?\)\s*;',
             re.DOTALL
         )
-        for match in forward_decl_pattern.finditer(clean_content):
-            func_name = match.group(1)
-            if func_name in self.c_keywords:
+        for m in pattern.finditer(clean_content):
+            name = m.group(1)
+            if name in self.c_keywords:
                 continue
-
-            # Look at what precedes the match to determine if it's a non-static decl
-            start = match.start()
-            prefix = clean_content[:start]
-            # Find the last statement boundary
+            prefix = clean_content[:m.start()]
             cut = max(prefix.rfind(';'), prefix.rfind('{'), prefix.rfind('}'))
             segment = prefix[cut+1:] if cut != -1 else prefix
-
             tokens = set(re.findall(r'[a-zA-Z_]\w*', segment))
-            # Skip if it's a static/extern/inline/typedef declaration
-            if tokens & {'static', 'extern', 'typedef', 'inline'}:
-                continue
-            # Must look like a type precedes the name — segment should have tokens
-            # (avoids matching bare macro calls or control-flow calls)
             if not tokens:
                 continue
-
-            forward_decl_funcs.add(func_name)
-        return forward_decl_funcs
+            if 'typedef' in tokens:
+                continue
+            names.add(name)
+        return names
 
     def process_file(self, file_path):
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             original_content = f.read()
 
-        # Fix IDO-specific array assignment (Clang rejects `u8 tmp[6] = D_80390DA0;`)
+        # --- Pass 1: Fix IDO-specific array assignment ---
+        # Clang rejects `u8 tmp[6] = D_80390DA0;`
         array_init_pattern = re.compile(
-            r'^([ \t]*(?:struct\s+|union\s+|enum\s+)?[a-zA-Z_]\w*(?:\s*\*)*)\s+([a-zA-Z_]\w*)\s*\[\s*(\d+)\s*\]\s*=\s*([a-zA-Z_]\w*)\s*;',
+            r'^([ \t]*(?:struct\s+|union\s+|enum\s+)?[a-zA-Z_]\w*(?:\s*\*)*)\s+'
+            r'([a-zA-Z_]\w*)\s*\[\s*(\d+)\s*\]\s*=\s*([a-zA-Z_]\w*)\s*;',
             re.MULTILINE
         )
-        
-        def array_init_repl(match):
-            type_str = match.group(1)
-            name = match.group(2)
-            size = match.group(3)
-            src = match.group(4)
+        def array_init_repl(m):
+            type_str   = m.group(1)
+            name       = m.group(2)
+            size       = m.group(3)
+            src        = m.group(4)
             clean_type = type_str.strip()
-            return f"{type_str} {name}[{size}]; __builtin_memcpy({name}, {src}, {size} * sizeof({clean_type}));"
-        
+            return (f"{type_str} {name}[{size}]; "
+                    f"__builtin_memcpy({name}, {src}, {size} * sizeof({clean_type}));")
+
         modified_content = array_init_pattern.sub(array_init_repl, original_content)
+
+        # --- Pass 2: Direct patch of static/forward-decl conflicts ---
+        # Resolves the Clang error at source level, independent of BKA.
+        modified_content = self.fix_static_conflicts(modified_content)
+
+        # Strip comments/strings for analysis only
         clean_content = self.remove_strings_and_comments(modified_content)
 
-        # --- v75.3: Build the full exclusion set before scanning for BKA candidates ---
-        static_func_names   = self.find_static_functions(clean_content)
-        forward_decl_names  = self.find_forward_declared_functions(clean_content)
-        excluded_names      = static_func_names | forward_decl_names
+        # --- Pass 3: Build BKA exclusion set ---
+        static_func_names  = set(self.find_static_definitions(clean_content).keys())
+        forward_decl_names = self.find_forward_declared_functions(clean_content)
+        excluded_names     = static_func_names | forward_decl_names
 
         fid = hashlib.md5(str(file_path.name).encode()).hexdigest()[:8]
-        
+
         # Matches: func_name(...) {
         func_pattern = re.compile(r'\b([a-zA-Z_]\w*)\s*\([^{;]*\)\s*\{')
-        
+
         defined_funcs = []
         for match in func_pattern.finditer(clean_content):
             func_name = match.group(1)
             start_idx = match.start()
-            
-            # Exclusion Filters
+
             if func_name in self.c_keywords or func_name in self.std_c:
                 continue
             if func_name.startswith(self.sdk_prefixes):
                 continue
             if func_name.isupper():
                 continue
-            # Skip double-underscore internal/compiler-reserved names
             if func_name.startswith('__'):
                 continue
-            # Skip any function that is static or has a forward declaration in this file
             if func_name in excluded_names:
                 continue
 
-            # Context Filter: Look backwards to detect 'static', 'inline', 'typedef'
+            # Context filter: detect static/inline/typedef on this specific definition
             prefix_str = clean_content[:start_idx]
             cut_idx = max(prefix_str.rfind(';'), prefix_str.rfind('}'), prefix_str.rfind('{'))
             if cut_idx != -1:
                 prefix_str = prefix_str[cut_idx+1:]
-            
             tokens = re.findall(r'[a-zA-Z_]\w*', prefix_str)
             if any(k in tokens for k in ['static', 'inline', 'typedef']):
                 continue
-                
+
             defined_funcs.append(func_name)
 
         # Deduplicate while preserving order
         defined_funcs = list(dict.fromkeys(defined_funcs))
 
-        # Prepare Injection Blocks
-        macros = ""
+        # --- Pass 4: BKA macro/alias injection ---
+        macros  = ""
         aliases = ""
-        
+
         if defined_funcs:
-            macros += "// --- BKA MACROS START ---\n"
+            macros  += "// --- BKA MACROS START ---\n"
             aliases += "\n\n// --- BKA ALIASES START ---\n"
-            
+
             for func in defined_funcs:
                 unique_name = f"BKA_F_{fid}_{func}"
-                
-                # The macro silently renames the definition and local calls
-                macros += f"#define {func} {unique_name}\n"
-                
-                # The weak alias securely exposes the symbol for cross-file linking
+                macros  += f"#define {func} {unique_name}\n"
                 aliases += f"#undef {func}\n"
-                aliases += f"__typeof__({unique_name}) {func} __attribute__((weak, alias(\"{unique_name}\")));\n"
+                aliases += (f"__typeof__({unique_name}) {func} "
+                            f"__attribute__((weak, alias(\"{unique_name}\")));\n")
 
-            macros += "// --- BKA MACROS END ---\n\n"
+            macros  += "// --- BKA MACROS END ---\n\n"
             aliases += "// --- BKA ALIASES END ---\n"
 
-        # Reconstruct the file with macros at the absolute top, aliases at the absolute bottom
         new_content = macros + modified_content + aliases
 
         if new_content != original_content:
@@ -232,28 +296,25 @@ class SourceHarmonizerV753:
             return
 
         self.setup_workspace()
-        print(f"[*] Applying v75.3 Function-Level Linker Isolation...")
+        print(f"[*] Applying v75.4 Function-Level Linker Isolation...")
 
         for file_path in self.target_dir.rglob('*.[ch]'):
-            # Skip standard library headers and header files entirely
-            if "include/libc" in str(file_path) or file_path.suffix == '.h': 
+            if "include/libc" in str(file_path) or file_path.suffix == '.h':
                 continue
-            
             try:
                 self.process_file(file_path)
                 self.stats["files_processed"] += 1
             except Exception as e:
                 print(f"[!] Error processing {file_path.name}: {e}")
 
-        print(f"\n[+] v75.3 Complete.")
+        print(f"\n[+] v75.4 Complete.")
         print(f"    Files Processed: {self.stats['files_processed']}")
         print(f"    Files Modified:  {self.stats['changes_made']}")
 
 
 if __name__ == "__main__":
-    # Pointing to standard Banjo-Kazooie repository paths
     target = "Android/app/src/main/cpp"
     decomp = "decomp-files"
-    
-    harmonizer = SourceHarmonizerV753(target, decomp)
+
+    harmonizer = SourceHarmonizerV754(target, decomp)
     harmonizer.run()
