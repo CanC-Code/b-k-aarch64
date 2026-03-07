@@ -7,15 +7,24 @@ import shutil
 from pathlib import Path
 
 """
-SourceHarmonizer v75.1 - Zero-Header Linker Isolation (Refined)
-Fixes:
-1. Drops 'harmonized_globals.h' entirely, eliminating all "Incomplete Type" and "Conflicting Type" errors.
-2. Uses Weak Alias export strategy to perfectly mimic N64 overlay isolation on AArch64.
-3. Protects entrypoint 'main_no_args' from being aliased so NativeBridge.cpp can link it.
-4. Replaces invalid array assignments (u8 tmp[6] = D_...) with __builtin_memcpy to satisfy Clang.
+SourceHarmonizer v75.2 - Static Function Isolation Fix
+Fixes over v75.1:
+1. Pre-scans each file for ALL static function definitions and excludes them
+   from the BKA macro/alias system entirely.
+   This resolves: "static declaration of 'X' follows non-static declaration"
+   which occurred because forward calls to static functions were being renamed
+   by the macro, causing Clang to create an implicit non-static declaration,
+   which then conflicted with the real static definition lower in the file.
+2. Also excludes functions whose names start with double-underscore (__) as
+   these are internal/compiler-reserved and should never be aliased.
+3. All other v75.1 fixes retained:
+   - No harmonized_globals.h
+   - Weak Alias export strategy for cross-file linking
+   - main_no_args protected from aliasing
+   - __builtin_memcpy for invalid array assignments
 """
 
-class SourceHarmonizerV75:
+class SourceHarmonizerV752:
     def __init__(self, target_dir, decomp_path):
         self.target_dir = Path(target_dir)
         self.decomp_path = Path(decomp_path)
@@ -39,7 +48,7 @@ class SourceHarmonizerV75:
         self.sdk_prefixes = ('os', 'gu', 'al', 'gS', 'gD', 'gd', '__os', 'sp', 'dp', 'rmon')
 
     def setup_workspace(self):
-        print(f"[>] Preparing v75.1 Workspace...")
+        print(f"[>] Preparing v75.2 Workspace...")
         src_target = self.target_dir / "src"
         include_target = self.target_dir / "include"
         
@@ -55,11 +64,30 @@ class SourceHarmonizerV75:
                 shutil.copytree(src, dst, dirs_exist_ok=True)
 
     def remove_strings_and_comments(self, text):
-        """Removes strings and comments to provide a safe string for Regex targeting."""
+        """Removes strings and comments to provide a safe string for regex targeting."""
         text = re.sub(r'//.*', '', text)
         text = re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL)
         text = re.sub(r'".*?"', '""', text, flags=re.DOTALL)
         return text
+
+    def find_static_functions(self, clean_content):
+        """
+        Pre-scan the cleaned content for all functions that are defined as static.
+        These must be excluded from the BKA system entirely to prevent the error:
+          'static declaration of X follows non-static declaration'
+        which occurs when a macro renames a forward call site causing an implicit
+        non-static declaration before Clang reaches the actual static definition.
+        """
+        static_funcs = set()
+        # Match: static [inline] <return_type> func_name(
+        static_def_pattern = re.compile(
+            r'\bstatic\b[^;{]*?\b([a-zA-Z_]\w*)\s*\([^{;]*\)\s*\{'
+        )
+        for match in static_def_pattern.finditer(clean_content):
+            func_name = match.group(1)
+            if func_name not in self.c_keywords:
+                static_funcs.add(func_name)
+        return static_funcs
 
     def process_file(self, file_path):
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
@@ -81,10 +109,13 @@ class SourceHarmonizerV75:
         
         modified_content = array_init_pattern.sub(array_init_repl, original_content)
         clean_content = self.remove_strings_and_comments(modified_content)
+
+        # --- v75.2 FIX: Pre-collect all static function names in this file ---
+        static_func_names = self.find_static_functions(clean_content)
         
         fid = hashlib.md5(str(file_path.name).encode()).hexdigest()[:8]
         
-        # Matches: func_name(...) { 
+        # Matches: func_name(...) {
         func_pattern = re.compile(r'\b([a-zA-Z_]\w*)\s*\([^{;]*\)\s*\{')
         
         defined_funcs = []
@@ -99,8 +130,15 @@ class SourceHarmonizerV75:
                 continue
             if func_name.isupper():
                 continue
+            # v75.2: Skip any function that is declared static anywhere in this file
+            if func_name in static_func_names:
+                continue
+            # v75.2: Skip double-underscore internal/compiler-reserved names
+            if func_name.startswith('__'):
+                continue
 
-            # Context Filter: Look backwards to the previous statement to detect 'static', 'inline' or 'typedef'
+            # Context Filter: Look backwards to the previous statement to detect
+            # 'static', 'inline' or 'typedef' modifiers on this specific definition
             prefix_str = clean_content[:start_idx]
             cut_idx = max(prefix_str.rfind(';'), prefix_str.rfind('}'), prefix_str.rfind('{'))
             if cut_idx != -1:
@@ -150,7 +188,7 @@ class SourceHarmonizerV75:
             return
 
         self.setup_workspace()
-        print(f"[*] Applying v75.1 Function-Level Linker Isolation...")
+        print(f"[*] Applying v75.2 Function-Level Linker Isolation...")
 
         for file_path in self.target_dir.rglob('*.[ch]'):
             # Skip standard library headers and header files entirely
@@ -163,7 +201,7 @@ class SourceHarmonizerV75:
             except Exception as e:
                 print(f"[!] Error processing {file_path.name}: {e}")
 
-        print(f"\n[+] v75.1 Complete.")
+        print(f"\n[+] v75.2 Complete.")
         print(f"    Files Processed: {self.stats['files_processed']}")
         print(f"    Files Modified:  {self.stats['changes_made']}")
 
@@ -173,5 +211,5 @@ if __name__ == "__main__":
     target = "Android/app/src/main/cpp"
     decomp = "decomp-files"
     
-    harmonizer = SourceHarmonizerV75(target, decomp)
+    harmonizer = SourceHarmonizerV752(target, decomp)
     harmonizer.run()
