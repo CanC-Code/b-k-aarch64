@@ -7,24 +7,23 @@ import shutil
 from pathlib import Path
 
 """
-SourceHarmonizer v75.2 - Static Function Isolation Fix
-Fixes over v75.1:
-1. Pre-scans each file for ALL static function definitions and excludes them
-   from the BKA macro/alias system entirely.
-   This resolves: "static declaration of 'X' follows non-static declaration"
-   which occurred because forward calls to static functions were being renamed
-   by the macro, causing Clang to create an implicit non-static declaration,
-   which then conflicted with the real static definition lower in the file.
-2. Also excludes functions whose names start with double-underscore (__) as
-   these are internal/compiler-reserved and should never be aliased.
-3. All other v75.1 fixes retained:
-   - No harmonized_globals.h
-   - Weak Alias export strategy for cross-file linking
-   - main_no_args protected from aliasing
-   - __builtin_memcpy for invalid array assignments
+SourceHarmonizer v75.3 - Comprehensive Static/Forward-Decl Isolation Fix
+Fixes over v75.2:
+1. find_static_functions() regex now uses re.DOTALL so it correctly matches
+   multi-line static function definitions (the v75.2 regex silently failed on
+   functions whose return type and name spanned a newline).
+2. find_forward_declared_functions() — new scanner that detects functions with
+   an explicit non-static forward declaration (e.g. `void foo(Bar *x);`).
+   These must also be excluded because the definition may be `static`, and the
+   forward decl locks in a non-static implicit type that Clang rejects.
+   This fixes: code_BF0.c — `void __codeBF0_draw(Actor *this);` on line 9
+   followed by `static void __codeBF0_draw(Actor *this){` on line 20.
+3. The combined exclusion set (static_funcs | forward_decl_funcs) is applied
+   before any function is added to the BKA macro/alias list.
+4. All other v75.1/v75.2 fixes retained.
 """
 
-class SourceHarmonizerV752:
+class SourceHarmonizerV753:
     def __init__(self, target_dir, decomp_path):
         self.target_dir = Path(target_dir)
         self.decomp_path = Path(decomp_path)
@@ -48,7 +47,7 @@ class SourceHarmonizerV752:
         self.sdk_prefixes = ('os', 'gu', 'al', 'gS', 'gD', 'gd', '__os', 'sp', 'dp', 'rmon')
 
     def setup_workspace(self):
-        print(f"[>] Preparing v75.2 Workspace...")
+        print(f"[>] Preparing v75.3 Workspace...")
         src_target = self.target_dir / "src"
         include_target = self.target_dir / "include"
         
@@ -65,29 +64,73 @@ class SourceHarmonizerV752:
 
     def remove_strings_and_comments(self, text):
         """Removes strings and comments to provide a safe string for regex targeting."""
-        text = re.sub(r'//.*', '', text)
+        text = re.sub(r'//[^\n]*', '', text)
         text = re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL)
-        text = re.sub(r'".*?"', '""', text, flags=re.DOTALL)
+        text = re.sub(r'"(?:[^"\\]|\\.)*"', '""', text)
         return text
 
     def find_static_functions(self, clean_content):
         """
-        Pre-scan the cleaned content for all functions that are defined as static.
-        These must be excluded from the BKA system entirely to prevent the error:
-          'static declaration of X follows non-static declaration'
-        which occurs when a macro renames a forward call site causing an implicit
-        non-static declaration before Clang reaches the actual static definition.
+        Pre-scan for all functions that are defined as 'static' anywhere in this file.
+        Uses re.DOTALL so multiline return-type declarations are matched correctly.
+        These must be excluded from BKA entirely — renaming their call sites causes
+        Clang to generate an implicit non-static declaration that conflicts with the
+        real static definition.
         """
         static_funcs = set()
-        # Match: static [inline] <return_type> func_name(
+        # Match: static ... func_name ( ... ) {
+        # re.DOTALL allows [^;{}]* to cross newlines.
         static_def_pattern = re.compile(
-            r'\bstatic\b[^;{]*?\b([a-zA-Z_]\w*)\s*\([^{;]*\)\s*\{'
+            r'\bstatic\b[^;{}]*?\b([a-zA-Z_]\w*)\s*\([^{}]*?\)\s*\{',
+            re.DOTALL
         )
         for match in static_def_pattern.finditer(clean_content):
             func_name = match.group(1)
             if func_name not in self.c_keywords:
                 static_funcs.add(func_name)
         return static_funcs
+
+    def find_forward_declared_functions(self, clean_content):
+        """
+        Pre-scan for all functions with an explicit non-static forward declaration,
+        i.e. lines of the form:  <type> func_name(<params>);
+        These must also be excluded because:
+          - The forward decl establishes a non-static linkage for the name.
+          - If the actual definition later uses 'static', Clang rejects it.
+        This covers cases like code_BF0.c where `void __codeBF0_draw(Actor *this);`
+        appears at the top of the file before `static void __codeBF0_draw(...){`.
+        """
+        forward_decl_funcs = set()
+        # Match a declaration ending in ';' (not a definition ending in '{')
+        # The name must not be preceded by 'static', 'extern', 'typedef' or 'inline'
+        # on the same logical line segment.
+        forward_decl_pattern = re.compile(
+            r'(?<![;{}])\b([a-zA-Z_]\w*)\s*\([^{}]*?\)\s*;',
+            re.DOTALL
+        )
+        for match in forward_decl_pattern.finditer(clean_content):
+            func_name = match.group(1)
+            if func_name in self.c_keywords:
+                continue
+
+            # Look at what precedes the match to determine if it's a non-static decl
+            start = match.start()
+            prefix = clean_content[:start]
+            # Find the last statement boundary
+            cut = max(prefix.rfind(';'), prefix.rfind('{'), prefix.rfind('}'))
+            segment = prefix[cut+1:] if cut != -1 else prefix
+
+            tokens = set(re.findall(r'[a-zA-Z_]\w*', segment))
+            # Skip if it's a static/extern/inline/typedef declaration
+            if tokens & {'static', 'extern', 'typedef', 'inline'}:
+                continue
+            # Must look like a type precedes the name — segment should have tokens
+            # (avoids matching bare macro calls or control-flow calls)
+            if not tokens:
+                continue
+
+            forward_decl_funcs.add(func_name)
+        return forward_decl_funcs
 
     def process_file(self, file_path):
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
@@ -110,9 +153,11 @@ class SourceHarmonizerV752:
         modified_content = array_init_pattern.sub(array_init_repl, original_content)
         clean_content = self.remove_strings_and_comments(modified_content)
 
-        # --- v75.2 FIX: Pre-collect all static function names in this file ---
-        static_func_names = self.find_static_functions(clean_content)
-        
+        # --- v75.3: Build the full exclusion set before scanning for BKA candidates ---
+        static_func_names   = self.find_static_functions(clean_content)
+        forward_decl_names  = self.find_forward_declared_functions(clean_content)
+        excluded_names      = static_func_names | forward_decl_names
+
         fid = hashlib.md5(str(file_path.name).encode()).hexdigest()[:8]
         
         # Matches: func_name(...) {
@@ -130,15 +175,14 @@ class SourceHarmonizerV752:
                 continue
             if func_name.isupper():
                 continue
-            # v75.2: Skip any function that is declared static anywhere in this file
-            if func_name in static_func_names:
-                continue
-            # v75.2: Skip double-underscore internal/compiler-reserved names
+            # Skip double-underscore internal/compiler-reserved names
             if func_name.startswith('__'):
                 continue
+            # Skip any function that is static or has a forward declaration in this file
+            if func_name in excluded_names:
+                continue
 
-            # Context Filter: Look backwards to the previous statement to detect
-            # 'static', 'inline' or 'typedef' modifiers on this specific definition
+            # Context Filter: Look backwards to detect 'static', 'inline', 'typedef'
             prefix_str = clean_content[:start_idx]
             cut_idx = max(prefix_str.rfind(';'), prefix_str.rfind('}'), prefix_str.rfind('{'))
             if cut_idx != -1:
@@ -188,7 +232,7 @@ class SourceHarmonizerV752:
             return
 
         self.setup_workspace()
-        print(f"[*] Applying v75.2 Function-Level Linker Isolation...")
+        print(f"[*] Applying v75.3 Function-Level Linker Isolation...")
 
         for file_path in self.target_dir.rglob('*.[ch]'):
             # Skip standard library headers and header files entirely
@@ -201,7 +245,7 @@ class SourceHarmonizerV752:
             except Exception as e:
                 print(f"[!] Error processing {file_path.name}: {e}")
 
-        print(f"\n[+] v75.2 Complete.")
+        print(f"\n[+] v75.3 Complete.")
         print(f"    Files Processed: {self.stats['files_processed']}")
         print(f"    Files Modified:  {self.stats['changes_made']}")
 
@@ -211,5 +255,5 @@ if __name__ == "__main__":
     target = "Android/app/src/main/cpp"
     decomp = "decomp-files"
     
-    harmonizer = SourceHarmonizerV752(target, decomp)
+    harmonizer = SourceHarmonizerV753(target, decomp)
     harmonizer.run()
