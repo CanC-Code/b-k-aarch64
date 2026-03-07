@@ -7,38 +7,40 @@ import shutil
 from pathlib import Path
 
 """
-SourceHarmonizer v75.4 - Direct Source Patch for Static/Forward-Decl Conflicts
+SourceHarmonizer v75.5 - Guard Against Duplicate Static Forward Declaration Injection
 
-ROOT CAUSE (identified from build logs):
-  The previous versions (v75.1-v75.3) tried to exclude conflicting functions
-  from the BKA macro system. But the underlying C source files contain a hard
-  compiler error that exists independent of the BKA system entirely:
+ROOT CAUSE (v75.4 regression in attacktutorial.c):
+  Strategy B of fix_static_conflicts() injected a new static forward declaration
+  at the top of any file where a static function was called before its definition.
+  However, attacktutorial.c already had a correct static forward declaration
+  for __chAttackTutorial_setState at line 25 — after the #include block where
+  the `enum ch_attack_tutorial_states` type is fully resolved.
 
-    code_BF0.c:
-      line  9: `void __codeBF0_draw(Actor *this);`        <- non-static forward decl
-      line 20: `static void __codeBF0_draw(Actor *this){` <- static definition -> CONFLICT
+  Strategy B did not check for existing forward declarations before injecting,
+  so it inserted a DUPLICATE at the top of the file (line 5), before the enum
+  definition was visible. Clang saw two conflicting declarations for the same
+  function — the injected one referenced an incomplete enum type, and the
+  original one at line 25 referenced the complete type — causing:
+    error: conflicting types for '__chAttackTutorial_setState'
+    error: argument type 'enum ch_attack_tutorial_states' is incomplete
 
-    code_F0.c:
-      line  90: `if(!__codeF0_areCrcsValid())`            <- implicit forward call
-      line 135: `static bool __codeF0_areCrcsValid(){`    <- static definition -> CONFLICT
+FIX:
+  has_existing_forward_decl() — new guard called at the start of Strategy B.
+  If any forward declaration (static or non-static) already exists for the
+  function anywhere in the file, Strategy B skips injection entirely.
+  The existing declaration is already correct; no intervention is needed.
 
-  When defined_funcs is empty (all names excluded by __ prefix), new_content
-  equals original_content and the file is NEVER written. The broken source
-  reaches Clang unchanged across all previous versions.
-
-FIX — fix_static_conflicts() runs as Pass 2 on every .c file, BEFORE BKA injection:
-
-  Strategy A (explicit non-static forward decl):
-    Finds lines like `void foo(Bar *x);` where `foo` is also defined `static`
-    in the same file. Patches the forward decl to `static void foo(Bar *x);`
-
-  Strategy B (implicit forward decl via call-before-definition):
-    Finds functions that are called before their static definition with no
-    explicit forward decl at all. Injects `static <sig>;` after the last
-    #include in the file so Clang sees the static type before the first call.
+FULL PASS SUMMARY (all fixes retained):
+  Pass 1 — Array init: `u8 tmp[6] = D_x;` -> __builtin_memcpy
+  Pass 2 — fix_static_conflicts():
+    Strategy A: patch explicit non-static forward decl -> add `static`
+    Strategy B: inject static forward decl for implicit-forward cases,
+                ONLY when no forward decl of any kind already exists
+  Pass 3 — Build BKA exclusion set (static + forward-declared functions)
+  Pass 4 — BKA macro/weak-alias injection for cross-file linking
 """
 
-class SourceHarmonizerV754:
+class SourceHarmonizerV755:
     def __init__(self, target_dir, decomp_path):
         self.target_dir = Path(target_dir)
         self.decomp_path = Path(decomp_path)
@@ -59,7 +61,7 @@ class SourceHarmonizerV754:
         self.sdk_prefixes = ('os', 'gu', 'al', 'gS', 'gD', 'gd', '__os', 'sp', 'dp', 'rmon')
 
     def setup_workspace(self):
-        print(f"[>] Preparing v75.4 Workspace...")
+        print(f"[>] Preparing v75.5 Workspace...")
         src_target = self.target_dir / "src"
         include_target = self.target_dir / "include"
 
@@ -83,9 +85,9 @@ class SourceHarmonizerV754:
 
     def find_static_definitions(self, clean_content):
         """
-        Returns a dict of { func_name -> signature_string } for every function
-        defined with `static` in this file. Signature is the text between
-        `static` and `{` so it can be reused to build forward declarations.
+        Returns dict { func_name -> signature } for every function defined
+        with `static` in this file. Signature = return-type + name + params,
+        used to build forward declarations when needed.
         Uses re.DOTALL for reliable multiline matching.
         """
         static_funcs = {}
@@ -95,12 +97,20 @@ class SourceHarmonizerV754:
         )
         for m in pattern.finditer(clean_content):
             name = m.group(2)
-            if name not in self.c_keywords:
-                sig = m.group(1).strip()
-                # Only keep first occurrence of each name
-                if name not in static_funcs:
-                    static_funcs[name] = sig
+            if name not in self.c_keywords and name not in static_funcs:
+                static_funcs[name] = m.group(1).strip()
         return static_funcs
+
+    def has_existing_forward_decl(self, clean_content, func_name):
+        """
+        Returns True if any forward declaration (static or non-static) for
+        func_name already exists in the file. Used to guard Strategy B from
+        injecting a duplicate that would cause 'conflicting types' errors.
+        """
+        pattern = re.compile(
+            r'\b' + re.escape(func_name) + r'\s*\([^{}]*?\)\s*;'
+        )
+        return bool(pattern.search(clean_content))
 
     def fix_static_conflicts(self, content):
         """
@@ -108,14 +118,15 @@ class SourceHarmonizerV754:
           'static declaration of X follows non-static declaration'
 
         Strategy A — patch an existing explicit non-static forward declaration:
-          `void __codeBF0_draw(Actor *this);`
-          becomes:
-          `static void __codeBF0_draw(Actor *this);`
+          `void foo(Bar *x);`  ->  `static void foo(Bar *x);`
+          Only applied when the non-static forward decl line exists.
 
         Strategy B — inject a missing static forward declaration:
-          When a static function is called before its definition with no
-          explicit forward decl, inject `static <sig>;` after the last
-          #include so Clang has the correct type before the first call site.
+          When a static function is called before its definition with NO
+          existing forward decl of any kind, inject `static <sig>;` after
+          the last #include so Clang has the correct type before the first call.
+          GUARD: if any forward decl already exists, skip entirely to prevent
+          duplicate declarations that trigger 'conflicting types' errors.
         """
         clean = self.remove_strings_and_comments(content)
         static_defs = self.find_static_definitions(clean)
@@ -126,7 +137,7 @@ class SourceHarmonizerV754:
         needs_injected = []
 
         for func_name, sig in static_defs.items():
-            # Strategy A: patch an existing non-static forward declaration line
+            # --- Strategy A: patch existing non-static forward decl ---
             fwd_pattern = re.compile(
                 r'^([ \t]*)(?!static\b)(\b\S[^\n]*?\b'
                 + re.escape(func_name)
@@ -141,7 +152,13 @@ class SourceHarmonizerV754:
                 modified = patched
                 continue  # Strategy A handled this function
 
-            # Strategy B: no explicit forward decl — check for call-before-definition
+            # --- Strategy B: inject forward decl only if none exists yet ---
+            if self.has_existing_forward_decl(clean, func_name):
+                # A forward decl already exists (possibly static, possibly after
+                # the includes where types are complete). Do not inject a duplicate.
+                continue
+
+            # Check if function is called before its definition (implicit forward)
             call_pat = re.compile(r'\b' + re.escape(func_name) + r'\s*\(')
             def_pat  = re.compile(
                 r'\bstatic\b[^;{}]*?\b' + re.escape(func_name) + r'\s*\([^{}]*?\)\s*\{',
@@ -173,8 +190,8 @@ class SourceHarmonizerV754:
 
     def find_forward_declared_functions(self, clean_content):
         """
-        Returns names of all functions with any forward declaration (static or not).
-        These are excluded from BKA to prevent any macro/alias interaction.
+        Returns names of all functions with any forward declaration.
+        These are excluded from BKA to prevent macro/alias interaction.
         """
         names = set()
         pattern = re.compile(
@@ -219,7 +236,6 @@ class SourceHarmonizerV754:
         modified_content = array_init_pattern.sub(array_init_repl, original_content)
 
         # --- Pass 2: Direct patch of static/forward-decl conflicts ---
-        # Resolves the Clang error at source level, independent of BKA.
         modified_content = self.fix_static_conflicts(modified_content)
 
         # Strip comments/strings for analysis only
@@ -296,7 +312,7 @@ class SourceHarmonizerV754:
             return
 
         self.setup_workspace()
-        print(f"[*] Applying v75.4 Function-Level Linker Isolation...")
+        print(f"[*] Applying v75.5 Function-Level Linker Isolation...")
 
         for file_path in self.target_dir.rglob('*.[ch]'):
             if "include/libc" in str(file_path) or file_path.suffix == '.h':
@@ -307,7 +323,7 @@ class SourceHarmonizerV754:
             except Exception as e:
                 print(f"[!] Error processing {file_path.name}: {e}")
 
-        print(f"\n[+] v75.4 Complete.")
+        print(f"\n[+] v75.5 Complete.")
         print(f"    Files Processed: {self.stats['files_processed']}")
         print(f"    Files Modified:  {self.stats['changes_made']}")
 
@@ -316,5 +332,5 @@ if __name__ == "__main__":
     target = "Android/app/src/main/cpp"
     decomp = "decomp-files"
 
-    harmonizer = SourceHarmonizerV754(target, decomp)
+    harmonizer = SourceHarmonizerV755(target, decomp)
     harmonizer.run()
