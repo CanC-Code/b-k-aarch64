@@ -7,28 +7,30 @@ import shutil
 from pathlib import Path
 
 """
-SourceHarmonizer v75.18 — __attribute__((weak)) function isolation
+SourceHarmonizer v75.19 — Precise Weak Symbol Injection
 
 ═══════════════════════════════════════════════════════════════════════════════
-LOG 41 — v75.17 ran (861 files processed, 648 modified). One file failed:
-  histup.c — 1 error: conflicting types for 'BKA_F_68933714_func_8038D920'
-    int func_8038D920(Actor *this, f32 arg1){
-    previous declaration: int func_8038D920();      ← our K&R fwd decl
+LOG 42/43 — v75.18 applied `__attribute__((weak))` incorrectly to statements.
+  Errors: 'weak' attribute cannot be applied to a statement
+  Examples:
+    __attribute__((weak)) if(func_8038D920(this, sp38[1])){
+    __attribute__((weak)) chTiptup_sfxCorrectHit();
 ═══════════════════════════════════════════════════════════════════════════════
 
-ROOT CAUSE — K&R empty-param fwd decl incompatible with float params:
-  C99 §6.7.5.3 ¶15 dictates that empty parameter lists () are incompatible 
-  with definitions if parameter types change under default promotions. 
-  Since f32 (float) promotes to double, the K&R declaration failed.
+ROOT CAUSE:
+  The Pass 4 regex `\([^{}]*?\)\s*\{` allowed matching across semicolons and 
+  newlines (due to re.DOTALL and broad negative character classes). It consumed 
+  function calls ending in `;` by bleeding into subsequent `if(...) {` blocks.
 
-THE FIX — __attribute__((weak)) on function definitions:
-  Instead of renaming and aliasing, we mark eligible function definitions 
-  as WEAK symbols. This allows the linker to resolve duplicate names 
-  across TUs (common in N64 overlays) without needing forward declarations 
-  that risk type mismatches.
+THE FIX:
+  Tighten the definition-matching regex:
+  1. Forbid `(`, `=`, `;`, `{`, `}` in the return type (Group 2).
+  2. Forbid `;`, `{`, `}` inside the parameter list.
+  3. Add a hard Python-level check to abort replacement if the preceding tokens
+     contain control keywords (if, while, for, switch, return).
 """
 
-class SourceHarmonizerV7518:
+class SourceHarmonizerV7519:
     def __init__(self, target_dir, decomp_path):
         self.target_dir  = Path(target_dir)
         self.decomp_path = Path(decomp_path)
@@ -54,6 +56,7 @@ class SourceHarmonizerV7518:
             'static', 'extern', 'inline', 'const', 'volatile', '__attribute__',
             '__restrict', 'restrict', 'register'
         }
+        
         self._ctrl_keywords = {
             'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do',
             'break', 'continue', 'case', 'default', 'goto', 'typedef'
@@ -68,7 +71,7 @@ class SourceHarmonizerV7518:
         self._def_pat_cache = {}
 
     def setup_workspace(self):
-        print("[>] Preparing v75.18 Workspace...")
+        print("[>] Preparing v75.19 Workspace...")
         for folder in [self.target_dir / "src", self.target_dir / "include"]:
             if folder.exists():
                 shutil.rmtree(folder)
@@ -118,7 +121,8 @@ class SourceHarmonizerV7518:
                 modified = patched
                 continue
             if not self.has_existing_forward_decl(clean, func_name):
-                call_pat, def_pat = re.compile(r'\b' + re.escape(func_name) + r'\s*\('), re.compile(r'\bstatic\b[^;{}]*?\b' + re.escape(func_name) + r'\s*\([^{}]*?\)\s*\{', re.DOTALL)
+                call_pat = re.compile(r'\b' + re.escape(func_name) + r'\s*\(')
+                def_pat = re.compile(r'\bstatic\b[^;{}]*?\b' + re.escape(func_name) + r'\s*\([^{}]*?\)\s*\{', re.DOTALL)
                 if call_pat.search(clean) and def_pat.search(clean) and call_pat.search(clean).start() < def_pat.search(clean).start():
                     needs_injected.append(f"static {sig};")
         if needs_injected:
@@ -138,10 +142,25 @@ class SourceHarmonizerV7518:
 
     def inject_weak_attribute(self, content, fname):
         if fname not in self._def_pat_cache:
-            self._def_pat_cache[fname] = re.compile(r'^([ \t]*)([^\n;{}]*?\b)(' + re.escape(fname) + r'\s*\([^{}]*?\)\s*\{)', re.MULTILINE | re.DOTALL)
+            # Group 2 (return type): explicitly forbid ;, {, }, =, ( to prevent matching calls/assignments.
+            # Group 3 (params): explicitly forbid ;, {, } to prevent bleeding across statements.
+            self._def_pat_cache[fname] = re.compile(
+                r'^([ \t]*)([^;{}=()]*?\b)(' + re.escape(fname) + r'\s*\([^;{}]*?\)\s*\{)',
+                re.MULTILINE
+            )
+            
         def _repl(m):
-            if '__attribute__((weak))' in m.group(0) or re.search(r'\bstatic\b', m.group(2)): return m.group(0)
+            full = m.group(0)
+            if '__attribute__((weak))' in full or re.search(r'\bstatic\b', m.group(2)):
+                return full
+                
+            # Final safety check: if the "return type" contains control keywords, it's a false positive.
+            before_tokens = set(re.findall(r'[a-zA-Z_]\w*', m.group(2)))
+            if before_tokens.intersection(self._ctrl_keywords):
+                return full
+                
             return f"{m.group(1)}__attribute__((weak)) {m.group(2).lstrip()}{m.group(3)}"
+            
         return self._def_pat_cache[fname].sub(_repl, content)
 
     def process_file(self, file_path):
@@ -179,7 +198,7 @@ class SourceHarmonizerV7518:
             if "include/libc" not in str(file_path) and file_path.suffix != '.h':
                 self.process_file(file_path)
                 self.stats["files_processed"] += 1
-        print(f"\n[+] v75.18 Complete. Files Processed: {self.stats['files_processed']} | Modified: {self.stats['changes_made']}")
+        print(f"\n[+] v75.19 Complete. Files Processed: {self.stats['files_processed']} | Modified: {self.stats['changes_made']}")
 
 if __name__ == "__main__":
-    SourceHarmonizerV7518("Android/app/src/main/cpp", "decomp-files").run()
+    SourceHarmonizerV7519("Android/app/src/main/cpp", "decomp-files").run()
