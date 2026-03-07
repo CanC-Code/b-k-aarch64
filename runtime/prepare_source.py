@@ -7,84 +7,82 @@ import shutil
 from pathlib import Path
 
 """
-SourceHarmonizer v75.14 — Restore correct architecture; fix v75.13 regressions
+SourceHarmonizer v75.15 — Fix BKA macro injection ordering
 
 ═══════════════════════════════════════════════════════════════════════════════
-REVIEW OF USER'S v75.13 — FIVE CRITICAL BUGS
+LOG 38 CONFIRMED: v75.14 ran (line 525-530 of log):
+  "[>] Preparing v75.14 Workspace..."
+  "[+] v75.14 Complete. Files Processed: 861  Files Modified: 648"
 ═══════════════════════════════════════════════════════════════════════════════
 
-Bug 1 — WRONG SEARCH PATHS (root cause of log 37 linker failure):
-  v75.13 searched:
-    {GITHUB_WORKSPACE}/src/
-    {GITHUB_WORKSPACE}/app/src/main/cpp/
-  Actual paths in CI:
-    {GITHUB_WORKSPACE}/Android/app/src/main/cpp/src/   (decomp .c files)
-    {GITHUB_WORKSPACE}/Android/app/src/main/cpp/include/
-  Result: ZERO files processed. Source files never modified.
+ROOT CAUSE — code_1D00.c (only failing file; all 861 others compiled clean):
 
-Bug 2 — MISSING setup_workspace():
-  v75.9 copies fresh files from decomp-files/ to the build target on every run.
-  v75.13 has no such step. When v75.13 runs and processes zero files, the stale
-  .o objects from a PRIOR build (where main_no_args was renamed by an older BKA
-  version) remain cached. The linker then cannot find main_no_args because the
-  symbol was renamed in the stale .o but the alias was malformed.
-  This is exactly the `undefined symbol: main_no_args` error in log 37.
+  Error: use of undeclared identifier 'BKA_F_674a416b_audioManager_getThread_PAL'
+         did you mean 'BKA_F_674a416b_audioManager_getThread'?
 
-Bug 3 — main_no_args NOT protected:
-  v75.13 protected = {'main', 'memcpy', 'memset', 'osViClock'}.
-  main_no_args is the game's entry point called from NativeBridge.cpp.
-  It must NEVER be renamed or wrapped in BKA aliases.
+  Failing line (684):
+    __typeof__(BKA_F_674a416b_audioManager_getThread_PAL)
+      audioManager_getThread_PAL __attribute__((weak, alias(...)));
 
-Bug 4 — GLOBAL RENAME (extremely dangerous):
-  v75.13 uses `re.sub(r'\bfn\b', unique_name, content)` to rename ALL
-  occurrences of every static function name throughout each file.
-  This corrupts: string literals, comments, identifiers that share a name
-  substring, and — critically — renames local variables and parameters that
-  happen to share a name with a static function in the same file.
-  Our v75.9 uses #define macros (scoped to compilation unit) which is safe.
+  Clang note: 'BKA_F_674a416b_audioManager_getThread' declared at line 645:
+    OSThread * audioManager_getThread(void){   ← expanded from macro 'audioManager_getThread'
+    #define audioManager_getThread BKA_F_674a416b_audioManager_getThread  ← line 12 of file
 
-Bug 5 — BROKEN BKA ALIAS PATTERN:
-  v75.13 injects `extern __typeof__(BKA_F_x_fn) BKA_F_x_fn;` before seeing
-  the definition, then `__typeof__(BKA_F_x_fn) fn __attribute__((weak, alias));`
-  after. The extern declaration before the definition is redundant at best,
-  and the alias is placed at the END of the file outside any include guard,
-  which can trigger "symbol not defined in this translation unit" errors on
-  some Clang versions since the renamed symbol may not be visible at that point.
+  What happened (v75.14 structure — macros at file TOP, before #includes):
 
-═══════════════════════════════════════════════════════════════════════════════
-LOG 37 ANALYSIS — WHAT THE [1/9] BUILD COUNT TELLS US
-═══════════════════════════════════════════════════════════════════════════════
+    Line  1:  // --- BKA MACROS START ---
+    Line 12:  #define audioManager_getThread     BKA_F_xxx_audioManager_getThread      ← OUR macro
+    Line 13:  #define audioManager_getThread_PAL BKA_F_xxx_audioManager_getThread_PAL  ← OUR macro
+    Line 14:  // --- BKA MACROS END ---
+    Line 15:  #include "audio.h"   ← HEADER redefines audioManager_getThread_PAL → audioManager_getThread
+                                     This OVERRIDES our BKA macro (later #define wins)
+    ...
+    Line 645: OSThread * audioManager_getThread_PAL(void){
+              ↑ preprocessed as: audioManager_getThread (header's override wins)
+              ↑ then:            BKA_F_xxx_audioManager_getThread(void){   ← only this symbol defined
+    Line 684: __typeof__(BKA_F_xxx_audioManager_getThread_PAL) ...  ← this symbol NEVER defined → ERROR
 
-The build compiled only [1/9] through [9/9] files — the 9 C++ wrapper files
-(NativeBridge.cpp, otr_builder.cpp, etc.). The 870 decomp .c files were ALL
-served from the build cache. This means:
-  • All 870 .c files compiled successfully in a prior run — C is clean ✓
-  • The linker failure is the ONLY remaining issue
-  • The undefined symbol comes from a stale .o (built by a prior BKA version
-    that renamed main_no_args but failed to export it correctly)
+THE FIX (v75.15) — inject BKA macros AFTER the last #include:
 
-Fix: setup_workspace() copies fresh source files, which changes file content
-and forces CMake/ninja to recompile all 870 .c files. With v75.14's correct
-BKA exclusion of main_no_args, the symbol will be defined in the .so.
+  New file structure:
+    #include "audio.h"              ← header defines audioManager_getThread_PAL → audioManager_getThread
+    // --- BKA MACROS START ---
+    #undef audioManager_getThread_PAL                              ← suppress redefinition warning
+    #define audioManager_getThread_PAL BKA_F_xxx_..._PAL          ← OUR macro wins (comes after header)
+    #undef audioManager_getThread
+    #define audioManager_getThread BKA_F_xxx_audioManager_getThread
+    // --- BKA MACROS END ---
+    ...
+    OSThread * audioManager_getThread_PAL(void){
+    ↑ preprocessed as: BKA_F_xxx_audioManager_getThread_PAL(void){  ← symbol IS defined ✓
+    ...
+    // --- BKA ALIASES START ---
+    #undef audioManager_getThread_PAL
+    __typeof__(BKA_F_xxx_audioManager_getThread_PAL) audioManager_getThread_PAL
+      __attribute__((weak, alias("BKA_F_xxx_audioManager_getThread_PAL")));  ← symbol exists ✓
+
+  The explicit #undef before each #define also prevents -Wmacro-redefinition
+  warnings from Clang when the header already defined the same name.
 
 ═══════════════════════════════════════════════════════════════════════════════
-FULL PASS SUMMARY (unchanged from v75.9)
+FULL PASS SUMMARY
 ═══════════════════════════════════════════════════════════════════════════════
   Pass 1 — Array init          u8 tmp[N] = D_x;              -> __builtin_memcpy
   Pass 2 — Static conflicts
     Strategy A                 non-static forward decl        -> add `static`
-    Strategy B                 missing static forward decl    -> inject after #includes
+    Strategy B                 missing static fwd decl        -> inject after #includes
   Pass 3 — Static local C89 normalisation (Rules A/A2/B/C)
     Rule A   compound-assign   static LVALUE OP= expr;        -> LVALUE OP= expr;
     Rule A2  member plain-asgn static obj->field = call();    -> obj->field = call();
     Rule B   implicit-int init static v = call(); /* cmt */   -> v = call();
     Rule C   typed init        static TYPE v = call();        -> TYPE v = call();
   Pass 4 — BKA exclusion set   static + forward-declared functions excluded
-  Pass 5 — BKA macro/weak-alias injection for cross-file linking
+  Pass 5 — BKA macros injected AFTER last #include (v75.15 fix); aliases at end
+             Each #define preceded by explicit #undef (prevents redefinition warning)
 """
 
 
-class SourceHarmonizerV7514:
+class SourceHarmonizerV7515:
     def __init__(self, target_dir, decomp_path):
         self.target_dir  = Path(target_dir)
         self.decomp_path = Path(decomp_path)
@@ -96,9 +94,7 @@ class SourceHarmonizerV7514:
             'enum', 'static', 'extern', 'const', 'volatile', 'inline', 'typedef'
         }
 
-        # Functions that must never be renamed or aliased.
-        # main_no_args is the game entry point called directly from NativeBridge.cpp.
-        # Renaming it would break the JNI -> game boot call chain.
+        # Never rename — called directly from NativeBridge.cpp / C++ layer.
         self.std_c = {
             'main', 'main_no_args',
             'memcpy', 'memset', 'strlen', 'strcpy', 'strcmp',
@@ -119,33 +115,23 @@ class SourceHarmonizerV7514:
 
         # ── Pre-compiled Pass 3 patterns ──────────────────────────────────────
 
-        # Rule A: compound-assign, any lvalue (simple var, member access, array elem)
-        # `    static LVALUE OP= expr;`  ->  `    LVALUE OP= expr;`
+        # Rule A: compound-assign, any lvalue
         self._p3a = re.compile(
             r'^([ \t]+)static\s+([^=\n;{}]+?)\s*([|&^+\-*/%]=|<<=|>>=)',
             re.MULTILINE
         )
-
-        # Rule A2: plain assign where LHS contains -> or . (struct/member access)
-        # `    static seq->field[i] = call();`  ->  `    seq->field[i] = call();`
+        # Rule A2: plain assign where LHS contains -> or . (member access = unambiguous statement)
         self._p3a2 = re.compile(
             r'^([ \t]+)static\s+([a-zA-Z_]\w*(?:->|\.)[^=\n;{}]*?)\s*=\s*([^;\n]+?)\s*;[^\n]*$',
             re.MULTILINE
         )
-
         # Rule B: implicit-int plain assign, runtime RHS, optional trailing comment
-        # `    static status = call(); /* cmt */`  ->  `    status = call();`
-        # Guard: RHS must contain balanced (...) — constants untouched.
         self._p3b = re.compile(
             r'^([ \t]+)static\s+([a-zA-Z_]\w*)\s*=\s*'
             r'([^;\n]+(?:\([^;\n]*\))[^;\n]*)\s*;[^\n]*$',
             re.MULTILINE
         )
-
         # Rule C: explicit-type plain assign, runtime RHS, optional trailing comment
-        # `    static u32 *ptr = call();`  ->  `    u32 *ptr = call();`
-        # Guard: RHS must contain `(` — checked in repl fn.
-        # Uses \w* (not \w+) to handle single-char variable names.
         self._p3c = re.compile(
             r'^([ \t]+)static\s+([^=\n;{}]+?)\b([a-zA-Z_]\w*)\s*=\s*([^;\n]+)\s*;[^\n]*$',
             re.MULTILINE
@@ -153,13 +139,8 @@ class SourceHarmonizerV7514:
 
     # ─────────────────────────────────────────────────────────────────────────
     def setup_workspace(self):
-        """
-        Copy fresh source files from decomp-files/ to the build target.
-        This is critical: it ensures stale .o files from prior builds are
-        invalidated (file content changes -> CMake forces recompilation).
-        v75.13 omitted this step, causing the stale-cache linker failure.
-        """
-        print("[>] Preparing v75.14 Workspace...")
+        """Copy fresh source from decomp-files/ — invalidates CMake build cache."""
+        print("[>] Preparing v75.15 Workspace...")
         for folder in [self.target_dir / "src", self.target_dir / "include"]:
             if folder.exists():
                 shutil.rmtree(folder)
@@ -193,10 +174,7 @@ class SourceHarmonizerV7514:
 
     # ─────────────────────────────────────────────────────────────────────────
     def has_existing_forward_decl(self, clean_content, func_name):
-        """
-        True only if func_name has a real forward declaration (not a call statement).
-        Requires a type token in the line prefix, no expression operators, no open-paren.
-        """
+        """True only if func_name has a real forward declaration (not a call statement)."""
         pat = re.compile(
             r'^([ \t]*(?:[^\n]*?))\b' + re.escape(func_name) + r'\s*\([^{}]*?\)\s*;',
             re.MULTILINE
@@ -217,11 +195,7 @@ class SourceHarmonizerV7514:
 
     # ─────────────────────────────────────────────────────────────────────────
     def fix_static_conflicts(self, content):
-        """
-        Pass 2: resolve 'static declaration follows non-static declaration'.
-        Strategy A: patch existing non-static forward decl to add `static`.
-        Strategy B: inject missing static forward decl after last #include.
-        """
+        """Pass 2: resolve 'static declaration follows non-static declaration'."""
         clean       = self.remove_strings_and_comments(content)
         static_defs = self.find_static_definitions(clean)
         if not static_defs:
@@ -231,7 +205,6 @@ class SourceHarmonizerV7514:
         needs_injected = []
 
         for func_name, sig in static_defs.items():
-            # Strategy A
             fwd_pat = re.compile(
                 r'^([ \t]*)(?!static\b)(\b\S[^\n]*?\b'
                 + re.escape(func_name) + r'\s*\([^)]*\)\s*;)',
@@ -242,7 +215,6 @@ class SourceHarmonizerV7514:
                 modified = patched
                 continue
 
-            # Strategy B
             if self.has_existing_forward_decl(clean, func_name):
                 continue
 
@@ -272,52 +244,24 @@ class SourceHarmonizerV7514:
 
     # ─────────────────────────────────────────────────────────────────────────
     def fix_static_local_c89_patterns(self, content):
-        """
-        Pass 3: fix all known C89/IDO static-local patterns that Clang C99 rejects.
-        Rules applied in order A -> A2 -> B -> C to avoid interference.
-
-        Rule A:  compound-assign any lvalue
-                 `static flags |= call();`            -> `flags |= call();`
-                 `static seq->field[i] += call();`    -> `seq->field[i] += call();`
-
-        Rule A2: plain assign, struct/member-access lvalue (contains -> or .)
-                 `static seq->field[i] = call();`     -> `seq->field[i] = call();`
-
-        Rule B:  implicit-int plain assign (no type token), runtime RHS
-                 `static status = call(); /* cmt */`  -> `status = call();`
-
-        Rule C:  explicit-type plain assign, runtime RHS
-                 `static u32 *ptr = call();`           -> `u32 *ptr = call();`
-
-        All rules: indentation-gated (no file-scope statics touched),
-                   constant initialisers never touched,
-                   static function definitions never touched.
-        """
-        # Rule A
+        """Pass 3: fix all C89/IDO static-local patterns Clang C99 rejects."""
         content = self._p3a.sub(
             lambda m: f"{m.group(1)}{m.group(2).rstrip()} {m.group(3)}",
             content
         )
-
-        # Rule A2
         content = self._p3a2.sub(
             lambda m: f"{m.group(1)}{m.group(2).rstrip()} = {m.group(3).strip()};",
             content
         )
-
-        # Rule B
         content = self._p3b.sub(
             lambda m: f"{m.group(1)}{m.group(2)} = {m.group(3).strip()};",
             content
         )
-
-        # Rule C
         def _repl_c(m):
             rhs = m.group(4).strip()
             if '(' not in rhs:
                 return m.group(0)
             return f"{m.group(1)}{m.group(2)}{m.group(3)} = {rhs};"
-
         content = self._p3c.sub(_repl_c, content)
         return content
 
@@ -344,7 +288,7 @@ class SourceHarmonizerV7514:
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             original_content = f.read()
 
-        # Pass 1 — Array init: `u8 tmp[N] = D_x;`  ->  __builtin_memcpy
+        # Pass 1 — Array init: u8 tmp[N] = D_x;  ->  __builtin_memcpy
         arr_pat = re.compile(
             r'^([ \t]*(?:struct\s+|union\s+|enum\s+)?[a-zA-Z_]\w*(?:\s*\*)*)\s+'
             r'([a-zA-Z_]\w*)\s*\[\s*(\d+)\s*\]\s*=\s*([a-zA-Z_]\w*)\s*;',
@@ -357,13 +301,13 @@ class SourceHarmonizerV7514:
 
         modified = arr_pat.sub(_arr_repl, original_content)
 
-        # Pass 2 — Fix static/forward-decl conflicts
+        # Pass 2 — Static/forward-decl conflicts
         modified = self.fix_static_conflicts(modified)
 
-        # Pass 3 — Fix C89/IDO static-local patterns
+        # Pass 3 — C89/IDO static-local patterns
         modified = self.fix_static_local_c89_patterns(modified)
 
-        # Analysis pass (strip strings/comments for safe scanning)
+        # Analysis pass (comments/strings stripped for safe pattern scanning)
         clean = self.remove_strings_and_comments(modified)
 
         # Pass 4 — Build BKA exclusion set
@@ -399,24 +343,56 @@ class SourceHarmonizerV7514:
 
         defined_funcs = list(dict.fromkeys(defined_funcs))
 
-        # Pass 5 — BKA macro/weak-alias injection
-        # Uses #define (not global regex rename) — scoped to this translation unit.
-        # main_no_args and other std_c entries are excluded above; they keep their
-        # original symbol names and remain directly linkable from NativeBridge.cpp.
-        macros = aliases = ""
-        if defined_funcs:
-            macros  = "// --- BKA MACROS START ---\n"
-            aliases = "\n\n// --- BKA ALIASES START ---\n"
+        if not defined_funcs:
+            new_content = modified
+        else:
+            # Pass 5 — BKA macro/weak-alias injection
+            #
+            # KEY CHANGE v75.15: macros are injected AFTER the last #include, not at
+            # the file top. This ensures our #defines override any same-named macros
+            # from headers (the C preprocessor uses last-definition-wins semantics).
+            #
+            # Each #define is preceded by an explicit #undef to suppress
+            # -Wmacro-redefinition warnings when a header already defined that name.
+            #
+            # Example for audioManager_getThread_PAL in code_1D00.c:
+            #   Header defines: audioManager_getThread_PAL -> audioManager_getThread
+            #   Our injection:  #undef audioManager_getThread_PAL
+            #                   #define audioManager_getThread_PAL BKA_F_xxx_..._PAL
+            #   Function def:   audioManager_getThread_PAL(void){
+            #                -> BKA_F_xxx_audioManager_getThread_PAL(void){  ✓ defined
+            #   Alias:          __typeof__(BKA_F_xxx_audioManager_getThread_PAL) ...  ✓ works
+
+            macros_lines = ["", "// --- BKA MACROS START ---"]
             for fn in defined_funcs:
                 un = f"BKA_F_{fid}_{fn}"
-                macros  += f"#define {fn} {un}\n"
-                aliases += f"#undef {fn}\n"
-                aliases += (f"__typeof__({un}) {fn} "
-                            f"__attribute__((weak, alias(\"{un}\")));\n")
-            macros  += "// --- BKA MACROS END ---\n\n"
-            aliases += "// --- BKA ALIASES END ---\n"
+                macros_lines.append(f"#undef {fn}")
+                macros_lines.append(f"#define {fn} {un}")
+            macros_lines.append("// --- BKA MACROS END ---")
+            macros_lines.append("")
+            macros_block = "\n".join(macros_lines) + "\n"
 
-        new_content = macros + modified + aliases
+            aliases_lines = ["", "", "// --- BKA ALIASES START ---"]
+            for fn in defined_funcs:
+                un = f"BKA_F_{fid}_{fn}"
+                aliases_lines.append(f"#undef {fn}")
+                aliases_lines.append(
+                    f"__typeof__({un}) {fn} __attribute__((weak, alias(\"{un}\")));"
+                )
+            aliases_lines.append("// --- BKA ALIASES END ---")
+            aliases_block = "\n".join(aliases_lines) + "\n"
+
+            # Find last #include in modified content and insert macros right after it
+            last_inc = None
+            for m in re.finditer(r'^#include\b[^\n]*\n', modified, re.MULTILINE):
+                last_inc = m
+
+            if last_inc:
+                pos = last_inc.end()
+                new_content = modified[:pos] + macros_block + modified[pos:] + aliases_block
+            else:
+                # No #includes: macros go at the very top
+                new_content = macros_block + modified + aliases_block
 
         if new_content != original_content:
             with open(file_path, 'w', encoding='utf-8') as f:
@@ -429,7 +405,7 @@ class SourceHarmonizerV7514:
             print(f"[!] Error: decompilation path '{self.decomp_path}' not found.")
             return
         self.setup_workspace()
-        print("[*] Applying v75.14 Function-Level Linker Isolation...")
+        print("[*] Applying v75.15 Function-Level Linker Isolation...")
         for file_path in self.target_dir.rglob('*.[ch]'):
             if "include/libc" in str(file_path) or file_path.suffix == '.h':
                 continue
@@ -438,7 +414,7 @@ class SourceHarmonizerV7514:
                 self.stats["files_processed"] += 1
             except Exception as e:
                 print(f"[!] Error processing {file_path.name}: {e}")
-        print(f"\n[+] v75.14 Complete.")
+        print(f"\n[+] v75.15 Complete.")
         print(f"    Files Processed: {self.stats['files_processed']}")
         print(f"    Files Modified:  {self.stats['changes_made']}")
 
@@ -446,4 +422,4 @@ class SourceHarmonizerV7514:
 if __name__ == "__main__":
     target = "Android/app/src/main/cpp"
     decomp = "decomp-files"
-    SourceHarmonizerV7514(target, decomp).run()
+    SourceHarmonizerV7515(target, decomp).run()
