@@ -3,7 +3,7 @@ import os
 import re
 import shutil
 import hashlib
-from typing import Set, List
+from typing import Set, List, Dict
 from dataclasses import dataclass
 
 @dataclass
@@ -24,10 +24,16 @@ class SourceHarmonizerV73:
         self.src_target = os.path.join(self.android_path, "src")
         self.include_target = os.path.join(self.android_path, "include")
 
-        # Added conflicting N64 types/variables to immutables to prevent redefinition
+        self.c_keywords = {
+            'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 
+            'do', 'break', 'continue', 'case', 'default', 'goto', 'struct', 
+            'union', 'enum', 'static', 'extern', 'const', 'volatile', 'inline',
+            'register', 'restrict', 'auto', 'void', 'int', 'char', 'float', 'double',
+            'short', 'long', 'signed', 'unsigned', 'typedef'
+        }
+
         self.immutables = {
-            'bool', 'void', 'int', 'char', 'long', 'float', 'double',
-            'u8', 'u16', 'u32', 'u64', 's8', 's16', 's32', 's64', 'f32', 'f64',
+            'bool', 'u8', 'u16', 'u32', 'u64', 's8', 's16', 's32', 's64', 'f32', 'f64',
             'size_t', 'uintptr_t', 'intptr_t', 'Mtx', 'Gfx', 'Vtx', 'ADPCM_STATE',
             'ALMicroTime', 'ALID', 'OSMesg', 'OSThread', 'OSYieldResult', 'u_long',
             'OSPri', 'u_short', 'u_char', 'OSId', 'u32*', 'uintptr_t', 'f32*',
@@ -35,23 +41,27 @@ class SourceHarmonizerV73:
             'AL_MIDI_ChannelMask', 'AL_MIDI_ChannelModeSelect', 'AL_MIDI_ChannelPressure',
             'AL_MIDI_ControlChange', 'AL_MIDI_Meta', 'AL_MIDI_NoteOff', 'AL_MIDI_NoteOn',
             'AL_MIDI_PitchBendChange', 'AL_MIDI_PolyKeyPressure', 'AL_MIDI_ProgramChange',
-            'AL_MIDI_StatusMask'
-        }
-        
-        # Protect against capturing C syntax keywords
-        self.c_keywords = {
-            'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 
-            'do', 'break', 'continue', 'case', 'default', 'goto', 'struct', 
-            'union', 'enum', 'static', 'extern', 'const', 'volatile', 'inline'
+            'AL_MIDI_StatusMask', 'OSMesgQueue', 'OSIoMesg', 'OSContStatus', 'OSContPad'
         }
         
         self.conflict_registry: Set[str] = set()
         self.discovered_types: Set[str] = set()
+        
+        # Structural Registries
         self.mappings: List[SymbolMapping] = []
+        self.global_symbols: Dict[str, SymbolMapping] = {}
+        self.all_symbol_names: Set[str] = set()
 
     def get_file_id(self, filepath: str) -> str:
         rel_path = os.path.relpath(filepath, self.src_target)
         return hashlib.md5(rel_path.encode()).hexdigest()[:8]
+
+    def remove_comments(self, text: str) -> str:
+        # Strip block comments
+        text = re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL)
+        # Strip line comments
+        text = re.sub(r'//.*', '', text)
+        return text
 
     def setup_workspace(self):
         print("[>] Pass 0: Initializing Singularity-Stabilizer Workspace...")
@@ -77,73 +87,94 @@ class SourceHarmonizerV73:
             re.compile(r'typedef\s+.*?\s+(\w+);'),
             re.compile(r'\}\s*(\w+);'),
             re.compile(r'(?:struct|union|enum)\s+(\w+)'),
-            re.compile(r'([A-Za-z_]\w+)\s*=\s*(?:0x)?[0-9A-Fa-f]+'), # Fixed to catch non-ALL_CAPS enums
-            re.compile(r'typedef\s+[\w\s\*]+\(\s*\*\s*([A-Za-z_]\w+)\s*\)') # Fixed to catch Function Pointers
+            re.compile(r'([A-Za-z_]\w+)\s*=\s*(?:0x)?[0-9A-Fa-f]+'),
+            re.compile(r'typedef\s+[\w\s\*]+\(\s*\*\s*([A-Za-z_]\w+)\s*\)')
         ]
         for root, _, files in os.walk(self.include_target):
             for file in files:
                 if file.endswith('.h'):
                     with open(os.path.join(root, file), 'r', errors='ignore') as f:
-                        content = f.read()
+                        content = self.remove_comments(f.read())
                         for p in patterns:
                             self.conflict_registry.update(p.findall(content))
         print(f"    [Filtered] {len(self.conflict_registry)} SDK symbols protected from redefinition.")
 
     def harmonize_logic(self):
         print("[>] Pass 1 & 2: Weaving Stabilized Linkage...")
-        type_pat = re.compile(r'\b([A-Z][a-zA-Z0-9_]+)\b')
-        # Tightened the regexes slightly to prevent them from scanning across line breaks incorrectly
-        func_pat = re.compile(r'^(static\s+)?(([a-zA-Z_][\w\* ]{0,40}?)\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
-        data_pat = re.compile(r'^(static\s+)?([a-zA-Z_][\w\* ]{0,40}?)\s+([a-zA-Z_]\w*)\s*(?:=\s*([^;]+))?;', re.MULTILINE)
+        
+        func_pat = re.compile(r'^(static\s+)?(([a-zA-Z_][\w\* ]{0,60}?)\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
+        data_pat = re.compile(r'^(static\s+)?([a-zA-Z_][\w\* ]{0,60}?)\s+([a-zA-Z_]\w*)\s*(?:=\s*([^;]+))?;', re.MULTILINE)
 
         for root, _, files in os.walk(self.src_target):
             for f in files:
                 if not f.endswith('.c'): continue
                 path = os.path.join(root, f)
                 fid = self.get_file_id(path)
+                
                 with open(path, 'r', errors='ignore') as file:
-                    content = file.read()
-
-                for t in type_pat.findall(content):
-                    if t not in self.conflict_registry and t not in self.immutables and not t.isupper():
-                        self.discovered_types.add(t)
+                    content = self.remove_comments(file.read())
 
                 def func_repl(m):
                     is_static = m.group(1) is not None
+                    static_str = "static " if is_static else ""
+                    ret_type = " ".join(m.group(3).split())
                     name = m.group(4).strip()
+                    params = m.group(5).strip() or "void"
                     
-                    # C-Keyword Safety Check
+                    # Safe exit for Keywords/SDK
                     if name in self.c_keywords or name in ('main', 'Entry') or name in self.conflict_registry:
                         return m.group(0)
 
-                    params = re.sub(r'\s+', ' ', m.group(5).strip()) or "void"
-                    label = f"SS_{'S' if is_static else 'G'}_{fid}_{name}"
-                    
-                    # Ensure type info doesn't have runaway macros in it
-                    type_info = m.group(3).strip().split('\n')[-1].replace('\\', '')
-                    self.mappings.append(SymbolMapping(name, type_info, fid, True, params, ".text", is_static, label))
+                    # Extract Types from Parameters (Catches ActorMarker, Struct5Fs, etc.)
+                    for word in re.findall(r'\b([a-zA-Z_]\w+)\b', params + " " + ret_type):
+                        if word not in self.c_keywords and word not in self.immutables:
+                            self.discovered_types.add(word)
 
-                    return f"\n#undef {name}\n__attribute__((used, visibility(\"protected\"))) {m.group(2).replace(name, f'{name} __asm__(\"{label}\")', 1)} "
+                    label = f"SS_{'S' if is_static else 'G'}_{fid}_{name}"
+                    mapping = SymbolMapping(name, ret_type, fid, True, params, ".text", is_static, label)
+                    
+                    self.all_symbol_names.add(name)
+                    # FIRST-WIN POLICY: Only keep the first signature we find for global functions
+                    if not is_static and name not in self.global_symbols:
+                        self.global_symbols[name] = mapping
+                    
+                    self.mappings.append(mapping)
+                    
+                    # Exact C Reconstruction (Eliminates regex replace bugs)
+                    return f"\n#undef {name}\n__attribute__((used, visibility(\"protected\"))) {static_str}{ret_type} {name} __asm__(\"{label}\")({params}) {{"
 
                 def data_repl(m):
                     is_static = m.group(1) is not None
-                    dtype = m.group(2).strip().split('\n')[-1].replace('\\', '')
+                    static_str = "static " if is_static else ""
+                    dtype = " ".join(m.group(2).split())
                     name = m.group(3).strip()
                     value = m.group(4)
 
-                    # C-Keyword Safety Check
                     if name in self.c_keywords or name in self.conflict_registry or "extern" in dtype:
                         return m.group(0)
 
+                    for word in re.findall(r'\b([a-zA-Z_]\w+)\b', dtype):
+                        if word not in self.c_keywords and word not in self.immutables:
+                            self.discovered_types.add(word)
+
                     section = ".bss" if value is None else ".data"
-                    if "const" in dtype:
-                        section = ".rodata"
+                    if "const" in dtype: section = ".rodata"
 
                     label = f"SS_{'S' if is_static else 'G'}_{fid}_{name}"
-                    self.mappings.append(SymbolMapping(name, dtype, fid, False, "", section, is_static, label))
+                    mapping = SymbolMapping(name, dtype, fid, False, "", section, is_static, label)
+                    
+                    self.all_symbol_names.add(name)
+                    # FIRST-WIN POLICY for Data
+                    if not is_static and name not in self.global_symbols:
+                        self.global_symbols[name] = mapping
+                        
+                    self.mappings.append(mapping)
 
                     attr = f"__attribute__((used, section(\"{section}\"), visibility(\"protected\")))"
-                    return f"\n#undef {name}\n{attr} {m.group(0).replace(name, f'{name} __asm__(\"{label}\")', 1)}"
+                    if value is not None:
+                        return f"\n#undef {name}\n{attr} {static_str}{dtype} {name} __asm__(\"{label}\") = {value};"
+                    else:
+                        return f"\n#undef {name}\n{attr} {static_str}{dtype} {name} __asm__(\"{label}\");"
 
                 patched = re.sub(func_pat, func_repl, content)
                 patched = re.sub(data_pat, data_repl, patched)
@@ -153,21 +184,30 @@ class SourceHarmonizerV73:
 
     def generate_artifacts(self):
         print("[>] Pass 3: Finalizing Stabilized Artifacts...")
+        
+        # Anti-Collision Math: Remove function/variable names from Type list
+        clean_types = self.discovered_types - self.all_symbol_names - self.conflict_registry - self.c_keywords - self.immutables
+
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         with open(header_path, 'w') as f:
             f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n#include <ultra64.h>\n")
             f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
 
-            for t in sorted(self.discovered_types):
-                f.write(f"#if !defined({t}_DEFINED) && !defined({t})\n  typedef struct {t} {t};\n  #define {t}_DEFINED\n#endif\n")
+            # Output Forward Declarations FIRST
+            for t in sorted(clean_types):
+                if not t[0].isdigit(): # Safety block against 1st, 2nd, etc.
+                    f.write(f"#if !defined({t}_DEFINED) && !defined({t})\n  typedef struct {t} {t};\n  #define {t}_DEFINED\n#endif\n")
 
-            for m in self.mappings:
-                if m.is_static: continue
-                f.write(f"#undef {m.name}\n")
+            f.write("\n")
+
+            # Output exactly ONE declaration per global symbol
+            for name, m in self.global_symbols.items():
+                f.write(f"#undef {name}\n")
                 if m.is_function:
-                    f.write(f"extern {m.type_info} {m.name}({m.params}) __asm__(\"{m.asm_label}\");\n")
+                    f.write(f"extern {m.type_info} {name}({m.params}) __asm__(\"{m.asm_label}\");\n")
                 else:
-                    f.write(f"extern {m.type_info} {m.name} __asm__(\"{m.asm_label}\");\n")
+                    f.write(f"extern {m.type_info} {name} __asm__(\"{m.asm_label}\");\n")
+            
             f.write("\n#ifdef __cplusplus\n}\n#endif\n#endif\n")
 
         map_path = os.path.join(self.android_path, "symbol_map.txt")
@@ -180,14 +220,14 @@ class SourceHarmonizerV73:
 
     def run(self):
         print("\n" + "="*60)
-        print("Banjo-Kazooie Harmonizer v73.1 SINGULARITY-STABILIZER")
+        print("Banjo-Kazooie Harmonizer v73.2 SINGULARITY-STABILIZER (ENHANCED)")
         print("="*60)
         self.setup_workspace()
         self.perform_introspection()
         self.harmonize_logic()
         self.generate_artifacts()
         print("\n" + "="*60)
-        print(f"✓ STABILIZATION COMPLETE: {len(self.mappings)} Symbols Weaved")
+        print(f"✓ STABILIZATION COMPLETE: {len(self.global_symbols)} Globals / {len(self.mappings)} Total Weaved")
         print("="*60 + "\n")
 
 if __name__ == "__main__":
