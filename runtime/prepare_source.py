@@ -14,14 +14,20 @@ class SymbolMapping:
     params: str = ""
     asm_label: str = ""
 
-class SourceHarmonizerV74_3:
+class SourceHarmonizerV74_4:
     def __init__(self, android_path: str, decomp_path: str):
         self.android_path = os.path.normpath(android_path)
         self.decomp_path = os.path.normpath(decomp_path)
         self.src_target = os.path.join(self.android_path, "src")
         self.include_target = os.path.join(self.android_path, "include")
 
-        self.blacklisted_types = {'NULL', 'TRUE', 'FALSE', 'static', 'inline', 'extern', 'void', 's32', 'u32', 'f32'}
+        # Types that should never be prefixed with 'struct'
+        self.blacklisted_types = {'NULL', 'TRUE', 'FALSE', 'static', 'inline', 'extern', 'void', 
+                                 's32', 'u32', 'f32', 's16', 'u16', 's8', 'u8', 'f64'}
+        
+        # Prefixes for standard SDK functions that should NOT be file-isolated
+        self.sdk_prefixes = ('os', 'gu', 'al', 'n64', 'gS', 'gD', 'gd', '__os')
+        
         self.discovered_structs: Set[str] = set()
         self.global_symbols: Dict[str, SymbolMapping] = {}
 
@@ -38,7 +44,7 @@ class SourceHarmonizerV74_3:
         return text
 
     def setup_workspace(self):
-        print("[>] Deploying v74.3 Linker-Isolation Logic...")
+        print("[>] Optimizing v74.4 for Type Safety...")
         for folder in [self.src_target, self.include_target]:
             if os.path.exists(folder): shutil.rmtree(folder)
             os.makedirs(folder, exist_ok=True)
@@ -47,8 +53,7 @@ class SourceHarmonizerV74_3:
             if os.path.exists(src): shutil.copytree(src, dst, dirs_exist_ok=True)
 
     def harmonize_logic(self):
-        print("[>] Isolating Symbol Namespaces...")
-        # Matches function definitions but now we preserve the original name in the body
+        print("[>] Applying Late-Inclusion and SDK Whitelisting...")
         func_pat = re.compile(r'^(([a-zA-Z_][\w\* ]*?)\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE)
 
         for root, _, files in os.walk(self.src_target):
@@ -63,47 +68,56 @@ class SourceHarmonizerV74_3:
                 def func_repl(m):
                     full_sig, ret_type, name, params = m.group(1), m.group(2).strip(), m.group(3).strip(), m.group(4).strip()
                     
-                    if any(x in full_sig for x in ["static", "inline"]) or "..." in params:
+                    # SDK Whitelisting: Don't rename standard system functions
+                    if name.startswith(self.sdk_prefixes) or \
+                       any(x in full_sig for x in ["static", "inline"]) or "..." in params:
                         return m.group(0)
 
                     clean_ret = self.precision_sanitize(ret_type)
                     clean_params = self.precision_sanitize(params) or "void"
-                    # Label is now unique to this specific file instance
                     label = f"BKA_F_{fid}_{name}"
                     
                     self.global_symbols[name] = SymbolMapping(name, clean_ret, fid, clean_params, label)
-                    
-                    # We rename the ACTUAL function implementation to the unique label
-                    # This prevents the "multiple definition" error during linking.
                     return f"{clean_ret} {label}({clean_params}) {{"
 
                 patched = re.sub(func_pat, func_repl, content)
+                
+                # Late-Inclusion Injection: Find the last include to ensure types are defined first
+                includes = list(re.finditer(r'^#include\s+["<].*?[">]', patched, re.MULTILINE))
+                if includes:
+                    insert_pos = includes[-1].end()
+                    final_content = patched[:insert_pos] + '\n#include "harmonized_globals.h"' + patched[insert_pos:]
+                else:
+                    final_content = '#include "harmonized_globals.h"\n' + patched
+
                 with open(path, 'w') as file:
-                    # Inject local redirection so the file can still call its own functions by their original names
-                    file.write(f'#include "harmonized_globals.h"\n' + patched)
+                    file.write(final_content)
 
     def generate_header(self):
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         with open(header_path, 'w') as f:
-            f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n\n")
+            f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n")
+            f.write("// Ensure standard types are available for the declarations below\n")
+            f.write("#include <ultra64.h>\n\n")
             
             for t in sorted(self.discovered_structs):
                 f.write(f"struct {t};\n")
             
-            f.write("\n// Weak Redirection Layer\n")
-            # This allows calls to 'func()' to resolve to the unique 'BKA_F_..._func' 
-            # while allowing the linker to choose the "best" one if duplicates exist.
+            f.write("\n// Local Symbol Redirections\n")
             for name, m in self.global_symbols.items():
-                f.write(f"extern {m.type_info} {m.asm_label}({m.params});\n")
-                f.write(f"#define {name} {m.asm_label}\n")
+                # Only define redirection if it's a custom function (non-SDK)
+                f.write(f"#ifndef {name}\n")
+                f.write(f" extern {m.type_info} {m.asm_label}({m.params});\n")
+                f.write(f" #define {name} {m.asm_label}\n")
+                f.write(f"#endif\n")
             f.write("\n#endif\n")
 
     def run(self):
         self.setup_workspace()
         self.harmonize_logic()
         self.generate_header()
-        print("✓ Stabilization v74.3 Complete")
+        print("✓ Stabilization v74.4 Complete")
 
 if __name__ == "__main__":
-    harmonizer = SourceHarmonizerV74_3("Android/app/src/main/cpp", "decomp-files")
+    harmonizer = SourceHarmonizerV74_4("Android/app/src/main/cpp", "decomp-files")
     harmonizer.run()
