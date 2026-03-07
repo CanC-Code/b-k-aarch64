@@ -3,128 +3,157 @@ import os
 import re
 import sys
 import hashlib
+import shutil
 from pathlib import Path
 
 """
-SourceHarmonizer v74.8 - Semantic Safety Edition
+SourceHarmonizer v75 - Zero-Header Linker Isolation
 Fixes:
-1. Typedef Protection: Explicitly ignores s32, u32, f32, etc., from discovery.
-2. Selective Pointer Conversion: Only converts arrays of custom structs, not primitive buffers.
-3. Header Guard Sanitization: Adds #undef before #define to prevent macro recursion.
-4. Token-Based Discovery: Improves accuracy of dynamic type detection.
+1. Drops 'harmonized_globals.h' entirely, eliminating all "Incomplete Type" and "Conflicting Type" errors.
+2. Uses Weak Alias export strategy to perfectly mimic N64 overlay isolation on AArch64.
+3. Relies purely on the preprocessor (#define) to rename implementations, preventing any AST/Signature corruption.
 """
 
-class SourceHarmonizer:
-    def __init__(self, target_dir):
+class SourceHarmonizerV75:
+    def __init__(self, target_dir, decomp_path):
         self.target_dir = Path(target_dir)
-        self.discovered_types = set()
-        # Explicitly protect these from being turned into 'struct s32' etc.
-        self.blacklist = {
-            's8', 'u8', 's16', 'u16', 's32', 'u32', 's64', 'u64', 
-            'f32', 'f64', 'void', 'int', 'char', 'float', 'double',
-            'bool', 'size_t', 'uintptr_t', 's16p', 'u16p'
-        }
+        self.decomp_path = Path(decomp_path)
         self.stats = {"files_processed": 0, "changes_made": 0}
-
-    def discover_types(self):
-        """Scans codebase for legitimate struct/union/enum tags."""
-        print(f"[*] Scanning {self.target_dir} for legitimate tags...")
-        # Matches 'struct TagName' or 'typedef struct TagName'
-        tag_pattern = re.compile(r'\b(struct|union|enum)\s+([A-Za-z_]\w*)')
         
-        for file_path in self.target_dir.rglob('*.[ch]'):
-            try:
-                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    content = f.read()
-                    for match in tag_pattern.finditer(content):
-                        name = match.group(2)
-                        if name not in self.blacklist and len(name) > 1:
-                            self.discovered_types.add(name)
-            except Exception as e:
-                print(f"[!] Scan error {file_path.name}: {e}")
+        # Standard C keywords to ignore
+        self.c_keywords = {
+            'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do', 
+            'break', 'continue', 'case', 'default', 'goto', 'struct', 'union', 
+            'enum', 'static', 'extern', 'const', 'volatile', 'inline', 'typedef'
+        }
         
-        print(f"[+] Discovered {len(self.discovered_types)} valid custom tags.")
-
-    def harmonize_content(self, content):
-        if not self.discovered_types:
-            return content
-
-        # 1. Clean up "Double Tagging" from previous failed runs
-        for tag in self.discovered_types:
-            double_pattern = re.compile(rf'\bstruct\s+struct\s+{tag}\b')
-            content = double_pattern.sub(f'struct {tag}', content)
-
-        # 2. Dynamic Tagging with Semantic Guard
-        sorted_tags = sorted(list(self.discovered_types), key=len, reverse=True)
-        tags_regex = "|".join(re.escape(t) for t in sorted_tags)
+        # Standard lib functions to ignore
+        self.std_c = {
+            'main', 'memcpy', 'memset', 'strlen', 'strcpy', 'strcmp', 
+            'sprintf', 'printf', 'malloc', 'free', 'sin', 'cos', 'sinf', 
+            'cosf', 'sqrt', 'sqrtf', 'abs', 'fabs'
+        }
         
-        # Matches TagName but NOT if already prefixed by struct/union/enum
-        # Also ensures it looks like a type usage (followed by * or space+identifier)
-        standalone_pattern = re.compile(rf'(?<!struct\s)(?<!union\s)(?<!enum\s)\b({tags_regex})\b(?=\s*\*|\s+[A-Za-z_])')
-        content = standalone_pattern.sub(r'struct \1', content)
+        # SDK & internal low-level prefixes that must remain linked globally
+        self.sdk_prefixes = ('os', 'gu', 'al', 'gS', 'gD', 'gd', '__os', 'sp', 'dp', 'rmon')
 
-        # 3. Targeted Array-to-Pointer Conversion
-        # Only targets arrays of structs that often cause "incomplete type" errors in NDK
-        # Example: struct AnimTexture arg[4] -> struct AnimTexture *arg
-        array_pattern = re.compile(r'(struct\s+([A-Za-z_]\w*))\s+([A-Za-z_]\w*)\s*\[\s*\d+\s*\]')
+    def setup_workspace(self):
+        print(f"[>] Preparing v75 Workspace...")
+        src_target = self.target_dir / "src"
+        include_target = self.target_dir / "include"
         
-        def array_replacer(m):
-            tag_name = m.group(2)
-            # Only convert if it's one of our discovered custom types
-            if tag_name in self.discovered_types:
-                return f"{m.group(1)} *{m.group(3)}"
-            return m.group(0)
+        for folder in [src_target, include_target]:
+            if folder.exists():
+                shutil.rmtree(folder)
+            folder.mkdir(parents=True, exist_ok=True)
+            
+        for sub in ["src", "include"]:
+            src = self.decomp_path / sub
+            dst = self.target_dir / sub
+            if src.exists():
+                shutil.copytree(src, dst, dirs_exist_ok=True)
 
-        content = array_pattern.sub(array_replacer, content)
+    def remove_strings_and_comments(self, text):
+        """Removes strings and comments to provide a safe string for Regex targeting."""
+        text = re.sub(r'//.*', '', text)
+        text = re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL)
+        text = re.sub(r'".*?"', '""', text, flags=re.DOTALL)
+        return text
 
-        return content
+    def process_file(self, file_path):
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            original_content = f.read()
 
-    def run(self):
-        if not self.target_dir.exists():
-            print(f"[!] Error: Path {self.target_dir} invalid.")
+        clean_content = self.remove_strings_and_comments(original_content)
+        fid = hashlib.md5(str(file_path.name).encode()).hexdigest()[:8]
+        
+        # Matches: func_name(...) { 
+        func_pattern = re.compile(r'\b([a-zA-Z_]\w*)\s*\([^{;]*\)\s*\{')
+        
+        defined_funcs = []
+        for match in func_pattern.finditer(clean_content):
+            func_name = match.group(1)
+            start_idx = match.start()
+            
+            # Exclusion Filters
+            if func_name in self.c_keywords or func_name in self.std_c:
+                continue
+            if func_name.startswith(self.sdk_prefixes):
+                continue
+            if func_name.isupper():
+                continue
+
+            # Context Filter: Look backwards to the previous statement to detect 'static' or 'inline'
+            prefix_str = clean_content[:start_idx]
+            cut_idx = max(prefix_str.rfind(';'), prefix_str.rfind('}'), prefix_str.rfind('{'))
+            if cut_idx != -1:
+                prefix_str = prefix_str[cut_idx+1:]
+            
+            tokens = re.findall(r'[a-zA-Z_]\w*', prefix_str)
+            if any(k in tokens for k in ['static', 'inline', 'typedef']):
+                continue
+                
+            defined_funcs.append(func_name)
+
+        # Deduplicate while preserving order
+        defined_funcs = list(dict.fromkeys(defined_funcs))
+        
+        if not defined_funcs:
             return
 
-        self.discover_types()
+        # Prepare Injection Blocks
+        macros = "// --- BKA MACROS START ---\n"
+        aliases = "\n\n// --- BKA ALIASES START ---\n"
+        
+        for func in defined_funcs:
+            unique_name = f"BKA_F_{fid}_{func}"
+            
+            # The macro silently renames the definition and local calls
+            macros += f"#define {func} {unique_name}\n"
+            
+            # The weak alias securely exposes the symbol for cross-file linking
+            aliases += f"#undef {func}\n"
+            aliases += f"__typeof__({unique_name}) {func} __attribute__((weak, alias(\"{unique_name}\")));\n"
+
+        macros += "// --- BKA MACROS END ---\n\n"
+        aliases += "// --- BKA ALIASES END ---\n"
+
+        # Reconstruct the file with macros at the absolute top, aliases at the absolute bottom
+        new_content = macros + original_content + aliases
+
+        if new_content != original_content:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(new_content)
+            self.stats["changes_made"] += 1
+
+    def run(self):
+        if not self.decomp_path.exists():
+            print(f"[!] Error: Decompilation path {self.decomp_path} not found.")
+            return
+
+        self.setup_workspace()
+        print(f"[*] Applying v75 Function-Level Linker Isolation...")
 
         for file_path in self.target_dir.rglob('*.[ch]'):
-            # Skip standard library headers if they exist in subfolders
-            if "include/libc" in str(file_path): continue
+            # Skip standard library headers and header files entirely
+            if "include/libc" in str(file_path) or file_path.suffix == '.h': 
+                continue
             
-            self.stats["files_processed"] += 1
             try:
-                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    content = f.read()
-
-                new_content = self.harmonize_content(content)
-
-                if new_content != content:
-                    with open(file_path, 'w', encoding='utf-8') as f:
-                        f.write(new_content)
-                    self.stats["changes_made"] += 1
+                self.process_file(file_path)
+                self.stats["files_processed"] += 1
             except Exception as e:
                 print(f"[!] Error processing {file_path.name}: {e}")
 
-        self.generate_safety_header()
-        print(f"\n[+] v74.8 Complete. Files Modified: {self.stats['changes_made']}")
+        print(f"\n[+] v75 Complete.")
+        print(f"    Files Processed: {self.stats['files_processed']}")
+        print(f"    Files Modified:  {self.stats['changes_made']}")
 
-    def generate_safety_header(self):
-        """Generates a cleaner harmonized_globals.h with macro collision protection."""
-        header_path = self.target_dir / "include" / "harmonized_globals.h"
-        if not header_path.parent.exists(): return
-
-        with open(header_path, 'w') as f:
-            f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n\n")
-            f.write("// Forward declarations for discovered types\n")
-            for tag in sorted(self.discovered_types):
-                f.write(f"struct {tag};\n")
-            
-            f.write("\n// Macro Protection Layer\n")
-            f.write("// Prevents recursion if these names are used in system headers\n")
-            # In a real run, this would be populated by the symbol mapper from v74.4
-            # For this standalone tool, we ensure the infrastructure is ready.
-            f.write("\n#endif // HARMONIZED_GLOBALS_H\n")
 
 if __name__ == "__main__":
-    target = sys.argv[1] if len(sys.argv) > 1 else "."
-    harmonizer = SourceHarmonizer(target)
+    # Pointing to standard Banjo-Kazooie repository paths
+    target = "Android/app/src/main/cpp"
+    decomp = "decomp-files"
+    
+    harmonizer = SourceHarmonizerV75(target, decomp)
     harmonizer.run()
