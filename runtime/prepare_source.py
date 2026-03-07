@@ -7,30 +7,31 @@ import shutil
 from pathlib import Path
 
 """
-SourceHarmonizer v75.20 — Ultimate Weak Symbol Precision
+SourceHarmonizer v75.21 — Strict Forward Declaration Matching
 
 ═══════════════════════════════════════════════════════════════════════════════
-LOG 44 — v75.19 failed with:
-  boggy3.c:69:9: error: expected ')'
-  __attribute__((weak)) || func_80390334()
+LOG 45 — v75.20 fixed Pass 4 (boggy3.c compiled). New error in Pass 2:
+  memory.c:239:12: error: expected identifier or '('
+  static return _heap_get_occupied_size();
 ═══════════════════════════════════════════════════════════════════════════════
 
 ROOT CAUSE:
-  The regex in v75.19 explicitly forbade `={}()` in the return type, but ALLOWED 
-  logical operators like `|`, `&`, `<`, `>`. Therefore, a multi-line `if` 
-  statement evaluating `|| func_80390334()` matched the definition criteria.
+  Pass 2 (`fix_static_conflicts`) attempts to find non-static forward decls of 
+  static functions and add `static`. Its old regex was too loose and matched 
+  function calls inside `return` statements, treating `return func();` as a 
+  declaration and transforming it into `static return func();`.
 
 THE FIX:
-  Invert the exclusion logic into an explicit INCLUSION logic for Group 2 
-  (the return type prefix). Valid C return types ONLY contain letters, digits, 
-  underscores, whitespace, and asterisks (`*`). 
-  
-  By strictly using `[a-zA-Z0-9_\s\*]*?`, it is mathematically impossible for 
-  the regex to match lines starting with logical operators, math operators, 
-  or punctuation. It will only match true function definitions.
+  Bring Pass 2 up to the same strict regex standards as Pass 4. 
+  When scanning for forward declarations:
+  1. The prefix must only contain valid C type characters.
+  2. If the prefix contains control flow keywords (return, if, while), skip it.
+  3. If the prefix has no valid type tokens (e.g., a plain call `func();`), skip it.
+  4. If the prefix is `extern`, strip `extern` before adding `static` to avoid 
+     `static extern` errors.
 """
 
-class SourceHarmonizerV7520:
+class SourceHarmonizerV7521:
     def __init__(self, target_dir, decomp_path):
         self.target_dir  = Path(target_dir)
         self.decomp_path = Path(decomp_path)
@@ -71,7 +72,7 @@ class SourceHarmonizerV7520:
         self._def_pat_cache = {}
 
     def setup_workspace(self):
-        print("[>] Preparing v75.20 Workspace...")
+        print("[>] Preparing v75.21 Workspace...")
         for folder in [self.target_dir / "src", self.target_dir / "include"]:
             if folder.exists():
                 shutil.rmtree(folder)
@@ -112,25 +113,60 @@ class SourceHarmonizerV7520:
         clean = self.remove_strings_and_comments(content)
         static_defs = self.find_static_definitions(clean)
         if not static_defs: return content
+        
         modified = content
         needs_injected = []
+        
         for func_name, sig in static_defs.items():
-            fwd_pat = re.compile(r'^([ \t]*)(?!static\b)(\b\S[^\n]*?\b' + re.escape(func_name) + r'\s*\([^)]*\)\s*;)', re.MULTILINE)
-            patched = fwd_pat.sub(lambda m: f"{m.group(1)}static {m.group(2)}", modified)
+            # Strict fwd decl pattern: whitespace + valid type chars + func_name(params);
+            fwd_pat = re.compile(
+                r'^([ \t]*)([a-zA-Z0-9_\s\*]*?\b)' + re.escape(func_name) + r'\s*\([^;{}]*\)\s*;',
+                re.MULTILINE
+            )
+            
+            def _fwd_repl(m):
+                full = m.group(0)
+                indent = m.group(1)
+                prefix = m.group(2)
+                
+                if re.search(r'\bstatic\b', prefix):
+                    return full
+                    
+                tokens = re.findall(r'[a-zA-Z_]\w*', prefix)
+                
+                # Reject function calls masquerading as decls (e.g. `return func();`)
+                if set(tokens).intersection(self._ctrl_keywords):
+                    return full
+                    
+                # A valid declaration needs a type token (not just storage qualifiers like 'extern')
+                type_toks = [t for t in tokens if t not in self._storage_quals]
+                if not type_toks:
+                    return full
+                    
+                # Avoid "static extern" errors
+                clean_prefix = re.sub(r'\bextern\s+', '', prefix)
+                return f"{indent}static {clean_prefix}{full[len(indent)+len(prefix):]}"
+
+            patched = fwd_pat.sub(_fwd_repl, modified)
             if patched != modified:
                 modified = patched
                 continue
+                
             if not self.has_existing_forward_decl(clean, func_name):
                 call_pat = re.compile(r'\b' + re.escape(func_name) + r'\s*\(')
                 def_pat = re.compile(r'\bstatic\b[^;{}]*?\b' + re.escape(func_name) + r'\s*\([^{}]*?\)\s*\{', re.DOTALL)
-                if call_pat.search(clean) and def_pat.search(clean) and call_pat.search(clean).start() < def_pat.search(clean).start():
+                call_m = call_pat.search(clean)
+                def_m = def_pat.search(clean)
+                if call_m and def_m and call_m.start() < def_m.start():
                     needs_injected.append(f"static {sig};")
+                    
         if needs_injected:
             block = "// --- SH static forward declarations ---\n" + "\n".join(needs_injected) + "\n// --- SH static forward declarations end ---\n\n"
             last_inc = None
             for m in re.finditer(r'^#include\b[^\n]*\n', modified, re.MULTILINE): last_inc = m
             pos = last_inc.end() if last_inc else 0
             modified = modified[:pos] + block + modified[pos:]
+            
         return modified
 
     def fix_static_local_c89_patterns(self, content):
@@ -143,7 +179,6 @@ class SourceHarmonizerV7520:
     def inject_weak_attribute(self, content, fname):
         if fname not in self._def_pat_cache:
             # STRICT WHITELIST: The return type (Group 2) can ONLY contain letters, numbers, spaces, underscores, and asterisks.
-            # This completely rejects logic operators (||, &&), math operators (+, -), and parenthesis.
             self._def_pat_cache[fname] = re.compile(
                 r'^([ \t]*)([a-zA-Z0-9_\s\*]*?\b)(' + re.escape(fname) + r'\s*\([^;{}]*?\)\s*\{)',
                 re.MULTILINE
@@ -198,7 +233,7 @@ class SourceHarmonizerV7520:
             if "include/libc" not in str(file_path) and file_path.suffix != '.h':
                 self.process_file(file_path)
                 self.stats["files_processed"] += 1
-        print(f"\n[+] v75.20 Complete. Files Processed: {self.stats['files_processed']} | Modified: {self.stats['changes_made']}")
+        print(f"\n[+] v75.21 Complete. Files Processed: {self.stats['files_processed']} | Modified: {self.stats['changes_made']}")
 
 if __name__ == "__main__":
-    SourceHarmonizerV7520("Android/app/src/main/cpp", "decomp-files").run()
+    SourceHarmonizerV7521("Android/app/src/main/cpp", "decomp-files").run()
