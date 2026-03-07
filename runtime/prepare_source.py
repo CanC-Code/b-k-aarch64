@@ -7,30 +7,30 @@ import shutil
 from pathlib import Path
 
 """
-SourceHarmonizer v75.19 — Precise Weak Symbol Injection
+SourceHarmonizer v75.20 — Ultimate Weak Symbol Precision
 
 ═══════════════════════════════════════════════════════════════════════════════
-LOG 42/43 — v75.18 applied `__attribute__((weak))` incorrectly to statements.
-  Errors: 'weak' attribute cannot be applied to a statement
-  Examples:
-    __attribute__((weak)) if(func_8038D920(this, sp38[1])){
-    __attribute__((weak)) chTiptup_sfxCorrectHit();
+LOG 44 — v75.19 failed with:
+  boggy3.c:69:9: error: expected ')'
+  __attribute__((weak)) || func_80390334()
 ═══════════════════════════════════════════════════════════════════════════════
 
 ROOT CAUSE:
-  The Pass 4 regex `\([^{}]*?\)\s*\{` allowed matching across semicolons and 
-  newlines (due to re.DOTALL and broad negative character classes). It consumed 
-  function calls ending in `;` by bleeding into subsequent `if(...) {` blocks.
+  The regex in v75.19 explicitly forbade `={}()` in the return type, but ALLOWED 
+  logical operators like `|`, `&`, `<`, `>`. Therefore, a multi-line `if` 
+  statement evaluating `|| func_80390334()` matched the definition criteria.
 
 THE FIX:
-  Tighten the definition-matching regex:
-  1. Forbid `(`, `=`, `;`, `{`, `}` in the return type (Group 2).
-  2. Forbid `;`, `{`, `}` inside the parameter list.
-  3. Add a hard Python-level check to abort replacement if the preceding tokens
-     contain control keywords (if, while, for, switch, return).
+  Invert the exclusion logic into an explicit INCLUSION logic for Group 2 
+  (the return type prefix). Valid C return types ONLY contain letters, digits, 
+  underscores, whitespace, and asterisks (`*`). 
+  
+  By strictly using `[a-zA-Z0-9_\s\*]*?`, it is mathematically impossible for 
+  the regex to match lines starting with logical operators, math operators, 
+  or punctuation. It will only match true function definitions.
 """
 
-class SourceHarmonizerV7519:
+class SourceHarmonizerV7520:
     def __init__(self, target_dir, decomp_path):
         self.target_dir  = Path(target_dir)
         self.decomp_path = Path(decomp_path)
@@ -71,7 +71,7 @@ class SourceHarmonizerV7519:
         self._def_pat_cache = {}
 
     def setup_workspace(self):
-        print("[>] Preparing v75.19 Workspace...")
+        print("[>] Preparing v75.20 Workspace...")
         for folder in [self.target_dir / "src", self.target_dir / "include"]:
             if folder.exists():
                 shutil.rmtree(folder)
@@ -142,10 +142,10 @@ class SourceHarmonizerV7519:
 
     def inject_weak_attribute(self, content, fname):
         if fname not in self._def_pat_cache:
-            # Group 2 (return type): explicitly forbid ;, {, }, =, ( to prevent matching calls/assignments.
-            # Group 3 (params): explicitly forbid ;, {, } to prevent bleeding across statements.
+            # STRICT WHITELIST: The return type (Group 2) can ONLY contain letters, numbers, spaces, underscores, and asterisks.
+            # This completely rejects logic operators (||, &&), math operators (+, -), and parenthesis.
             self._def_pat_cache[fname] = re.compile(
-                r'^([ \t]*)([^;{}=()]*?\b)(' + re.escape(fname) + r'\s*\([^;{}]*?\)\s*\{)',
+                r'^([ \t]*)([a-zA-Z0-9_\s\*]*?\b)(' + re.escape(fname) + r'\s*\([^;{}]*?\)\s*\{)',
                 re.MULTILINE
             )
             
@@ -154,7 +154,7 @@ class SourceHarmonizerV7519:
             if '__attribute__((weak))' in full or re.search(r'\bstatic\b', m.group(2)):
                 return full
                 
-            # Final safety check: if the "return type" contains control keywords, it's a false positive.
+            # Final safety check: if the type area contains 'return', 'if', etc., skip it.
             before_tokens = set(re.findall(r'[a-zA-Z_]\w*', m.group(2)))
             if before_tokens.intersection(self._ctrl_keywords):
                 return full
@@ -198,7 +198,7 @@ class SourceHarmonizerV7519:
             if "include/libc" not in str(file_path) and file_path.suffix != '.h':
                 self.process_file(file_path)
                 self.stats["files_processed"] += 1
-        print(f"\n[+] v75.19 Complete. Files Processed: {self.stats['files_processed']} | Modified: {self.stats['changes_made']}")
+        print(f"\n[+] v75.20 Complete. Files Processed: {self.stats['files_processed']} | Modified: {self.stats['changes_made']}")
 
 if __name__ == "__main__":
-    SourceHarmonizerV7519("Android/app/src/main/cpp", "decomp-files").run()
+    SourceHarmonizerV7520("Android/app/src/main/cpp", "decomp-files").run()
