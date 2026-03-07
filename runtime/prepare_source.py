@@ -7,7 +7,7 @@ import shutil
 from pathlib import Path
 
 """
-SourceHarmonizer v75.8 — Robust C89/IDO-to-Clang Source Normalisation
+SourceHarmonizer v75.9 — Comprehensive C89/IDO-to-Clang Source Normalisation
 
 CHANGE LOG:
   v75.1  Weak-alias BKA strategy; __builtin_memcpy for array init
@@ -15,41 +15,51 @@ CHANGE LOG:
   v75.3  fix_static_conflicts Pass 2 (Strategy A+B); forward-decl exclusion set
   v75.4  Direct source patch: static/fwd-decl conflict; two inject strategies
   v75.5  has_existing_forward_decl guard (attacktutorial.c duplicate injection)
-  v75.6  Type-aware forward-decl detector (fixes false-positive on bare call stmts);
-         Pass 3 Form 1: `static T v = call()` C99 initialiser error
-  v75.7  Pass 3 Form 2: C89 implicit-int `static v = call()` (no type token)
-  v75.8  Unified Pass 3 — replaces Forms 1/2 with three orthogonal rules covering
-         ALL known C89/IDO static-local patterns that Clang C99 rejects:
-           Rule A: compound-assign  `static v |= expr`   -> `v |= expr`
-           Rule B: implicit-int     `static v = call()`  -> `v = call()`
-           Rule C: explicit-type    `static T v = call()` -> `T v = call()`
-         Rules are applied in order A→B→C to avoid mutual interference.
-         Every rule is gated on indentation (inside function bodies only).
-         File-scope statics and constant initialisers are never touched.
+  v75.6  Type-aware forward-decl detector; Pass 3 Form 1: typed static runtime init
+  v75.7  Pass 3 Form 2: C89 implicit-int `static v = call()`
+  v75.8  Unified Pass 3 Rules A/B/C: compound-assign, implicit-int, explicit-type
+  v75.9  Pass 3 expanded:
+           Rule A2: struct/member plain assign `static seq->field[i] = call()`
+           Rules B/C: allow trailing inline comments after `;` on same line
 
-ROOT CAUSE (log 28 — castle.c line 383):
-  `static unlocked_cheat_flags |= __maCastle_cheatoCodeUnlocked(i);`
-  C89/IDO treated `static` as a statement-level storage qualifier that could
-  precede any statement. Clang C99 only accepts `static` in declarations, so
-  it parses `static unlocked_cheat_flags` as a malformed declaration and
-  `|=` as an unexpected token.
-  Fix (Rule A): strip `static` from compound-assignment statements.
+ROOT CAUSES (log 29 — cseq.c):
+  Five errors, two distinct root causes:
+
+  1. Lines 29 + 73 — struct member assignments with `static` prefix:
+       `            static seq->evtDeltaTicks[i] = __readVarLen(seq,i);`
+       `        static seq->evtDeltaTicks[firstTrack] += __readVarLen(seq,firstTrack);`
+     Rule A handled the compound-assign (`+=`) at line 73 (complex lvalue works via
+     the greedy [^=\n;{}]+? capture). But line 29's plain `=` was not handled:
+       - Rule B requires a SIMPLE identifier LHS (`[a-zA-Z_]\\w*`)
+       - Rule C requires type+varname pattern; array subscript `[i]` after member name
+         prevents the regex from matching correctly.
+     Fix: Rule A2 — detects plain `=` assignment where LHS contains `->` or `.`
+     (unambiguously a struct member access, not a type declaration).
+
+  2. Lines 118 + 148 — implicit-int static init with trailing inline comment:
+       `    static status = __getTrackByte(seq,track);     /* read the status byte */`
+       `            static status = __getTrackByte(seq,track); /* get next two bytes, ignore them */`
+     Rule B used `\\s*;$` which requires the semicolon at strict end-of-line.
+     With a `/* ... */` comment trailing the `;`, `$` doesn't match after `;`.
+     Fix: changed Rule B (and Rule C for consistency) ending to `;[^\\n]*$` to
+     allow arbitrary trailing content (comments) after the semicolon.
 
 FULL PASS SUMMARY:
-  Pass 1 — Array init         `u8 tmp[N] = D_x;`             -> __builtin_memcpy
+  Pass 1 — Array init          `u8 tmp[N] = D_x;`              -> __builtin_memcpy
   Pass 2 — Static conflicts
-    Strategy A                non-static forward decl          -> add `static`
-    Strategy B                missing static forward decl      -> inject after #includes
-  Pass 3 — Static local C89 normalisation (Rules A/B/C, applied in order)
-    Rule A  compound-assign   `static v OP= expr;`            -> `v OP= expr;`
-    Rule B  implicit-int init `static v = call();`             -> `v = call();`
-    Rule C  typed init        `static TYPE v = call();`        -> `TYPE v = call();`
-  Pass 4 — BKA exclusion set  static + forward-declared functions excluded
+    Strategy A                 non-static forward decl           -> add `static`
+    Strategy B                 missing static forward decl       -> inject after #includes
+  Pass 3 — Static local C89 normalisation (Rules A/A2/B/C, applied in order)
+    Rule A   compound-assign   `static LVALUE OP= expr;`         -> `LVALUE OP= expr;`
+    Rule A2  member plain-asgn `static obj->field = call();`     -> `obj->field = call();`
+    Rule B   implicit-int init `static v = call(); /* cmt */`    -> `v = call();`
+    Rule C   typed init        `static TYPE v = call();`          -> `TYPE v = call();`
+  Pass 4 — BKA exclusion set   static + forward-declared functions excluded
   Pass 5 — BKA macro/weak-alias injection for cross-file linking
 """
 
 
-class SourceHarmonizerV758:
+class SourceHarmonizerV759:
     def __init__(self, target_dir, decomp_path):
         self.target_dir  = Path(target_dir)
         self.decomp_path = Path(decomp_path)
@@ -77,37 +87,50 @@ class SourceHarmonizerV758:
         }
 
         # ── Pre-compiled Pass 3 patterns ──────────────────────────────────────
-        #
-        # Rule A: `    static varname OP= expr;`  ->  `    varname OP= expr;`
-        #   Handles compound-assignment C89 idiom. All compound operators covered.
-        #   Indentation guard: ^([ \t]+) ensures file-scope statics are untouched.
+
+        # Rule A: compound-assign with ANY lvalue (simple var, struct member, array elem)
+        #   `    static LVALUE OP= expr;`  ->  `    LVALUE OP= expr;`
+        #   Compound operators: |= &= ^= += -= *= /= %= <<= >>=
+        #   The lvalue is captured by non-greedy [^=\n;{}]+? stopping at the operator.
+        #   Indentation-gated (^[ \t]+).
         self._p3a = re.compile(
-            r'^([ \t]+)static\s+([a-zA-Z_]\w*(?:\s*\[[^\]]*\])?)\s*'
-            r'([|&^+\-*/%]=|<<=|>>=)',
+            r'^([ \t]+)static\s+([^=\n;{}]+?)\s*([|&^+\-*/%]=|<<=|>>=)',
             re.MULTILINE
         )
 
-        # Rule B: `    static varname = call(...);`  ->  `    varname = call(...);`
-        #   Implicit-int C89 static with runtime initialiser.
-        #   Guard: RHS must contain balanced `(...)` — constants are untouched.
+        # Rule A2: plain assign where LHS is a struct/member access (contains -> or .)
+        #   `    static seq->field[i] = call();`  ->  `    seq->field[i] = call();`
+        #   Distinguishes from declarations: type names never contain `->` or `.member`.
+        #   No RHS guard needed — member-access LHS unambiguously marks this as a statement.
+        #   Allows trailing inline comments after `;`.
+        self._p3a2 = re.compile(
+            r'^([ \t]+)static\s+([a-zA-Z_]\w*(?:->|\.)[^=\n;{}]*?)\s*=\s*([^;\n]+?)\s*;[^\n]*$',
+            re.MULTILINE
+        )
+
+        # Rule B: implicit-int init with runtime RHS (simple identifier, no type token)
+        #   `    static varname = call(); /* comment */`  ->  `    varname = call();`
+        #   Guard: RHS must contain balanced `(...)` — constant initialisers untouched.
+        #   Trailing comment allowed via `[^\n]*$`.
         self._p3b = re.compile(
             r'^([ \t]+)static\s+([a-zA-Z_]\w*)\s*=\s*'
-            r'([^;\n]+(?:\([^;\n]*\))[^;\n]*)\s*;$',
+            r'([^;\n]+(?:\([^;\n]*\))[^;\n]*)\s*;[^\n]*$',
             re.MULTILINE
         )
 
-        # Rule C: `    static TYPE *v = call();`  ->  `    TYPE *v = call();`
-        #   Explicit-type static with runtime initialiser.
-        #   Non-greedy type capture; \w* (not \w+) allows single-char names.
-        #   Guard: RHS must contain `(` — applied inside the repl fn.
+        # Rule C: explicit-type init with runtime RHS
+        #   `    static u32 *ptr = call();`  ->  `    u32 *ptr = call();`
+        #   Guard: RHS must contain `(` — checked in repl fn to allow backtracking.
+        #   Uses \w* (not \w+) to allow single-char variable names.
+        #   Trailing comment allowed via `[^\n]*$`.
         self._p3c = re.compile(
-            r'^([ \t]+)static\s+([^=\n;{}]+?)\b([a-zA-Z_]\w*)\s*=\s*([^;\n]+)\s*;$',
+            r'^([ \t]+)static\s+([^=\n;{}]+?)\b([a-zA-Z_]\w*)\s*=\s*([^;\n]+)\s*;[^\n]*$',
             re.MULTILINE
         )
 
     # ─────────────────────────────────────────────────────────────────────────
     def setup_workspace(self):
-        print("[>] Preparing v75.8 Workspace...")
+        print("[>] Preparing v75.9 Workspace...")
         for folder in [self.target_dir / "src", self.target_dir / "include"]:
             if folder.exists():
                 shutil.rmtree(folder)
@@ -120,8 +143,8 @@ class SourceHarmonizerV758:
 
     # ─────────────────────────────────────────────────────────────────────────
     def remove_strings_and_comments(self, text):
-        text = re.sub(r'//[^\n]*',       '',   text)
-        text = re.sub(r'/\*.*?\*/',      '',   text, flags=re.DOTALL)
+        text = re.sub(r'//[^\n]*',          '',   text)
+        text = re.sub(r'/\*.*?\*/',         '',   text, flags=re.DOTALL)
         text = re.sub(r'"(?:[^"\\]|\\.)*"', '""', text)
         return text
 
@@ -143,12 +166,8 @@ class SourceHarmonizerV758:
     def has_existing_forward_decl(self, clean_content, func_name):
         """
         True only if func_name has a real forward declaration (not a call statement).
-        Requires a type token in the line prefix, no expression operators, no open-paren.
-        This correctly distinguishes:
-          `static bool foo();`     -> True   (bool is a type token)
-          `    foo();`             -> False  (no type token)
-          `    result = foo();`    -> False  (= operator in prefix)
-          `    if (!foo()) ...`    -> False  (! operator, open-paren)
+        Requires a type token in the line prefix before the function name,
+        no expression operators, and no open-paren (which would indicate an expression).
         """
         pat = re.compile(
             r'^([ \t]*(?:[^\n]*?))\b' + re.escape(func_name) + r'\s*\([^{}]*?\)\s*;',
@@ -173,20 +192,18 @@ class SourceHarmonizerV758:
         """
         Pass 2: resolve 'static declaration follows non-static declaration'.
 
-        Strategy A — patch existing explicit non-static forward decl:
-          `void foo(int x);`  ->  `static void foo(int x);`
-
-        Strategy B — inject missing static forward decl after last #include when:
-          • the function is called before its definition, AND
-          • no forward declaration of any kind exists (type-aware check).
+        Strategy A — patch an explicit non-static forward decl to add `static`.
+        Strategy B — inject a missing static forward decl after the last #include
+                     when a static function is called before its definition and
+                     no forward declaration of any kind already exists.
         """
-        clean      = self.remove_strings_and_comments(content)
+        clean       = self.remove_strings_and_comments(content)
         static_defs = self.find_static_definitions(clean)
         if not static_defs:
             return content
 
-        modified         = content
-        needs_injected   = []
+        modified       = content
+        needs_injected = []
 
         for func_name, sig in static_defs.items():
             # Strategy A
@@ -231,48 +248,59 @@ class SourceHarmonizerV758:
     # ─────────────────────────────────────────────────────────────────────────
     def fix_static_local_c89_patterns(self, content):
         """
-        Pass 3: fix all three classes of C89/IDO static-local patterns that
-        Clang C99 rejects. Applied Rule A → B → C to avoid interference.
+        Pass 3: fix all known C89/IDO static-local patterns that Clang C99 rejects.
+        Rules are applied in order A → A2 → B → C to avoid mutual interference.
 
-        Rule A — compound-assignment (most specific, applied first):
-          `    static flags |= call();`    ->  `    flags |= call();`
-          Clang parses `static flags` as a malformed declaration; `|=` is a syntax error.
-          Strips `static` keyword so the compound assignment is a plain statement.
-          Handles all compound operators: |= &= ^= += -= *= /= %= <<= >>=
+        Rule A  — compound-assign, any lvalue (most specific, no ambiguity):
+          `    static flags |= call();`             ->  `    flags |= call();`
+          `    static seq->field[i] += call();`     ->  `    seq->field[i] += call();`
+          All compound operators: |= &= ^= += -= *= /= %= <<= >>=
+          Lvalue captured by non-greedy [^=\\n;{}]+? which stops at the operator.
 
-        Rule B — implicit-int initialiser (applied second):
-          `    static varname = call();`   ->  `    varname = call();`
-          C89 implicit-int static local with a non-constant initialiser.
-          Guard: RHS must contain `(...)` to avoid constant initialisers.
+        Rule A2 — plain assign with struct/member-access lvalue (unambiguous statement):
+          `    static seq->field[i] = call();`      ->  `    seq->field[i] = call();`
+          The presence of `->` or `.` in the LHS conclusively identifies this as
+          a statement (not a declaration), allowing plain `=` to be safely stripped.
+          Trailing inline comments are preserved in the stripped form.
 
-        Rule C — typed initialiser (applied last):
-          `    static u32 *ptr = call();`  ->  `    u32 *ptr = call();`
-          C99 prohibits non-constant initialisers for static-storage-duration
-          variables even inside function bodies (IDO C89 extension).
-          Guard: RHS must contain `(` to avoid constant initialisers.
+        Rule B  — implicit-int plain assign (runtime RHS, no type token):
+          `    static status = call(); /* cmt */`   ->  `    status = call();`
+          Guard: RHS must contain balanced `(...)` to avoid touching constants.
+          Trailing comment stripped from output (comment is on original source line).
+
+        Rule C  — explicit-type plain assign (runtime RHS, type token present):
+          `    static u32 *ptr = call();`            ->  `    u32 *ptr = call();`
+          Guard: RHS must contain `(` — checked in replacement function.
+          Uses \\w* (not \\w+) to handle single-character variable names.
 
         All rules:
-          • Indentation-gated — file-scope statics are never touched
-          • Never touch constant initialisers like `static int count = 0;`
-          • Never touch static function definitions (handled by Pass 2/BKA)
+          • Indentation-gated — file-scope statics are NEVER touched
+          • Constant initialisers (e.g. `static int x = 0;`) are NEVER touched
+          • Static function definitions (handled by Pass 2/BKA) are NEVER touched
         """
-        # Rule A
+        # Rule A: compound-assign
         content = self._p3a.sub(
             lambda m: f"{m.group(1)}{m.group(2).rstrip()} {m.group(3)}",
             content
         )
 
-        # Rule B
+        # Rule A2: member-access plain assign
+        content = self._p3a2.sub(
+            lambda m: f"{m.group(1)}{m.group(2).rstrip()} = {m.group(3).strip()};",
+            content
+        )
+
+        # Rule B: implicit-int runtime init (with optional trailing comment)
         content = self._p3b.sub(
             lambda m: f"{m.group(1)}{m.group(2)} = {m.group(3).strip()};",
             content
         )
 
-        # Rule C
+        # Rule C: explicit-type runtime init
         def _repl_c(m):
             rhs = m.group(4).strip()
-            if '(' not in rhs:      # constant initialiser — leave alone
-                return m.group(0)
+            if '(' not in rhs:
+                return m.group(0)        # constant initialiser — leave alone
             return f"{m.group(1)}{m.group(2)}{m.group(3)} = {rhs};"
 
         content = self._p3c.sub(_repl_c, content)
@@ -380,7 +408,7 @@ class SourceHarmonizerV758:
             print(f"[!] Error: decompilation path '{self.decomp_path}' not found.")
             return
         self.setup_workspace()
-        print("[*] Applying v75.8 Function-Level Linker Isolation...")
+        print("[*] Applying v75.9 Function-Level Linker Isolation...")
         for file_path in self.target_dir.rglob('*.[ch]'):
             if "include/libc" in str(file_path) or file_path.suffix == '.h':
                 continue
@@ -389,7 +417,7 @@ class SourceHarmonizerV758:
                 self.stats["files_processed"] += 1
             except Exception as e:
                 print(f"[!] Error processing {file_path.name}: {e}")
-        print(f"\n[+] v75.8 Complete.")
+        print(f"\n[+] v75.9 Complete.")
         print(f"    Files Processed: {self.stats['files_processed']}")
         print(f"    Files Modified:  {self.stats['changes_made']}")
 
@@ -397,4 +425,4 @@ class SourceHarmonizerV758:
 if __name__ == "__main__":
     target = "Android/app/src/main/cpp"
     decomp = "decomp-files"
-    SourceHarmonizerV758(target, decomp).run()
+    SourceHarmonizerV759(target, decomp).run()
