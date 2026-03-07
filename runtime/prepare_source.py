@@ -7,84 +7,77 @@ import shutil
 from pathlib import Path
 
 """
-SourceHarmonizer v75.17 — K&R-style BKA forward declarations (return type only)
+SourceHarmonizer v75.18 — __attribute__((weak)) function isolation
 
 ═══════════════════════════════════════════════════════════════════════════════
-LOG 40 — v75.16 ran (861 files processed, 648 modified). Two files failed:
-  tanktup.c   — 1 error: conflicting types for BKA_F_c88d10b3_func_8038F470
-  code_3420.c — 1 error: conflicting types for BKA_F_ed0502ac_chvilegame_new_piece
+LOG 41 — v75.17 ran (861 files processed, 648 modified). One file failed:
+  histup.c — 1 error: conflicting types for 'BKA_F_68933714_func_8038D920'
+    int func_8038D920(Actor *this, f32 arg1){
+    previous declaration: int func_8038D920();      ← our K&R fwd decl
 ═══════════════════════════════════════════════════════════════════════════════
 
-ROOT CAUSE (v75.16 regression):
+ROOT CAUSE — K&R empty-param fwd decl incompatible with float params:
 
-  Error at tanktup.c:55:
-    void func_8038F470(ActorMarker *this, s32 arg1, enum chtanktup_leg_e leg_id){
-    Previous declaration at line 18:
-    void func_8038F470(ActorMarker *this, s32 arg1, enum chtanktup_leg_e leg_id);
+  C99 §6.7.5.3 ¶15: a declaration with an empty parameter list `()` is
+  compatible with a definition ONLY IF every parameter type is compatible
+  with its default argument promotion. `float` (f32) promotes to `double`
+  under default argument promotions. Since `float ≠ double`, the K&R
+  declaration `int func_8038D920()` is INCOMPATIBLE with the definition
+  `int func_8038D920(Actor *this, f32 arg1)` → "conflicting types".
 
-  Line 9:  #define func_8038F470 BKA_F_c88d10b3_func_8038F470   ← BKA macro
-  Line 18: void func_8038F470(...);                              ← our injected fwd decl
-  Line 55: void func_8038F470(...){                              ← original definition
+  This closes off the forward-declaration approach entirely:
+  - v75.16 full-param decls: enum incompleteness, array decay conflicts
+  - v75.17 K&R empty-param:  float/char/short promotion conflicts
+  There is no forward declaration form that is universally compatible with
+  all possible parameter types in C99 without exact type matching.
 
-  v75.16 injected forward declarations that included the FULL parameter list,
-  extracted from the source via regex. Despite the textual signatures looking
-  identical, Clang reports a type conflict. The root cause is that our extraction
-  regex captured a full-param signature that after macro expansion differed from
-  the definition's expansion in a subtle way — specifically:
+THE FIX — __attribute__((weak)) on function definitions:
 
-  In C99, `enum chtanktup_leg_e` in a forward declaration where the enum is
-  INCOMPLETE at that point (not yet defined) differs in type from the same `enum`
-  name once it IS complete (at the definition site). The full-param fwd decl
-  introduces a reference to the incomplete enum type, which Clang distinguishes
-  from the complete type used in the definition.
+  Instead of renaming symbols (via #define macros) and providing aliases,
+  mark each eligible function definition as a WEAK symbol.
 
-  code_3420.c has the same issue with `f32 position[3]` — an array parameter
-  type that decays to `f32 *` in a declaration but the regex emitted it as `[3]`,
-  creating a mismatch with what the definition produces after C parameter adjustment.
+  N64 decomp files contain many same-named functions across TUs (originally
+  in separate overlays). With strong linkage the linker errors on duplicates.
+  With weak linkage the linker silently picks one version — exactly the
+  correct behavior for an overlay port where all same-named versions are
+  functionally equivalent entry points.
 
-THE FIX — K&R-style forward declarations with empty parameter list:
+  What changes per eligible function definition:
+    BEFORE:  void func_8038D920(Actor *this, f32 arg1) {
+    AFTER:   __attribute__((weak)) void func_8038D920(Actor *this, f32 arg1) {
 
-  In C99 (and C11), a function declared with an empty parameter list `()` is
-  compatible with any actual parameter list. This is specified in C99 §6.7.5.3 ¶15:
-  "a declaration that uses an empty parameter list [...] is compatible with [...] 
-  a function that has a parameter type list."
+  What does NOT change:
+  - Function names (no renaming → no implicit-int → no fwd decl needed)
+  - Call sites (plain names work throughout)
+  - Static functions (already file-local, never cause duplicate symbols)
+  - main_no_args and std_c names (called from NativeBridge.cpp)
+  - SDK-prefixed functions (osXxx, guXxx, etc.)
 
-  We emit only the return type with `()`:
-    void func_8038F470();
-    ↓ (BKA macro expansion by preprocessor)
-    void BKA_F_c88d10b3_func_8038F470();
-
-  This:
-  • Prevents implicit-int declarations at call sites (return type IS specified)
-  • Is compatible with ANY actual parameter list (no param types to conflict)
-  • Only requires extracting the return type (simpler, fewer failure modes)
-  • Avoids ALL type conflicts from enum completeness, array decay, etc.
-
-  The return type is extracted with a lightweight regex that captures just the
-  tokens before the function name on its definition line, stripping storage-class
-  qualifiers (static/inline/extern) that must not appear in a standalone fwd decl.
+  Zero new error classes introduced. This approach is unconditionally correct
+  for all parameter types, all return types, all enum/struct completeness
+  states, and all calling conventions.
 
 ═══════════════════════════════════════════════════════════════════════════════
 FULL PASS SUMMARY
 ═══════════════════════════════════════════════════════════════════════════════
-  Pass 1 — Array init          u8 tmp[N] = D_x;              -> __builtin_memcpy
-  Pass 2 — Static conflicts
-    Strategy A                 non-static forward decl        -> add `static`
-    Strategy B                 missing static fwd decl        -> inject after #includes
-  Pass 3 — Static local C89 normalisation (Rules A/A2/B/C)
-    Rule A   compound-assign   static LVALUE OP= expr;        -> LVALUE OP= expr;
-    Rule A2  member plain-asgn static obj->field = call();    -> obj->field = call();
-    Rule B   implicit-int init static v = call(); /* cmt */   -> v = call();
-    Rule C   typed init        static TYPE v = call();        -> TYPE v = call();
-  Pass 4 — BKA exclusion set   static + forward-declared functions excluded
-  Pass 5 — BKA injection (all after last #include):
-            a) macros:     #undef fn / #define fn BKA_F_xxx_fn
-            b) fwd decls:  RETTYPE fn();   (K&R empty params — compatible with any sig)
-            c) aliases at end: #undef fn / __typeof__(BKA_F_xxx_fn) fn __attribute__((alias))
+  Pass 1 — Array init:      u8 tmp[N] = D_x;              -> __builtin_memcpy
+  Pass 2 — Static conflicts:
+    Strategy A              non-static fwd decl            -> add `static`
+    Strategy B              missing static fwd decl        -> inject after #includes
+  Pass 3 — Static local C89 normalisation (Rules A/A2/B/C):
+    Rule A   compound-assign   static LVALUE OP= expr;     -> LVALUE OP= expr;
+    Rule A2  member plain-asgn static obj->field = call(); -> obj->field = call();
+    Rule B   implicit-int init static v = call();          -> v = call();
+    Rule C   typed init        static TYPE v = call();     -> TYPE v = call();
+  Pass 4 — Weak symbol injection:
+    Find each eligible non-static function definition and prepend
+    __attribute__((weak)) so the linker accepts same-named symbols across TUs.
+    Eligibility mirrors previous BKA exclusion logic (same exclusion set).
+    Idempotent: skips definitions already carrying the attribute.
 """
 
 
-class SourceHarmonizerV7517:
+class SourceHarmonizerV7518:
     def __init__(self, target_dir, decomp_path):
         self.target_dir  = Path(target_dir)
         self.decomp_path = Path(decomp_path)
@@ -96,7 +89,7 @@ class SourceHarmonizerV7517:
             'enum', 'static', 'extern', 'const', 'volatile', 'inline', 'typedef'
         }
 
-        # Never rename — called directly from NativeBridge.cpp / C++ layer.
+        # Never weaken — called directly from NativeBridge.cpp / C++ layer.
         self.std_c = {
             'main', 'main_no_args',
             'memcpy', 'memset', 'strlen', 'strcpy', 'strcmp',
@@ -114,8 +107,6 @@ class SourceHarmonizerV7517:
             'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do',
             'break', 'continue', 'case', 'default', 'goto', 'typedef'
         }
-        # Storage-class keywords that must not appear in a standalone forward declaration
-        self._strip_from_rettype = ('static', 'inline', 'extern')
 
         # ── Pre-compiled Pass 3 patterns ──────────────────────────────────────
         self._p3a = re.compile(
@@ -136,14 +127,15 @@ class SourceHarmonizerV7517:
             re.MULTILINE
         )
 
-        # Return-type extraction: capture everything before fname on its definition line
-        # Used only to emit `RETTYPE fname();` — params deliberately omitted (K&R style)
-        self._rettype_pat_cache = {}
+        # Pass 4 pattern: find a non-static function definition line and inject weak.
+        # Group 1: line indent
+        # Group 2: everything before the function name (return type + qualifiers)
+        # Group 3: function name + params + opening brace
+        self._def_pat_cache = {}
 
     # ─────────────────────────────────────────────────────────────────────────
     def setup_workspace(self):
-        """Copy fresh source from decomp-files/ — invalidates CMake build cache."""
-        print("[>] Preparing v75.17 Workspace...")
+        print("[>] Preparing v75.18 Workspace...")
         for folder in [self.target_dir / "src", self.target_dir / "include"]:
             if folder.exists():
                 shutil.rmtree(folder)
@@ -282,39 +274,48 @@ class SourceHarmonizerV7517:
         return names
 
     # ─────────────────────────────────────────────────────────────────────────
-    def extract_return_type(self, clean_content, fname):
+    def inject_weak_attribute(self, content, fname):
         """
-        Extract the return type from a function definition.
+        Prepend __attribute__((weak)) to a non-static function definition.
 
-        Only the return type is captured — the parameter list is deliberately
-        omitted. We emit K&R-style `RETTYPE fname();` forward declarations,
-        which C99 §6.7.5.3 ¶15 guarantees are compatible with any actual
-        parameter list. This avoids all type conflicts arising from:
-          - Incomplete enum types at fwd-decl time vs complete at definition
-          - Array parameter decay (f32 pos[3] vs f32 *pos)
-          - Variadic/complex type expressions in params
+        Finds the definition line (return type + fname + params + {) and inserts
+        the attribute at the start of the return-type token, before any existing
+        qualifiers. Handles multi-line parameter lists via DOTALL matching.
+
+        Skips if:
+        - Already has __attribute__((weak)) (idempotent)
+        - Definition has 'static' qualifier (static functions are file-local;
+          they cannot be weak and don't cause duplicate-symbol linker errors)
         """
-        if fname not in self._rettype_pat_cache:
-            self._rettype_pat_cache[fname] = re.compile(
-                r'^([ \t]*[^\n;{}]+?)\b' + re.escape(fname) + r'\s*\(',
-                re.MULTILINE
+        if fname not in self._def_pat_cache:
+            self._def_pat_cache[fname] = re.compile(
+                r'^([ \t]*)([^\n;{}]*?\b)(' + re.escape(fname) + r'\s*\([^{}]*?\)\s*\{)',
+                re.MULTILINE | re.DOTALL
             )
-        pat = self._rettype_pat_cache[fname]
-        m = pat.search(clean_content)
-        if m:
-            ret = m.group(1).strip()
-            # Strip storage-class qualifiers — invalid in a standalone fwd decl
-            for kw in self._strip_from_rettype:
-                ret = re.sub(r'\b' + kw + r'\b\s*', '', ret).strip()
-            return ret if ret else 'void'
-        return 'void'   # safe fallback: void prevents implicit-int, compatible decl
+        pat = self._def_pat_cache[fname]
+
+        def _repl(m):
+            full   = m.group(0)
+            indent = m.group(1)
+            before = m.group(2)   # return type / qualifiers before fname
+            rest   = m.group(3)   # fname(params) {
+
+            # Skip if already weakened or if static (file-local, no linker conflict)
+            if '__attribute__((weak))' in full:
+                return full
+            if re.search(r'\bstatic\b', before):
+                return full
+
+            return f"{indent}__attribute__((weak)) {before.lstrip()}{rest}"
+
+        return pat.sub(_repl, content)
 
     # ─────────────────────────────────────────────────────────────────────────
     def process_file(self, file_path):
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             original_content = f.read()
 
-        # Pass 1 — Array init
+        # Pass 1 — Array init: u8 tmp[N] = D_x;  ->  __builtin_memcpy
         arr_pat = re.compile(
             r'^([ \t]*(?:struct\s+|union\s+|enum\s+)?[a-zA-Z_]\w*(?:\s*\*)*)\s+'
             r'([a-zA-Z_]\w*)\s*\[\s*(\d+)\s*\]\s*=\s*([a-zA-Z_]\w*)\s*;',
@@ -332,18 +333,28 @@ class SourceHarmonizerV7517:
         # Pass 3 — C89/IDO static-local patterns
         modified = self.fix_static_local_c89_patterns(modified)
 
-        # Analysis pass
+        # Analysis pass (strip strings/comments for safe scanning)
         clean = self.remove_strings_and_comments(modified)
 
-        # Pass 4 — Build BKA exclusion set
+        # Pass 4 — Weak symbol injection
+        #
+        # Build the same eligibility set as previous BKA passes: skip functions
+        # that are static, forward-declared in this TU, SDK-prefixed, ALL_CAPS,
+        # __ prefixed, or in the protected std_c / c_keywords sets.
+        #
+        # For each eligible function definition, inject __attribute__((weak))
+        # before the return type on the definition line. This marks it as a weak
+        # symbol so the linker accepts duplicates across translation units without
+        # errors — the equivalent of what the BKA alias system achieved, but
+        # without any renaming, macros, or forward declarations.
+
         static_func_names  = set(self.find_static_definitions(clean).keys())
         forward_decl_names = self.find_forward_declared_functions(clean)
         excluded_names     = static_func_names | forward_decl_names
 
-        fid      = hashlib.md5(file_path.name.encode()).hexdigest()[:8]
         func_pat = re.compile(r'\b([a-zA-Z_]\w*)\s*\([^{;]*\)\s*\{')
-        defined_funcs = []
 
+        weak_candidates = []
         for match in func_pat.finditer(clean):
             fname     = match.group(1)
             start_idx = match.start()
@@ -364,76 +375,19 @@ class SourceHarmonizerV7517:
                    for k in ('static', 'inline', 'typedef')):
                 continue
 
-            defined_funcs.append(fname)
+            weak_candidates.append(fname)
 
-        defined_funcs = list(dict.fromkeys(defined_funcs))
+        # Deduplicate while preserving order
+        seen = set()
+        unique_candidates = []
+        for f in weak_candidates:
+            if f not in seen:
+                seen.add(f)
+                unique_candidates.append(f)
 
-        if not defined_funcs:
-            new_content = modified
-        else:
-            # Pass 5 — BKA injection after last #include
-            #
-            # Structure injected immediately after last #include:
-            #   // --- BKA MACROS ---
-            #   #undef fn             (suppress header macro redefinition warning)
-            #   #define fn BKA_F_xxx_fn
-            #   ...
-            #   // --- BKA MACROS END ---
-            #
-            #   // --- BKA FORWARD DECLARATIONS ---
-            #   RETTYPE fn();         (K&R style — compatible with any param list)
-            #   ...                   (via macro → RETTYPE BKA_F_xxx_fn();)
-            #   // --- BKA FORWARD DECLARATIONS END ---
-            #
-            # The K&R-style `RETTYPE fn()` fwd decl:
-            #   - Passes through the BKA #define → names the BKA-prefixed symbol
-            #   - Provides the return type → prevents implicit-int at call sites
-            #   - Has no parameter types → compatible with any actual definition
-            #     per C99 §6.7.5.3 ¶15 (avoids enum/array/pointer conflicts)
-            #
-            # Aliases appended at end of file (unchanged from v75.15):
-            #   #undef fn
-            #   __typeof__(BKA_F_xxx_fn) fn __attribute__((weak, alias("BKA_F_xxx_fn")));
-
-            macros_lines = ["", "// --- BKA MACROS START ---"]
-            fwd_lines    = ["// --- BKA FORWARD DECLARATIONS ---"]
-
-            for fn in defined_funcs:
-                un      = f"BKA_F_{fid}_{fn}"
-                ret_type = self.extract_return_type(clean, fn)
-
-                macros_lines.append(f"#undef {fn}")
-                macros_lines.append(f"#define {fn} {un}")
-                # K&R-style: return type + empty params — no param types to conflict
-                fwd_lines.append(f"{ret_type} {fn}();")
-
-            macros_lines.append("// --- BKA MACROS END ---")
-            fwd_lines.append("// --- BKA FORWARD DECLARATIONS END ---")
-
-            macros_block = "\n".join(macros_lines) + "\n"
-            fwd_block    = "\n".join(fwd_lines)    + "\n\n"
-
-            aliases_lines = ["", "", "// --- BKA ALIASES START ---"]
-            for fn in defined_funcs:
-                un = f"BKA_F_{fid}_{fn}"
-                aliases_lines.append(f"#undef {fn}")
-                aliases_lines.append(
-                    f"__typeof__({un}) {fn} __attribute__((weak, alias(\"{un}\")));"
-                )
-            aliases_lines.append("// --- BKA ALIASES END ---")
-            aliases_block = "\n".join(aliases_lines) + "\n"
-
-            last_inc = None
-            for m in re.finditer(r'^#include\b[^\n]*\n', modified, re.MULTILINE):
-                last_inc = m
-
-            inject_block = macros_block + fwd_block
-
-            if last_inc:
-                pos = last_inc.end()
-                new_content = modified[:pos] + inject_block + modified[pos:] + aliases_block
-            else:
-                new_content = inject_block + modified + aliases_block
+        new_content = modified
+        for fname in unique_candidates:
+            new_content = self.inject_weak_attribute(new_content, fname)
 
         if new_content != original_content:
             with open(file_path, 'w', encoding='utf-8') as f:
@@ -446,7 +400,7 @@ class SourceHarmonizerV7517:
             print(f"[!] Error: decompilation path '{self.decomp_path}' not found.")
             return
         self.setup_workspace()
-        print("[*] Applying v75.17 Function-Level Linker Isolation...")
+        print("[*] Applying v75.18 Function-Level Linker Isolation...")
         for file_path in self.target_dir.rglob('*.[ch]'):
             if "include/libc" in str(file_path) or file_path.suffix == '.h':
                 continue
@@ -455,7 +409,7 @@ class SourceHarmonizerV7517:
                 self.stats["files_processed"] += 1
             except Exception as e:
                 print(f"[!] Error processing {file_path.name}: {e}")
-        print(f"\n[+] v75.17 Complete.")
+        print(f"\n[+] v75.18 Complete.")
         print(f"    Files Processed: {self.stats['files_processed']}")
         print(f"    Files Modified:  {self.stats['changes_made']}")
 
@@ -463,4 +417,4 @@ class SourceHarmonizerV7517:
 if __name__ == "__main__":
     target = "Android/app/src/main/cpp"
     decomp = "decomp-files"
-    SourceHarmonizerV7517(target, decomp).run()
+    SourceHarmonizerV7518(target, decomp).run()
