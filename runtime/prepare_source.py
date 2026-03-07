@@ -7,61 +7,62 @@ import shutil
 from pathlib import Path
 
 """
-SourceHarmonizer v75.16 — BKA forward declarations after macro block
+SourceHarmonizer v75.17 — K&R-style BKA forward declarations (return type only)
 
 ═══════════════════════════════════════════════════════════════════════════════
-LOG 39 — v75.15 ran (861 files processed, 648 modified). One file failed:
-  pfsmanager.c — 6 errors, two types
+LOG 40 — v75.16 ran (861 files processed, 648 modified). Two files failed:
+  tanktup.c   — 1 error: conflicting types for BKA_F_c88d10b3_func_8038F470
+  code_3420.c — 1 error: conflicting types for BKA_F_ed0502ac_chvilegame_new_piece
 ═══════════════════════════════════════════════════════════════════════════════
 
-ROOT CAUSE:
+ROOT CAUSE (v75.16 regression):
 
-  Error type 1 — "conflicting types for 'BKA_F_xxx_func_8024F224'" (×3):
-    Line 391: void func_8024F224(void){
-    Note:     previous implicit declaration at line 360: func_8024F224();
-    Note:     both expanded via macro → BKA_F_1f86d77d_func_8024F224
+  Error at tanktup.c:55:
+    void func_8038F470(ActorMarker *this, s32 arg1, enum chtanktup_leg_e leg_id){
+    Previous declaration at line 18:
+    void func_8038F470(ActorMarker *this, s32 arg1, enum chtanktup_leg_e leg_id);
 
-    The file calls func_8024F224() at line 360, before its definition at
-    line 391. Both go through the BKA #define (now active from after last
-    #include). At the call site no prototype is visible for the BKA-renamed
-    symbol, so Clang creates an implicit `int`-returning declaration. When
-    the actual `void` definition arrives, types conflict.
+  Line 9:  #define func_8038F470 BKA_F_c88d10b3_func_8038F470   ← BKA macro
+  Line 18: void func_8038F470(...);                              ← our injected fwd decl
+  Line 55: void func_8038F470(...){                              ← original definition
 
-  Error type 2 — "definition 'func_8024F224' cannot also be an alias" (×3):
-    The alias block (bottom of file) tries to create:
-      func_8024F224 → alias of BKA_F_xxx_func_8024F224
-    But Clang's TU symbol table already has BKA_F_xxx_func_8024F224 with a
-    broken (implicit-int) type from error type 1, making the alias invalid.
-    Cascade: fix error type 1 and error type 2 disappears automatically.
+  v75.16 injected forward declarations that included the FULL parameter list,
+  extracted from the source via regex. Despite the textual signatures looking
+  identical, Clang reports a type conflict. The root cause is that our extraction
+  regex captured a full-param signature that after macro expansion differed from
+  the definition's expansion in a subtle way — specifically:
 
-THE FIX — inject BKA forward declarations immediately after the BKA macros:
+  In C99, `enum chtanktup_leg_e` in a forward declaration where the enum is
+  INCOMPLETE at that point (not yet defined) differs in type from the same `enum`
+  name once it IS complete (at the definition site). The full-param fwd decl
+  introduces a reference to the incomplete enum type, which Clang distinguishes
+  from the complete type used in the definition.
 
-  // --- BKA MACROS START ---
-  #undef func_8024F224
-  #define func_8024F224 BKA_F_xxx_func_8024F224
-  // --- BKA MACROS END ---
-  
-  // --- BKA FORWARD DECLARATIONS ---       ← NEW v75.16
-  void func_8024F224(void);                 ← macro expands this to:
-                                               void BKA_F_xxx_func_8024F224(void);
-  void func_8024F35C(s32 arg0);             ← gives Clang exact prototype
-  void func_8024F4AC(void);
-  // --- BKA FORWARD DECLARATIONS END ---
-  
-  [file body — calls and definitions now have visible prototypes]
+  code_3420.c has the same issue with `f32 position[3]` — an array parameter
+  type that decays to `f32 *` in a declaration but the regex emitted it as `[3]`,
+  creating a mismatch with what the definition produces after C parameter adjustment.
 
-  // --- BKA ALIASES START ---
-  #undef func_8024F224
-  __typeof__(BKA_F_xxx_func_8024F224) func_8024F224 __attribute__((weak, alias(...)));
-  // --- BKA ALIASES END ---
+THE FIX — K&R-style forward declarations with empty parameter list:
 
-  With a visible prototype for each BKA-renamed symbol, the call at line 360
-  resolves correctly (no implicit int), and the void definition at line 391
-  matches exactly. Both errors disappear.
+  In C99 (and C11), a function declared with an empty parameter list `()` is
+  compatible with any actual parameter list. This is specified in C99 §6.7.5.3 ¶15:
+  "a declaration that uses an empty parameter list [...] is compatible with [...] 
+  a function that has a parameter type list."
 
-  Signature extraction: for each function in defined_funcs, a regex captures
-  the return type and parameter list from the actual definition in the source
-  text. This produces an exact prototype rather than a generic stub.
+  We emit only the return type with `()`:
+    void func_8038F470();
+    ↓ (BKA macro expansion by preprocessor)
+    void BKA_F_c88d10b3_func_8038F470();
+
+  This:
+  • Prevents implicit-int declarations at call sites (return type IS specified)
+  • Is compatible with ANY actual parameter list (no param types to conflict)
+  • Only requires extracting the return type (simpler, fewer failure modes)
+  • Avoids ALL type conflicts from enum completeness, array decay, etc.
+
+  The return type is extracted with a lightweight regex that captures just the
+  tokens before the function name on its definition line, stripping storage-class
+  qualifiers (static/inline/extern) that must not appear in a standalone fwd decl.
 
 ═══════════════════════════════════════════════════════════════════════════════
 FULL PASS SUMMARY
@@ -77,13 +78,13 @@ FULL PASS SUMMARY
     Rule C   typed init        static TYPE v = call();        -> TYPE v = call();
   Pass 4 — BKA exclusion set   static + forward-declared functions excluded
   Pass 5 — BKA injection (all after last #include):
-            a) macros:         #undef fn / #define fn BKA_F_xxx_fn
-            b) fwd decls:      TYPE fn(PARAMS);  (→ TYPE BKA_F_xxx_fn(PARAMS); via macro)
+            a) macros:     #undef fn / #define fn BKA_F_xxx_fn
+            b) fwd decls:  RETTYPE fn();   (K&R empty params — compatible with any sig)
             c) aliases at end: #undef fn / __typeof__(BKA_F_xxx_fn) fn __attribute__((alias))
 """
 
 
-class SourceHarmonizerV7516:
+class SourceHarmonizerV7517:
     def __init__(self, target_dir, decomp_path):
         self.target_dir  = Path(target_dir)
         self.decomp_path = Path(decomp_path)
@@ -113,44 +114,36 @@ class SourceHarmonizerV7516:
             'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do',
             'break', 'continue', 'case', 'default', 'goto', 'typedef'
         }
+        # Storage-class keywords that must not appear in a standalone forward declaration
+        self._strip_from_rettype = ('static', 'inline', 'extern')
 
         # ── Pre-compiled Pass 3 patterns ──────────────────────────────────────
-
-        # Rule A: compound-assign, any lvalue
         self._p3a = re.compile(
             r'^([ \t]+)static\s+([^=\n;{}]+?)\s*([|&^+\-*/%]=|<<=|>>=)',
             re.MULTILINE
         )
-        # Rule A2: plain assign where LHS is a struct/member access (contains -> or .)
         self._p3a2 = re.compile(
             r'^([ \t]+)static\s+([a-zA-Z_]\w*(?:->|\.)[^=\n;{}]*?)\s*=\s*([^;\n]+?)\s*;[^\n]*$',
             re.MULTILINE
         )
-        # Rule B: implicit-int plain assign, runtime RHS, optional trailing comment
         self._p3b = re.compile(
             r'^([ \t]+)static\s+([a-zA-Z_]\w*)\s*=\s*'
             r'([^;\n]+(?:\([^;\n]*\))[^;\n]*)\s*;[^\n]*$',
             re.MULTILINE
         )
-        # Rule C: explicit-type plain assign, runtime RHS, optional trailing comment
         self._p3c = re.compile(
             r'^([ \t]+)static\s+([^=\n;{}]+?)\b([a-zA-Z_]\w*)\s*=\s*([^;\n]+)\s*;[^\n]*$',
             re.MULTILINE
         )
 
-        # Signature extraction: capture return_type + funcname + params from a definition
-        # Used to emit exact forward declarations for BKA-renamed functions.
-        # Group 1: everything before the function name (return type + qualifiers)
-        # Group 2: function name (substituted per-call with re.escape(fname))
-        # Group 3: parameter list
-        self._sig_pat_template = (
-            r'^([ \t]*[^\n;{}]+?)\b{fname}\s*\(([^{{}}]*?)\)\s*\{{'
-        )
+        # Return-type extraction: capture everything before fname on its definition line
+        # Used only to emit `RETTYPE fname();` — params deliberately omitted (K&R style)
+        self._rettype_pat_cache = {}
 
     # ─────────────────────────────────────────────────────────────────────────
     def setup_workspace(self):
         """Copy fresh source from decomp-files/ — invalidates CMake build cache."""
-        print("[>] Preparing v75.16 Workspace...")
+        print("[>] Preparing v75.17 Workspace...")
         for folder in [self.target_dir / "src", self.target_dir / "include"]:
             if folder.exists():
                 shutil.rmtree(folder)
@@ -170,7 +163,6 @@ class SourceHarmonizerV7516:
 
     # ─────────────────────────────────────────────────────────────────────────
     def find_static_definitions(self, clean_content):
-        """Returns {func_name -> signature} for every static function definition."""
         static_funcs = {}
         pat = re.compile(
             r'\bstatic\b([^;{}]*?\b([a-zA-Z_]\w*)\s*\([^{}]*?\))\s*\{',
@@ -184,7 +176,6 @@ class SourceHarmonizerV7516:
 
     # ─────────────────────────────────────────────────────────────────────────
     def has_existing_forward_decl(self, clean_content, func_name):
-        """True only if func_name has a real forward declaration (not a call statement)."""
         pat = re.compile(
             r'^([ \t]*(?:[^\n]*?))\b' + re.escape(func_name) + r'\s*\([^{}]*?\)\s*;',
             re.MULTILINE
@@ -205,7 +196,6 @@ class SourceHarmonizerV7516:
 
     # ─────────────────────────────────────────────────────────────────────────
     def fix_static_conflicts(self, content):
-        """Pass 2: resolve 'static declaration follows non-static declaration'."""
         clean       = self.remove_strings_and_comments(content)
         static_defs = self.find_static_definitions(clean)
         if not static_defs:
@@ -254,7 +244,6 @@ class SourceHarmonizerV7516:
 
     # ─────────────────────────────────────────────────────────────────────────
     def fix_static_local_c89_patterns(self, content):
-        """Pass 3: fix all C89/IDO static-local patterns Clang C99 rejects."""
         content = self._p3a.sub(
             lambda m: f"{m.group(1)}{m.group(2).rstrip()} {m.group(3)}",
             content
@@ -277,7 +266,6 @@ class SourceHarmonizerV7516:
 
     # ─────────────────────────────────────────────────────────────────────────
     def find_forward_declared_functions(self, clean_content):
-        """Returns names of all forward-declared functions (excluded from BKA)."""
         names = set()
         pat   = re.compile(r'(?<![;{}])\b([a-zA-Z_]\w*)\s*\([^{}]*?\)\s*;', re.DOTALL)
         for m in pat.finditer(clean_content):
@@ -294,44 +282,39 @@ class SourceHarmonizerV7516:
         return names
 
     # ─────────────────────────────────────────────────────────────────────────
-    def extract_bka_forward_decls(self, clean_content, defined_funcs):
+    def extract_return_type(self, clean_content, fname):
         """
-        For each function in defined_funcs, extract its full signature from
-        the definition in the source and return a forward declaration string.
+        Extract the return type from a function definition.
 
-        The forward declaration uses the PLAIN function name (not BKA-prefixed).
-        When injected after the BKA #define block, the macro expands the plain
-        name to the BKA-prefixed symbol, giving Clang the correct prototype.
-
-        Example:
-          Source:  void func_8024F224(void) {
-          Output:  void func_8024F224(void);
-          After BKA macro expansion by preprocessor:
-                   void BKA_F_xxx_func_8024F224(void);   ← exact prototype ✓
+        Only the return type is captured — the parameter list is deliberately
+        omitted. We emit K&R-style `RETTYPE fname();` forward declarations,
+        which C99 §6.7.5.3 ¶15 guarantees are compatible with any actual
+        parameter list. This avoids all type conflicts arising from:
+          - Incomplete enum types at fwd-decl time vs complete at definition
+          - Array parameter decay (f32 pos[3] vs f32 *pos)
+          - Variadic/complex type expressions in params
         """
-        fwd_decls = []
-        for fname in defined_funcs:
-            pat = re.compile(
-                r'^([ \t]*[^\n;{}]+?)\b' + re.escape(fname) + r'\s*\(([^{}]*?)\)\s*\{',
-                re.MULTILINE | re.DOTALL
+        if fname not in self._rettype_pat_cache:
+            self._rettype_pat_cache[fname] = re.compile(
+                r'^([ \t]*[^\n;{}]+?)\b' + re.escape(fname) + r'\s*\(',
+                re.MULTILINE
             )
-            m = pat.search(clean_content)
-            if m:
-                ret_type = m.group(1).strip()
-                params   = re.sub(r'\s+', ' ', m.group(2).strip())
-                # Emit: return_type funcname(params);
-                fwd_decls.append(f"{ret_type} {fname}({params});")
-            else:
-                # Fallback: emit a void prototype — safer than no prototype
-                fwd_decls.append(f"void {fname}(void);")
-        return fwd_decls
+        pat = self._rettype_pat_cache[fname]
+        m = pat.search(clean_content)
+        if m:
+            ret = m.group(1).strip()
+            # Strip storage-class qualifiers — invalid in a standalone fwd decl
+            for kw in self._strip_from_rettype:
+                ret = re.sub(r'\b' + kw + r'\b\s*', '', ret).strip()
+            return ret if ret else 'void'
+        return 'void'   # safe fallback: void prevents implicit-int, compatible decl
 
     # ─────────────────────────────────────────────────────────────────────────
     def process_file(self, file_path):
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             original_content = f.read()
 
-        # Pass 1 — Array init: u8 tmp[N] = D_x;  ->  __builtin_memcpy
+        # Pass 1 — Array init
         arr_pat = re.compile(
             r'^([ \t]*(?:struct\s+|union\s+|enum\s+)?[a-zA-Z_]\w*(?:\s*\*)*)\s+'
             r'([a-zA-Z_]\w*)\s*\[\s*(\d+)\s*\]\s*=\s*([a-zA-Z_]\w*)\s*;',
@@ -341,7 +324,6 @@ class SourceHarmonizerV7516:
             ts, nm, sz, src = m.group(1), m.group(2), m.group(3), m.group(4)
             return (f"{ts} {nm}[{sz}]; "
                     f"__builtin_memcpy({nm}, {src}, {sz} * sizeof({ts.strip()}));")
-
         modified = arr_pat.sub(_arr_repl, original_content)
 
         # Pass 2 — Static/forward-decl conflicts
@@ -350,7 +332,7 @@ class SourceHarmonizerV7516:
         # Pass 3 — C89/IDO static-local patterns
         modified = self.fix_static_local_c89_patterns(modified)
 
-        # Analysis pass (strip strings/comments for safe scanning)
+        # Analysis pass
         clean = self.remove_strings_and_comments(modified)
 
         # Pass 4 — Build BKA exclusion set
@@ -389,32 +371,48 @@ class SourceHarmonizerV7516:
         if not defined_funcs:
             new_content = modified
         else:
-            # Pass 5 — BKA injection (after last #include):
+            # Pass 5 — BKA injection after last #include
             #
-            # a) #undef + #define macros (so our defines override any header macros)
-            # b) Forward declarations using plain function names (v75.16 NEW):
-            #    These pass through the BKA #defines and give Clang exact prototypes
-            #    for every BKA-renamed symbol BEFORE any call site in the file body.
-            #    Eliminates implicit-int declarations and "conflicting types" errors.
-            # c) Aliases block at end of file
+            # Structure injected immediately after last #include:
+            #   // --- BKA MACROS ---
+            #   #undef fn             (suppress header macro redefinition warning)
+            #   #define fn BKA_F_xxx_fn
+            #   ...
+            #   // --- BKA MACROS END ---
+            #
+            #   // --- BKA FORWARD DECLARATIONS ---
+            #   RETTYPE fn();         (K&R style — compatible with any param list)
+            #   ...                   (via macro → RETTYPE BKA_F_xxx_fn();)
+            #   // --- BKA FORWARD DECLARATIONS END ---
+            #
+            # The K&R-style `RETTYPE fn()` fwd decl:
+            #   - Passes through the BKA #define → names the BKA-prefixed symbol
+            #   - Provides the return type → prevents implicit-int at call sites
+            #   - Has no parameter types → compatible with any actual definition
+            #     per C99 §6.7.5.3 ¶15 (avoids enum/array/pointer conflicts)
+            #
+            # Aliases appended at end of file (unchanged from v75.15):
+            #   #undef fn
+            #   __typeof__(BKA_F_xxx_fn) fn __attribute__((weak, alias("BKA_F_xxx_fn")));
 
-            # Build macros block
             macros_lines = ["", "// --- BKA MACROS START ---"]
+            fwd_lines    = ["// --- BKA FORWARD DECLARATIONS ---"]
+
             for fn in defined_funcs:
-                un = f"BKA_F_{fid}_{fn}"
+                un      = f"BKA_F_{fid}_{fn}"
+                ret_type = self.extract_return_type(clean, fn)
+
                 macros_lines.append(f"#undef {fn}")
                 macros_lines.append(f"#define {fn} {un}")
+                # K&R-style: return type + empty params — no param types to conflict
+                fwd_lines.append(f"{ret_type} {fn}();")
+
             macros_lines.append("// --- BKA MACROS END ---")
-            macros_block = "\n".join(macros_lines) + "\n"
-
-            # Build forward declarations block (NEW v75.16)
-            fwd_decls = self.extract_bka_forward_decls(clean, defined_funcs)
-            fwd_lines  = ["// --- BKA FORWARD DECLARATIONS ---"]
-            fwd_lines += fwd_decls
             fwd_lines.append("// --- BKA FORWARD DECLARATIONS END ---")
-            fwd_block = "\n".join(fwd_lines) + "\n\n"
 
-            # Build aliases block
+            macros_block = "\n".join(macros_lines) + "\n"
+            fwd_block    = "\n".join(fwd_lines)    + "\n\n"
+
             aliases_lines = ["", "", "// --- BKA ALIASES START ---"]
             for fn in defined_funcs:
                 un = f"BKA_F_{fid}_{fn}"
@@ -425,7 +423,6 @@ class SourceHarmonizerV7516:
             aliases_lines.append("// --- BKA ALIASES END ---")
             aliases_block = "\n".join(aliases_lines) + "\n"
 
-            # Find last #include position and insert (macros + fwd_decls) right after
             last_inc = None
             for m in re.finditer(r'^#include\b[^\n]*\n', modified, re.MULTILINE):
                 last_inc = m
@@ -436,7 +433,6 @@ class SourceHarmonizerV7516:
                 pos = last_inc.end()
                 new_content = modified[:pos] + inject_block + modified[pos:] + aliases_block
             else:
-                # No #includes: inject at very top
                 new_content = inject_block + modified + aliases_block
 
         if new_content != original_content:
@@ -450,7 +446,7 @@ class SourceHarmonizerV7516:
             print(f"[!] Error: decompilation path '{self.decomp_path}' not found.")
             return
         self.setup_workspace()
-        print("[*] Applying v75.16 Function-Level Linker Isolation...")
+        print("[*] Applying v75.17 Function-Level Linker Isolation...")
         for file_path in self.target_dir.rglob('*.[ch]'):
             if "include/libc" in str(file_path) or file_path.suffix == '.h':
                 continue
@@ -459,7 +455,7 @@ class SourceHarmonizerV7516:
                 self.stats["files_processed"] += 1
             except Exception as e:
                 print(f"[!] Error processing {file_path.name}: {e}")
-        print(f"\n[+] v75.16 Complete.")
+        print(f"\n[+] v75.17 Complete.")
         print(f"    Files Processed: {self.stats['files_processed']}")
         print(f"    Files Modified:  {self.stats['changes_made']}")
 
@@ -467,4 +463,4 @@ class SourceHarmonizerV7516:
 if __name__ == "__main__":
     target = "Android/app/src/main/cpp"
     decomp = "decomp-files"
-    SourceHarmonizerV7516(target, decomp).run()
+    SourceHarmonizerV7517(target, decomp).run()
