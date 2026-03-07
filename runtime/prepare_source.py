@@ -11,11 +11,10 @@ class SymbolMapping:
     name: str
     type_info: str
     file_id: str
-    is_function: bool
     params: str = ""
     asm_label: str = ""
 
-class SourceHarmonizerV74_0:
+class SourceHarmonizerV74_1:
     def __init__(self, android_path: str, decomp_path: str):
         self.android_path = os.path.normpath(android_path)
         self.decomp_path = os.path.normpath(decomp_path)
@@ -23,13 +22,10 @@ class SourceHarmonizerV74_0:
         self.include_target = os.path.join(self.android_path, "include")
 
         self.blacklisted_types = {'NULL', 'TRUE', 'FALSE', 'static', 'inline', 'extern', 'void'}
-        
-        # Hard-Exclude: SDK Primitives and GBI types
         self.sdk_types = {
-            'ALBank', 'ALSeq', 'ALInstrument', 'ALHeap', 'ALVoiceConfig',
-            'OSMesg', 'OSThread', 'OSMesgQueue', 'Gfx', 'Mtx', 'Vtx', 'Acmd',
-            'u8', 'u16', 'u32', 'u64', 's8', 's16', 's32', 's64', 'f32', 'f64',
-            'sint', 'uint', 'size_t', 'uintptr_t', 'intptr_t', 'Vp', 'Lightsn', 'Light'
+            'ALBank', 'ALSeq', 'ALInstrument', 'ALHeap', 'OSMesg', 'OSThread', 
+            'OSMesgQueue', 'Gfx', 'Mtx', 'Vtx', 'u8', 'u16', 'u32', 'u64', 
+            's8', 's16', 's32', 's64', 'f32', 'f64', 'Vp', 'Light'
         }
         
         self.discovered_structs: Set[str] = set()
@@ -37,11 +33,9 @@ class SourceHarmonizerV74_0:
 
     def is_custom_struct(self, name: str) -> bool:
         if name in self.blacklisted_types or name in self.sdk_types: return False
-        if name.startswith(('OS', 'AL', 'gbi', 'gu', 'BKA_')): return False
-        return not name.isupper()
+        return not name.isupper() and not name.startswith(('OS', 'AL', 'gu'))
 
     def precision_sanitize(self, text: str) -> str:
-        # Preserve 'const' while adding 'struct' to custom types
         words = set(re.findall(r'\b([A-Z_][a-zA-Z0-9_]*)\b', text))
         for w in words:
             if self.is_custom_struct(w):
@@ -50,7 +44,7 @@ class SourceHarmonizerV74_0:
         return text
 
     def setup_workspace(self):
-        print("[>] Preparing v74.0 Workspace...")
+        print("[>] Finalizing Workspace for v74.1...")
         for folder in [self.src_target, self.include_target]:
             if os.path.exists(folder): shutil.rmtree(folder)
             os.makedirs(folder, exist_ok=True)
@@ -59,8 +53,8 @@ class SourceHarmonizerV74_0:
             if os.path.exists(src): shutil.copytree(src, dst, dirs_exist_ok=True)
 
     def harmonize_logic(self):
-        print("[>] Applying Preprocessor-Aware Redirection...")
-        # Regex captures signature, return type, name, and params with const support
+        print("[>] Implementing Weak-Alias Redirection...")
+        # Enhanced regex to catch variadics and varied spacing
         func_pat = re.compile(r'^(([a-zA-Z_][\w\* ]*?)\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE)
 
         for root, _, files in os.walk(self.src_target):
@@ -75,19 +69,22 @@ class SourceHarmonizerV74_0:
                 def func_repl(m):
                     full_sig, ret_type, name, params = m.group(1), m.group(2).strip(), m.group(3).strip(), m.group(4).strip()
                     
-                    # NEW: Explicitly skip common SDK macros to prevent loops
-                    if any(x in full_sig for x in ["static", "inline", "extern", "..."]) or \
-                       name.startswith(('os', 'al', 'gu', 'gSP', 'gDP')):
+                    # Hard-skip logic for internal and SDK symbols
+                    if any(x in full_sig for x in ["static", "inline", "extern"]) or \
+                       "..." in params or name.startswith(('os', 'al', 'gu', 'gS', 'gD')):
                         return m.group(0)
 
                     clean_ret = self.precision_sanitize(ret_type)
                     clean_params = self.precision_sanitize(params) or "void"
-
                     label = f"BKA_G_{fid}_{name}"
-                    self.global_symbols[name] = SymbolMapping(name, clean_ret, fid, True, clean_params, label)
                     
-                    # Wrap redirection in a macro-guard to ensure it's not applied to macros
-                    return f"\n#ifndef {name}\n{clean_ret} {name} __asm__(\"{label}\")({clean_params}) {{\n#else\n{m.group(0)}\n#endif"
+                    self.global_symbols[name] = SymbolMapping(name, clean_ret, fid, clean_params, label)
+                    
+                    # Use a Weak Alias approach to allow function pointers to work naturally
+                    return (f"\n#ifndef {name}\n"
+                            f"{clean_ret} {name}({clean_params}) __attribute__((alias(\"{label}\")));\n"
+                            f"{clean_ret} {label}({clean_params}) {{\n"
+                            f"#else\n{m.group(0)}\n#endif")
 
                 patched = re.sub(func_pat, func_repl, content)
                 with open(path, 'w') as file:
@@ -96,25 +93,21 @@ class SourceHarmonizerV74_0:
     def generate_header(self):
         header_path = os.path.join(self.include_target, "harmonized_globals.h")
         with open(header_path, 'w') as f:
-            f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n")
-            f.write("#include <ultra64.h>\n\n")
-            
-            f.write("// Custom Type Forward Declarations\n")
+            f.write("#ifndef HARMONIZED_GLOBALS_H\n#define HARMONIZED_GLOBALS_H\n#include <ultra64.h>\n\n")
             for t in sorted(self.discovered_structs):
                 f.write(f"struct {t};\n")
             
-            f.write("\n// Guarded Global Redirections\n")
+            f.write("\n// Aliased Global Symbols\n")
             for name, m in self.global_symbols.items():
-                f.write(f"#ifndef {name}\nextern {m.type_info} {name}({m.params}) __asm__(\"{m.asm_label}\");\n#endif\n")
-                
+                f.write(f"#ifndef {name}\nextern {m.type_info} {name}({m.params});\n#endif\n")
             f.write("\n#endif\n")
 
     def run(self):
         self.setup_workspace()
         self.harmonize_logic()
         self.generate_header()
-        print("✓ Stabilization v74.0 Complete")
+        print("✓ Stabilization v74.1 Complete")
 
 if __name__ == "__main__":
-    harmonizer = SourceHarmonizerV74_0("Android/app/src/main/cpp", "decomp-files")
+    harmonizer = SourceHarmonizerV74_1("Android/app/src/main/cpp", "decomp-files")
     harmonizer.run()
