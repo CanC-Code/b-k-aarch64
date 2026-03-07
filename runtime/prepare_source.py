@@ -24,13 +24,27 @@ class SourceHarmonizerV73:
         self.src_target = os.path.join(self.android_path, "src")
         self.include_target = os.path.join(self.android_path, "include")
 
+        # Added conflicting N64 types/variables to immutables to prevent redefinition
         self.immutables = {
             'bool', 'void', 'int', 'char', 'long', 'float', 'double',
             'u8', 'u16', 'u32', 'u64', 's8', 's16', 's32', 's64', 'f32', 'f64',
             'size_t', 'uintptr_t', 'intptr_t', 'Mtx', 'Gfx', 'Vtx', 'ADPCM_STATE',
             'ALMicroTime', 'ALID', 'OSMesg', 'OSThread', 'OSYieldResult', 'u_long',
-            'OSPri', 'u_short', 'u_char', 'OSId', 'u32*', 'uintptr_t', 'f32*'
+            'OSPri', 'u_short', 'u_char', 'OSId', 'u32*', 'uintptr_t', 'f32*',
+            'ALDMANew', 'ALFxRef', 'ALVoiceHandler', 'CartRomHandle', 'LeoDiskHandle',
+            'AL_MIDI_ChannelMask', 'AL_MIDI_ChannelModeSelect', 'AL_MIDI_ChannelPressure',
+            'AL_MIDI_ControlChange', 'AL_MIDI_Meta', 'AL_MIDI_NoteOff', 'AL_MIDI_NoteOn',
+            'AL_MIDI_PitchBendChange', 'AL_MIDI_PolyKeyPressure', 'AL_MIDI_ProgramChange',
+            'AL_MIDI_StatusMask'
         }
+        
+        # Protect against capturing C syntax keywords
+        self.c_keywords = {
+            'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 
+            'do', 'break', 'continue', 'case', 'default', 'goto', 'struct', 
+            'union', 'enum', 'static', 'extern', 'const', 'volatile', 'inline'
+        }
+        
         self.conflict_registry: Set[str] = set()
         self.discovered_types: Set[str] = set()
         self.mappings: List[SymbolMapping] = []
@@ -63,7 +77,8 @@ class SourceHarmonizerV73:
             re.compile(r'typedef\s+.*?\s+(\w+);'),
             re.compile(r'\}\s*(\w+);'),
             re.compile(r'(?:struct|union|enum)\s+(\w+)'),
-            re.compile(r'([A-Z][A-Z0-9_]+)\s*=\s*(?:0x)?[0-9A-Fa-f]+')
+            re.compile(r'([A-Za-z_]\w+)\s*=\s*(?:0x)?[0-9A-Fa-f]+'), # Fixed to catch non-ALL_CAPS enums
+            re.compile(r'typedef\s+[\w\s\*]+\(\s*\*\s*([A-Za-z_]\w+)\s*\)') # Fixed to catch Function Pointers
         ]
         for root, _, files in os.walk(self.include_target):
             for file in files:
@@ -77,8 +92,9 @@ class SourceHarmonizerV73:
     def harmonize_logic(self):
         print("[>] Pass 1 & 2: Weaving Stabilized Linkage...")
         type_pat = re.compile(r'\b([A-Z][a-zA-Z0-9_]+)\b')
-        func_pat = re.compile(r'^(static\s+)?(([\w\* ]+?)\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
-        data_pat = re.compile(r'^(static\s+)?([a-zA-Z_][\w\* ]+?)\s+([a-zA-Z_]\w*)\s*(?:=\s*([^;]+))?;', re.MULTILINE)
+        # Tightened the regexes slightly to prevent them from scanning across line breaks incorrectly
+        func_pat = re.compile(r'^(static\s+)?(([a-zA-Z_][\w\* ]{0,40}?)\s+([a-zA-Z_]\w*)\s*\(([^\{]*?)\))\s*\{', re.MULTILINE | re.DOTALL)
+        data_pat = re.compile(r'^(static\s+)?([a-zA-Z_][\w\* ]{0,40}?)\s+([a-zA-Z_]\w*)\s*(?:=\s*([^;]+))?;', re.MULTILINE)
 
         for root, _, files in os.walk(self.src_target):
             for f in files:
@@ -95,22 +111,28 @@ class SourceHarmonizerV73:
                 def func_repl(m):
                     is_static = m.group(1) is not None
                     name = m.group(4).strip()
-                    if name in ('main', 'Entry') or name in self.conflict_registry:
+                    
+                    # C-Keyword Safety Check
+                    if name in self.c_keywords or name in ('main', 'Entry') or name in self.conflict_registry:
                         return m.group(0)
 
                     params = re.sub(r'\s+', ' ', m.group(5).strip()) or "void"
                     label = f"SS_{'S' if is_static else 'G'}_{fid}_{name}"
-                    self.mappings.append(SymbolMapping(name, m.group(3).strip(), fid, True, params, ".text", is_static, label))
+                    
+                    # Ensure type info doesn't have runaway macros in it
+                    type_info = m.group(3).strip().split('\n')[-1].replace('\\', '')
+                    self.mappings.append(SymbolMapping(name, type_info, fid, True, params, ".text", is_static, label))
 
                     return f"\n#undef {name}\n__attribute__((used, visibility(\"protected\"))) {m.group(2).replace(name, f'{name} __asm__(\"{label}\")', 1)} "
 
                 def data_repl(m):
                     is_static = m.group(1) is not None
-                    dtype = m.group(2).strip()
+                    dtype = m.group(2).strip().split('\n')[-1].replace('\\', '')
                     name = m.group(3).strip()
                     value = m.group(4)
 
-                    if name in self.conflict_registry or "extern" in dtype:
+                    # C-Keyword Safety Check
+                    if name in self.c_keywords or name in self.conflict_registry or "extern" in dtype:
                         return m.group(0)
 
                     section = ".bss" if value is None else ".data"
@@ -158,7 +180,7 @@ class SourceHarmonizerV73:
 
     def run(self):
         print("\n" + "="*60)
-        print("Banjo-Kazooie Harmonizer v73.0 SINGULARITY-STABILIZER")
+        print("Banjo-Kazooie Harmonizer v73.1 SINGULARITY-STABILIZER")
         print("="*60)
         self.setup_workspace()
         self.perform_introspection()
