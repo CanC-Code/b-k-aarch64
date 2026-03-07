@@ -7,51 +7,51 @@ import shutil
 from pathlib import Path
 
 """
-SourceHarmonizer v75.6 - Fix has_existing_forward_decl false positive +
-                          static local runtime-init splitting
+SourceHarmonizer v75.7 - Fix static local runtime-init for implicit-int C89 pattern
 
-ROOT CAUSES (from log 26):
+ROOT CAUSE (from log 27):
+  The static/forward-decl errors are fully resolved (lines shifted by +5, confirming
+  Strategy B injected the forward declarations successfully for code_F0.c).
 
-1. v75.5 REGRESSION — has_existing_forward_decl() false positive in code_F0.c:
-   The v75.5 guard used pattern `\bfunc_name\s*\([^{}]*?\)\s*;` which matched
-   bare function CALL STATEMENTS (e.g. `__codeF0_areCrcsValid();`) as if they
-   were forward declarations. This caused Strategy B to skip injection for
-   __codeF0_areCrcsValid and __codeF0_areRomCrcsCorrect, leaving code_F0.c
-   unmodified and the static-follows-non-static errors unresolved.
+  Three remaining errors are all from static local variables with runtime initializers,
+  specifically the C89/IDO implicit-int form with no explicit type:
+    line 69: `        static addr = __codeF0_getLearnedAbilitiesAddress();`
+    line 79: `    static learned_abilities_address = __codeF0_getLearnedAbilitiesAddress();`
 
-   FIX: has_existing_forward_decl_v4() checks that the line prefix (text before
-   the function name) contains a TYPE TOKEN and does NOT contain expression
-   operators (=, !, &, |, etc.) or open-parens. This reliably distinguishes:
-     DECLARATION: `static bool __codeF0_areCrcsValid();`    -> True  (has `bool`)
-     CALL STMT:   `    __codeF0_areCrcsValid();`             -> False (no type token)
-     CALL STMT:   `    result = __codeF0_areCrcsValid();`    -> False (has `=`)
-     CALL STMT:   `    if(!__codeF0_areCrcsValid()) ...`     -> False (has `!` and `(`)
+  v75.6's fix_static_local_runtime_init (Pass 3) used a single Form1 regex that
+  required `[^=\n;{}]+?` (at least some content) between `static` and the varname.
+  For implicit-int `static varname = call()`, there is NO type between `static` and
+  the varname, so Form1 never matched.
 
-2. NEW ERRORS in code_F0.c lines 64, 74 — static local with runtime initializer:
-   The decomp source contains IDO/C89 patterns like:
-     `static u32 *addr = __codeF0_getLearnedAbilitiesAddress();`
-   C99 (enforced by Clang) prohibits non-constant initializers for variables
-   with static storage duration, even inside function bodies.
+FIX:
+  Pass 3 now applies TWO forms in sequence:
 
-   FIX: fix_static_local_runtime_init() (new Pass 3) detects indented static
-   variable declarations whose RHS contains a function call (parentheses), and
-   splits them into a two-step declaration + assignment:
-     `static u32 * addr;`
-     `addr = __codeF0_getLearnedAbilitiesAddress();`
-   This preserves static-local semantics (persistent across calls) while
-   satisfying Clang's constant-initializer requirement.
+  Form 1 — explicit type: `static u32 *addr = call();`
+    Strips `static`, keeps type: `u32 * addr = call();`
+    Uses original working regex: `(static\s+...+?)\b(varname)\s*=\s*([^;\n]*\([^;\n]*);$`
 
-FULL PASS SUMMARY:
+  Form 2 — implicit int: `static varname = call();`
+    Strips `static`, converts to plain assignment: `varname = call();`
+    (The variable is either declared elsewhere or this is a standalone fixup.)
+    Uses regex: `static\s+(varname)\s*=\s*(rhs_with_parens);$`
+    Requires RHS to contain `(...)` to avoid touching constant initialisers.
+
+  Both forms are indentation-gated (only match inside function bodies).
+  Constant initialisers like `static int count = 0;` are never touched.
+
+FULL PASS SUMMARY (all fixes retained):
   Pass 1 — Array init:        `u8 tmp[N] = D_x;`  ->  __builtin_memcpy
   Pass 2 — Static conflicts:
-    Strategy A: patch non-static forward decl   ->  add `static`
-    Strategy B: inject missing static fwd decl  (guarded by improved decl detector)
-  Pass 3 — Static local init: `static T v = call();`  ->  `static T v; v = call();`
+    Strategy A: patch non-static forward decl          ->  add `static`
+    Strategy B: inject missing static fwd decl         (guarded by type-aware decl detector)
+  Pass 3 — Static local init (two forms):
+    Form 1: `static TYPE var = call();`                ->  `TYPE var = call();`
+    Form 2: `static var = call();` (implicit-int)      ->  `var = call();`
   Pass 4 — BKA exclusion set: static + forward-declared functions excluded
   Pass 5 — BKA macro/weak-alias injection for cross-file linking
 """
 
-class SourceHarmonizerV756:
+class SourceHarmonizerV757:
     def __init__(self, target_dir, decomp_path):
         self.target_dir = Path(target_dir)
         self.decomp_path = Path(decomp_path)
@@ -62,21 +62,16 @@ class SourceHarmonizerV756:
             'break', 'continue', 'case', 'default', 'goto', 'struct', 'union',
             'enum', 'static', 'extern', 'const', 'volatile', 'inline', 'typedef'
         }
-
         self.std_c = {
             'main', 'main_no_args', 'memcpy', 'memset', 'strlen', 'strcpy', 'strcmp',
             'sprintf', 'printf', 'malloc', 'free', 'sin', 'cos', 'sinf',
             'cosf', 'sqrt', 'sqrtf', 'abs', 'fabs'
         }
-
         self.sdk_prefixes = ('os', 'gu', 'al', 'gS', 'gD', 'gd', '__os', 'sp', 'dp', 'rmon')
-
-        # Storage/qualifier keywords that are NOT type names
         self._storage_quals = {
             'static', 'extern', 'inline', 'const', 'volatile', '__attribute__',
             '__restrict', 'restrict', 'register'
         }
-        # Control-flow keywords that are NOT type names
         self._ctrl_keywords = {
             'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do',
             'break', 'continue', 'case', 'default', 'goto', 'typedef'
@@ -84,7 +79,7 @@ class SourceHarmonizerV756:
 
     # -------------------------------------------------------------------------
     def setup_workspace(self):
-        print(f"[>] Preparing v75.6 Workspace...")
+        print(f"[>] Preparing v75.7 Workspace...")
         for folder in [self.target_dir / "src", self.target_dir / "include"]:
             if folder.exists():
                 shutil.rmtree(folder)
@@ -104,10 +99,7 @@ class SourceHarmonizerV756:
 
     # -------------------------------------------------------------------------
     def find_static_definitions(self, clean_content):
-        """
-        Returns dict { func_name -> signature } for every function defined with
-        `static` in this file. Uses re.DOTALL for reliable multiline matching.
-        """
+        """Returns dict {func_name -> signature} for every static function definition."""
         static_funcs = {}
         pattern = re.compile(
             r'\bstatic\b([^;{}]*?\b([a-zA-Z_]\w*)\s*\([^{}]*?\))\s*\{',
@@ -122,21 +114,11 @@ class SourceHarmonizerV756:
     # -------------------------------------------------------------------------
     def has_existing_forward_decl(self, clean_content, func_name):
         """
-        Returns True ONLY if an actual forward declaration exists for func_name.
-
-        Distinguishes declarations from call statements by requiring that the
-        text before the function name on the same line:
-          (a) contains at least one TYPE token (not just storage/control keywords)
-          (b) does NOT contain expression operators (=, !, &, |, etc.)
-          (c) does NOT contain an open-paren (would mean we're inside an expression)
-
-        Examples:
-          `static bool foo();`          -> True  (bool is a type token)
-          `void foo(Bar *x);`           -> True  (void is a type token)
-          `    foo();`                  -> False (no type token in prefix)
-          `    result = foo();`         -> False (= operator)
-          `    if(!foo()) ...`          -> False (! operator, open-paren)
-          `static u32* foo();`          -> True  (u32 is a type token; * allowed)
+        Returns True only if an actual forward declaration exists for func_name.
+        Distinguishes declarations from call statements by requiring:
+          (a) a type token before the function name on the same line
+          (b) no expression operators (=, !, &, |, etc.) in the prefix
+          (c) no open-paren in the prefix (would mean inside an expression)
         """
         pattern = re.compile(
             r'^([ \t]*(?:[^\n]*?))\b' + re.escape(func_name) + r'\s*\([^{}]*?\)\s*;',
@@ -144,14 +126,10 @@ class SourceHarmonizerV756:
         )
         for m in pattern.finditer(clean_content):
             prefix = m.group(1)
-            # Reject if expression operators present (= ! & | ^ ~ + - / % < > ?)
-            # Note: * is intentionally excluded — it's valid as a pointer declarator
             if re.search(r'[=!&|^~+\-/%<>?]', prefix):
                 continue
-            # Reject if inside a sub-expression (open-paren in prefix)
             if '(' in prefix:
                 continue
-            # Require at least one type-like token (not just storage/control kws)
             tokens = re.findall(r'[a-zA-Z_]\w*', prefix)
             type_tokens = [t for t in tokens
                            if t not in self._storage_quals
@@ -163,13 +141,9 @@ class SourceHarmonizerV756:
     # -------------------------------------------------------------------------
     def fix_static_conflicts(self, content):
         """
-        Two-strategy direct source patch for:
-          'static declaration of X follows non-static declaration'
-
-        Strategy A — patch existing explicit non-static forward declaration.
-        Strategy B — inject missing static forward declaration ONLY when no
-                     forward decl of any kind already exists (using the improved
-                     has_existing_forward_decl which correctly ignores call stmts).
+        Strategy A: patch non-static forward decl -> add `static`.
+        Strategy B: inject missing static forward decl (call-before-definition,
+                    no existing decl of any kind).
         """
         clean = self.remove_strings_and_comments(content)
         static_defs = self.find_static_definitions(clean)
@@ -180,26 +154,23 @@ class SourceHarmonizerV756:
         needs_injected = []
 
         for func_name, sig in static_defs.items():
-            # Strategy A: patch existing non-static forward decl line
+            # Strategy A
             fwd_pattern = re.compile(
                 r'^([ \t]*)(?!static\b)(\b\S[^\n]*?\b'
-                + re.escape(func_name)
-                + r'\s*\([^)]*\)\s*;)',
+                + re.escape(func_name) + r'\s*\([^)]*\)\s*;)',
                 re.MULTILINE
             )
             patched = fwd_pattern.sub(
-                lambda m: f"{m.group(1)}static {m.group(2)}",
-                modified
+                lambda m: f"{m.group(1)}static {m.group(2)}", modified
             )
             if patched != modified:
                 modified = patched
                 continue
 
-            # Strategy B: inject only when no forward decl of any kind exists
+            # Strategy B
             if self.has_existing_forward_decl(clean, func_name):
                 continue
 
-            # Check if function is called before its definition
             call_pat = re.compile(r'\b' + re.escape(func_name) + r'\s*\(')
             def_pat  = re.compile(
                 r'\bstatic\b[^;{}]*?\b' + re.escape(func_name) + r'\s*\([^{}]*?\)\s*\{',
@@ -207,7 +178,6 @@ class SourceHarmonizerV756:
             )
             call_m = call_pat.search(clean)
             def_m  = def_pat.search(clean)
-
             if call_m and def_m and call_m.start() < def_m.start():
                 needs_injected.append(f"static {sig};")
 
@@ -220,57 +190,74 @@ class SourceHarmonizerV756:
             last_include = None
             for m in re.finditer(r'^#include\b[^\n]*\n', modified, re.MULTILINE):
                 last_include = m
-            if last_include:
-                pos = last_include.end()
-                modified = modified[:pos] + block + modified[pos:]
-            else:
-                modified = block + modified
+            pos = last_include.end() if last_include else 0
+            modified = modified[:pos] + block + modified[pos:]
 
         return modified
 
     # -------------------------------------------------------------------------
     def fix_static_local_runtime_init(self, content):
         """
-        Splits static local variables with non-constant (runtime) initializers:
-          static u32 *varname = runtime_func(...);
-        Into a declaration + deferred assignment:
-          static u32 * varname;
-          varname = runtime_func(...);
+        Fixes static local variables with non-constant (runtime) initializers,
+        which Clang rejects under C99 even inside function bodies.
 
-        Required because C99 prohibits non-constant initializers for static-
-        storage-duration variables even inside function bodies (Clang error:
-        'initializer element is not a compile-time constant').
+        Form 1 — explicit type present:
+          `    static u32 *addr = __codeF0_getLearnedAbilitiesAddress();`
+          ->  `    u32 * addr = __codeF0_getLearnedAbilitiesAddress();`
+          (strips `static`, leaves as regular local with same type)
 
-        Only applies to INDENTED lines (inside function bodies).
-        Only triggers when the RHS contains parentheses (a function call/cast).
-        Leaves constant initializers like `static int count = 0;` untouched.
-        Does not touch file-scope statics (no leading whitespace).
+        Form 2 — C89 implicit-int (no type, just `static varname = call()`):
+          `    static addr = __codeF0_getLearnedAbilitiesAddress();`
+          ->  `    addr = __codeF0_getLearnedAbilitiesAddress();`
+          (strips `static`, becomes plain assignment to variable declared elsewhere)
+
+        Both forms:
+          - Only apply to indented lines (inside function bodies)
+          - Only trigger when RHS contains `(...)` (a call, not a constant)
+          - Never touch file-scope statics (no leading whitespace)
+          - Never touch constant initializers like `static int count = 0;`
+
+        Applied Form 2 BEFORE Form 1 to avoid Form 1 accidentally matching
+        implicit-int lines after Form 2 has already converted them.
         """
-        pattern = re.compile(
+        # Form 2 first: implicit-int `static varname = call(...);`
+        # Requires RHS to contain balanced `(` and `)` (function call)
+        form2 = re.compile(
+            r'^([ \t]+)static\s+([a-zA-Z_]\w+)\s*=\s*([^;\n]+(?:\([^;\n]*\))[^;\n]*)\s*;$',
+            re.MULTILINE
+        )
+        def repl_form2(m):
+            indent  = m.group(1)
+            varname = m.group(2)
+            rhs     = m.group(3).strip()
+            return f"{indent}{varname} = {rhs};"
+
+        result = form2.sub(repl_form2, content)
+
+        # Form 1: explicit type `static TYPE *varname = call();`
+        # Uses original proven pattern that requires ( in RHS
+        form1 = re.compile(
             r'^([ \t]+)(static(?:\s+(?:struct|union|enum))?\s+[^=\n;{}]+?)\b([a-zA-Z_]\w+)\s*=\s*([^;\n]*\([^;\n]*)\s*;$',
             re.MULTILINE
         )
-
-        def repl(m):
+        def repl_form1(m):
             indent    = m.group(1)
-            type_part = m.group(2).rstrip()  # e.g. `static u32 *`
-            varname   = m.group(3)            # e.g. `addr`
-            rhs       = m.group(4).strip()    # e.g. `__codeF0_getLearnedAbilitiesAddress()`
-            return f"{indent}{type_part} {varname};\n{indent}{varname} = {rhs};"
+            type_part = m.group(2).rstrip()
+            varname   = m.group(3)
+            rhs       = m.group(4).strip()
+            type_only = re.sub(r'\bstatic\b\s*', '', type_part).strip()
+            if not type_only:
+                type_only = 'int'
+            return f"{indent}{type_only} {varname} = {rhs};"
 
-        return pattern.sub(repl, content)
+        result = form1.sub(repl_form1, result)
+        return result
 
     # -------------------------------------------------------------------------
     def find_forward_declared_functions(self, clean_content):
-        """
-        Returns names of all functions with any forward declaration.
-        Excluded from BKA to prevent macro/alias interaction.
-        """
+        """Returns names of all functions with any forward declaration (excluded from BKA)."""
         names = set()
-        pattern = re.compile(
-            r'(?<![;{}])\b([a-zA-Z_]\w*)\s*\([^{}]*?\)\s*;',
-            re.DOTALL
-        )
+        pattern = re.compile(r'(?<![;{}])\b([a-zA-Z_]\w*)\s*\([^{}]*?\)\s*;', re.DOTALL)
         for m in pattern.finditer(clean_content):
             name = m.group(1)
             if name in self.c_keywords:
@@ -289,86 +276,74 @@ class SourceHarmonizerV756:
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             original_content = f.read()
 
-        # --- Pass 1: Fix IDO array init  `u8 tmp[N] = D_x;`  ->  __builtin_memcpy ---
+        # Pass 1 — Array init: `u8 tmp[N] = D_x;` -> __builtin_memcpy
         array_init_pattern = re.compile(
             r'^([ \t]*(?:struct\s+|union\s+|enum\s+)?[a-zA-Z_]\w*(?:\s*\*)*)\s+'
             r'([a-zA-Z_]\w*)\s*\[\s*(\d+)\s*\]\s*=\s*([a-zA-Z_]\w*)\s*;',
             re.MULTILINE
         )
         def array_init_repl(m):
-            type_str   = m.group(1)
-            name       = m.group(2)
-            size       = m.group(3)
-            src        = m.group(4)
-            clean_type = type_str.strip()
+            type_str = m.group(1); name = m.group(2)
+            size = m.group(3);     src  = m.group(4)
             return (f"{type_str} {name}[{size}]; "
-                    f"__builtin_memcpy({name}, {src}, {size} * sizeof({clean_type}));")
+                    f"__builtin_memcpy({name}, {src}, {size} * sizeof({type_str.strip()}));")
 
-        modified_content = array_init_pattern.sub(array_init_repl, original_content)
+        modified = array_init_pattern.sub(array_init_repl, original_content)
 
-        # --- Pass 2: Fix static-follows-non-static declaration conflicts ---
-        modified_content = self.fix_static_conflicts(modified_content)
+        # Pass 2 — Fix static-follows-non-static declaration conflicts
+        modified = self.fix_static_conflicts(modified)
 
-        # --- Pass 3: Fix static local variables with runtime initializers ---
-        modified_content = self.fix_static_local_runtime_init(modified_content)
+        # Pass 3 — Fix static local variables with runtime initialisers
+        modified = self.fix_static_local_runtime_init(modified)
 
-        # Analysis on stripped content
-        clean_content = self.remove_strings_and_comments(modified_content)
+        # Analysis pass
+        clean = self.remove_strings_and_comments(modified)
 
-        # --- Pass 4: Build BKA exclusion set ---
-        static_func_names  = set(self.find_static_definitions(clean_content).keys())
-        forward_decl_names = self.find_forward_declared_functions(clean_content)
+        # Pass 4 — Build BKA exclusion set
+        static_func_names  = set(self.find_static_definitions(clean).keys())
+        forward_decl_names = self.find_forward_declared_functions(clean)
         excluded_names     = static_func_names | forward_decl_names
 
         fid = hashlib.md5(str(file_path.name).encode()).hexdigest()[:8]
-
         func_pattern = re.compile(r'\b([a-zA-Z_]\w*)\s*\([^{;]*\)\s*\{')
         defined_funcs = []
 
-        for match in func_pattern.finditer(clean_content):
+        for match in func_pattern.finditer(clean):
             func_name = match.group(1)
             start_idx = match.start()
-
             if func_name in self.c_keywords or func_name in self.std_c:
                 continue
             if func_name.startswith(self.sdk_prefixes):
                 continue
-            if func_name.isupper():
-                continue
-            if func_name.startswith('__'):
+            if func_name.isupper() or func_name.startswith('__'):
                 continue
             if func_name in excluded_names:
                 continue
-
-            prefix_str = clean_content[:start_idx]
+            prefix_str = clean[:start_idx]
             cut_idx = max(prefix_str.rfind(';'), prefix_str.rfind('}'), prefix_str.rfind('{'))
             if cut_idx != -1:
                 prefix_str = prefix_str[cut_idx+1:]
             tokens = re.findall(r'[a-zA-Z_]\w*', prefix_str)
             if any(k in tokens for k in ['static', 'inline', 'typedef']):
                 continue
-
             defined_funcs.append(func_name)
 
         defined_funcs = list(dict.fromkeys(defined_funcs))
 
-        # --- Pass 5: BKA macro/alias injection ---
-        macros  = ""
-        aliases = ""
-
+        # Pass 5 — BKA macro/weak-alias injection
+        macros = aliases = ""
         if defined_funcs:
-            macros  += "// --- BKA MACROS START ---\n"
-            aliases += "\n\n// --- BKA ALIASES START ---\n"
+            macros  = "// --- BKA MACROS START ---\n"
+            aliases = "\n\n// --- BKA ALIASES START ---\n"
             for func in defined_funcs:
-                unique_name = f"BKA_F_{fid}_{func}"
-                macros  += f"#define {func} {unique_name}\n"
+                uname = f"BKA_F_{fid}_{func}"
+                macros  += f"#define {func} {uname}\n"
                 aliases += f"#undef {func}\n"
-                aliases += (f"__typeof__({unique_name}) {func} "
-                            f"__attribute__((weak, alias(\"{unique_name}\")));\n")
+                aliases += f"__typeof__({uname}) {func} __attribute__((weak, alias(\"{uname}\")));\n"
             macros  += "// --- BKA MACROS END ---\n\n"
             aliases += "// --- BKA ALIASES END ---\n"
 
-        new_content = macros + modified_content + aliases
+        new_content = macros + modified + aliases
 
         if new_content != original_content:
             with open(file_path, 'w', encoding='utf-8') as f:
@@ -380,10 +355,8 @@ class SourceHarmonizerV756:
         if not self.decomp_path.exists():
             print(f"[!] Error: Decompilation path {self.decomp_path} not found.")
             return
-
         self.setup_workspace()
-        print(f"[*] Applying v75.6 Function-Level Linker Isolation...")
-
+        print(f"[*] Applying v75.7 Function-Level Linker Isolation...")
         for file_path in self.target_dir.rglob('*.[ch]'):
             if "include/libc" in str(file_path) or file_path.suffix == '.h':
                 continue
@@ -392,8 +365,7 @@ class SourceHarmonizerV756:
                 self.stats["files_processed"] += 1
             except Exception as e:
                 print(f"[!] Error processing {file_path.name}: {e}")
-
-        print(f"\n[+] v75.6 Complete.")
+        print(f"\n[+] v75.7 Complete.")
         print(f"    Files Processed: {self.stats['files_processed']}")
         print(f"    Files Modified:  {self.stats['changes_made']}")
 
@@ -401,6 +373,4 @@ class SourceHarmonizerV756:
 if __name__ == "__main__":
     target = "Android/app/src/main/cpp"
     decomp = "decomp-files"
-
-    harmonizer = SourceHarmonizerV756(target, decomp)
-    harmonizer.run()
+    SourceHarmonizerV757(target, decomp).run()
