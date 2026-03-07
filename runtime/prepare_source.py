@@ -7,62 +7,61 @@ import shutil
 from pathlib import Path
 
 """
-SourceHarmonizer v75.15 — Fix BKA macro injection ordering
+SourceHarmonizer v75.16 — BKA forward declarations after macro block
 
 ═══════════════════════════════════════════════════════════════════════════════
-LOG 38 CONFIRMED: v75.14 ran (line 525-530 of log):
-  "[>] Preparing v75.14 Workspace..."
-  "[+] v75.14 Complete. Files Processed: 861  Files Modified: 648"
+LOG 39 — v75.15 ran (861 files processed, 648 modified). One file failed:
+  pfsmanager.c — 6 errors, two types
 ═══════════════════════════════════════════════════════════════════════════════
 
-ROOT CAUSE — code_1D00.c (only failing file; all 861 others compiled clean):
+ROOT CAUSE:
 
-  Error: use of undeclared identifier 'BKA_F_674a416b_audioManager_getThread_PAL'
-         did you mean 'BKA_F_674a416b_audioManager_getThread'?
+  Error type 1 — "conflicting types for 'BKA_F_xxx_func_8024F224'" (×3):
+    Line 391: void func_8024F224(void){
+    Note:     previous implicit declaration at line 360: func_8024F224();
+    Note:     both expanded via macro → BKA_F_1f86d77d_func_8024F224
 
-  Failing line (684):
-    __typeof__(BKA_F_674a416b_audioManager_getThread_PAL)
-      audioManager_getThread_PAL __attribute__((weak, alias(...)));
+    The file calls func_8024F224() at line 360, before its definition at
+    line 391. Both go through the BKA #define (now active from after last
+    #include). At the call site no prototype is visible for the BKA-renamed
+    symbol, so Clang creates an implicit `int`-returning declaration. When
+    the actual `void` definition arrives, types conflict.
 
-  Clang note: 'BKA_F_674a416b_audioManager_getThread' declared at line 645:
-    OSThread * audioManager_getThread(void){   ← expanded from macro 'audioManager_getThread'
-    #define audioManager_getThread BKA_F_674a416b_audioManager_getThread  ← line 12 of file
+  Error type 2 — "definition 'func_8024F224' cannot also be an alias" (×3):
+    The alias block (bottom of file) tries to create:
+      func_8024F224 → alias of BKA_F_xxx_func_8024F224
+    But Clang's TU symbol table already has BKA_F_xxx_func_8024F224 with a
+    broken (implicit-int) type from error type 1, making the alias invalid.
+    Cascade: fix error type 1 and error type 2 disappears automatically.
 
-  What happened (v75.14 structure — macros at file TOP, before #includes):
+THE FIX — inject BKA forward declarations immediately after the BKA macros:
 
-    Line  1:  // --- BKA MACROS START ---
-    Line 12:  #define audioManager_getThread     BKA_F_xxx_audioManager_getThread      ← OUR macro
-    Line 13:  #define audioManager_getThread_PAL BKA_F_xxx_audioManager_getThread_PAL  ← OUR macro
-    Line 14:  // --- BKA MACROS END ---
-    Line 15:  #include "audio.h"   ← HEADER redefines audioManager_getThread_PAL → audioManager_getThread
-                                     This OVERRIDES our BKA macro (later #define wins)
-    ...
-    Line 645: OSThread * audioManager_getThread_PAL(void){
-              ↑ preprocessed as: audioManager_getThread (header's override wins)
-              ↑ then:            BKA_F_xxx_audioManager_getThread(void){   ← only this symbol defined
-    Line 684: __typeof__(BKA_F_xxx_audioManager_getThread_PAL) ...  ← this symbol NEVER defined → ERROR
+  // --- BKA MACROS START ---
+  #undef func_8024F224
+  #define func_8024F224 BKA_F_xxx_func_8024F224
+  // --- BKA MACROS END ---
+  
+  // --- BKA FORWARD DECLARATIONS ---       ← NEW v75.16
+  void func_8024F224(void);                 ← macro expands this to:
+                                               void BKA_F_xxx_func_8024F224(void);
+  void func_8024F35C(s32 arg0);             ← gives Clang exact prototype
+  void func_8024F4AC(void);
+  // --- BKA FORWARD DECLARATIONS END ---
+  
+  [file body — calls and definitions now have visible prototypes]
 
-THE FIX (v75.15) — inject BKA macros AFTER the last #include:
+  // --- BKA ALIASES START ---
+  #undef func_8024F224
+  __typeof__(BKA_F_xxx_func_8024F224) func_8024F224 __attribute__((weak, alias(...)));
+  // --- BKA ALIASES END ---
 
-  New file structure:
-    #include "audio.h"              ← header defines audioManager_getThread_PAL → audioManager_getThread
-    // --- BKA MACROS START ---
-    #undef audioManager_getThread_PAL                              ← suppress redefinition warning
-    #define audioManager_getThread_PAL BKA_F_xxx_..._PAL          ← OUR macro wins (comes after header)
-    #undef audioManager_getThread
-    #define audioManager_getThread BKA_F_xxx_audioManager_getThread
-    // --- BKA MACROS END ---
-    ...
-    OSThread * audioManager_getThread_PAL(void){
-    ↑ preprocessed as: BKA_F_xxx_audioManager_getThread_PAL(void){  ← symbol IS defined ✓
-    ...
-    // --- BKA ALIASES START ---
-    #undef audioManager_getThread_PAL
-    __typeof__(BKA_F_xxx_audioManager_getThread_PAL) audioManager_getThread_PAL
-      __attribute__((weak, alias("BKA_F_xxx_audioManager_getThread_PAL")));  ← symbol exists ✓
+  With a visible prototype for each BKA-renamed symbol, the call at line 360
+  resolves correctly (no implicit int), and the void definition at line 391
+  matches exactly. Both errors disappear.
 
-  The explicit #undef before each #define also prevents -Wmacro-redefinition
-  warnings from Clang when the header already defined the same name.
+  Signature extraction: for each function in defined_funcs, a regex captures
+  the return type and parameter list from the actual definition in the source
+  text. This produces an exact prototype rather than a generic stub.
 
 ═══════════════════════════════════════════════════════════════════════════════
 FULL PASS SUMMARY
@@ -77,12 +76,14 @@ FULL PASS SUMMARY
     Rule B   implicit-int init static v = call(); /* cmt */   -> v = call();
     Rule C   typed init        static TYPE v = call();        -> TYPE v = call();
   Pass 4 — BKA exclusion set   static + forward-declared functions excluded
-  Pass 5 — BKA macros injected AFTER last #include (v75.15 fix); aliases at end
-             Each #define preceded by explicit #undef (prevents redefinition warning)
+  Pass 5 — BKA injection (all after last #include):
+            a) macros:         #undef fn / #define fn BKA_F_xxx_fn
+            b) fwd decls:      TYPE fn(PARAMS);  (→ TYPE BKA_F_xxx_fn(PARAMS); via macro)
+            c) aliases at end: #undef fn / __typeof__(BKA_F_xxx_fn) fn __attribute__((alias))
 """
 
 
-class SourceHarmonizerV7515:
+class SourceHarmonizerV7516:
     def __init__(self, target_dir, decomp_path):
         self.target_dir  = Path(target_dir)
         self.decomp_path = Path(decomp_path)
@@ -120,7 +121,7 @@ class SourceHarmonizerV7515:
             r'^([ \t]+)static\s+([^=\n;{}]+?)\s*([|&^+\-*/%]=|<<=|>>=)',
             re.MULTILINE
         )
-        # Rule A2: plain assign where LHS contains -> or . (member access = unambiguous statement)
+        # Rule A2: plain assign where LHS is a struct/member access (contains -> or .)
         self._p3a2 = re.compile(
             r'^([ \t]+)static\s+([a-zA-Z_]\w*(?:->|\.)[^=\n;{}]*?)\s*=\s*([^;\n]+?)\s*;[^\n]*$',
             re.MULTILINE
@@ -137,10 +138,19 @@ class SourceHarmonizerV7515:
             re.MULTILINE
         )
 
+        # Signature extraction: capture return_type + funcname + params from a definition
+        # Used to emit exact forward declarations for BKA-renamed functions.
+        # Group 1: everything before the function name (return type + qualifiers)
+        # Group 2: function name (substituted per-call with re.escape(fname))
+        # Group 3: parameter list
+        self._sig_pat_template = (
+            r'^([ \t]*[^\n;{}]+?)\b{fname}\s*\(([^{{}}]*?)\)\s*\{{'
+        )
+
     # ─────────────────────────────────────────────────────────────────────────
     def setup_workspace(self):
         """Copy fresh source from decomp-files/ — invalidates CMake build cache."""
-        print("[>] Preparing v75.15 Workspace...")
+        print("[>] Preparing v75.16 Workspace...")
         for folder in [self.target_dir / "src", self.target_dir / "include"]:
             if folder.exists():
                 shutil.rmtree(folder)
@@ -284,6 +294,39 @@ class SourceHarmonizerV7515:
         return names
 
     # ─────────────────────────────────────────────────────────────────────────
+    def extract_bka_forward_decls(self, clean_content, defined_funcs):
+        """
+        For each function in defined_funcs, extract its full signature from
+        the definition in the source and return a forward declaration string.
+
+        The forward declaration uses the PLAIN function name (not BKA-prefixed).
+        When injected after the BKA #define block, the macro expands the plain
+        name to the BKA-prefixed symbol, giving Clang the correct prototype.
+
+        Example:
+          Source:  void func_8024F224(void) {
+          Output:  void func_8024F224(void);
+          After BKA macro expansion by preprocessor:
+                   void BKA_F_xxx_func_8024F224(void);   ← exact prototype ✓
+        """
+        fwd_decls = []
+        for fname in defined_funcs:
+            pat = re.compile(
+                r'^([ \t]*[^\n;{}]+?)\b' + re.escape(fname) + r'\s*\(([^{}]*?)\)\s*\{',
+                re.MULTILINE | re.DOTALL
+            )
+            m = pat.search(clean_content)
+            if m:
+                ret_type = m.group(1).strip()
+                params   = re.sub(r'\s+', ' ', m.group(2).strip())
+                # Emit: return_type funcname(params);
+                fwd_decls.append(f"{ret_type} {fname}({params});")
+            else:
+                # Fallback: emit a void prototype — safer than no prototype
+                fwd_decls.append(f"void {fname}(void);")
+        return fwd_decls
+
+    # ─────────────────────────────────────────────────────────────────────────
     def process_file(self, file_path):
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             original_content = f.read()
@@ -307,7 +350,7 @@ class SourceHarmonizerV7515:
         # Pass 3 — C89/IDO static-local patterns
         modified = self.fix_static_local_c89_patterns(modified)
 
-        # Analysis pass (comments/strings stripped for safe pattern scanning)
+        # Analysis pass (strip strings/comments for safe scanning)
         clean = self.remove_strings_and_comments(modified)
 
         # Pass 4 — Build BKA exclusion set
@@ -346,32 +389,32 @@ class SourceHarmonizerV7515:
         if not defined_funcs:
             new_content = modified
         else:
-            # Pass 5 — BKA macro/weak-alias injection
+            # Pass 5 — BKA injection (after last #include):
             #
-            # KEY CHANGE v75.15: macros are injected AFTER the last #include, not at
-            # the file top. This ensures our #defines override any same-named macros
-            # from headers (the C preprocessor uses last-definition-wins semantics).
-            #
-            # Each #define is preceded by an explicit #undef to suppress
-            # -Wmacro-redefinition warnings when a header already defined that name.
-            #
-            # Example for audioManager_getThread_PAL in code_1D00.c:
-            #   Header defines: audioManager_getThread_PAL -> audioManager_getThread
-            #   Our injection:  #undef audioManager_getThread_PAL
-            #                   #define audioManager_getThread_PAL BKA_F_xxx_..._PAL
-            #   Function def:   audioManager_getThread_PAL(void){
-            #                -> BKA_F_xxx_audioManager_getThread_PAL(void){  ✓ defined
-            #   Alias:          __typeof__(BKA_F_xxx_audioManager_getThread_PAL) ...  ✓ works
+            # a) #undef + #define macros (so our defines override any header macros)
+            # b) Forward declarations using plain function names (v75.16 NEW):
+            #    These pass through the BKA #defines and give Clang exact prototypes
+            #    for every BKA-renamed symbol BEFORE any call site in the file body.
+            #    Eliminates implicit-int declarations and "conflicting types" errors.
+            # c) Aliases block at end of file
 
+            # Build macros block
             macros_lines = ["", "// --- BKA MACROS START ---"]
             for fn in defined_funcs:
                 un = f"BKA_F_{fid}_{fn}"
                 macros_lines.append(f"#undef {fn}")
                 macros_lines.append(f"#define {fn} {un}")
             macros_lines.append("// --- BKA MACROS END ---")
-            macros_lines.append("")
             macros_block = "\n".join(macros_lines) + "\n"
 
+            # Build forward declarations block (NEW v75.16)
+            fwd_decls = self.extract_bka_forward_decls(clean, defined_funcs)
+            fwd_lines  = ["// --- BKA FORWARD DECLARATIONS ---"]
+            fwd_lines += fwd_decls
+            fwd_lines.append("// --- BKA FORWARD DECLARATIONS END ---")
+            fwd_block = "\n".join(fwd_lines) + "\n\n"
+
+            # Build aliases block
             aliases_lines = ["", "", "// --- BKA ALIASES START ---"]
             for fn in defined_funcs:
                 un = f"BKA_F_{fid}_{fn}"
@@ -382,17 +425,19 @@ class SourceHarmonizerV7515:
             aliases_lines.append("// --- BKA ALIASES END ---")
             aliases_block = "\n".join(aliases_lines) + "\n"
 
-            # Find last #include in modified content and insert macros right after it
+            # Find last #include position and insert (macros + fwd_decls) right after
             last_inc = None
             for m in re.finditer(r'^#include\b[^\n]*\n', modified, re.MULTILINE):
                 last_inc = m
 
+            inject_block = macros_block + fwd_block
+
             if last_inc:
                 pos = last_inc.end()
-                new_content = modified[:pos] + macros_block + modified[pos:] + aliases_block
+                new_content = modified[:pos] + inject_block + modified[pos:] + aliases_block
             else:
-                # No #includes: macros go at the very top
-                new_content = macros_block + modified + aliases_block
+                # No #includes: inject at very top
+                new_content = inject_block + modified + aliases_block
 
         if new_content != original_content:
             with open(file_path, 'w', encoding='utf-8') as f:
@@ -405,7 +450,7 @@ class SourceHarmonizerV7515:
             print(f"[!] Error: decompilation path '{self.decomp_path}' not found.")
             return
         self.setup_workspace()
-        print("[*] Applying v75.15 Function-Level Linker Isolation...")
+        print("[*] Applying v75.16 Function-Level Linker Isolation...")
         for file_path in self.target_dir.rglob('*.[ch]'):
             if "include/libc" in str(file_path) or file_path.suffix == '.h':
                 continue
@@ -414,7 +459,7 @@ class SourceHarmonizerV7515:
                 self.stats["files_processed"] += 1
             except Exception as e:
                 print(f"[!] Error processing {file_path.name}: {e}")
-        print(f"\n[+] v75.15 Complete.")
+        print(f"\n[+] v75.16 Complete.")
         print(f"    Files Processed: {self.stats['files_processed']}")
         print(f"    Files Modified:  {self.stats['changes_made']}")
 
@@ -422,4 +467,4 @@ class SourceHarmonizerV7515:
 if __name__ == "__main__":
     target = "Android/app/src/main/cpp"
     decomp = "decomp-files"
-    SourceHarmonizerV7515(target, decomp).run()
+    SourceHarmonizerV7516(target, decomp).run()
