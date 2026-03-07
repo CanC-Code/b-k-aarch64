@@ -7,11 +7,12 @@ import shutil
 from pathlib import Path
 
 """
-SourceHarmonizer v75 - Zero-Header Linker Isolation
+SourceHarmonizer v75.1 - Zero-Header Linker Isolation (Refined)
 Fixes:
 1. Drops 'harmonized_globals.h' entirely, eliminating all "Incomplete Type" and "Conflicting Type" errors.
 2. Uses Weak Alias export strategy to perfectly mimic N64 overlay isolation on AArch64.
-3. Relies purely on the preprocessor (#define) to rename implementations, preventing any AST/Signature corruption.
+3. Protects entrypoint 'main_no_args' from being aliased so NativeBridge.cpp can link it.
+4. Replaces invalid array assignments (u8 tmp[6] = D_...) with __builtin_memcpy to satisfy Clang.
 """
 
 class SourceHarmonizerV75:
@@ -27,9 +28,9 @@ class SourceHarmonizerV75:
             'enum', 'static', 'extern', 'const', 'volatile', 'inline', 'typedef'
         }
         
-        # Standard lib functions to ignore
+        # Standard lib functions and crucial JNI/C++ entrypoints to ignore
         self.std_c = {
-            'main', 'memcpy', 'memset', 'strlen', 'strcpy', 'strcmp', 
+            'main', 'main_no_args', 'memcpy', 'memset', 'strlen', 'strcpy', 'strcmp', 
             'sprintf', 'printf', 'malloc', 'free', 'sin', 'cos', 'sinf', 
             'cosf', 'sqrt', 'sqrtf', 'abs', 'fabs'
         }
@@ -38,7 +39,7 @@ class SourceHarmonizerV75:
         self.sdk_prefixes = ('os', 'gu', 'al', 'gS', 'gD', 'gd', '__os', 'sp', 'dp', 'rmon')
 
     def setup_workspace(self):
-        print(f"[>] Preparing v75 Workspace...")
+        print(f"[>] Preparing v75.1 Workspace...")
         src_target = self.target_dir / "src"
         include_target = self.target_dir / "include"
         
@@ -64,7 +65,23 @@ class SourceHarmonizerV75:
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             original_content = f.read()
 
-        clean_content = self.remove_strings_and_comments(original_content)
+        # Fix IDO-specific array assignment (Clang rejects `u8 tmp[6] = D_80390DA0;`)
+        array_init_pattern = re.compile(
+            r'^([ \t]*(?:struct\s+|union\s+|enum\s+)?[a-zA-Z_]\w*(?:\s*\*)*)\s+([a-zA-Z_]\w*)\s*\[\s*(\d+)\s*\]\s*=\s*([a-zA-Z_]\w*)\s*;',
+            re.MULTILINE
+        )
+        
+        def array_init_repl(match):
+            type_str = match.group(1)
+            name = match.group(2)
+            size = match.group(3)
+            src = match.group(4)
+            clean_type = type_str.strip()
+            return f"{type_str} {name}[{size}]; __builtin_memcpy({name}, {src}, {size} * sizeof({clean_type}));"
+        
+        modified_content = array_init_pattern.sub(array_init_repl, original_content)
+        clean_content = self.remove_strings_and_comments(modified_content)
+        
         fid = hashlib.md5(str(file_path.name).encode()).hexdigest()[:8]
         
         # Matches: func_name(...) { 
@@ -83,7 +100,7 @@ class SourceHarmonizerV75:
             if func_name.isupper():
                 continue
 
-            # Context Filter: Look backwards to the previous statement to detect 'static' or 'inline'
+            # Context Filter: Look backwards to the previous statement to detect 'static', 'inline' or 'typedef'
             prefix_str = clean_content[:start_idx]
             cut_idx = max(prefix_str.rfind(';'), prefix_str.rfind('}'), prefix_str.rfind('{'))
             if cut_idx != -1:
@@ -97,29 +114,30 @@ class SourceHarmonizerV75:
 
         # Deduplicate while preserving order
         defined_funcs = list(dict.fromkeys(defined_funcs))
-        
-        if not defined_funcs:
-            return
 
         # Prepare Injection Blocks
-        macros = "// --- BKA MACROS START ---\n"
-        aliases = "\n\n// --- BKA ALIASES START ---\n"
+        macros = ""
+        aliases = ""
         
-        for func in defined_funcs:
-            unique_name = f"BKA_F_{fid}_{func}"
+        if defined_funcs:
+            macros += "// --- BKA MACROS START ---\n"
+            aliases += "\n\n// --- BKA ALIASES START ---\n"
             
-            # The macro silently renames the definition and local calls
-            macros += f"#define {func} {unique_name}\n"
-            
-            # The weak alias securely exposes the symbol for cross-file linking
-            aliases += f"#undef {func}\n"
-            aliases += f"__typeof__({unique_name}) {func} __attribute__((weak, alias(\"{unique_name}\")));\n"
+            for func in defined_funcs:
+                unique_name = f"BKA_F_{fid}_{func}"
+                
+                # The macro silently renames the definition and local calls
+                macros += f"#define {func} {unique_name}\n"
+                
+                # The weak alias securely exposes the symbol for cross-file linking
+                aliases += f"#undef {func}\n"
+                aliases += f"__typeof__({unique_name}) {func} __attribute__((weak, alias(\"{unique_name}\")));\n"
 
-        macros += "// --- BKA MACROS END ---\n\n"
-        aliases += "// --- BKA ALIASES END ---\n"
+            macros += "// --- BKA MACROS END ---\n\n"
+            aliases += "// --- BKA ALIASES END ---\n"
 
         # Reconstruct the file with macros at the absolute top, aliases at the absolute bottom
-        new_content = macros + original_content + aliases
+        new_content = macros + modified_content + aliases
 
         if new_content != original_content:
             with open(file_path, 'w', encoding='utf-8') as f:
@@ -132,7 +150,7 @@ class SourceHarmonizerV75:
             return
 
         self.setup_workspace()
-        print(f"[*] Applying v75 Function-Level Linker Isolation...")
+        print(f"[*] Applying v75.1 Function-Level Linker Isolation...")
 
         for file_path in self.target_dir.rglob('*.[ch]'):
             # Skip standard library headers and header files entirely
@@ -145,7 +163,7 @@ class SourceHarmonizerV75:
             except Exception as e:
                 print(f"[!] Error processing {file_path.name}: {e}")
 
-        print(f"\n[+] v75 Complete.")
+        print(f"\n[+] v75.1 Complete.")
         print(f"    Files Processed: {self.stats['files_processed']}")
         print(f"    Files Modified:  {self.stats['changes_made']}")
 
