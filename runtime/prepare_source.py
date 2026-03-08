@@ -5,42 +5,42 @@ import shutil
 from pathlib import Path
 
 """
-SourceHarmonizer v75.20 — Fix false-positive weak injection on call statements
+SourceHarmonizer v75.21 — Fix weak injection on control-flow statements
 
 ═══════════════════════════════════════════════════════════════════════════════
-LOG 78 — v75.19 ran (861 files processed, 861 modified). One file failed:
-  n_seq.c:133: error: expected identifier or '('
-    __attribute__((weak)) n_alSeqEvent(seq, &evt);
-                                      ^
+LOG 78 (v75.20) — n_seq.c: "expected identifier or '('"
+  __attribute__((weak)) n_alSeqEvent(seq, &evt);
+  Params group [^{}]*? matched `;` and spanned across statement boundaries.
+  Fix: [^{}]*? → [^{};]*? — stops at semicolons (v75.20).
+
+LOG 79 (v75.21) — code_1D00.c: "'weak' attribute cannot be applied to a statement"
+  __attribute__((weak)) if (audioManager_handleFrameMsg(...)){
 ═══════════════════════════════════════════════════════════════════════════════
 
-ROOT CAUSE — regex spans across statement boundaries:
+ROOT CAUSE — group 2 "return type" prefix matched control-flow keywords:
 
-  inject_weak_attribute used: fname\s*\([^{}]*?\)\s*\{  (with DOTALL)
-  The [^{}]*? group excludes braces but ALLOWS semicolons and newlines.
-  In DOTALL mode it will extend across call statements to find the next `{`:
+  Pattern group 2 was: ([^\n;{}]*?\b)
+  This allows `if (`, `while (`, `for (` as "return type" prefix.
+  In code_1D00.c: `if (audioManager_handleFrameMsg(args)){`
+    group 2 = `if (`   ← treated as return type (wrong)
+    params group consumed `args)` then the outer if `)` before the `{`
+  Result: __attribute__((weak)) injected before `if (` — invalid C.
 
-    n_alSeqEvent(seq, &evt);   ← call statement — ends with `;`
-    if (evt.type) {            ← `{` found here!
+THE FIX — exclude `(` from the return type prefix group:
 
-  The regex matches starting at the call `n_alSeqEvent(`, treats `seq, &evt);
-  if (evt.type` as the "param list", and considers the `{` of the `if` block
-  as the function body opening. This causes __attribute__((weak)) to be
-  injected before a call statement instead of a definition — invalid C.
+  Changed group 2: [^\n;{}]*? → [^\n;{}(]*?
 
-THE FIX — exclude semicolons from the params group:
+  A C function definition's return type NEVER contains `(` at top level.
+  Valid return types: `void`, `s32`, `OSThread *`, `const u8` — no parens.
+  Control-flow always has `(` before the function name, so excluding `(`
+  from group 2 stops all if/while/for false-positives.
 
-  Changed [^{}]*? → [^{};]*?
-
-  A function definition's parameter list NEVER contains a `;`.
-  A call statement ends with `;`, so [^{};]*? stops there and cannot
-  span across statement boundaries. Multi-line definitions still work
-  because newlines are still allowed in [^{};]*? (DOTALL still applies).
-
-  Verified: buggy pattern matches `n_alSeqEvent(seq, &evt);\n    if (evt.type) {`
-             fixed  pattern matches only `n_alSeqEvent(ALSeq *seq, ALEvent *event) {`
-
-Same fix applied to the definition pattern cache in inject_weak_attribute.
+  Verified (all 5 cases correct):
+    if-statement     → None  (blocked by `(` exclusion)
+    while-loop       → None  (blocked by `(` exclusion)
+    call-statement   → None  (blocked by `;` exclusion, v75.20)
+    multiline def    → match (newlines in params still allowed)
+    pointer return   → match (`OSThread *` has no `(`)
 
 ═══════════════════════════════════════════════════════════════════════════════
 FULL PASS SUMMARY
@@ -57,7 +57,8 @@ FULL PASS SUMMARY
     Rule C   typed init        static TYPE v = call();       -> TYPE v = call();
   Pass 4 — Weak symbol injection:
     __attribute__((weak)) on each eligible non-static function definition.
-    Definition pattern uses [^{};]*? to prevent spanning across call statements.
+    group 2 [^\n;{}(]*? — no parens, prevents control-flow false-positives
+    group 3 [^{};]*?    — no semicolons, prevents call-statement false-positives
 """
 
 PREAMBLE_MARKER = "/* SH-v75.19-preamble */"
@@ -71,7 +72,7 @@ PREAMBLE = f"""\
 """
 
 
-class SourceHarmonizerV7520:
+class SourceHarmonizerV7521:
     def __init__(self, target_dir, decomp_path):
         self.target_dir  = Path(target_dir)
         self.decomp_path = Path(decomp_path)
@@ -123,7 +124,7 @@ class SourceHarmonizerV7520:
 
     # ─────────────────────────────────────────────────────────────────────────
     def setup_workspace(self):
-        print("[>] Preparing v75.20 Workspace (in-place on decomp-files/src)...")
+        print("[>] Preparing v75.21 Workspace (in-place on decomp-files/src)...")
 
     # ─────────────────────────────────────────────────────────────────────────
     def remove_strings_and_comments(self, text):
@@ -257,21 +258,18 @@ class SourceHarmonizerV7520:
         """
         Prepend __attribute__((weak)) to a non-static function definition.
 
-        KEY FIX in v75.20: params group uses [^{};]*? (excludes semicolons).
-        A function definition's parameter list never contains `;`, so this
-        prevents the pattern from spanning across call statements like:
-          fname(arg1, arg2);        ← call ends with `;`
-          ...
-          some_other_func(params) { ← pattern would wrongly match this `{`
-        With [^{};]*?, the match stops at the `;` and cannot cross boundaries.
-        Multi-line parameters still work since newlines are still allowed.
+        Two exclusions in the definition pattern (both required):
+          group 2 [^\n;{}(]*? — return type, excludes `(` (v75.21)
+            Prevents `if (`, `while (`, `for (` being matched as return types.
+          group 3 [^{};]*?    — params, excludes `;` (v75.20)
+            Prevents spanning across call statements (which end with `;`).
         """
         if fname not in self._def_pat_cache:
             self._def_pat_cache[fname] = re.compile(
                 # group 1: line indent
-                # group 2: return type / qualifiers before fname  (no newlines, braces, or semicolons)
-                # group 3: fname(params) {   — params exclude {} and ;  (KEY FIX: [^{};]*?)
-                r'^([ \t]*)([^\n;{}]*?\b)('
+                # group 2: return type — [^\n;{}(]*? blocks if/while/for (v75.21)
+                # group 3: fname(params){ — [^{};]*? blocks call stmts (v75.20)
+                r'^([ \t]*)([^\n;{}(]*?\b)('
                 + re.escape(fname)
                 + r'\s*\([^{};]*?\)\s*\{)',
                 re.MULTILINE | re.DOTALL
@@ -375,14 +373,14 @@ class SourceHarmonizerV7520:
             print(f"[!] Error: target directory '{self.target_dir}' not found.")
             return
         self.setup_workspace()
-        print("[*] Applying v75.20 Function-Level Linker Isolation...")
+        print("[*] Applying v75.21 Function-Level Linker Isolation...")
         for file_path in self.target_dir.rglob('*.c'):
             try:
                 self.process_file(file_path)
                 self.stats["files_processed"] += 1
             except Exception as e:
                 print(f"[!] Error processing {file_path.name}: {e}")
-        print(f"\n[+] v75.20 Complete.")
+        print(f"\n[+] v75.21 Complete.")
         print(f"    Files Processed: {self.stats['files_processed']}")
         print(f"    Files Modified:  {self.stats['changes_made']}")
 
@@ -390,4 +388,4 @@ class SourceHarmonizerV7520:
 if __name__ == "__main__":
     target = "decomp-files/src"
     decomp = "decomp-files"
-    SourceHarmonizerV7520(target, decomp).run()
+    SourceHarmonizerV7521(target, decomp).run()
