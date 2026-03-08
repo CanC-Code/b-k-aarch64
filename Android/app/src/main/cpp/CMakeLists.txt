@@ -1,13 +1,15 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(bkawrapper LANGUAGES C CXX)
 
-# Define the root of your decompiled source relative to this file
+# 1. Define the path to the root of the decompilation project
 set(DECOMP_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../decomp-files")
 
-# Correct the GLOB to point to the actual source tree
+# 2. Specifically collect the engine source files
+# We focus on core1 and core2 where the main game logic resides
 file(GLOB_RECURSE GAME_SOURCES 
-    "${DECOMP_ROOT}/src/*.c"
-    "${DECOMP_ROOT}/src/*.cpp"
+    "${DECOMP_ROOT}/src/core1/*.c"
+    "${DECOMP_ROOT}/src/core2/*.c"
+    "${DECOMP_ROOT}/src/done/*.c"
 )
 
 add_library(bkawrapper SHARED
@@ -22,18 +24,19 @@ add_library(bkawrapper SHARED
     tools/rare_decompression.cpp
 )
 
-# Crucial: Add -D_LANGUAGE_C and the include paths for the N64 headers
-target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
+# 3. Fix the Include Paths
+# The C files need to find ultra64.h and other headers in decomp-files/include
 target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/ultra
+    ${CMAKE_CURRENT_SOURCE_DIR}/emulator
     ${DECOMP_ROOT}/include
     ${DECOMP_ROOT}/include/2.0L
     ${DECOMP_ROOT}/include/2.0L/PR
     ${DECOMP_ROOT}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/tools
 )
 
+target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
 target_compile_options(bkawrapper PRIVATE -w -fcommon)
 
 find_library(log-lib log)
