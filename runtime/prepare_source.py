@@ -3,22 +3,21 @@ import re
 from pathlib import Path
 
 """
-SourceHarmonizer v75.27 — Android/Clang compatibility & decomp fixes
+SourceHarmonizer v75.28 — Android/Clang compatibility & decomp fixes
 
-Changelog:
-- v75.27: Added robust local array = global_symbol → memcpy rewrite
-         (fixes "array initializer must be an initializer list" in code_41460.c etc.)
-- Keeps aggressive preamble insertion + diagnostics
-- Conservative: only rewrites when RHS is a simple identifier (global array name)
+Changelog v75.28:
+- Added pass to remove 'static' from function definitions when a non-static declaration exists
+  (fixes "static declaration follows non-static" in gccube.c and similar files)
+- Keeps v75.27 array = global → memcpy fix
+- Keeps aggressive preamble + diagnostics
 """
 
 PREAMBLE = """\
 /* ──────────────────────────────────────────────── */
-/* SourceHarmonizer v75.27 — FORCED Android compat   */
-/* This block should appear near top of EVERY .c file */
+/* SourceHarmonizer v75.28 — FORCED Android compat   */
 /* ──────────────────────────────────────────────── */
 
-#pragma message "SourceHarmonizer v75.27 preamble is ACTIVE in this file"
+#pragma message "SourceHarmonizer v75.28 preamble is ACTIVE in this file"
 
 #ifndef F3DEX_GBI_2
 #define F3DEX_GBI_2
@@ -67,7 +66,7 @@ PREAMBLE = """\
 #endif
 
 /* ──────────────────────────────────────────────── */
-/* End forced compat block v75.27                   */
+/* End forced compat block v75.28                   */
 /* ──────────────────────────────────────────────── */
 """
 
@@ -80,15 +79,13 @@ def insert_preamble_and_fixes(file_path: Path):
 
     original = content
 
-    # 1. Insert/update preamble (force replace if version changed)
-    preamble_start = "SourceHarmonizer v75.27 preamble is ACTIVE"
-    if preamble_start not in content:
+    # 1. Insert/update preamble
+    preamble_marker = "SourceHarmonizer v75.28 preamble is ACTIVE"
+    if preamble_marker not in content:
         content = PREAMBLE + content
         print(f"  [PREAMBLE] Inserted/updated in {file_path.name}")
 
-    # 2. Fix array = global_symbol → memcpy (the current error pattern)
-    # Matches:   type name[size] = GLOBAL_SYM;
-    #           (inside function or static)
+    # 2. Fix array = global_symbol → memcpy (from v75.27)
     array_pat = re.compile(
         r'(?m)^(\s*(?:static\s+)?(?:const\s+)?[a-zA-Z_][\w\s*]*(?:\s*\*+)?)\s+'
         r'([a-zA-Z_]\w*)\s*\[\s*(\d+(?:\s*\*\s*[a-zA-Z_]\w+)?)\s*\]\s*=\s*'
@@ -108,18 +105,36 @@ def insert_preamble_and_fixes(file_path: Path):
 
     content = array_pat.sub(replace_array, content)
 
-    # Optional: add more patterns here in future (e.g. struct init, designated, etc.)
+    # 3. New: Remove 'static' from function definitions when non-static decl exists
+    # Pattern: static return_type func_name(params) { ... }
+    # We remove 'static ' only if it appears right after indent
+    static_func_pat = re.compile(
+        r'(?m)^(\s*)static\s+([a-zA-Z_][\w\s*]*(?:\s*\*+)?)\s+'
+        r'([a-zA-Z_]\w*)\s*\(([^)]*)\)\s*\{'
+    )
+
+    def remove_static_from_def(m):
+        indent = m.group(1)
+        ret_type = m.group(2)
+        name = m.group(3)
+        params = m.group(4)
+        return f"{indent}{ret_type} {name}({params}) {{"
+
+    content = static_func_pat.sub(remove_static_from_def, content)
+
+    # Optional: you can make it more targeted by checking function name prefix
+    # e.g. only for __code7AF80_* but global removal is safer for now
 
     if content != original:
         try:
             file_path.write_text(content, encoding="utf-8")
-            print(f"  [MOD] {file_path.name} — fixes applied (array memcpy + preamble)")
+            print(f"  [MOD] {file_path.name} — fixes applied (array memcpy + static removal)")
             return True
         except Exception as e:
             print(f"Cannot write {file_path.name}: {e}")
             return False
     else:
-        print(f"  [SKIP] {file_path.name} — no changes needed")
+        print(f"  [SKIP] {file_path.name} — no changes")
         return False
 
 
@@ -129,7 +144,7 @@ def main():
         print(f"Error: {target_dir} not found")
         return
 
-    print("SourceHarmonizer v75.27 — forcing preamble + array init fixes")
+    print("SourceHarmonizer v75.28 — preamble + array + static fixes")
     modified_count = 0
 
     for path in sorted(target_dir.rglob("*.c")):
@@ -137,12 +152,12 @@ def main():
             modified_count += 1
 
     print(f"\nDone. Modified {modified_count} files.")
-    print("Next step: git add . ; git commit -m 'harmonizer v75.27 - fix array init in code_41460.c'")
-    print("Then push and retrigger CI")
-    print("Watch for pragma messages in log:")
-    print("  'SourceHarmonizer v75.27 preamble is ACTIVE'")
-    print("  'BOOL macro defined by SourceHarmonizer'")
-    print("If new error appears → paste first compiler error line from log")
+    print("Commit message suggestion:")
+    print("  git commit -m 'harmonizer v75.28: remove conflicting static on functions in gccube.c'")
+    print("Push and retrigger CI")
+    print("Look for:")
+    print("  'SourceHarmonizer v75.28 preamble is ACTIVE'")
+    print("If new error → paste first compiler error block")
 
 
 if __name__ == "__main__":
