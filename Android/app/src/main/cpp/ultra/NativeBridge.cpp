@@ -8,9 +8,9 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
 extern "C" {
-    // These functions are generated/renamed by your Harmonizer script
-    // They will be found in the symbol_map.txt
-    void main_no_args(void); 
+    // Verified symbols found in decomp-files/src/core1/code_0.c
+    // and Android/app/src/main/cpp/emulator/resource_mgr.cpp
+    void mainLoop(void); 
     void ResourceMgr_Init(const char* otrPath, uint8_t* manifestBuf, uint32_t manifestSize);
 }
 
@@ -37,16 +37,16 @@ Java_com_bkawrapper_NativeBridge_nativeGameBoot(JNIEnv* env, jclass clazz, jstri
         __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "FAILED TO LOAD MANIFEST_US.BIN");
     }
 
-    // Launch the game entry point
-    main_no_args();
+    // Launch the game entry point using the verified engine symbol
+    LOGI("Starting Engine mainLoop...");
+    mainLoop();
 
     env->ReleaseStringUTFChars(otrPath, cOtrPath);
 }
 
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_nativeUpdate(JNIEnv* env, jclass clazz) {
-    // Hook for the Android GL Thread to call every frame
-    // In BKA, this usually triggers the scheduler
+    // Future implementation: hook into the engine's frame-update logic
 }
 
 }
