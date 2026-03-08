@@ -1,62 +1,70 @@
 #!/usr/bin/env python3
 import os
 import re
-import sys
-import hashlib
 import shutil
 from pathlib import Path
 
 """
-SourceHarmonizer v75.18 — __attribute__((weak)) function isolation
+SourceHarmonizer v75.19 — Direct decomp-files build + compat preamble
 
 ═══════════════════════════════════════════════════════════════════════════════
-HISTORY OF APPROACHES (logs 38–41, then external scripts in log 76)
+LOG 77 — v75.18 ran correctly (861 files, 648 modified) but TWO new errors:
+
+  1. stub_3A70.c: "use of undeclared identifier 'G_TRI2'" (×8)
+  2. anctrl.c:    "unknown type name 'size_t'"
+
+  Root cause — CMakeLists.txt was changed by the external Mistral/Google scripts.
+  The build now compiles decomp-files/src DIRECTLY instead of the copy at
+  Android/app/src/main/cpp/src that our earlier versions maintained.
+
+  Old include paths (logs 38-41):
+    -I .../Android/app/src/main/cpp/include
+    -I .../Android/app/src/main/cpp/include/2.0L
+    (Android wrapper headers lived here)
+
+  New include paths (logs 76-77):
+    -I .../decomp-files/include
+    -I .../decomp-files/include/2.0L
+    -I .../decomp-files/include/2.0L/PR
+    (raw decomp headers, no Android wrappers)
+
+  The Android wrapper headers previously:
+    • Defined F3DEX_GBI_2 (or equivalent), enabling G_TRI2 in gbi.h
+    • Pulled in <stddef.h>, providing size_t for animation.h
+
+  Both are now missing.
+
+═══════════════════════════════════════════════════════════════════════════════
+FIXES IN v75.19
 ═══════════════════════════════════════════════════════════════════════════════
 
-v75.15  BKA macros injected AFTER last #include (fixed code_1D00.c header override)
-v75.16  Full-param BKA forward decls added (fixed pfsmanager.c implicit-int)
-        BROKE tanktup.c / code_3420.c — enum incompleteness + array decay conflicts
-v75.17  K&R empty-param fwd decls (fixed enum/array) 
-        BROKE histup.c — float params fail C99 default-arg-promotion compatibility
-v75.18  Drop macros/aliases/fwd-decls entirely. Use __attribute__((weak)) on defs.
+  Path change:
+    target_dir = "decomp-files/src"   (was "Android/app/src/main/cpp")
+    No copy step — CMake now builds decomp-files/src directly, so we
+    process those files in-place. setup_workspace() resets any prior
+    in-place modifications by restoring from a git-clean snapshot.
+    Since we cannot do a git-restore from Python, we simply make all
+    passes idempotent so re-running is safe.
 
-LOG 76 — External Mistral/Google v75.80 scripts ran instead.
-  Those scripts operate on decomp-files/src directly (wrong path), strip 'static'
-  indiscriminately, and write a sh_signatures.h that breaks gbi.h include ordering.
-  Result: "use of undeclared identifier 'G_TRI2'" in stub_3A70.c — a side-effect
-  of their broken include structure, unrelated to our work.
-  v75.18 never had G_TRI2 issues across logs 38-41.
+  Pass 0 — Compat preamble (NEW):
+    Inject at the very top of every .c file (before any existing content):
+      #ifndef F3DEX_GBI_2
+      #define F3DEX_GBI_2
+      #endif
+      #include <stddef.h>
 
-═══════════════════════════════════════════════════════════════════════════════
-WHY __attribute__((weak)) IS THE CORRECT FINAL APPROACH
-═══════════════════════════════════════════════════════════════════════════════
-
-The BKA macro/rename/alias chain (v75.1–v75.17) attempted to give each file's
-copy of a same-named function a unique linker symbol so duplicates wouldn't
-conflict. This required:
-  1. A #define macro to rename the definition
-  2. Forward declarations for the renamed symbol at call sites
-  3. A weak alias to restore the original name for cross-TU calls
-
-Every step introduced a new class of Clang error:
-  - Macro position: header override problems (log 38)
-  - Forward decl with full params: enum incompleteness (log 40)
-  - K&R forward decls: float/char promotion incompatibility (log 41)
-
-The root problem is that there is NO forward declaration form in C99 that is
-universally compatible with all possible parameter types without exact matching,
-and exact matching keeps breaking on partial type completeness at injection point.
-
-__attribute__((weak)) sidesteps the entire chain:
-  - No renaming → no implicit-int declarations at call sites
-  - No forward declarations → no type compatibility issues of any kind
-  - No macros → no header override ordering issues
-  - Linker accepts duplicate weak symbols (picks one) — correct for N64 overlay port
-    where same-named functions across files are functionally equivalent entry points
+    • F3DEX_GBI_2: enables the G_TRI2 constant inside gbi.h's F3DEX2
+      microcode block. The old Android wrapper headers supplied this;
+      the raw decomp headers do not.
+    • <stddef.h>: provides size_t, ptrdiff_t, NULL etc. Required by
+      animation.h and likely other decomp headers that assume it is
+      already included by the build environment.
+    Both injections are guarded / safe to repeat (idempotent marker checked).
 
 ═══════════════════════════════════════════════════════════════════════════════
 FULL PASS SUMMARY
 ═══════════════════════════════════════════════════════════════════════════════
+  Pass 0 — Compat preamble: F3DEX_GBI_2 define + stddef.h (NEW in v75.19)
   Pass 1 — Array init:      u8 tmp[N] = D_x;              -> __builtin_memcpy
   Pass 2 — Static conflicts:
     Strategy A              non-static fwd decl            -> add `static`
@@ -67,17 +75,25 @@ FULL PASS SUMMARY
     Rule B   implicit-int init static v = call();          -> v = call();
     Rule C   typed init        static TYPE v = call();     -> TYPE v = call();
   Pass 4 — Weak symbol injection:
-    Find each eligible non-static function definition and prepend
-    __attribute__((weak)) so the linker accepts same-named symbols across TUs.
-    Eligibility mirrors previous BKA exclusion logic (same exclusion set).
-    Idempotent: skips definitions already carrying the attribute.
+    __attribute__((weak)) on each eligible non-static function definition.
+    Linker accepts duplicate weak symbols across TUs — correct for N64 overlay port.
+"""
+
+PREAMBLE_MARKER = "/* SH-v75.19-preamble */"
+
+PREAMBLE = f"""\
+{PREAMBLE_MARKER}
+#ifndef F3DEX_GBI_2
+#define F3DEX_GBI_2
+#endif
+#include <stddef.h>
 """
 
 
-class SourceHarmonizerV7518:
+class SourceHarmonizerV7519:
     def __init__(self, target_dir, decomp_path):
-        self.target_dir  = Path(target_dir)
-        self.decomp_path = Path(decomp_path)
+        self.target_dir  = Path(target_dir)   # decomp-files/src  — processed in-place
+        self.decomp_path = Path(decomp_path)  # decomp-files      — kept for reference
         self.stats = {"files_processed": 0, "changes_made": 0}
 
         self.c_keywords = {
@@ -86,7 +102,6 @@ class SourceHarmonizerV7518:
             'enum', 'static', 'extern', 'const', 'volatile', 'inline', 'typedef'
         }
 
-        # Never weaken — called directly from NativeBridge.cpp / C++ layer.
         self.std_c = {
             'main', 'main_no_args',
             'memcpy', 'memset', 'strlen', 'strcpy', 'strcmp',
@@ -105,7 +120,6 @@ class SourceHarmonizerV7518:
             'break', 'continue', 'case', 'default', 'goto', 'typedef'
         }
 
-        # ── Pre-compiled Pass 3 patterns ──────────────────────────────────────
         self._p3a = re.compile(
             r'^([ \t]+)static\s+([^=\n;{}]+?)\s*([|&^+\-*/%]=|<<=|>>=)',
             re.MULTILINE
@@ -124,22 +138,16 @@ class SourceHarmonizerV7518:
             re.MULTILINE
         )
 
-        # Pass 4 definition pattern cache
         self._def_pat_cache = {}
 
     # ─────────────────────────────────────────────────────────────────────────
     def setup_workspace(self):
-        """Copy fresh source from decomp-files/ — invalidates CMake build cache."""
-        print("[>] Preparing v75.18 Workspace...")
-        for folder in [self.target_dir / "src", self.target_dir / "include"]:
-            if folder.exists():
-                shutil.rmtree(folder)
-            folder.mkdir(parents=True, exist_ok=True)
-        for sub in ["src", "include"]:
-            src = self.decomp_path / sub
-            dst = self.target_dir / sub
-            if src.exists():
-                shutil.copytree(src, dst, dirs_exist_ok=True)
+        """
+        v75.19: CMakeLists now builds decomp-files/src directly.
+        No copy step needed. Processing is idempotent — safe to re-run.
+        The preamble marker prevents double-injection across runs.
+        """
+        print("[>] Preparing v75.19 Workspace (in-place on decomp-files/src)...")
 
     # ─────────────────────────────────────────────────────────────────────────
     def remove_strings_and_comments(self, text):
@@ -270,18 +278,6 @@ class SourceHarmonizerV7518:
 
     # ─────────────────────────────────────────────────────────────────────────
     def inject_weak_attribute(self, content, fname):
-        """
-        Prepend __attribute__((weak)) to a non-static function definition.
-
-        Finds the definition line (return type + fname + params + {) and inserts
-        the attribute at the start of the return-type token, before any existing
-        qualifiers. Handles multi-line parameter lists via DOTALL matching.
-
-        Skips if:
-        - Already has __attribute__((weak)) (idempotent)
-        - Definition has 'static' qualifier (static functions are file-local;
-          they cannot be weak and don't cause duplicate-symbol linker errors)
-        """
         if fname not in self._def_pat_cache:
             self._def_pat_cache[fname] = re.compile(
                 r'^([ \t]*)([^\n;{}]*?\b)(' + re.escape(fname) + r'\s*\([^{}]*?\)\s*\{)',
@@ -292,14 +288,12 @@ class SourceHarmonizerV7518:
         def _repl(m):
             full   = m.group(0)
             indent = m.group(1)
-            before = m.group(2)   # return type / qualifiers before fname
-            rest   = m.group(3)   # fname(params) {
-
+            before = m.group(2)
+            rest   = m.group(3)
             if '__attribute__((weak))' in full:
                 return full
             if re.search(r'\bstatic\b', before):
                 return full
-
             return f"{indent}__attribute__((weak)) {before.lstrip()}{rest}"
 
         return pat.sub(_repl, content)
@@ -308,6 +302,15 @@ class SourceHarmonizerV7518:
     def process_file(self, file_path):
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             original_content = f.read()
+
+        # Pass 0 — Compat preamble (idempotent via marker)
+        # Injects F3DEX_GBI_2 define and stddef.h before any file content.
+        # F3DEX_GBI_2: enables G_TRI2 and other F3DEX2 GBI constants in gbi.h
+        # stddef.h:    provides size_t, ptrdiff_t, NULL for decomp headers
+        if PREAMBLE_MARKER not in original_content:
+            modified = PREAMBLE + original_content
+        else:
+            modified = original_content
 
         # Pass 1 — Array init: u8 tmp[N] = D_x;  ->  __builtin_memcpy
         arr_pat = re.compile(
@@ -319,7 +322,7 @@ class SourceHarmonizerV7518:
             ts, nm, sz, src = m.group(1), m.group(2), m.group(3), m.group(4)
             return (f"{ts} {nm}[{sz}]; "
                     f"__builtin_memcpy({nm}, {src}, {sz} * sizeof({ts.strip()}));")
-        modified = arr_pat.sub(_arr_repl, original_content)
+        modified = arr_pat.sub(_arr_repl, modified)
 
         # Pass 2 — Static/forward-decl conflicts
         modified = self.fix_static_conflicts(modified)
@@ -378,25 +381,25 @@ class SourceHarmonizerV7518:
 
     # ─────────────────────────────────────────────────────────────────────────
     def run(self):
-        if not self.decomp_path.exists():
-            print(f"[!] Error: decompilation path '{self.decomp_path}' not found.")
+        if not self.target_dir.exists():
+            print(f"[!] Error: target directory '{self.target_dir}' not found.")
             return
         self.setup_workspace()
-        print("[*] Applying v75.18 Function-Level Linker Isolation...")
-        for file_path in self.target_dir.rglob('*.[ch]'):
-            if "include/libc" in str(file_path) or file_path.suffix == '.h':
-                continue
+        print("[*] Applying v75.19 Function-Level Linker Isolation...")
+        for file_path in self.target_dir.rglob('*.c'):
             try:
                 self.process_file(file_path)
                 self.stats["files_processed"] += 1
             except Exception as e:
                 print(f"[!] Error processing {file_path.name}: {e}")
-        print(f"\n[+] v75.18 Complete.")
+        print(f"\n[+] v75.19 Complete.")
         print(f"    Files Processed: {self.stats['files_processed']}")
         print(f"    Files Modified:  {self.stats['changes_made']}")
 
 
 if __name__ == "__main__":
-    target = "Android/app/src/main/cpp"
+    # CMakeLists.txt now builds decomp-files/src directly (changed by external scripts).
+    # We process those files in-place instead of copying to Android/app/src/main/cpp.
+    target = "decomp-files/src"
     decomp = "decomp-files"
-    SourceHarmonizerV7518(target, decomp).run()
+    SourceHarmonizerV7519(target, decomp).run()
