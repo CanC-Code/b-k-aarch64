@@ -3,21 +3,21 @@ import re
 from pathlib import Path
 
 """
-SourceHarmonizer v75.28 — Android/Clang compatibility & decomp fixes
+SourceHarmonizer v75.29 — Android/Clang compatibility & decomp fixes
 
-Changelog v75.28:
-- Added pass to remove 'static' from function definitions when a non-static declaration exists
-  (fixes "static declaration follows non-static" in gccube.c and similar files)
-- Keeps v75.27 array = global → memcpy fix
-- Keeps aggressive preamble + diagnostics
+Changelog v75.29:
+- Added automatic fix for 'typedef int bool;' conflict in headers
+  → guarded with #ifndef __cplusplus so C++ uses native bool
+- Keeps v75.28 static removal + v75.27 array memcpy fix
+- Keeps aggressive preamble insertion
 """
 
 PREAMBLE = """\
 /* ──────────────────────────────────────────────── */
-/* SourceHarmonizer v75.28 — FORCED Android compat   */
+/* SourceHarmonizer v75.29 — FORCED Android compat   */
 /* ──────────────────────────────────────────────── */
 
-#pragma message "SourceHarmonizer v75.28 preamble is ACTIVE in this file"
+#pragma message "SourceHarmonizer v75.29 preamble is ACTIVE in this file"
 
 #ifndef F3DEX_GBI_2
 #define F3DEX_GBI_2
@@ -66,7 +66,7 @@ PREAMBLE = """\
 #endif
 
 /* ──────────────────────────────────────────────── */
-/* End forced compat block v75.28                   */
+/* End forced compat block v75.29                   */
 /* ──────────────────────────────────────────────── */
 """
 
@@ -79,13 +79,13 @@ def insert_preamble_and_fixes(file_path: Path):
 
     original = content
 
-    # 1. Insert/update preamble
-    preamble_marker = "SourceHarmonizer v75.28 preamble is ACTIVE"
+    # 1. Insert/update preamble (force if version changed)
+    preamble_marker = "SourceHarmonizer v75.29 preamble is ACTIVE"
     if preamble_marker not in content:
         content = PREAMBLE + content
         print(f"  [PREAMBLE] Inserted/updated in {file_path.name}")
 
-    # 2. Fix array = global_symbol → memcpy (from v75.27)
+    # 2. Fix array = global_symbol → memcpy
     array_pat = re.compile(
         r'(?m)^(\s*(?:static\s+)?(?:const\s+)?[a-zA-Z_][\w\s*]*(?:\s*\*+)?)\s+'
         r'([a-zA-Z_]\w*)\s*\[\s*(\d+(?:\s*\*\s*[a-zA-Z_]\w+)?)\s*\]\s*=\s*'
@@ -105,9 +105,7 @@ def insert_preamble_and_fixes(file_path: Path):
 
     content = array_pat.sub(replace_array, content)
 
-    # 3. New: Remove 'static' from function definitions when non-static decl exists
-    # Pattern: static return_type func_name(params) { ... }
-    # We remove 'static ' only if it appears right after indent
+    # 3. Remove 'static' from conflicting function definitions
     static_func_pat = re.compile(
         r'(?m)^(\s*)static\s+([a-zA-Z_][\w\s*]*(?:\s*\*+)?)\s+'
         r'([a-zA-Z_]\w*)\s*\(([^)]*)\)\s*\{'
@@ -122,13 +120,41 @@ def insert_preamble_and_fixes(file_path: Path):
 
     content = static_func_pat.sub(remove_static_from_def, content)
 
-    # Optional: you can make it more targeted by checking function name prefix
-    # e.g. only for __code7AF80_* but global removal is safer for now
+    # 4. NEW: Guard 'typedef int bool;' for C++ compatibility
+    # Matches common variants: typedef int bool;   or   typedef enum { false, true } bool;
+    bool_typedef_pat = re.compile(
+        r'(?m)^(\s*)typedef\s+int\s+bool\s*;\s*$'
+    )
+
+    def guard_bool_typedef(m):
+        indent = m.group(1)
+        return (
+            f"{indent}#ifndef __cplusplus\n"
+            f"{indent}typedef int bool;\n"
+            f"{indent}#endif"
+        )
+
+    content = bool_typedef_pat.sub(guard_bool_typedef, content)
+
+    # Bonus: also catch enum-style bool if it exists (rare but seen in some decomps)
+    enum_bool_pat = re.compile(
+        r'(?m)^(\s*)typedef\s+enum\s*\{\s*false\s*=\s*0\s*,\s*true\s*=\s*1\s*\}\s+bool\s*;\s*$'
+    )
+
+    def guard_enum_bool(m):
+        indent = m.group(1)
+        return (
+            f"{indent}#ifndef __cplusplus\n"
+            f"{indent}typedef enum { false = 0, true = 1 } bool;\n"
+            f"{indent}#endif"
+        )
+
+    content = enum_bool_pat.sub(guard_enum_bool, content)
 
     if content != original:
         try:
             file_path.write_text(content, encoding="utf-8")
-            print(f"  [MOD] {file_path.name} — fixes applied (array memcpy + static removal)")
+            print(f"  [MOD] {file_path.name} — fixes applied (array + static + bool guard)")
             return True
         except Exception as e:
             print(f"Cannot write {file_path.name}: {e}")
@@ -139,24 +165,25 @@ def insert_preamble_and_fixes(file_path: Path):
 
 
 def main():
-    target_dir = Path("decomp-files/src")
+    target_dir = Path("decomp-files")  # Changed to whole decomp-files so it can fix headers too!
     if not target_dir.is_dir():
         print(f"Error: {target_dir} not found")
         return
 
-    print("SourceHarmonizer v75.28 — preamble + array + static fixes")
+    print("SourceHarmonizer v75.29 — preamble + array + static + bool guard fixes")
     modified_count = 0
 
-    for path in sorted(target_dir.rglob("*.c")):
+    # Process ALL .c and .h files (headers need the bool fix too)
+    for path in sorted(target_dir.rglob("*.[ch]")):
         if insert_preamble_and_fixes(path):
             modified_count += 1
 
     print(f"\nDone. Modified {modified_count} files.")
     print("Commit message suggestion:")
-    print("  git commit -m 'harmonizer v75.28: remove conflicting static on functions in gccube.c'")
+    print("  git commit -m 'harmonizer v75.29: guard typedef bool for C++ compatibility'")
     print("Push and retrigger CI")
     print("Look for:")
-    print("  'SourceHarmonizer v75.28 preamble is ACTIVE'")
+    print("  'SourceHarmonizer v75.29 preamble is ACTIVE'")
     print("If new error → paste first compiler error block")
 
 
