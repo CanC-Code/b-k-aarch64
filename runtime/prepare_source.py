@@ -1,70 +1,82 @@
 #!/usr/bin/env python3
 import os
-import sys
+import re
 from pathlib import Path
 
 """
-PrepareSource v2.4 — Absolute Path Enforcement
+SourceHarmonizer v75.33 — Submodule Target Realignment
 ═══════════════════════════════════════════════════════════════════════════════
-LOG 60/61 — FileNotFoundError.
-This version uses the current working directory as the anchor to match the
-'ls -R' structure provided.
+LOG 61 — FileNotFoundError / Signature Index Failure.
+Fixed the target directory logic to specifically look for the 'decomp-files/src'
+path confirmed by the repository's recursive directory listing.
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
-class PrepareSource:
+class SourceHarmonizerV7533:
     def __init__(self):
-        # Anchor to the current working directory (project root)
-        self.cwd = Path(os.getcwd())
-        
-        # Based on your ls -R, decomp-files is in the root
-        self.decomp_root = self.cwd / "decomp-files"
-        
-        # Define the exact path found in your directory listing
-        self.target_header = self.decomp_root / "include" / "2.0L" / "PR" / "ultratypes.h"
+        self.root = Path(os.getcwd())
+        # Use the confirmed submodule path as the primary target
+        self.target_dir = self.root / "decomp-files"
+        self.function_map = {} 
+        self.stats = {"signatures_mapped": 0, "files_cleaned": 0}
 
-    def verify_environment(self):
-        print(f"[>] Working Directory: {self.cwd}")
-        print(f"[>] Looking for header at: {self.target_header}")
+    def verify_target(self):
+        """Ensures we are pointing at the actual C source code."""
+        if not (self.target_dir / "src").exists():
+            print(f"[!] Warning: {self.target_dir}/src not found. Falling back to root.")
+            self.target_dir = self.root
+        print(f"[>] Harmonizing source in: {self.target_dir}")
+
+    def map_all_functions(self):
+        print("[>] Indexing engine signatures...")
+        # Catch: [Return] [Name]([Params]) {
+        def_pat = re.compile(r'^([\w\s\*]+?)\b(func_[A-Z0-9_]+)\s*\(([^)]*)\)\s*\{', re.MULTILINE)
         
-        if not self.target_header.exists():
-            print("[!] CRITICAL ERROR: ultratypes.h not found!")
-            print("[>] Listing contents of decomp-files/include to verify:")
-            inc_path = self.decomp_root / "include"
-            if inc_path.exists():
-                for item in inc_path.iterdir():
-                    print(f"    - {item.name}")
-            else:
-                print("    - /decomp-files/include directory does not exist.")
-            sys.exit(1)
+        # We only need to scan the engine source to build the global truth header
+        for file_path in (self.target_dir / "src").rglob('*.c'):
+            try:
+                content = file_path.read_text(encoding='utf-8', errors='ignore')
+                for match in def_pat.finditer(content):
+                    ret_type, name, params = match.groups()
+                    ret_type = " ".join(ret_type.split())
+                    ret_type = ret_type.replace("static ", "").replace("inline ", "")
+                    # Generate extern declaration
+                    self.function_map[name] = f"extern {ret_type} {name}({params.strip()});"
+            except Exception:
+                continue
+        
+        self.stats["signatures_mapped"] = len(self.function_map)
 
-    def sanitize_headers(self):
-        """Patches N64 headers to allow AArch64/Android NDK compilation."""
-        print(f"[>] Patching {self.target_header.name}...")
-        try:
-            content = self.target_header.read_text(encoding='utf-8')
-            
-            # 1. Comment out MIPS-specific pragmas that cause NDK errors
-            patched_content = content.replace("#pragma align", "// #pragma align")
-            
-            # 2. Fix potential redefinition of basic types if they clash with NDK
-            # (Adding common AArch64 fixes here)
-            if "ifndef _ULTRATYPES_H_" not in patched_content:
-                patched_content = "#ifndef _ULTRATYPES_H_\n#define _ULTRATYPES_H_\n" + patched_content + "\n#endif"
-
-            if patched_content != content:
-                self.target_header.write_text(patched_content, encoding='utf-8')
-                print("    - Successfully applied AArch64 compatibility patches.")
-            else:
-                print("    - Header already patched or no changes needed.")
-        except Exception as e:
-            print(f"[!] IO Error: {e}")
-            sys.exit(1)
+    def generate_truth_header(self):
+        print(f"[>] Generating sh_signatures.h with {self.stats['signatures_mapped']} entries...")
+        
+        # Based on your ls -R, put the header in the engine include path
+        include_dir = self.target_dir / "include"
+        include_dir.mkdir(parents=True, exist_ok=True)
+        
+        header_path = include_dir / "sh_signatures.h"
+        
+        content = "#ifndef SH_SIGNATURES_H\n#define SH_SIGNATURES_H\n\n"
+        content += "// Automatically generated by SH v75.33\n\n"
+        unique_sigs = sorted(list(set(self.function_map.values())))
+        for sig in unique_sigs:
+            content += sig + "\n"
+        content += "\n#endif\n"
+        
+        header_path.write_text(content, encoding='utf-8')
+        print(f"[+] Header written to: {header_path}")
 
     def run(self):
-        self.verify_environment()
-        self.sanitize_headers()
-        print("[+] Environment harmonized for NDK build.")
+        self.verify_target()
+        self.map_all_functions()
+        if self.stats["signatures_mapped"] > 0:
+            self.generate_truth_header()
+        else:
+            print("[!] Critical: No signatures found. Linker will fail.")
+            os._exit(1)
+        
+        print(f"\n[+] v75.33 Harmonizer Complete.")
+        print(f"    - Global Signatures Indexed: {self.stats['signatures_mapped']}")
 
 if __name__ == "__main__":
-    PrepareSource().run()
+    SourceHarmonizerV7533().run()
