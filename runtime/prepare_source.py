@@ -1,61 +1,90 @@
 #!/usr/bin/env python3
 import os
 import re
-import subprocess
 from pathlib import Path
 
 """
-SourceHarmonizer v75.45 — Absolute Path Normalization
+SourceHarmonizer v75.50 — Recursive Depth & Type Filtering
 ═══════════════════════════════════════════════════════════════════════════════
-LOG 68 — Fixed path resolution for GitHub Actions environments.
+LOG 69 — Enhanced directory traversal and diagnostic peeking.
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
-class SourceHarmonizerV7545:
+class SourceHarmonizerV7550:
     def __init__(self):
-        # Explicitly target the runner's workspace root
+        # Resolve the absolute workspace path
         self.workspace = Path(os.getenv('GITHUB_WORKSPACE', os.getcwd())).resolve()
-        self.src_path = self.workspace / "decomp-files" / "src"
+        self.src_root = self.workspace / "decomp-files" / "src"
         self.function_map = {}
 
-    def verify_sources(self):
-        """Checks for source files and attempts a deep repair if missing."""
-        if not self.src_path.exists() or not any(self.src_path.iterdir()):
-            print(f"[!] Target missing at: {self.src_path}")
-            print("[>] Attempting recursive submodule repair...")
-            try:
-                subprocess.run([
-                    "git", "submodule", "update", "--init", "--recursive", "--force"
-                ], cwd=self.workspace, check=True)
-            except Exception as e:
-                print(f"[!!] Repair failed: {e}")
+    def diagnostic_peek(self):
+        print(f"[>] Workspace: {self.workspace}")
+        print(f"[>] Target Source: {self.src_root}")
+        if self.src_root.exists():
+            # List top-level directories to confirm submodule state
+            subdirs = [d.name for d in self.src_root.iterdir() if d.is_dir()]
+            print(f"[i] Found subdirectories: {subdirs}")
+        else:
+            print("[!!] Target Source directory does not exist!")
 
     def index_functions(self):
-        print(f"[>] Indexing from: {self.src_path}")
-        # Pattern for standard function definitions
+        print("[>] Commencing recursive scan for C signatures...")
+        # Pattern designed for N64 decompilation signatures:
+        # [Return Type] [Function Name]([Parameters]) {
         def_pat = re.compile(r'^([\w\s\*]+?)\b(func_[A-Z0-9_]+)\s*\(([^)]*)\)\s*\{', re.MULTILINE)
         
         found_count = 0
-        for c_file in self.src_path.rglob("*.c"):
-            try:
-                content = c_file.read_text(encoding='utf-8', errors='ignore')
-                for match in def_pat.finditer(content):
-                    ret_type, name, params = match.groups()
-                    # Clean return type
-                    ret_type = " ".join(ret_type.split()).replace("static ", "").replace("inline ", "")
-                    self.function_map[name] = f"extern {ret_type} {name}({params.strip()});"
-                    found_count += 1
-            except Exception:
-                continue
+        # Walk through all subdirectories (core1, core2, done, etc.)
+        for root, _, files in os.walk(str(self.src_root)):
+            for file in files:
+                if file.endswith('.c'):
+                    file_path = Path(root) / file
+                    try:
+                        content = file_path.read_text(encoding='utf-8', errors='ignore')
+                        for match in def_pat.finditer(content):
+                            ret_type, name, params = match.groups()
+                            # Clean up types: remove N64-specific storage qualifiers
+                            ret_type = " ".join(ret_type.split())
+                            ret_type = ret_type.replace("static ", "").replace("inline ", "").replace("extern ", "")
+                            
+                            self.function_map[name] = f"extern {ret_type} {name}({params.strip()});"
+                            found_count += 1
+                    except Exception as e:
+                        continue
         
-        if found_count == 0:
-            print("[!!] FATAL: No functions indexed. Check submodule content.")
+        if not self.function_map:
+            print("[!!] FATAL: Indexed 0 functions. Check if submodules are empty.")
             os._exit(1)
-        print(f"[>] Successfully indexed {found_count} functions.")
+        
+        print(f"[+] Successfully indexed {len(self.function_map)} unique functions from {found_count} occurrences.")
 
-    def execute(self):
-        self.verify_sources()
+    def write_sh_signatures(self):
+        include_dir = self.workspace / "decomp-files" / "include"
+        include_dir.mkdir(parents=True, exist_ok=True)
+        header_path = include_dir / "sh_signatures.h"
+        
+        lines = [
+            "#ifndef SH_SIGNATURES_H",
+            "#define SH_SIGNATURES_H",
+            "",
+            "// Automatically generated by SourceHarmonizer v75.50",
+            "// Provides global visibility for internal engine functions",
+            ""
+        ]
+        
+        # Sort signatures alphabetically for consistent builds
+        for name in sorted(self.function_map.keys()):
+            lines.append(self.function_map[name])
+            
+        lines.append("\n#endif // SH_SIGNATURES_H")
+        
+        header_path.write_text("\n".join(lines), encoding='utf-8')
+        print(f"[+] Global Truth Header written to: {header_path}")
+
+    def run(self):
+        self.diagnostic_peek()
         self.index_functions()
+        self.write_sh_signatures()
 
 if __name__ == "__main__":
-    SourceHarmonizerV7545().execute()
+    SourceHarmonizerV7550().run()
