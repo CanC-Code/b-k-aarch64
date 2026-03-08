@@ -5,78 +5,59 @@ import shutil
 from pathlib import Path
 
 """
-SourceHarmonizer v75.19 — Direct decomp-files build + compat preamble
+SourceHarmonizer v75.20 — Fix false-positive weak injection on call statements
 
 ═══════════════════════════════════════════════════════════════════════════════
-LOG 77 — v75.18 ran correctly (861 files, 648 modified) but TWO new errors:
-
-  1. stub_3A70.c: "use of undeclared identifier 'G_TRI2'" (×8)
-  2. anctrl.c:    "unknown type name 'size_t'"
-
-  Root cause — CMakeLists.txt was changed by the external Mistral/Google scripts.
-  The build now compiles decomp-files/src DIRECTLY instead of the copy at
-  Android/app/src/main/cpp/src that our earlier versions maintained.
-
-  Old include paths (logs 38-41):
-    -I .../Android/app/src/main/cpp/include
-    -I .../Android/app/src/main/cpp/include/2.0L
-    (Android wrapper headers lived here)
-
-  New include paths (logs 76-77):
-    -I .../decomp-files/include
-    -I .../decomp-files/include/2.0L
-    -I .../decomp-files/include/2.0L/PR
-    (raw decomp headers, no Android wrappers)
-
-  The Android wrapper headers previously:
-    • Defined F3DEX_GBI_2 (or equivalent), enabling G_TRI2 in gbi.h
-    • Pulled in <stddef.h>, providing size_t for animation.h
-
-  Both are now missing.
-
-═══════════════════════════════════════════════════════════════════════════════
-FIXES IN v75.19
+LOG 78 — v75.19 ran (861 files processed, 861 modified). One file failed:
+  n_seq.c:133: error: expected identifier or '('
+    __attribute__((weak)) n_alSeqEvent(seq, &evt);
+                                      ^
 ═══════════════════════════════════════════════════════════════════════════════
 
-  Path change:
-    target_dir = "decomp-files/src"   (was "Android/app/src/main/cpp")
-    No copy step — CMake now builds decomp-files/src directly, so we
-    process those files in-place. setup_workspace() resets any prior
-    in-place modifications by restoring from a git-clean snapshot.
-    Since we cannot do a git-restore from Python, we simply make all
-    passes idempotent so re-running is safe.
+ROOT CAUSE — regex spans across statement boundaries:
 
-  Pass 0 — Compat preamble (NEW):
-    Inject at the very top of every .c file (before any existing content):
-      #ifndef F3DEX_GBI_2
-      #define F3DEX_GBI_2
-      #endif
-      #include <stddef.h>
+  inject_weak_attribute used: fname\s*\([^{}]*?\)\s*\{  (with DOTALL)
+  The [^{}]*? group excludes braces but ALLOWS semicolons and newlines.
+  In DOTALL mode it will extend across call statements to find the next `{`:
 
-    • F3DEX_GBI_2: enables the G_TRI2 constant inside gbi.h's F3DEX2
-      microcode block. The old Android wrapper headers supplied this;
-      the raw decomp headers do not.
-    • <stddef.h>: provides size_t, ptrdiff_t, NULL etc. Required by
-      animation.h and likely other decomp headers that assume it is
-      already included by the build environment.
-    Both injections are guarded / safe to repeat (idempotent marker checked).
+    n_alSeqEvent(seq, &evt);   ← call statement — ends with `;`
+    if (evt.type) {            ← `{` found here!
+
+  The regex matches starting at the call `n_alSeqEvent(`, treats `seq, &evt);
+  if (evt.type` as the "param list", and considers the `{` of the `if` block
+  as the function body opening. This causes __attribute__((weak)) to be
+  injected before a call statement instead of a definition — invalid C.
+
+THE FIX — exclude semicolons from the params group:
+
+  Changed [^{}]*? → [^{};]*?
+
+  A function definition's parameter list NEVER contains a `;`.
+  A call statement ends with `;`, so [^{};]*? stops there and cannot
+  span across statement boundaries. Multi-line definitions still work
+  because newlines are still allowed in [^{};]*? (DOTALL still applies).
+
+  Verified: buggy pattern matches `n_alSeqEvent(seq, &evt);\n    if (evt.type) {`
+             fixed  pattern matches only `n_alSeqEvent(ALSeq *seq, ALEvent *event) {`
+
+Same fix applied to the definition pattern cache in inject_weak_attribute.
 
 ═══════════════════════════════════════════════════════════════════════════════
 FULL PASS SUMMARY
 ═══════════════════════════════════════════════════════════════════════════════
-  Pass 0 — Compat preamble: F3DEX_GBI_2 define + stddef.h (NEW in v75.19)
-  Pass 1 — Array init:      u8 tmp[N] = D_x;              -> __builtin_memcpy
+  Pass 0 — Compat preamble:   F3DEX_GBI_2 define + stddef.h (idempotent)
+  Pass 1 — Array init:        u8 tmp[N] = D_x;              -> __builtin_memcpy
   Pass 2 — Static conflicts:
-    Strategy A              non-static fwd decl            -> add `static`
-    Strategy B              missing static fwd decl        -> inject after #includes
+    Strategy A                non-static fwd decl            -> add `static`
+    Strategy B                missing static fwd decl        -> inject after #includes
   Pass 3 — Static local C89 normalisation (Rules A/A2/B/C):
-    Rule A   compound-assign   static LVALUE OP= expr;     -> LVALUE OP= expr;
-    Rule A2  member plain-asgn static obj->field = call(); -> obj->field = call();
-    Rule B   implicit-int init static v = call();          -> v = call();
-    Rule C   typed init        static TYPE v = call();     -> TYPE v = call();
+    Rule A   compound-assign   static LVALUE OP= expr;       -> LVALUE OP= expr;
+    Rule A2  member plain-asgn static obj->field = call();   -> obj->field = call();
+    Rule B   implicit-int init static v = call();            -> v = call();
+    Rule C   typed init        static TYPE v = call();       -> TYPE v = call();
   Pass 4 — Weak symbol injection:
     __attribute__((weak)) on each eligible non-static function definition.
-    Linker accepts duplicate weak symbols across TUs — correct for N64 overlay port.
+    Definition pattern uses [^{};]*? to prevent spanning across call statements.
 """
 
 PREAMBLE_MARKER = "/* SH-v75.19-preamble */"
@@ -90,10 +71,10 @@ PREAMBLE = f"""\
 """
 
 
-class SourceHarmonizerV7519:
+class SourceHarmonizerV7520:
     def __init__(self, target_dir, decomp_path):
-        self.target_dir  = Path(target_dir)   # decomp-files/src  — processed in-place
-        self.decomp_path = Path(decomp_path)  # decomp-files      — kept for reference
+        self.target_dir  = Path(target_dir)
+        self.decomp_path = Path(decomp_path)
         self.stats = {"files_processed": 0, "changes_made": 0}
 
         self.c_keywords = {
@@ -142,12 +123,7 @@ class SourceHarmonizerV7519:
 
     # ─────────────────────────────────────────────────────────────────────────
     def setup_workspace(self):
-        """
-        v75.19: CMakeLists now builds decomp-files/src directly.
-        No copy step needed. Processing is idempotent — safe to re-run.
-        The preamble marker prevents double-injection across runs.
-        """
-        print("[>] Preparing v75.19 Workspace (in-place on decomp-files/src)...")
+        print("[>] Preparing v75.20 Workspace (in-place on decomp-files/src)...")
 
     # ─────────────────────────────────────────────────────────────────────────
     def remove_strings_and_comments(self, text):
@@ -278,9 +254,26 @@ class SourceHarmonizerV7519:
 
     # ─────────────────────────────────────────────────────────────────────────
     def inject_weak_attribute(self, content, fname):
+        """
+        Prepend __attribute__((weak)) to a non-static function definition.
+
+        KEY FIX in v75.20: params group uses [^{};]*? (excludes semicolons).
+        A function definition's parameter list never contains `;`, so this
+        prevents the pattern from spanning across call statements like:
+          fname(arg1, arg2);        ← call ends with `;`
+          ...
+          some_other_func(params) { ← pattern would wrongly match this `{`
+        With [^{};]*?, the match stops at the `;` and cannot cross boundaries.
+        Multi-line parameters still work since newlines are still allowed.
+        """
         if fname not in self._def_pat_cache:
             self._def_pat_cache[fname] = re.compile(
-                r'^([ \t]*)([^\n;{}]*?\b)(' + re.escape(fname) + r'\s*\([^{}]*?\)\s*\{)',
+                # group 1: line indent
+                # group 2: return type / qualifiers before fname  (no newlines, braces, or semicolons)
+                # group 3: fname(params) {   — params exclude {} and ;  (KEY FIX: [^{};]*?)
+                r'^([ \t]*)([^\n;{}]*?\b)('
+                + re.escape(fname)
+                + r'\s*\([^{};]*?\)\s*\{)',
                 re.MULTILINE | re.DOTALL
             )
         pat = self._def_pat_cache[fname]
@@ -304,15 +297,12 @@ class SourceHarmonizerV7519:
             original_content = f.read()
 
         # Pass 0 — Compat preamble (idempotent via marker)
-        # Injects F3DEX_GBI_2 define and stddef.h before any file content.
-        # F3DEX_GBI_2: enables G_TRI2 and other F3DEX2 GBI constants in gbi.h
-        # stddef.h:    provides size_t, ptrdiff_t, NULL for decomp headers
         if PREAMBLE_MARKER not in original_content:
             modified = PREAMBLE + original_content
         else:
             modified = original_content
 
-        # Pass 1 — Array init: u8 tmp[N] = D_x;  ->  __builtin_memcpy
+        # Pass 1 — Array init
         arr_pat = re.compile(
             r'^([ \t]*(?:struct\s+|union\s+|enum\s+)?[a-zA-Z_]\w*(?:\s*\*)*)\s+'
             r'([a-zA-Z_]\w*)\s*\[\s*(\d+)\s*\]\s*=\s*([a-zA-Z_]\w*)\s*;',
@@ -385,21 +375,19 @@ class SourceHarmonizerV7519:
             print(f"[!] Error: target directory '{self.target_dir}' not found.")
             return
         self.setup_workspace()
-        print("[*] Applying v75.19 Function-Level Linker Isolation...")
+        print("[*] Applying v75.20 Function-Level Linker Isolation...")
         for file_path in self.target_dir.rglob('*.c'):
             try:
                 self.process_file(file_path)
                 self.stats["files_processed"] += 1
             except Exception as e:
                 print(f"[!] Error processing {file_path.name}: {e}")
-        print(f"\n[+] v75.19 Complete.")
+        print(f"\n[+] v75.20 Complete.")
         print(f"    Files Processed: {self.stats['files_processed']}")
         print(f"    Files Modified:  {self.stats['changes_made']}")
 
 
 if __name__ == "__main__":
-    # CMakeLists.txt now builds decomp-files/src directly (changed by external scripts).
-    # We process those files in-place instead of copying to Android/app/src/main/cpp.
     target = "decomp-files/src"
     decomp = "decomp-files"
-    SourceHarmonizerV7519(target, decomp).run()
+    SourceHarmonizerV7520(target, decomp).run()
