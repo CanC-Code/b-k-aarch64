@@ -39,7 +39,6 @@ jobs:
 
       - name: Generate App Icons
         run: |
-          # Restoring icon generation to fix packaging error
           if [ -f "master_icon.png" ]; then
             python3 runtime/generate_icons.py master_icon.png
           else
@@ -50,15 +49,35 @@ jobs:
           fi
 
       - name: Prepare C++ Source
-        run: python3 runtime/prepare_source.py
+        run: python3 runtime/prepare_source.py   # ← this is your harmonizer / source modifier
+
+      # ── FORCE CMake full rebuild ────────────────────────────────────────
+      - name: Force clean CMake artifacts (critical for source changes)
+        run: |
+          rm -rf Android/app/.cxx               || true
+          rm -rf Android/app/build              || true   # also nuke build outputs
+          find Android -name "*.o" -delete     || true
+          find Android -name "build.ninja" -delete || true
+
+      - name: Full Gradle clean
+        run: |
+          GRADLEW_PATH=$(find . -name gradlew)
+          chmod +x "$GRADLEW_PATH"
+          cd $(dirname "$GRADLEW_PATH")
+          ./gradlew clean --no-daemon --stacktrace --info
+
+      # Optional: confirm preamble is present (debug only — remove later)
+      - name: Verify preamble landed in failing file
+        run: |
+          grep -A 10 "SourceHarmonizer v75.25" decomp-files/src/core2/code_5BEB0.c || echo "Preamble NOT found — check prepare_source.py execution"
+          grep -A 5 "#define BOOL" decomp-files/src/core2/code_5BEB0.c || echo "BOOL define NOT found"
 
       - name: Build with Gradle
         run: |
           GRADLEW_PATH=$(find . -name gradlew)
           chmod +x "$GRADLEW_PATH"
           cd $(dirname "$GRADLEW_PATH")
-          # CLEAN is vital here to re-link your new icons
-          ./gradlew clean assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleDebug --no-daemon --stacktrace --info
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
