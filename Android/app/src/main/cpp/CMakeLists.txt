@@ -1,12 +1,13 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(bkawrapper LANGUAGES C CXX)
 
-# 1. Define the path to the root of the decompilation project
-set(DECOMP_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../decomp-files")
+# 1. Define absolute path to the decompilation root
+# This ensures the compiler finds the files regardless of the working directory
+get_filename_component(DECOMP_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../decomp-files" ABSOLUTE)
 
-# 2. Specifically collect the engine source files
-# We focus on core1 and core2 where the main game logic resides
-file(GLOB_RECURSE GAME_SOURCES 
+# 2. Collect core engine files
+# We use a non-recursive GLOB to prevent picking up conflicting regional variants
+file(GLOB GAME_SOURCES 
     "${DECOMP_ROOT}/src/core1/*.c"
     "${DECOMP_ROOT}/src/core2/*.c"
     "${DECOMP_ROOT}/src/done/*.c"
@@ -24,8 +25,8 @@ add_library(bkawrapper SHARED
     tools/rare_decompression.cpp
 )
 
-# 3. Fix the Include Paths
-# Added ${CMAKE_CURRENT_SOURCE_DIR}/tools to resolve rare_decompression.h missing in otr_builder.cpp
+# 3. Comprehensive Include Paths
+# We must include the specific 'PR' folder for N64 hardware headers
 target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/ultra
@@ -37,16 +38,15 @@ target_include_directories(bkawrapper PRIVATE
     ${DECOMP_ROOT}/src
 )
 
-# Crucial: N64 headers require _LANGUAGE_C to define types correctly
+# 4. Compiler Flags for Retro Decompilation
 target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
 
-# -w: Suppresses warnings from decompiled code
-# -fcommon: Essential for linking global variables in older C projects
+# -fcommon: Merges multiple tentative definitions of global variables
+# -w: Suppresses heavy warning output from the decompiled C code
 target_compile_options(bkawrapper PRIVATE -w -fcommon)
 
 find_library(log-lib log)
 find_library(android-lib android)
 find_library(z-lib z)
 
-# Link atomic for 64-bit synchronization and m for math functions
 target_link_libraries(bkawrapper ${log-lib} ${android-lib} ${z-lib} atomic m)
