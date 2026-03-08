@@ -25,22 +25,28 @@ add_library(bkawrapper SHARED
 )
 
 # 3. Fix the Include Paths
-# The C files need to find ultra64.h and other headers in decomp-files/include
+# Added ${CMAKE_CURRENT_SOURCE_DIR}/tools to resolve rare_decompression.h missing in otr_builder.cpp
 target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/ultra
     ${CMAKE_CURRENT_SOURCE_DIR}/emulator
+    ${CMAKE_CURRENT_SOURCE_DIR}/tools
     ${DECOMP_ROOT}/include
     ${DECOMP_ROOT}/include/2.0L
     ${DECOMP_ROOT}/include/2.0L/PR
     ${DECOMP_ROOT}/src
 )
 
+# Crucial: N64 headers require _LANGUAGE_C to define types correctly
 target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
+
+# -w: Suppresses warnings from decompiled code
+# -fcommon: Essential for linking global variables in older C projects
 target_compile_options(bkawrapper PRIVATE -w -fcommon)
 
 find_library(log-lib log)
 find_library(android-lib android)
 find_library(z-lib z)
 
+# Link atomic for 64-bit synchronization and m for math functions
 target_link_libraries(bkawrapper ${log-lib} ${android-lib} ${z-lib} atomic m)
