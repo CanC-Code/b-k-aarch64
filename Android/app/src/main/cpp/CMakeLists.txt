@@ -1,9 +1,13 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(bkawrapper LANGUAGES C CXX)
 
+# Define the root of your decompiled source relative to this file
+set(DECOMP_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../decomp-files")
+
+# Correct the GLOB to point to the actual source tree
 file(GLOB_RECURSE GAME_SOURCES 
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+    "${DECOMP_ROOT}/src/*.c"
+    "${DECOMP_ROOT}/src/*.cpp"
 )
 
 add_library(bkawrapper SHARED
@@ -23,14 +27,12 @@ target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
 target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/2.0L/PR
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${DECOMP_ROOT}/include
+    ${DECOMP_ROOT}/include/2.0L
+    ${DECOMP_ROOT}/include/2.0L/PR
+    ${DECOMP_ROOT}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/tools
 )
-
-# Remove the complex PCH generation for now—it's likely masking the real include errors
-# target_compile_options(bkawrapper PRIVATE "-include" "${GLOBAL_PCH}")
 
 target_compile_options(bkawrapper PRIVATE -w -fcommon)
 
