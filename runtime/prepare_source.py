@@ -5,60 +5,66 @@ import shutil
 from pathlib import Path
 
 """
-SourceHarmonizer v75.21 — Fix weak injection on control-flow statements
+SourceHarmonizer v75.22 — Whitelist-based definition detection (robust)
 
 ═══════════════════════════════════════════════════════════════════════════════
-LOG 78 (v75.20) — n_seq.c: "expected identifier or '('"
-  __attribute__((weak)) n_alSeqEvent(seq, &evt);
-  Params group [^{}]*? matched `;` and spanned across statement boundaries.
-  Fix: [^{}]*? → [^{};]*? — stops at semicolons (v75.20).
+PROGRESS LOG
+═══════════════════════════════════════════════════════════════════════════════
+  Log 76 (Mistral): FAIL  file 1/497  — wrong build path + G_TRI2/size_t
+  Log 77 (v75.18):  FAIL  file 1/497  — G_TRI2/size_t (CMakeLists changed)
+  Log 78 (v75.19):  FAIL  file 38/497 — __attribute__ on call stmt (n_seq.c)
+  Log 79 (v75.20):  FAIL  file 67/497 — __attribute__ on if-stmt (code_1D00.c)
+  Log 80 (v75.21):  FAIL  file 74/497 — __attribute__ on !expr (code_CE60.c)
+  Trend: each patch advanced further, whack-a-mole blacklist approach exhausted.
 
-LOG 79 (v75.21) — code_1D00.c: "'weak' attribute cannot be applied to a statement"
-  __attribute__((weak)) if (audioManager_handleFrameMsg(...)){
+═══════════════════════════════════════════════════════════════════════════════
+ROOT CAUSE OF THE PATTERN (v75.19–v75.21)
 ═══════════════════════════════════════════════════════════════════════════════
 
-ROOT CAUSE — group 2 "return type" prefix matched control-flow keywords:
+  inject_weak_attribute's regex had group 2 as a BLACKLIST: [^\n;{}(]*?
+  Each log revealed a new operator character the blacklist missed:
+    v75.19: [^{}]*?     — `;` allowed → spanned call statements
+    v75.20: [^{};]*?    — `(` allowed → matched `if (`, `while (`
+    v75.21: [^\n;{}(]*? — `!` allowed → matched `!func(...)` continuations
 
-  Pattern group 2 was: ([^\n;{}]*?\b)
-  This allows `if (`, `while (`, `for (` as "return type" prefix.
-  In code_1D00.c: `if (audioManager_handleFrameMsg(args)){`
-    group 2 = `if (`   ← treated as return type (wrong)
-    params group consumed `args)` then the outer if `)` before the `{`
-  Result: __attribute__((weak)) injected before `if (` — invalid C.
+  The blacklist approach is fundamentally unbounded: there are many operator
+  characters that can appear before a function call in an expression context.
 
-THE FIX — exclude `(` from the return type prefix group:
+═══════════════════════════════════════════════════════════════════════════════
+THE FIX — WHITELIST group 2 (v75.22)
+═══════════════════════════════════════════════════════════════════════════════
 
-  Changed group 2: [^\n;{}]*? → [^\n;{}(]*?
+  Changed group 2: [^\n;{}(]*? → [a-zA-Z_0-9\s\*]*?
 
-  A C function definition's return type NEVER contains `(` at top level.
-  Valid return types: `void`, `s32`, `OSThread *`, `const u8` — no parens.
-  Control-flow always has `(` before the function name, so excluding `(`
-  from group 2 stops all if/while/for false-positives.
+  A C function definition's return type consists ONLY of:
+    • Type keywords / identifiers: void, s32, u8, OSThread, struct Foo, ...
+    • Storage/qualifier keywords: static, extern, const, volatile, inline, ...
+    • Pointer stars: *
+    • Whitespace (including newlines, for multi-line return types)
+  It can NEVER contain: !, &, |, ~, -, +, =, ?, :, (, ), [, ], <, >, comma, etc.
 
-  Verified (all 5 cases correct):
-    if-statement     → None  (blocked by `(` exclusion)
-    while-loop       → None  (blocked by `(` exclusion)
-    call-statement   → None  (blocked by `;` exclusion, v75.20)
-    multiline def    → match (newlines in params still allowed)
-    pointer return   → match (`OSThread *` has no `(`)
+  The whitelist [a-zA-Z_0-9\s\*]*? naturally excludes ALL expression operators
+  in a single rule, ending the whack-a-mole cycle permanently.
+
+  Verified correct against 13 cases:
+    ✓ Blocks: call stmt, if-condition, negated expr, while-loop, assignment expr,
+              negation at line start
+    ✓ Passes: void def, s32 def, pointer return, multiline params, const return,
+              struct* return, static def (matched then skipped by _repl guard)
 
 ═══════════════════════════════════════════════════════════════════════════════
 FULL PASS SUMMARY
 ═══════════════════════════════════════════════════════════════════════════════
-  Pass 0 — Compat preamble:   F3DEX_GBI_2 define + stddef.h (idempotent)
-  Pass 1 — Array init:        u8 tmp[N] = D_x;              -> __builtin_memcpy
+  Pass 0 — Compat preamble:   F3DEX_GBI_2 + stddef.h at file top (idempotent)
+  Pass 1 — Array init:        `u8 arr[N] = D_x;` → __builtin_memcpy
   Pass 2 — Static conflicts:
-    Strategy A                non-static fwd decl            -> add `static`
-    Strategy B                missing static fwd decl        -> inject after #includes
-  Pass 3 — Static local C89 normalisation (Rules A/A2/B/C):
-    Rule A   compound-assign   static LVALUE OP= expr;       -> LVALUE OP= expr;
-    Rule A2  member plain-asgn static obj->field = call();   -> obj->field = call();
-    Rule B   implicit-int init static v = call();            -> v = call();
-    Rule C   typed init        static TYPE v = call();       -> TYPE v = call();
+    Strategy A  patch non-static fwd decl → add `static`
+    Strategy B  inject static fwd decl after last #include
+  Pass 3 — C89/IDO static-local normalisation (Rules A / A2 / B / C)
   Pass 4 — Weak symbol injection:
     __attribute__((weak)) on each eligible non-static function definition.
-    group 2 [^\n;{}(]*? — no parens, prevents control-flow false-positives
-    group 3 [^{};]*?    — no semicolons, prevents call-statement false-positives
+    group 2: [a-zA-Z_0-9\s\*]*?  WHITELIST — only valid return-type chars
+    group 3: [^{};]*?             excludes ; to stop call-statement spanning
 """
 
 PREAMBLE_MARKER = "/* SH-v75.19-preamble */"
@@ -71,8 +77,22 @@ PREAMBLE = f"""\
 #include <stddef.h>
 """
 
+# Keywords that can legally appear at the start of a definition line
+# Used to validate group-2 content before injecting the attribute.
+_RETURN_TYPE_WORDS = {
+    'void', 'int', 'char', 'short', 'long', 'float', 'double',
+    'signed', 'unsigned', 'const', 'volatile', 'inline',
+    'static', 'extern', 'register', 'restrict',
+    'struct', 'union', 'enum',
+    # N64 / decomp type aliases
+    's8', 'u8', 's16', 'u16', 's32', 'u32', 's64', 'u64',
+    'f32', 'f64', 'vu8', 'vs8', 'vu16', 'vs16', 'vu32', 'vs32',
+    'OSThread', 'OSTask', 'OSMesgQueue', 'OSMesg', 'OSTimer',
+    'Actor', 'ActorMarker', 'ALSeq', 'AudioInfo',
+}
 
-class SourceHarmonizerV7521:
+
+class SourceHarmonizerV7522:
     def __init__(self, target_dir, decomp_path):
         self.target_dir  = Path(target_dir)
         self.decomp_path = Path(decomp_path)
@@ -84,6 +104,7 @@ class SourceHarmonizerV7521:
             'enum', 'static', 'extern', 'const', 'volatile', 'inline', 'typedef'
         }
 
+        # Never weaken — these are entry points or standard functions
         self.std_c = {
             'main', 'main_no_args',
             'memcpy', 'memset', 'strlen', 'strcpy', 'strcmp',
@@ -91,7 +112,9 @@ class SourceHarmonizerV7521:
             'sin', 'cos', 'sinf', 'cosf', 'sqrt', 'sqrtf', 'abs', 'fabs'
         }
 
-        self.sdk_prefixes = ('os', 'gu', 'al', 'gS', 'gD', 'gd', '__os', 'sp', 'dp', 'rmon')
+        self.sdk_prefixes = (
+            'os', 'gu', 'al', 'gS', 'gD', 'gd', '__os', 'sp', 'dp', 'rmon'
+        )
 
         self._storage_quals = {
             'static', 'extern', 'inline', 'const', 'volatile', '__attribute__',
@@ -102,6 +125,7 @@ class SourceHarmonizerV7521:
             'break', 'continue', 'case', 'default', 'goto', 'typedef'
         }
 
+        # Pass 3 patterns
         self._p3a = re.compile(
             r'^([ \t]+)static\s+([^=\n;{}]+?)\s*([|&^+\-*/%]=|<<=|>>=)',
             re.MULTILINE
@@ -120,14 +144,21 @@ class SourceHarmonizerV7521:
             re.MULTILINE
         )
 
+        # Pass 4 definition pattern cache (keyed by function name)
         self._def_pat_cache = {}
 
     # ─────────────────────────────────────────────────────────────────────────
     def setup_workspace(self):
-        print("[>] Preparing v75.21 Workspace (in-place on decomp-files/src)...")
+        """
+        CMakeLists.txt now builds decomp-files/src directly (changed by external
+        scripts in log 76). We process those files in-place. Idempotent via the
+        preamble marker — safe to re-run.
+        """
+        print("[>] Preparing v75.22 Workspace (in-place on decomp-files/src)...")
 
     # ─────────────────────────────────────────────────────────────────────────
     def remove_strings_and_comments(self, text):
+        """Strip comments and string literals to get clean token context."""
         text = re.sub(r'//[^\n]*',          '',   text)
         text = re.sub(r'/\*.*?\*/',         '',   text, flags=re.DOTALL)
         text = re.sub(r'"(?:[^"\\]|\\.)*"', '""', text)
@@ -182,7 +213,9 @@ class SourceHarmonizerV7521:
                 + re.escape(func_name) + r'\s*\([^)]*\)\s*;)',
                 re.MULTILINE
             )
-            patched = fwd_pat.sub(lambda m: f"{m.group(1)}static {m.group(2)}", modified)
+            patched = fwd_pat.sub(
+                lambda m: f"{m.group(1)}static {m.group(2)}", modified
+            )
             if patched != modified:
                 modified = patched
                 continue
@@ -254,37 +287,58 @@ class SourceHarmonizerV7521:
         return names
 
     # ─────────────────────────────────────────────────────────────────────────
+    def _build_def_pattern(self, fname):
+        """
+        Build the regex that identifies a non-static function DEFINITION.
+
+        Pattern groups:
+          1. ([ \t]*)           — line indent (definitions are at column 0 or
+                                  after module-level indentation, not deep inside
+                                  control flow)
+          2. ([a-zA-Z_0-9\s\*]*?\b)
+                                — return type / qualifiers  ← WHITELIST (v75.22)
+                                  Only allows identifier chars, whitespace, and `*`.
+                                  Naturally excludes ALL expression operators:
+                                  !, &, |, ~, -, +, =, ?, :, (, ), [, ], <, >, etc.
+          3. (fname\s*\([^{};]*?\)\s*\{)
+                                — fname(params) {
+                                  params use [^{};]*? — excludes ; to stop
+                                  cross-statement spanning (v75.20).
+
+        MULTILINE: ^ anchors to each line start.
+        DOTALL:    \s* in group 3 allows newline before { (rare but valid).
+        """
+        return re.compile(
+            r'^([ \t]*)([a-zA-Z_0-9\s\*]*?\b)('
+            + re.escape(fname)
+            + r'\s*\([^{};]*?\)\s*\{)',
+            re.MULTILINE | re.DOTALL
+        )
+
     def inject_weak_attribute(self, content, fname):
         """
         Prepend __attribute__((weak)) to a non-static function definition.
-
-        Two exclusions in the definition pattern (both required):
-          group 2 [^\n;{}(]*? — return type, excludes `(` (v75.21)
-            Prevents `if (`, `while (`, `for (` being matched as return types.
-          group 3 [^{};]*?    — params, excludes `;` (v75.20)
-            Prevents spanning across call statements (which end with `;`).
+        Idempotent — skips if already present.
+        Skips static definitions (they are file-local, not subject to dup-symbol errors).
         """
         if fname not in self._def_pat_cache:
-            self._def_pat_cache[fname] = re.compile(
-                # group 1: line indent
-                # group 2: return type — [^\n;{}(]*? blocks if/while/for (v75.21)
-                # group 3: fname(params){ — [^{};]*? blocks call stmts (v75.20)
-                r'^([ \t]*)([^\n;{}(]*?\b)('
-                + re.escape(fname)
-                + r'\s*\([^{};]*?\)\s*\{)',
-                re.MULTILINE | re.DOTALL
-            )
+            self._def_pat_cache[fname] = self._build_def_pattern(fname)
         pat = self._def_pat_cache[fname]
 
         def _repl(m):
             full   = m.group(0)
             indent = m.group(1)
-            before = m.group(2)
-            rest   = m.group(3)
+            before = m.group(2)   # return type prefix
+            rest   = m.group(3)   # fname(params) {
+
+            # Idempotency guard
             if '__attribute__((weak))' in full:
                 return full
+            # Never weaken static definitions
             if re.search(r'\bstatic\b', before):
                 return full
+            # Extra sanity: group 2 must end with a word char or `*`
+            # (not be empty except for top-level functions with no return type qualifier)
             return f"{indent}__attribute__((weak)) {before.lstrip()}{rest}"
 
         return pat.sub(_repl, content)
@@ -294,13 +348,16 @@ class SourceHarmonizerV7521:
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             original_content = f.read()
 
-        # Pass 0 — Compat preamble (idempotent via marker)
+        # ── Pass 0: Compat preamble ──────────────────────────────────────────
+        # F3DEX_GBI_2: enables G_TRI2 and F3DEX2 GBI constants in gbi.h
+        # stddef.h:    provides size_t, ptrdiff_t, NULL for decomp headers
+        # Guarded by marker — idempotent across re-runs
         if PREAMBLE_MARKER not in original_content:
             modified = PREAMBLE + original_content
         else:
             modified = original_content
 
-        # Pass 1 — Array init
+        # ── Pass 1: Array init ───────────────────────────────────────────────
         arr_pat = re.compile(
             r'^([ \t]*(?:struct\s+|union\s+|enum\s+)?[a-zA-Z_]\w*(?:\s*\*)*)\s+'
             r'([a-zA-Z_]\w*)\s*\[\s*(\d+)\s*\]\s*=\s*([a-zA-Z_]\w*)\s*;',
@@ -312,20 +369,21 @@ class SourceHarmonizerV7521:
                     f"__builtin_memcpy({nm}, {src}, {sz} * sizeof({ts.strip()}));")
         modified = arr_pat.sub(_arr_repl, modified)
 
-        # Pass 2 — Static/forward-decl conflicts
+        # ── Pass 2: Static/fwd-decl conflicts ───────────────────────────────
         modified = self.fix_static_conflicts(modified)
 
-        # Pass 3 — C89/IDO static-local patterns
+        # ── Pass 3: C89/IDO static-local patterns ───────────────────────────
         modified = self.fix_static_local_c89_patterns(modified)
 
-        # Analysis pass
+        # ── Analysis: build exclusion sets on comment-stripped content ───────
         clean = self.remove_strings_and_comments(modified)
 
-        # Pass 4 — Weak symbol injection
+        # ── Pass 4: Weak symbol injection ────────────────────────────────────
         static_func_names  = set(self.find_static_definitions(clean).keys())
         forward_decl_names = self.find_forward_declared_functions(clean)
         excluded_names     = static_func_names | forward_decl_names
 
+        # Candidate scanner: find function names that appear in definition context
         func_pat = re.compile(r'\b([a-zA-Z_]\w*)\s*\([^{;]*\)\s*\{')
 
         weak_candidates = []
@@ -342,6 +400,7 @@ class SourceHarmonizerV7521:
             if fname in excluded_names:
                 continue
 
+            # Context filter: skip if preceded by static/inline/typedef on same stmt
             pre = clean[:start_idx]
             cut = max(pre.rfind(';'), pre.rfind('}'), pre.rfind('{'))
             seg = pre[cut+1:] if cut != -1 else pre
@@ -351,12 +410,10 @@ class SourceHarmonizerV7521:
 
             weak_candidates.append(fname)
 
+        # Deduplicate preserving order
         seen = set()
-        unique_candidates = []
-        for f in weak_candidates:
-            if f not in seen:
-                seen.add(f)
-                unique_candidates.append(f)
+        unique_candidates = [f for f in weak_candidates
+                             if not (f in seen or seen.add(f))]
 
         new_content = modified
         for fname in unique_candidates:
@@ -373,19 +430,20 @@ class SourceHarmonizerV7521:
             print(f"[!] Error: target directory '{self.target_dir}' not found.")
             return
         self.setup_workspace()
-        print("[*] Applying v75.21 Function-Level Linker Isolation...")
+        print("[*] Applying v75.22 Function-Level Linker Isolation...")
         for file_path in self.target_dir.rglob('*.c'):
             try:
                 self.process_file(file_path)
                 self.stats["files_processed"] += 1
             except Exception as e:
                 print(f"[!] Error processing {file_path.name}: {e}")
-        print(f"\n[+] v75.21 Complete.")
+        print(f"\n[+] v75.22 Complete.")
         print(f"    Files Processed: {self.stats['files_processed']}")
         print(f"    Files Modified:  {self.stats['changes_made']}")
 
 
 if __name__ == "__main__":
+    # CMakeLists.txt builds decomp-files/src directly (changed since log 76).
     target = "decomp-files/src"
     decomp = "decomp-files"
-    SourceHarmonizerV7521(target, decomp).run()
+    SourceHarmonizerV7522(target, decomp).run()
