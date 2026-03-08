@@ -1,59 +1,110 @@
-cmake_minimum_required(VERSION 3.22.1)
-project(bkawrapper LANGUAGES C CXX)
+name: Android Build
 
-# 1. Define absolute path to the decompilation root
-# Based on ls -R: cpp -> main -> src -> app -> Android -> root (5 levels)
-get_filename_component(DECOMP_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../decomp-files" ABSOLUTE)
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
 
-# 2. Collect engine source files
-# Non-recursive GLOB avoids picking up conflicting regional variants (US/JP/PAL)
-file(GLOB GAME_SOURCES 
-    "${DECOMP_ROOT}/src/core1/*.c"
-    "${DECOMP_ROOT}/src/core2/*.c"
-    "${DECOMP_ROOT}/src/done/*.c"
-    
-    # Explicitly include hardware/utility modules to resolve Undefined References
-    "${DECOMP_ROOT}/src/core1/os/*.c"
-    "${DECOMP_ROOT}/src/core1/gu/*.c"
-    "${DECOMP_ROOT}/src/core1/io/*.c"
-    "${DECOMP_ROOT}/src/core1/audio/*.c"
-)
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
 
-add_library(bkawrapper SHARED
-    ${GAME_SOURCES}
-    ultra/NativeBridge.cpp
-    ultra/otr_builder.cpp
-    ultra/audio_helper.cpp
-    ultra/exceptasm.cpp
-    emulator/resource_mgr.cpp
-    emulator/pi_hle.cpp
-    emulator/stubs.cpp
-    tools/rare_decompression.cpp
-)
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
 
-# 3. Comprehensive Include Paths
-# Includes the specific 2.0L/PR path for N64 hardware headers
-target_include_directories(bkawrapper PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/ultra
-    ${CMAKE_CURRENT_SOURCE_DIR}/emulator
-    ${CMAKE_CURRENT_SOURCE_DIR}/tools
-    ${DECOMP_ROOT}/include
-    ${DECOMP_ROOT}/include/2.0L
-    ${DECOMP_ROOT}/include/2.0L/PR
-    ${DECOMP_ROOT}/src
-)
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
 
-# 4. Compiler Flags for AArch64/Android NDK
-target_compile_definitions(bkawrapper PRIVATE _LANGUAGE_C)
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
-# -fcommon: Essential for merging global variables declared across different .c files
-# -w: Suppresses heavy warnings from original decompiled code
-target_compile_options(bkawrapper PRIVATE -w -fcommon)
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+          pip install PyYAML
 
-find_library(log-lib log)
-find_library(android-lib android)
-find_library(z-lib z)
+      - name: Generate Binary Asset Manifests
+        run: python3 runtime/generate_assets_header.py
 
-# Link atomic for 64-bit synchronization and m for math functions
-target_link_libraries(bkawrapper ${log-lib} ${android-lib} ${z-lib} atomic m)
+      - name: Generate App Icons
+        run: |
+          if [ -f "master_icon.png" ]; then
+            python3 runtime/generate_icons.py master_icon.png
+          else
+            echo "master_icon.png not found, building with dummy icon"
+            mkdir -p Android/app/src/main/res/mipmap-mdpi
+            convert -size 48x48 xc:gray Android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+            cp Android/app/src/main/res/mipmap-mdpi/ic_launcher.png Android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+          fi
+
+      - name: Prepare C++ Source (harmonizer)
+        run: |
+          set -x  # echo commands for debug
+          python3 runtime/prepare_source.py || { echo "Harmonizer failed!"; exit 1; }
+
+      # Critical: Verify changes landed BEFORE build
+      - name: Verify BOOL macro / preamble in source
+        run: |
+          FILE="decomp-files/src/core2/code_5BEB0.c"
+          if [ -f "$FILE" ]; then
+            echo "First 50 lines of failing file:"
+            head -n 50 "$FILE"
+            echo ""
+            echo "Grep for BOOL define:"
+            grep -A 5 -B 5 "BOOL" "$FILE" || echo "No BOOL macro found — harmonizer didn't apply!"
+            echo ""
+            echo "Grep for pragma diagnostic:"
+            grep -i "SourceHarmonizer" "$FILE" || echo "No pragma — preamble missing!"
+          else
+            echo "File $FILE not found — source dir issue?"
+          fi
+
+      # Nuclear clean for CMake/NDK
+      - name: Force full clean of Gradle + CMake artifacts
+        run: |
+          GRADLEW_PATH=$(find . -name gradlew | head -1)
+          chmod +x "$GRADLEW_PATH"
+          cd $(dirname "$GRADLEW_PATH")
+          ./gradlew clean --no-daemon --stacktrace --info || true
+          cd -  # back to root
+          echo "Nuking CMake build dirs..."
+          rm -rf Android/app/.cxx || true
+          rm -rf Android/app/build || true
+          rm -rf Android/app/.externalNativeBuild || true
+          find Android -name "*.o" -delete || true
+          find Android -name "CMakeCache.txt" -delete || true
+          find Android -name "build.ninja" -delete || true
+          find Android -name "CMakeFiles" -type d -exec rm -rf {} + || true
+
+      # Second clean after nuke
+      - name: Final Gradle clean
+        run: |
+          GRADLEW_PATH=$(find . -name gradlew | head -1)
+          chmod +x "$GRADLEW_PATH"
+          cd $(dirname "$GRADLEW_PATH")
+          ./gradlew clean --no-daemon --stacktrace --info
+
+      - name: Build with Gradle (force rerun)
+        run: |
+          GRADLEW_PATH=$(find . -name gradlew | head -1)
+          chmod +x "$GRADLEW_PATH"
+          cd $(dirname "$GRADLEW_PATH")
+          ./gradlew assembleDebug --rerun-tasks --no-daemon --stacktrace --info
+
+      - name: Upload Debug APK
+        if: success()  # only if build succeeds
+        uses: actions/upload-artifact@v4
+        with:
+          name: BKA-debug-apk
+          path: "Android/app/build/outputs/apk/debug/*.apk"
