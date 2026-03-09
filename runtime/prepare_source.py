@@ -4,21 +4,21 @@ from pathlib import Path
 from itertools import chain
 
 """
-SourceHarmonizer v75.40 — forward decl before definition + robust bool.h guard
+SourceHarmonizer v75.41 — early forward struct + bool forward decl before first call
 
-Changelog v75.40:
-- Moved forward decl insertion to RIGHT BEFORE the function definition in code_1D00.c
-  → ensures AudioInfo (defined earlier in the same file) is visible
-- Prevents "unknown type name 'AudioInfo'" error
-- Restored all missing functions from previous versions
+Changelog v75.41:
+- Insert struct AudioInfo; forward declaration right after last #include
+- Insert bool function forward declaration right before FIRST call site
+  → fixes "conflicting types" + implicit int declaration problem
+- Prevents usage of AudioInfo before its full definition is seen
 """
 
 PREAMBLE = """\
 /* ──────────────────────────────────────────────── */
-/* SourceHarmonizer v75.40 — Android/NDK compat    */
+/* SourceHarmonizer v75.41 — Android/NDK compat    */
 /* ──────────────────────────────────────────────── */
 
-#pragma message "SourceHarmonizer v75.40 preamble is ACTIVE"
+#pragma message "SourceHarmonizer v75.41 preamble is ACTIVE"
 
 #ifndef F3DEX_GBI_2
 #define F3DEX_GBI_2
@@ -65,7 +65,7 @@ PREAMBLE = """\
 #endif
 
 /* ──────────────────────────────────────────────── */
-/* End compat block v75.40                          */
+/* End compat block v75.41                          */
 /* ──────────────────────────────────────────────── */
 """
 
@@ -95,7 +95,7 @@ def harmonize_string_h(file_path: Path, content: str) -> tuple[str, bool]:
 
     insert_text = """
 /* ──────────────────────────────────────────────── */
-/* SourceHarmonizer v75.40 – C++ / NDK compatibility  */
+/* SourceHarmonizer v75.41 – C++ / NDK compatibility  */
 /* ──────────────────────────────────────────────── */
 
 #ifdef __cplusplus
@@ -161,8 +161,9 @@ def guard_custom_bool_h(file_path: Path, content: str) -> tuple[str, bool]:
 
 def fix_implicit_bool_decls(file_path: Path, content: str) -> tuple[str, bool]:
     """
-    Insert forward decl for audioManager_handleFrameMsg RIGHT BEFORE its definition
-    so AudioInfo (defined earlier in the same file) is visible.
+    v75.41: Insert struct AudioInfo; after includes + function forward decl
+    right before the FIRST call to audioManager_handleFrameMsg.
+    This prevents implicit int declaration at call site.
     """
     if file_path.name != "code_1D00.c":
         return content, False
@@ -170,37 +171,58 @@ def fix_implicit_bool_decls(file_path: Path, content: str) -> tuple[str, bool]:
     if "audioManager_handleFrameMsg" not in content:
         return content, False
 
-    # Avoid duplicate insertion
-    marker = "/* SourceHarmonizer v75.40: forward decl inserted before definition */"
+    marker = "/* SourceHarmonizer v75.41: forward struct + bool decl to fix conflict */"
     if marker in content:
-        print(f"  [IMPLICIT_DECL SKIP] Already inserted before definition → {file_path.name}")
+        print(f"  [IMPLICIT_DECL SKIP] Already fixed → {file_path.name}")
         return content, False
 
-    # Find the line that defines the function (starts with "bool audioManager_handleFrameMsg")
     lines = content.splitlines(keepends=True)
-    insert_line_idx = -1
+
+    # 1. Find position after last #include (for struct forward decl)
+    include_end = 0
     for i, line in enumerate(lines):
-        stripped = line.strip()
-        if stripped.startswith("bool audioManager_handleFrameMsg"):
-            insert_line_idx = i
-            break
+        if line.strip().startswith("#include"):
+            include_end = i + 1
+        else:
+            break  # stop at first non-include line
 
-    if insert_line_idx == -1:
-        print(f"  [IMPLICIT_DECL WARN] Could not find function definition → {file_path.name}")
-        return content, False
+    struct_decl_pos = sum(len(lines[j]) for j in range(include_end))
 
-    # Insert right before the definition line
-    insert_pos = sum(len(lines[j]) for j in range(insert_line_idx))
-
-    decl = f"""\
-{marker}
-bool audioManager_handleFrameMsg(AudioInfo *info, AudioInfo *prev_info);
+    struct_forward = """\
+/* SourceHarmonizer v75.41: forward struct decl so we can use AudioInfo early */
+struct AudioInfo;
 
 """
 
-    new_content = content[:insert_pos] + decl + content[insert_pos:]
+    # 2. Find first call site (for function forward decl)
+    call_line_idx = -1
+    for i, line in enumerate(lines):
+        if "audioManager_handleFrameMsg" in line and "(" in line:
+            call_line_idx = i
+            break
 
-    print(f"  [IMPLICIT_DECL FIXED] Forward decl inserted BEFORE function definition → {file_path.name}")
+    if call_line_idx == -1:
+        print(f"  [IMPLICIT_DECL WARN] No call site found → {file_path.name}")
+        return content, False
+
+    func_decl_pos = sum(len(lines[j]) for j in range(call_line_idx))
+
+    func_forward = """\
+/* SourceHarmonizer v75.41: forward decl before first call to prevent implicit int */
+bool audioManager_handleFrameMsg(struct AudioInfo *info, struct AudioInfo *prev_info);
+
+"""
+
+    # Insert both
+    new_content = (
+        content[:struct_decl_pos] +
+        struct_forward +
+        content[struct_decl_pos:func_decl_pos] +
+        func_forward +
+        content[func_decl_pos:]
+    )
+
+    print(f"  [IMPLICIT_DECL FIXED v75.41] Forward struct + bool decl inserted → {file_path.name}")
     return new_content, True
 
 
@@ -221,7 +243,7 @@ def insert_preamble_and_fixes(file_path: Path) -> bool:
 
     # 1. Preamble for .c files
     if is_c:
-        marker = "SourceHarmonizer v75.40 preamble is ACTIVE"
+        marker = "SourceHarmonizer v75.41 preamble is ACTIVE"
         if marker not in content:
             content = PREAMBLE + "\n" + content
             print(f"  [PREAMBLE+STDBOOL] Inserted in {file_path.name}")
@@ -252,15 +274,15 @@ def insert_preamble_and_fixes(file_path: Path) -> bool:
     if is_cpp:
         content = re.sub(
             r'^\s*#include\s*["<]string\.h[">].*$',
-            r'// SourceHarmonizer v75.40: disabled conflicting decomp string.h',
+            r'// SourceHarmonizer v75.41: disabled conflicting decomp string.h',
             content,
             flags=re.MULTILINE | re.IGNORECASE
         )
 
-        inject = '\n// SourceHarmonizer v75.40: force standard headers\n#include <cstddef>\n#include <cstring>\n#include <stdbool.h>\n\n'
-        if "SourceHarmonizer v75.40 preamble" in content:
+        inject = '\n// SourceHarmonizer v75.41: force standard headers\n#include <cstddef>\n#include <cstring>\n#include <stdbool.h>\n\n'
+        if "SourceHarmonizer v75.41 preamble" in content:
             content = re.sub(
-                r'(/\* End compat block v75\.40.*?\*/\s*)',
+                r'(/\* End compat block v75\.41.*?\*/\s*)',
                 rf'\1{inject}',
                 content,
                 flags=re.DOTALL | re.IGNORECASE
@@ -291,7 +313,7 @@ def main():
         Path("Android/app/src/main/cpp"),
     ]
 
-    print("SourceHarmonizer v75.40 running – forward decl before definition + bool.h guard")
+    print("SourceHarmonizer v75.41 running – early struct + function forward decls")
 
     count = 0
     for d in dirs:
@@ -305,10 +327,9 @@ def main():
     print(f"\nFinished. Changed {count} files.")
     print("Recommended:")
     print("  git add decomp-files/src/core1/code_1D00.c decomp-files/include/bool.h")
-    print("  git commit -m 'harmonizer v75.40: forward decl before definition to fix AudioInfo error'")
-    print("Verify locally:")
-    print("  grep -A 10 'audioManager_handleFrameMsg' decomp-files/src/core1/code_1D00.c")
-    print("  → should show forward decl + comment right before the function body")
+    print("  git commit -m 'harmonizer v75.41: early forward struct AudioInfo + bool decl to fix conflicting types'")
+    print("Verify:")
+    print("  grep -C 12 'audioManager_handleFrameMsg' decomp-files/src/core1/code_1D00.c")
 
 
 if __name__ == "__main__":
