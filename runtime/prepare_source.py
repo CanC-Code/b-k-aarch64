@@ -4,30 +4,28 @@ from pathlib import Path
 from itertools import chain
 
 """
-SourceHarmonizer v75.34 — Defensive string.h repair + bool fix
+SourceHarmonizer v75.35 — bool.h conflict fix + continued string.h safety
 
-Changelog v75.34:
-- Much safer extern "C" insertion: inserts BEFORE last #endif
-- Detects and skips if extern "C" already appears
-- Fixes broken/missing #endif by checking guard balance
-- Forces #include <stdbool.h> in .c files that use bool
-- Better logging when string.h is touched
-- FIXED: TypeError when concatenating rglob generators
+Changelog v75.35:
+- Automatically guards custom bool.h typedef with #ifndef __bool_true_false_are_defined
+  → prevents conflict with NDK <stdbool.h>
+- Keeps forcing #include <stdbool.h> in .c files (native _Bool is better)
+- No more typedef int bool; redefinition errors
 """
 
 PREAMBLE = """\
 /* ──────────────────────────────────────────────── */
-/* SourceHarmonizer v75.34 — Android/NDK compat    */
+/* SourceHarmonizer v75.35 — Android/NDK compat    */
 /* ──────────────────────────────────────────────── */
 
-#pragma message "SourceHarmonizer v75.34 preamble is ACTIVE"
+#pragma message "SourceHarmonizer v75.35 preamble is ACTIVE"
 
 #ifndef F3DEX_GBI_2
 #define F3DEX_GBI_2
 #endif
 
 #include <stddef.h>
-#include <stdbool.h>   /* SourceHarmonizer: providing bool type */
+#include <stdbool.h>   /* SourceHarmonizer: use native _Bool on Android NDK */
 
 #ifdef min
 #undef min
@@ -67,12 +65,11 @@ PREAMBLE = """\
 #endif
 
 /* ──────────────────────────────────────────────── */
-/* End compat block v75.34                          */
+/* End compat block v75.35                          */
 /* ──────────────────────────────────────────────── */
 """
 
 def count_ifdef_endif(content: str) -> tuple[int, int, bool]:
-    """Rough count to detect unbalanced guards"""
     ifs = len(re.findall(r'(?m)^#ifndef\s', content))
     endifs = len(re.findall(r'(?m)^#endif', content))
     balanced = endifs >= ifs
@@ -87,7 +84,7 @@ def harmonize_string_h(file_path: Path, content: str) -> tuple[str, bool]:
     if_count, endif_count, balanced = count_ifdef_endif(content)
 
     if not balanced:
-        print(f"  [STRING_H WARN] Unbalanced guard ({if_count} ifndef / {endif_count} endif) → attempting repair")
+        print(f"  [STRING_H WARN] Unbalanced guard ({if_count}/{endif_count}) → attempting repair")
 
     last_endif_matches = list(re.finditer(r'(?m)^#endif\b.*?$', content))
     if not last_endif_matches:
@@ -98,7 +95,7 @@ def harmonize_string_h(file_path: Path, content: str) -> tuple[str, bool]:
 
     insert_text = """
 /* ──────────────────────────────────────────────── */
-/* SourceHarmonizer v75.34 – C++ / NDK compatibility  */
+/* SourceHarmonizer v75.35 – C++ / NDK compatibility  */
 /* ──────────────────────────────────────────────── */
 
 #ifdef __cplusplus
@@ -109,7 +106,6 @@ extern "C" {
 
     new_content = content[:insert_pos] + insert_text + content[insert_pos:]
 
-    # Close brace before final #endif
     new_content = re.sub(
         r'(#endif\s*(?:/\*.*?\*/)?\s*$)',
         r'#ifdef __cplusplus\n}\n#endif\n\1',
@@ -120,6 +116,34 @@ extern "C" {
 
     print(f"  [STRING_H FIXED] Inserted extern \"C\" guard → {file_path.name}")
     return new_content, True
+
+
+def guard_custom_bool_h(file_path: Path, content: str) -> tuple[str, bool]:
+    """Wrap custom typedef int bool; with compatibility guard"""
+    if not re.search(r'typedef\s+int\s+bool\s*;', content):
+        return content, False
+
+    # Pattern to find the typedef + optional defines
+    pat = re.compile(
+        r'(\s*typedef\s+int\s+bool\s*;\s*)'
+        r'(?:\s*#define\s+(?:false|FALSE)\s+\d\s*)*'
+        r'(?:\s*#define\s+(?:true|TRUE)\s+\d\s*)*',
+        re.DOTALL | re.IGNORECASE
+    )
+
+    def repl(m):
+        return f"""\
+#ifndef __bool_true_false_are_defined
+{m.group(0).strip()}
+#endif
+"""
+
+    new_content = pat.sub(repl, content)
+
+    if new_content != content:
+        print(f"  [BOOL_H GUARD] Wrapped custom typedef int bool; → {file_path.name}")
+        return new_content, True
+    return content, False
 
 
 def insert_preamble_and_fixes(file_path: Path) -> bool:
@@ -137,34 +161,41 @@ def insert_preamble_and_fixes(file_path: Path) -> bool:
     is_header = file_path.suffix == ".h"
     fname_lower = file_path.name.lower()
 
-    # 1. Preamble + stdbool.h for .c files
+    # 1. Preamble for .c files
     if is_c:
-        marker = "SourceHarmonizer v75.34 preamble is ACTIVE"
+        marker = "SourceHarmonizer v75.35 preamble is ACTIVE"
         if marker not in content:
             content = PREAMBLE + "\n" + content
             print(f"  [PREAMBLE+STDBOOL] Inserted in {file_path.name}")
             modified = True
 
-    # 2. string.h fix
+    # 2. Guard custom bool.h if this is the file
+    if is_header and "bool.h" in fname_lower:
+        new_content, changed = guard_custom_bool_h(file_path, content)
+        if changed:
+            content = new_content
+            modified = True
+
+    # 3. string.h fix
     if is_header and "string.h" in fname_lower:
         new_content, changed = harmonize_string_h(file_path, content)
         if changed:
             content = new_content
             modified = True
 
-    # 3. C++ safety net
+    # 4. C++ safety net (disable decomp string.h + force standards)
     if is_cpp:
         content = re.sub(
             r'^\s*#include\s*["<]string\.h[">].*$',
-            r'// SourceHarmonizer v75.34: disabled conflicting decomp string.h',
+            r'// SourceHarmonizer v75.35: disabled conflicting decomp string.h',
             content,
             flags=re.MULTILINE | re.IGNORECASE
         )
 
-        inject = '\n// SourceHarmonizer v75.34: force standard headers\n#include <cstddef>\n#include <cstring>\n#include <stdbool.h>\n\n'
-        if "SourceHarmonizer v75.34 preamble" in content:
+        inject = '\n// SourceHarmonizer v75.35: force standard headers\n#include <cstddef>\n#include <cstring>\n#include <stdbool.h>\n\n'
+        if "SourceHarmonizer v75.35 preamble" in content:
             content = re.sub(
-                r'(/\* End compat block v75\.34.*?\*/\s*)',
+                r'(/\* End compat block v75\.35.*?\*/\s*)',
                 rf'\1{inject}',
                 content,
                 flags=re.DOTALL | re.IGNORECASE
@@ -195,25 +226,24 @@ def main():
         Path("Android/app/src/main/cpp"),
     ]
 
-    print("SourceHarmonizer v75.34 running – defensive string.h + bool fix")
+    print("SourceHarmonizer v75.35 running – bool.h guarded + string.h safety")
 
     count = 0
     for d in dirs:
         if not d.is_dir():
             print(f"  Dir missing: {d}")
             continue
-        # FIXED: use chain() instead of broken + on generators
         for p in sorted(chain(d.rglob("*.[ch]"), d.rglob("*.[ch]pp"))):
             if insert_preamble_and_fixes(p):
                 count += 1
 
     print(f"\nFinished. Changed {count} files.")
-    print("Recommended commands:")
-    print("  git add decomp-files/include/string.h")
-    print("  git commit -m 'harmonizer v75.34: fixed string.h extern \"C\" insertion + stdbool'")
+    print("Recommended:")
+    print("  git add decomp-files/include/bool.h")
+    print("  git commit -m 'harmonizer v75.35: guard custom bool.h against NDK stdbool.h'")
     print("Verify locally:")
-    print("  grep -A 10 -B 5 '__cplusplus' decomp-files/include/string.h")
-    print("  → should show clean extern \"C\" { ... } just before #endif")
+    print("  grep -A 5 '__bool_true_false_are_defined' decomp-files/include/bool.h")
+    print("  → should show the guard around typedef int bool;")
 
 
 if __name__ == "__main__":
