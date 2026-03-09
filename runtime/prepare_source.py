@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SourceHarmonizer v75.45
+SourceHarmonizer v75.46
 BK AArch64 Android port — IDO/N64 decomp source → Clang/NDK compatibility
 
 Drop this file at:  runtime/prepare_source.py
@@ -9,6 +9,15 @@ It runs before the CMake/ninja build and patches decomp-files/src in-place.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CHANGE LOG
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+v75.46  Fix bool.h collision. Our preamble was including <stdbool.h> which
+        defines `bool` as `_Bool`. Then decomp-files/include/bool.h does
+        `typedef int bool;` — Clang sees `typedef int _Bool` and errors on
+        file 1/497 every time.
+        Fix: remove `#include <stdbool.h>` from preamble entirely. Instead
+        define `__bool_true_false_are_defined 1` — the standard suppression
+        guard that stdbool.h sets, which decomp/bool.h checks before typedef.
+        This silences the decomp's custom bool.h without pulling in stdbool.h.
+
 v75.45  Fix generic array-init-from-symbol for code_4A6F0.c (and any future
         file with the same pattern).  Previous versions only patched
         code_41460.c by filename; this version uses a regex pass over every
@@ -51,11 +60,11 @@ from pathlib import Path
 # Pass 0 — Compatibility preamble
 # ─────────────────────────────────────────────────────────────────────────────
 
-PREAMBLE_MARKER = "/* SH-v75.45-preamble */"
+PREAMBLE_MARKER = "/* SH-v75.46-preamble */"
 
 PREAMBLE = """\
 {marker}
-/* SourceHarmonizer v75.45 — Android/NDK compatibility preamble             */
+/* SourceHarmonizer v75.46 — Android/NDK compatibility preamble             */
 /* All definitions are guarded with #ifndef — never overrides decomp headers */
 
 /* F3DEX_GBI_2: enables G_TRI2 and all F3DEX2 GBI opcodes in gbi.h.         */
@@ -64,8 +73,29 @@ PREAMBLE = """\
 #endif
 
 #include <stddef.h>       /* size_t, ptrdiff_t, NULL                         */
-#include <stdbool.h>      /* _Bool / bool on Android NDK                     */
 #include <string.h>       /* memcpy — used by Pass 1 array-init replacements */
+
+/* bool / _Bool compatibility.
+   DO NOT #include <stdbool.h> here — that would define `bool` as `_Bool`,
+   and then decomp-files/include/bool.h's `typedef int bool` would expand to
+   `typedef int _Bool`, which Clang rejects ("cannot combine with previous
+   'int' declaration specifier").
+   Instead we set __bool_true_false_are_defined — the exact guard that both
+   the C99 stdbool.h and the decomp's own bool.h check before doing anything.
+   This tells bool.h "bool is already handled, skip the typedef" without
+   actually pulling in stdbool.h or redefining bool ourselves.            */
+#ifndef __bool_true_false_are_defined
+#  define __bool_true_false_are_defined 1
+#  ifndef bool
+#    define bool  _Bool
+#  endif
+#  ifndef true
+#    define true  1
+#  endif
+#  ifndef false
+#    define false 0
+#  endif
+#endif
 
 /* Android system headers sometimes define min/max/abs as macros that clash  */
 /* with the decomp's own definitions.  Undefine them before re-defining.     */
@@ -111,7 +141,7 @@ PREAMBLE = """\
 #ifndef ARRAY_COUNT
 #  define ARRAY_COUNT(x)   (sizeof(x) / sizeof((x)[0]))
 #endif
-/* ── End SourceHarmonizer v75.45 preamble ─────────────────────────────── */
+/* ── End SourceHarmonizer v75.46 preamble ─────────────────────────────── */
 
 """.format(marker=PREAMBLE_MARKER)
 
