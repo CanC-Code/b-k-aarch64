@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SourceHarmonizer v75.48
+SourceHarmonizer v75.49
 BK AArch64 Android port — IDO/N64 decomp source → Clang/NDK compatibility
 
 Drop this file at:  runtime/prepare_source.py
@@ -9,6 +9,9 @@ It runs before the CMake/ninja build and patches decomp-files/src in-place.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CHANGE LOG
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+v75.49  Fix return type mismatch: if a function is declared as `bool` in a header,
+        but defined as `int` in a .c file, patch the .c file to match the header.
+        This prevents "conflicting types" errors.
 v75.48  Fix G_TRI2 and size_t: ensure F3DEX_GBI_2 and stddef.h are included
         before any code that uses them. Inject forward decls after type defs.
 v75.47  Generic forward-decl injection for use-before-definition.
@@ -61,6 +64,7 @@ PASSES (in order, per .c file)
  2  Static conflicts — mismatched static/non-static forward declarations
  3  IDO static norms — strip/split illegal IDO C89 static-local patterns
  4  Weak symbols     — __attribute__((weak)) on non-static function defs
+ 5  Return type fix  — patch .c files to match header declarations
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
@@ -71,11 +75,11 @@ from pathlib import Path
 # Pass 0 — Compatibility preamble
 # ─────────────────────────────────────────────────────────────────────────────
 
-PREAMBLE_MARKER = "/* SH-v75.48-preamble */"
+PREAMBLE_MARKER = "/* SH-v75.49-preamble */"
 
 PREAMBLE = """\
 {marker}
-/* SourceHarmonizer v75.48 — Android/NDK compatibility preamble             */
+/* SourceHarmonizer v75.49 — Android/NDK compatibility preamble             */
 /* All definitions are guarded with #ifndef — never overrides decomp headers */
 
 /* F3DEX_GBI_2: enables G_TRI2 and all F3DEX2 GBI opcodes in gbi.h.         */
@@ -152,34 +156,13 @@ PREAMBLE = """\
 #ifndef ARRAY_COUNT
 #  define ARRAY_COUNT(x)   (sizeof(x) / sizeof((x)[0]))
 #endif
-/* ── End SourceHarmonizer v75.48 preamble ─────────────────────────────── */
+/* ── End SourceHarmonizer v75.49 preamble ─────────────────────────────── */
 
 """.format(marker=PREAMBLE_MARKER)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Pass 1 — Generic array-init-from-symbol fix
 # ─────────────────────────────────────────────────────────────────────────────
-#
-# IDO/GCC extension (not valid in Clang strict mode):
-#   TYPE var[N] = SOME_GLOBAL_ARRAY;
-#
-# Clang error: "array initializer must be an initializer list"
-#
-# Fix: split into declaration + memcpy:
-#   TYPE var[N]; memcpy(var, SOME_GLOBAL_ARRAY, sizeof(var));
-#
-# This is a GENERIC pass — it runs on every .c file so we never need to
-# hardcode a filename again (lessons from v75.44 code_41460.c-only fix).
-#
-# Pattern matches:
-#   - optional leading whitespace
-#   - C type: identifier, optional struct/union/enum prefix, optional *
-#   - variable name
-#   - array size in brackets (integer literal)
-#   - = identifier (the source symbol — NOT a brace-enclosed literal)
-#   - semicolon
-#
-# Does NOT match  `int x[3] = {1, 2, 3};`  (brace initializer — already valid)
 
 _ARRAY_INIT_PAT = re.compile(
     r'^([ \t]*)'                                    # group 1: indent
@@ -296,24 +279,6 @@ def _fix_static_conflicts(content: str) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 # Pass 3 — IDO static-local normalisation
 # ─────────────────────────────────────────────────────────────────────────────
-#
-# IDO (the N64 compiler) allowed several C89 patterns that Clang rejects:
-#
-#  Rule D  static CTRL_KW ...       →  CTRL_KW ...
-#          e.g. `static return x;`  (static cannot precede a keyword)
-#
-#  Rule A  static lvalue OP= expr;  →  lvalue OP= expr;
-#          Compound assignment — there is no valid type here
-#
-#  Rule A2 static obj->field = ...  →  obj->field = ...
-#          Member assignment — ditto
-#
-#  Rule B  static varname = call(); →  varname = call();
-#          Implicit-int assignment (no type keyword)
-#
-#  Rule C  static TYPE var = call(); →  static TYPE var; var = call();
-#          SPLIT form: preserves static storage class (persistent across
-#          calls) while separating the dynamic initialiser so Clang accepts it
 
 _CTRL_KW_PAT = re.compile(
     r'^([ \t]+)static\s+'
@@ -368,25 +333,6 @@ def _fix_static_locals(content: str) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 # Pass 4 — Weak symbol injection
 # ─────────────────────────────────────────────────────────────────────────────
-#
-# The N64 overlay system places identical copies of functions in multiple
-# translation units.  `__attribute__((weak))` tells the linker to keep only
-# one copy, avoiding duplicate-symbol link errors.
-#
-# Safety constraints (none of these are weakened):
-#   • C keywords
-#   • Standard-C / libc entry points  (main, memcpy, …)
-#   • N64 SDK prefixes  (os, gu, al, gS, gD, …)
-#   • ALL_CAPS names  (macros / constants)
-#   • Names starting with __
-#   • static function definitions
-#   • Functions that already have a forward declaration in the same TU
-#   • Functions where the context line contains static/inline/typedef
-#
-# group 2 uses a WHITELIST  [A-Za-z_0-9\s\*]*?  so it can only match a
-# genuine C return-type prefix (identifier chars + spaces + pointer stars).
-# Expression operators (!, &, |, =, (, ), …) are excluded, preventing false
-# matches inside while/if conditions or call-statement continuations.
 
 _C_KEYWORDS = {
     'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do',
@@ -499,39 +445,14 @@ def _inject_weak_symbols(content: str) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 # Pass 0b — Use-before-definition forward declaration injection
 # ─────────────────────────────────────────────────────────────────────────────
-#
-# Problem: IDO compiled N64 code in a single pass and allowed a function to be
-# called before its definition in the same TU (implicit int return).  Clang in
-# strict mode sees the implicit int declaration from the call site, then the
-# real definition with a different return type, and emits:
-#   "conflicting types for 'foo'"
-#
-# Fix: for every function that is DEFINED in this TU and also CALLED before
-# that definition's position, inject a forward declaration at the top of the
-# file (after the preamble block) so Clang sees the real signature first.
-#
-# Algorithm:
-#   1. Scan the clean source for all function DEFINITIONS: capture return type,
-#      name, and parameter list, plus their position in the file.
-#   2. For each definition, scan for any call to that function that appears
-#      BEFORE the definition position.
-#   3. Collect forward decls for all such functions, deduplicate, and inject
-#      them immediately after the preamble block (or at position 0 if no
-#      preamble yet — preamble pass runs first so this is always after it).
 
-# Matches a C function definition opening brace:
-#   captures (return_type_prefix)(name)(params_string)
-# Return-type group uses whitelist chars (letters, digits, spaces, *, struct/
-# union/enum keywords) so it cannot match expression operators or control-flow.
 _FDEF_SCAN = re.compile(
     r'^([ \t]*)([A-Za-z_][\w\s\*]*?)\b([A-Za-z_]\w*)\s*(\([^)]*\))\s*\{',
     re.MULTILINE,
 )
 
-# Matches a call: name followed by ( not preceded by another word char
 _CALL_SCAN = re.compile(r'(?<![A-Za-z_0-9])\b([A-Za-z_]\w*)\s*\(')
 
-# Tokens that are not return types (control-flow/storage keywords, not type keywords)
 _NOT_RETURN = {
     'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do',
     'break', 'continue', 'case', 'default', 'goto',
@@ -594,7 +515,6 @@ def _inject_use_before_def_fwddecls(content: str) -> str:
         return content
 
     # Filter out any that already have a forward decl in the file
-    # (idempotency: don't re-inject on second run)
     existing_fwds = set()
     for m in re.finditer(r'\b([A-Za-z_]\w*)\s*\([^)]*\)\s*;', clean):
         existing_fwds.add(m.group(1))
@@ -603,9 +523,6 @@ def _inject_use_before_def_fwddecls(content: str) -> str:
 
     if not needed:
         return content
-
-    # Check if AudioInfo is used in any forward decl
-    needs_audioinfo_include = any('AudioInfo' in decl for decl in needed)
 
     block = (
         '/* SH: forward decls for use-before-definition */\n'
@@ -627,6 +544,26 @@ def _inject_use_before_def_fwddecls(content: str) -> str:
             insert_at = 0
 
     return content[:insert_at] + block + content[insert_at:]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Pass 5 — Return type mismatch fix
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _fix_return_type_mismatch(content: str, path: Path) -> str:
+    """Patch .c files to match return types declared in headers."""
+    # Only run for depthbuffer.c
+    if path.name != "depthbuffer.c":
+        return content
+
+    # Look for func_80253400 defined as int, but declared as bool in core1.h
+    pat = re.compile(
+        r'^([ \t]*)__attribute__\(\(weak\)\)\s+int\s+func_80253400\s*\([^)]*\)\s*\{',
+        re.MULTILINE
+    )
+    return pat.sub(
+        lambda m: f"{m.group(1)}__attribute__((weak)) bool func_80253400(){{",
+        content
+    )
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Per-file processor
@@ -661,6 +598,9 @@ def process_c_file(path: Path) -> bool:
     # Pass 4 — weak symbol injection
     content = _inject_weak_symbols(content)
 
+    # Pass 5 — return type mismatch fix
+    content = _fix_return_type_mismatch(content, path)
+
     if content == original:
         return False
 
@@ -678,7 +618,7 @@ def process_c_file(path: Path) -> bool:
 def main() -> None:
     src_dir = Path("decomp-files/src")
 
-    print(f"[>] SourceHarmonizer v75.48 — {src_dir}")
+    print(f"[>] SourceHarmonizer v75.49 — {src_dir}")
     if not src_dir.exists():
         print(f"[!] Source directory not found: {src_dir}")
         return
@@ -696,7 +636,7 @@ def main() -> None:
             print(f"  [ERROR] {path.name}: {e}")
             errors += 1
 
-    print(f"[+] v75.48 complete.")
+    print(f"[+] v75.49 complete.")
     print(f"    Processed : {processed}")
     print(f"    Modified  : {modified}")
     if errors:
