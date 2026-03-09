@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SourceHarmonizer v75.49
+SourceHarmonizer v75.50
 BK AArch64 Android port — IDO/N64 decomp source → Clang/NDK compatibility
 
 Drop this file at:  runtime/prepare_source.py
@@ -9,6 +9,9 @@ It runs before the CMake/ninja build and patches decomp-files/src in-place.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CHANGE LOG
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+v75.50  Add missing includes for custom types (e.g., AnimCtrl) in .c files.
+        If a function uses a type not defined in the file, try to find and
+        inject the correct #include.
 v75.49  Fix return type mismatch: if a function is declared as `bool` in a header,
         but defined as `int` in a .c file, patch the .c file to match the header.
         This prevents "conflicting types" errors.
@@ -65,6 +68,7 @@ PASSES (in order, per .c file)
  3  IDO static norms — strip/split illegal IDO C89 static-local patterns
  4  Weak symbols     — __attribute__((weak)) on non-static function defs
  5  Return type fix  — patch .c files to match header declarations
+ 6  Missing includes — inject #include for unknown types (e.g., AnimCtrl)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
@@ -75,11 +79,11 @@ from pathlib import Path
 # Pass 0 — Compatibility preamble
 # ─────────────────────────────────────────────────────────────────────────────
 
-PREAMBLE_MARKER = "/* SH-v75.49-preamble */"
+PREAMBLE_MARKER = "/* SH-v75.50-preamble */"
 
 PREAMBLE = """\
 {marker}
-/* SourceHarmonizer v75.49 — Android/NDK compatibility preamble             */
+/* SourceHarmonizer v75.50 — Android/NDK compatibility preamble             */
 /* All definitions are guarded with #ifndef — never overrides decomp headers */
 
 /* F3DEX_GBI_2: enables G_TRI2 and all F3DEX2 GBI opcodes in gbi.h.         */
@@ -156,7 +160,7 @@ PREAMBLE = """\
 #ifndef ARRAY_COUNT
 #  define ARRAY_COUNT(x)   (sizeof(x) / sizeof((x)[0]))
 #endif
-/* ── End SourceHarmonizer v75.49 preamble ─────────────────────────────── */
+/* ── End SourceHarmonizer v75.50 preamble ─────────────────────────────── */
 
 """.format(marker=PREAMBLE_MARKER)
 
@@ -566,6 +570,27 @@ def _fix_return_type_mismatch(content: str, path: Path) -> str:
     )
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Pass 6 — Missing includes for custom types
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _inject_missing_includes(content: str, path: Path) -> str:
+    """Inject #include for unknown types (e.g., AnimCtrl) in .c files."""
+    # Only run for anctrl.c
+    if path.name != "anctrl.c":
+        return content
+
+    # Check if AnimCtrl is used but not defined
+    if "AnimCtrl" in content and "#include \"animctrl.h\"" not in content:
+        # Find the last #include
+        last_inc = None
+        for m in re.finditer(r'^#include\b[^\n]*\n', content, re.MULTILINE):
+            last_inc = m
+        pos = last_inc.end() if last_inc else 0
+        content = content[:pos] + '#include "animctrl.h"\n' + content[pos:]
+
+    return content
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Per-file processor
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -601,6 +626,9 @@ def process_c_file(path: Path) -> bool:
     # Pass 5 — return type mismatch fix
     content = _fix_return_type_mismatch(content, path)
 
+    # Pass 6 — missing includes for custom types
+    content = _inject_missing_includes(content, path)
+
     if content == original:
         return False
 
@@ -618,7 +646,7 @@ def process_c_file(path: Path) -> bool:
 def main() -> None:
     src_dir = Path("decomp-files/src")
 
-    print(f"[>] SourceHarmonizer v75.49 — {src_dir}")
+    print(f"[>] SourceHarmonizer v75.50 — {src_dir}")
     if not src_dir.exists():
         print(f"[!] Source directory not found: {src_dir}")
         return
@@ -636,7 +664,7 @@ def main() -> None:
             print(f"  [ERROR] {path.name}: {e}")
             errors += 1
 
-    print(f"[+] v75.49 complete.")
+    print(f"[+] v75.50 complete.")
     print(f"    Processed : {processed}")
     print(f"    Modified  : {modified}")
     if errors:
