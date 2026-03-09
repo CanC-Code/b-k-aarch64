@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 import re
 from pathlib import Path
+from itertools import chain
 
 """
 SourceHarmonizer v75.34 — Defensive string.h repair + bool fix
 
 Changelog v75.34:
-- Much safer extern "C" insertion: inserts BEFORE last #endif instead of replacing body
+- Much safer extern "C" insertion: inserts BEFORE last #endif
 - Detects and skips if extern "C" already appears
 - Fixes broken/missing #endif by checking guard balance
-- Forces #include <stdbool.h> in .c files that use bool (after preamble)
+- Forces #include <stdbool.h> in .c files that use bool
 - Better logging when string.h is touched
-- Avoids large-block replacements — only surgical inserts
+- FIXED: TypeError when concatenating rglob generators
 """
 
 PREAMBLE = """\
@@ -73,9 +74,8 @@ PREAMBLE = """\
 def count_ifdef_endif(content: str) -> tuple[int, int, bool]:
     """Rough count to detect unbalanced guards"""
     ifs = len(re.findall(r'(?m)^#ifndef\s', content))
-    defs = len(re.findall(r'(?m)^#define\s', content))
     endifs = len(re.findall(r'(?m)^#endif', content))
-    balanced = ifs <= 1 and endifs >= ifs
+    balanced = endifs >= ifs
     return ifs, endifs, balanced
 
 
@@ -84,21 +84,18 @@ def harmonize_string_h(file_path: Path, content: str) -> tuple[str, bool]:
         print(f"  [STRING_H SKIP] Already has extern \"C\" → {file_path.name}")
         return content, False
 
-    # Count guards
     if_count, endif_count, balanced = count_ifdef_endif(content)
 
-    if not balanced or endif_count == 0:
-        print(f"  [STRING_H WARN] Unbalanced guard detected ({if_count}/{endif_count}) → attempting repair")
+    if not balanced:
+        print(f"  [STRING_H WARN] Unbalanced guard ({if_count} ifndef / {endif_count} endif) → attempting repair")
 
-    # Find last #endif position
-    last_endif_match = list(re.finditer(r'(?m)^#endif\b.*?$', content))
-    if not last_endif_match:
+    last_endif_matches = list(re.finditer(r'(?m)^#endif\b.*?$', content))
+    if not last_endif_matches:
         print(f"  [STRING_H WARN] No #endif found → appending block")
         insert_pos = len(content)
     else:
-        insert_pos = last_endif_match[-1].start()
+        insert_pos = last_endif_matches[-1].start()
 
-    # Prepare insertion text
     insert_text = """
 /* ──────────────────────────────────────────────── */
 /* SourceHarmonizer v75.34 – C++ / NDK compatibility  */
@@ -110,20 +107,18 @@ extern "C" {
 
 """
 
-    # Insert BEFORE the last #endif
     new_content = content[:insert_pos] + insert_text + content[insert_pos:]
 
-    # Add closing brace before final #endif if needed
-    if re.search(r'#endif', new_content[insert_pos:]):
-        new_content = re.sub(
-            r'(#endif\s*(?:/\*.*?\*/)?\s*$)',
-            r'#ifdef __cplusplus\n}\n#endif\n\1',
-            new_content,
-            flags=re.DOTALL | re.MULTILINE,
-            count=1
-        )
+    # Close brace before final #endif
+    new_content = re.sub(
+        r'(#endif\s*(?:/\*.*?\*/)?\s*$)',
+        r'#ifdef __cplusplus\n}\n#endif\n\1',
+        new_content,
+        flags=re.DOTALL | re.MULTILINE,
+        count=1
+    )
 
-    print(f"  [STRING_H FIXED] Inserted extern \"C\" guard before last #endif → {file_path.name}")
+    print(f"  [STRING_H FIXED] Inserted extern \"C\" guard → {file_path.name}")
     return new_content, True
 
 
@@ -142,7 +137,7 @@ def insert_preamble_and_fixes(file_path: Path) -> bool:
     is_header = file_path.suffix == ".h"
     fname_lower = file_path.name.lower()
 
-    # 1. Preamble + <stdbool.h> for .c files
+    # 1. Preamble + stdbool.h for .c files
     if is_c:
         marker = "SourceHarmonizer v75.34 preamble is ACTIVE"
         if marker not in content:
@@ -150,14 +145,14 @@ def insert_preamble_and_fixes(file_path: Path) -> bool:
             print(f"  [PREAMBLE+STDBOOL] Inserted in {file_path.name}")
             modified = True
 
-    # 2. string.h – very careful extern "C" insertion
+    # 2. string.h fix
     if is_header and "string.h" in fname_lower:
         new_content, changed = harmonize_string_h(file_path, content)
         if changed:
             content = new_content
             modified = True
 
-    # 3. C++ files: disable conflicting #include <string.h> + force standards
+    # 3. C++ safety net
     if is_cpp:
         content = re.sub(
             r'^\s*#include\s*["<]string\.h[">].*$',
@@ -180,9 +175,6 @@ def insert_preamble_and_fixes(file_path: Path) -> bool:
         print(f"  [C++ SAFETY] Applied in {file_path.name}")
         modified = True
 
-    # 4. Other previous rules (array→memcpy, remove static, etc.) can stay if you want
-    # ... (omitted here for brevity – add back if needed)
-
     if content != original:
         try:
             file_path.write_text(content, encoding="utf-8")
@@ -191,9 +183,9 @@ def insert_preamble_and_fixes(file_path: Path) -> bool:
         except Exception as e:
             print(f"Write failed {file_path}: {e}")
             return False
-    else:
-        print(f"  [SKIP] {file_path.name}")
-        return False
+
+    print(f"  [SKIP] {file_path.name}")
+    return False
 
 
 def main():
@@ -210,16 +202,17 @@ def main():
         if not d.is_dir():
             print(f"  Dir missing: {d}")
             continue
-        for p in sorted(d.rglob("*.[ch]") + d.rglob("*.[ch]pp")):
+        # FIXED: use chain() instead of broken + on generators
+        for p in sorted(chain(d.rglob("*.[ch]"), d.rglob("*.[ch]pp"))):
             if insert_preamble_and_fixes(p):
                 count += 1
 
     print(f"\nFinished. Changed {count} files.")
-    print("Recommended:")
+    print("Recommended commands:")
     print("  git add decomp-files/include/string.h")
-    print("  git commit -m 'harmonizer v75.34: safe extern \"C\" insertion + stdbool'")
-    print("Verify:")
-    print("  grep -A 8 -B 2 '__cplusplus' decomp-files/include/string.h")
+    print("  git commit -m 'harmonizer v75.34: fixed string.h extern \"C\" insertion + stdbool'")
+    print("Verify locally:")
+    print("  grep -A 10 -B 5 '__cplusplus' decomp-files/include/string.h")
     print("  → should show clean extern \"C\" { ... } just before #endif")
 
 
