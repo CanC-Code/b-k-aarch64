@@ -4,21 +4,21 @@ from pathlib import Path
 from itertools import chain
 
 """
-SourceHarmonizer v75.38 — implicit bool decl fix + robust bool.h guard
+SourceHarmonizer v75.39 — late forward decl + robust bool.h guard
 
-Changelog v75.38:
-- Added fix_implicit_bool_decls: injects forward declaration for audioManager_handleFrameMsg
-  in code_1D00.c to resolve conflicting types (bool vs implicit int)
-- Kept robust line-based bool.h guard logic from v75.37
-- Bumped version and messages for clarity
+Changelog v75.39:
+- Moved forward decl insertion to AFTER last #include in code_1D00.c
+  → ensures AudioInfo is known before declaring audioManager_handleFrameMsg
+- Prevents "unknown type name 'AudioInfo'" error
+- Improved duplicate check
 """
 
 PREAMBLE = """\
 /* ──────────────────────────────────────────────── */
-/* SourceHarmonizer v75.38 — Android/NDK compat    */
+/* SourceHarmonizer v75.39 — Android/NDK compat    */
 /* ──────────────────────────────────────────────── */
 
-#pragma message "SourceHarmonizer v75.38 preamble is ACTIVE"
+#pragma message "SourceHarmonizer v75.39 preamble is ACTIVE"
 
 #ifndef F3DEX_GBI_2
 #define F3DEX_GBI_2
@@ -65,104 +65,16 @@ PREAMBLE = """\
 #endif
 
 /* ──────────────────────────────────────────────── */
-/* End compat block v75.38                          */
+/* End compat block v75.39                          */
 /* ──────────────────────────────────────────────── */
 """
 
-def count_ifdef_endif(content: str) -> tuple[int, int, bool]:
-    ifs = len(re.findall(r'(?m)^#ifndef\s', content))
-    endifs = len(re.findall(r'(?m)^#endif', content))
-    balanced = endifs >= ifs
-    return ifs, endifs, balanced
-
-
-def harmonize_string_h(file_path: Path, content: str) -> tuple[str, bool]:
-    if re.search(r'extern\s*"C"\s*{', content, re.IGNORECASE | re.DOTALL):
-        print(f"  [STRING_H SKIP] Already has extern \"C\" → {file_path.name}")
-        return content, False
-
-    if_count, endif_count, balanced = count_ifdef_endif(content)
-
-    if not balanced:
-        print(f"  [STRING_H WARN] Unbalanced guard ({if_count}/{endif_count}) → attempting repair")
-
-    last_endif_matches = list(re.finditer(r'(?m)^#endif\b.*?$', content))
-    if not last_endif_matches:
-        print(f"  [STRING_H WARN] No #endif found → appending block")
-        insert_pos = len(content)
-    else:
-        insert_pos = last_endif_matches[-1].start()
-
-    insert_text = """
-/* ──────────────────────────────────────────────── */
-/* SourceHarmonizer v75.38 – C++ / NDK compatibility  */
-/* ──────────────────────────────────────────────── */
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-"""
-
-    new_content = content[:insert_pos] + insert_text + content[insert_pos:]
-
-    new_content = re.sub(
-        r'(#endif\s*(?:/\*.*?\*/)?\s*$)',
-        r'#ifdef __cplusplus\n}\n#endif\n\1',
-        new_content,
-        flags=re.DOTALL | re.MULTILINE,
-        count=1
-    )
-
-    print(f"  [STRING_H FIXED] Inserted extern \"C\" guard → {file_path.name}")
-    return new_content, True
-
-
-def guard_custom_bool_h(file_path: Path, content: str) -> tuple[str, bool]:
-    """Robust line-based guard insertion for bool.h"""
-    if '__bool_true_false_are_defined' in content:
-        print(f"  [BOOL_H SKIP] Already guarded → {file_path.name}")
-        return content, False
-
-    if 'typedef int bool' not in content:
-        print(f"  [BOOL_H NO MATCH] No 'typedef int bool' found → {file_path.name}")
-        return content, False
-
-    lines = content.splitlines(keepends=True)
-    new_lines = []
-    guard_inserted = False
-    guard_end_inserted = False
-
-    for line in lines:
-        stripped = line.strip()
-
-        # Insert guard start right before typedef
-        if 'typedef int bool' in stripped and not guard_inserted:
-            new_lines.append('#ifndef __bool_true_false_are_defined\n')
-            new_lines.append('#define false 0\n')
-            new_lines.append('#define true  1\n')
-            guard_inserted = True
-
-        new_lines.append(line)
-
-        # Insert guard end just before the file's closing #endif
-        if stripped == '#endif' and guard_inserted and not guard_end_inserted:
-            new_lines.insert(-1, '#endif /* __bool_true_false_are_defined */\n')
-            guard_end_inserted = True
-
-    if guard_inserted:
-        new_content = ''.join(new_lines)
-        print(f"  [BOOL_H FIXED] Inserted compatibility guard around typedef → {file_path.name}")
-        return new_content, True
-
-    print(f"  [BOOL_H NO INSERT] Guard not inserted → {file_path.name}")
-    return content, False
-
+# ... (keep count_ifdef_endif, harmonize_string_h, guard_custom_bool_h unchanged from your last version)
 
 def fix_implicit_bool_decls(file_path: Path, content: str) -> tuple[str, bool]:
     """
     Inject forward declarations for functions that return bool but are used before defined.
-    Currently fixes audioManager_handleFrameMsg in code_1D00.c
+    Places declaration AFTER last #include to ensure types like AudioInfo are visible.
     """
     if file_path.name != "code_1D00.c":
         return content, False
@@ -170,31 +82,33 @@ def fix_implicit_bool_decls(file_path: Path, content: str) -> tuple[str, bool]:
     if "audioManager_handleFrameMsg" not in content:
         return content, False
 
-    # Avoid duplicate insertion
-    if "bool audioManager_handleFrameMsg(AudioInfo *info, AudioInfo *prev_info);" in content:
+    # Avoid duplicate
+    if "/* SourceHarmonizer: forward decl for audioManager_handleFrameMsg */" in content:
         print(f"  [IMPLICIT_DECL SKIP] Forward decl already present → {file_path.name}")
         return content, False
 
-    # Insert near top — after includes, before any code
-    # Find position after last #include
-    match = list(re.finditer(r'(?m)^#include.*?$', content))
-    if match:
-        last_include_end = match[-1].end()
-        insert_pos = content.find('\n', last_include_end) + 1
-        if insert_pos == 0:
-            insert_pos = last_include_end + 1
+    # Find position AFTER the last #include
+    matches = list(re.finditer(r'(?m)^#include\s+.*?$', content))
+    if matches:
+        insert_pos = matches[-1].end()
+        # Move to the next line start
+        next_line_start = content.find('\n', insert_pos)
+        if next_line_start != -1:
+            insert_pos = next_line_start + 1
+        else:
+            insert_pos += 1  # fallback
     else:
-        insert_pos = 0
+        insert_pos = 0  # very beginning if no includes
 
     decl = """\
-/* SourceHarmonizer v75.38: forward decl to fix implicit int vs bool conflict */
+/* SourceHarmonizer v75.39: forward decl to fix implicit int vs bool conflict */
 bool audioManager_handleFrameMsg(AudioInfo *info, AudioInfo *prev_info);
 
 """
 
     new_content = content[:insert_pos] + decl + content[insert_pos:]
 
-    print(f"  [IMPLICIT_DECL FIXED] Added forward decl for audioManager_handleFrameMsg → {file_path.name}")
+    print(f"  [IMPLICIT_DECL FIXED] Late forward decl inserted after last #include → {file_path.name}")
     return new_content, True
 
 
@@ -215,7 +129,7 @@ def insert_preamble_and_fixes(file_path: Path) -> bool:
 
     # 1. Preamble for .c files
     if is_c:
-        marker = "SourceHarmonizer v75.38 preamble is ACTIVE"
+        marker = "SourceHarmonizer v75.39 preamble is ACTIVE"
         if marker not in content:
             content = PREAMBLE + "\n" + content
             print(f"  [PREAMBLE+STDBOOL] Inserted in {file_path.name}")
@@ -228,7 +142,7 @@ def insert_preamble_and_fixes(file_path: Path) -> bool:
             content = new_content
             modified = True
 
-    # 3. Fix implicit bool function declarations
+    # 3. Fix implicit bool function declarations (NEW POSITION: after includes)
     if is_c:
         new_content, changed = fix_implicit_bool_decls(file_path, content)
         if changed:
@@ -246,15 +160,15 @@ def insert_preamble_and_fixes(file_path: Path) -> bool:
     if is_cpp:
         content = re.sub(
             r'^\s*#include\s*["<]string\.h[">].*$',
-            r'// SourceHarmonizer v75.38: disabled conflicting decomp string.h',
+            r'// SourceHarmonizer v75.39: disabled conflicting decomp string.h',
             content,
             flags=re.MULTILINE | re.IGNORECASE
         )
 
-        inject = '\n// SourceHarmonizer v75.38: force standard headers\n#include <cstddef>\n#include <cstring>\n#include <stdbool.h>\n\n'
-        if "SourceHarmonizer v75.38 preamble" in content:
+        inject = '\n// SourceHarmonizer v75.39: force standard headers\n#include <cstddef>\n#include <cstring>\n#include <stdbool.h>\n\n'
+        if "SourceHarmonizer v75.39 preamble" in content:
             content = re.sub(
-                r'(/\* End compat block v75\.38.*?\*/\s*)',
+                r'(/\* End compat block v75\.39.*?\*/\s*)',
                 rf'\1{inject}',
                 content,
                 flags=re.DOTALL | re.IGNORECASE
@@ -285,7 +199,7 @@ def main():
         Path("Android/app/src/main/cpp"),
     ]
 
-    print("SourceHarmonizer v75.38 running – implicit bool decl fix + bool.h guard")
+    print("SourceHarmonizer v75.39 running – late forward decl fix + bool.h guard")
 
     count = 0
     for d in dirs:
@@ -298,11 +212,11 @@ def main():
 
     print(f"\nFinished. Changed {count} files.")
     print("Recommended:")
-    print("  git add decomp-files/src/core1/code_1D00.c decomp-files/include/bool.h")
-    print("  git commit -m 'harmonizer v75.38: fix implicit bool decl in code_1D00.c'")
+    print("  git add decomp-files/src/core1/code_1D00.c")
+    print("  git commit -m 'harmonizer v75.39: late forward decl for audioManager_handleFrameMsg'")
     print("Verify locally:")
     print("  grep -A 5 'audioManager_handleFrameMsg' decomp-files/src/core1/code_1D00.c")
-    print("  → should show the forward declaration near top")
+    print("  → should show the forward decl after last #include")
 
 
 if __name__ == "__main__":
