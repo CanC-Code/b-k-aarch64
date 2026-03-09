@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SourceHarmonizer v75.46
+SourceHarmonizer v75.47
 BK AArch64 Android port — IDO/N64 decomp source → Clang/NDK compatibility
 
 Drop this file at:  runtime/prepare_source.py
@@ -9,7 +9,16 @@ It runs before the CMake/ninja build and patches decomp-files/src in-place.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CHANGE LOG
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-v75.46  Fix bool.h collision. Our preamble was including <stdbool.h> which
+v75.47  Generic forward-decl injection for use-before-definition.
+        code_1D00.c: audioManager_handleFrameMsg is called at line 428 but
+        defined at line 445. No forward decl exists → C89 implicit-int →
+        conflicting types with the actual `bool` return type.
+        Fix: new Pass 0b scans every .c file for functions that are called
+        before their own definition within the same TU, then injects a
+        forward decl (matching the definition's return type + params) at the
+        top of the file, after the preamble. Works for any file generically.
+
+v75.46  Fix bool.h collision: remove #include <stdbool.h> from preamble,
         defines `bool` as `_Bool`. Then decomp-files/include/bool.h does
         `typedef int bool;` — Clang sees `typedef int _Bool` and errors on
         file 1/497 every time.
@@ -60,11 +69,11 @@ from pathlib import Path
 # Pass 0 — Compatibility preamble
 # ─────────────────────────────────────────────────────────────────────────────
 
-PREAMBLE_MARKER = "/* SH-v75.46-preamble */"
+PREAMBLE_MARKER = "/* SH-v75.47-preamble */"
 
 PREAMBLE = """\
 {marker}
-/* SourceHarmonizer v75.46 — Android/NDK compatibility preamble             */
+/* SourceHarmonizer v75.47 — Android/NDK compatibility preamble             */
 /* All definitions are guarded with #ifndef — never overrides decomp headers */
 
 /* F3DEX_GBI_2: enables G_TRI2 and all F3DEX2 GBI opcodes in gbi.h.         */
@@ -141,7 +150,7 @@ PREAMBLE = """\
 #ifndef ARRAY_COUNT
 #  define ARRAY_COUNT(x)   (sizeof(x) / sizeof((x)[0]))
 #endif
-/* ── End SourceHarmonizer v75.46 preamble ─────────────────────────────── */
+/* ── End SourceHarmonizer v75.47 preamble ─────────────────────────────── */
 
 """.format(marker=PREAMBLE_MARKER)
 
@@ -500,6 +509,131 @@ def _inject_weak_symbols(content: str) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Pass 0b — Use-before-definition forward declaration injection
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Problem: IDO compiled N64 code in a single pass and allowed a function to be
+# called before its definition in the same TU (implicit int return).  Clang in
+# strict mode sees the implicit int declaration from the call site, then the
+# real definition with a different return type, and emits:
+#   "conflicting types for 'foo'"
+#
+# Fix: for every function that is DEFINED in this TU and also CALLED before
+# that definition's position, inject a forward declaration at the top of the
+# file (after the preamble block) so Clang sees the real signature first.
+#
+# Algorithm:
+#   1. Scan the clean source for all function DEFINITIONS: capture return type,
+#      name, and parameter list, plus their position in the file.
+#   2. For each definition, scan for any call to that function that appears
+#      BEFORE the definition position.
+#   3. Collect forward decls for all such functions, deduplicate, and inject
+#      them immediately after the preamble block (or at position 0 if no
+#      preamble yet — preamble pass runs first so this is always after it).
+
+# Matches a C function definition opening brace:
+#   captures (return_type_prefix)(name)(params_string)
+# Return-type group uses whitelist chars (letters, digits, spaces, *, struct/
+# union/enum keywords) so it cannot match expression operators or control-flow.
+_FDEF_SCAN = re.compile(
+    r'^([ \t]*)([A-Za-z_][\w\s\*]*?)\b([A-Za-z_]\w*)\s*(\([^)]*\))\s*\{',
+    re.MULTILINE,
+)
+
+# Matches a call: name followed by ( not preceded by another word char
+_CALL_SCAN = re.compile(r'(?<![A-Za-z_0-9])\b([A-Za-z_]\w*)\s*\(')
+
+# Tokens that are not return types (control-flow/storage keywords, not type keywords)
+_NOT_RETURN = {
+    'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do',
+    'break', 'continue', 'case', 'default', 'goto',
+    'static', 'extern', 'inline', 'typedef', 'register', 'auto',
+    '__attribute__', '__restrict', 'restrict',
+}
+
+
+def _inject_use_before_def_fwddecls(content: str) -> str:
+    """Inject forward decls for functions called before their definition."""
+    clean = _strip_comments(content)
+
+    # Step 1: collect all definitions with their positions
+    defs: dict[str, tuple[int, str, str]] = {}  # name → (pos, rettype, params)
+    for m in _FDEF_SCAN.finditer(clean):
+        indent = m.group(1)
+        # Skip indented definitions (nested / inside another function body)
+        if indent:
+            continue
+        ret_raw = m.group(2).strip()
+        name    = m.group(3)
+        params  = m.group(4)
+        pos     = m.start()
+
+        # Skip if name looks like a keyword, macro, or SDK function
+        if name in _NOT_RETURN or name.isupper() or name.startswith('__'):
+            continue
+        if name.startswith(_SDK_PREFIXES):
+            continue
+        # Skip static definitions — they don't need forward decls here
+        if 'static' in ret_raw.split():
+            continue
+        # Normalise the return type
+        ret = re.sub(r'\s+', ' ', ret_raw).strip()
+        if not ret or ret in _NOT_RETURN:
+            ret = 'void'
+
+        if name not in defs:
+            defs[name] = (pos, ret, params)
+
+    if not defs:
+        return content
+
+    # Step 2: find calls that precede the definition
+    needed: list[str] = []
+    seen_needed: set[str] = set()
+
+    for m in _CALL_SCAN.finditer(clean):
+        name = m.group(1)
+        if name not in defs:
+            continue
+        def_pos, ret, params = defs[name]
+        if m.start() >= def_pos:
+            continue  # call is after definition — fine
+        if name in seen_needed:
+            continue
+        seen_needed.add(name)
+        needed.append(f'{ret} {name}{params};')
+
+    if not needed:
+        return content
+
+    # Filter out any that already have a forward decl in the file
+    # (idempotency: don't re-inject on second run)
+    existing_fwds = set()
+    for m in re.finditer(r'\b([A-Za-z_]\w*)\s*\([^)]*\)\s*;', clean):
+        existing_fwds.add(m.group(1))
+    needed = [decl for decl in needed
+              if decl.split('(')[0].split()[-1] not in existing_fwds]
+
+    if not needed:
+        return content
+    block = (
+        '/* SH: forward decls for use-before-definition */\n'
+        + '\n'.join(needed)
+        + '\n/* SH: end forward decls */\n\n'
+    )
+
+    # Find end of preamble comment block (the closing "End preamble" line)
+    end_marker = re.search(r'/\* ── End SourceHarmonizer.*?preamble.*?\*/\n', content)
+    if end_marker:
+        insert_at = end_marker.end()
+    else:
+        # Fallback: insert at very top
+        insert_at = 0
+
+    return content[:insert_at] + block + content[insert_at:]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Per-file processor
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -516,6 +650,9 @@ def process_c_file(path: Path) -> bool:
     # Pass 0 — preamble (idempotent via marker)
     if PREAMBLE_MARKER not in content:
         content = PREAMBLE + content
+
+    # Pass 0b — forward decls for use-before-definition (generic)
+    content = _inject_use_before_def_fwddecls(content)
 
     # Pass 1 — generic array-init-from-symbol → declaration + memcpy
     content = _fix_array_inits(content)
@@ -547,7 +684,7 @@ def process_c_file(path: Path) -> bool:
 def main() -> None:
     src_dir = Path("decomp-files/src")
 
-    print(f"[>] SourceHarmonizer v75.45 — {src_dir}")
+    print(f"[>] SourceHarmonizer v75.47 — {src_dir}")
     if not src_dir.exists():
         print(f"[!] Source directory not found: {src_dir}")
         return
@@ -565,7 +702,7 @@ def main() -> None:
             print(f"  [ERROR] {path.name}: {e}")
             errors += 1
 
-    print(f"[+] v75.45 complete.")
+    print(f"[+] v75.47 complete.")
     print(f"    Processed : {processed}")
     print(f"    Modified  : {modified}")
     if errors:
