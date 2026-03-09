@@ -4,20 +4,21 @@ from pathlib import Path
 from itertools import chain
 
 """
-SourceHarmonizer v75.43 — forward decl after struct + return type mismatch fixes
+SourceHarmonizer v75.44 — forward decls + return types + GCC array init fixes
 
-Changelog v75.43:
-- v75.42: struct AudioInfo forward early + function forward decl after struct definition
-- New: fix bool/int return type mismatch for func_80253400 in depthbuffer.c
-  (header says bool, body says int → change body to bool)
+Changelog v75.44:
+- v75.43: bool/int return mismatch fix for func_80253400 in depthbuffer.c
+- v75.42: struct AudioInfo forward + function forward decl after struct def
+- New: Fix GCC extension array init (= another array) in core2/code_41460.c
+  → replace with memcpy (clang/NDK strict mode does not allow it)
 """
 
 PREAMBLE = """\
 /* ──────────────────────────────────────────────── */
-/* SourceHarmonizer v75.43 — Android/NDK compat    */
+/* SourceHarmonizer v75.44 — Android/NDK compat    */
 /* ──────────────────────────────────────────────── */
 
-#pragma message "SourceHarmonizer v75.43 preamble is ACTIVE"
+#pragma message "SourceHarmonizer v75.44 preamble is ACTIVE"
 
 #ifndef F3DEX_GBI_2
 #define F3DEX_GBI_2
@@ -64,7 +65,7 @@ PREAMBLE = """\
 #endif
 
 /* ──────────────────────────────────────────────── */
-/* End compat block v75.43                          */
+/* End compat block v75.44                          */
 /* ──────────────────────────────────────────────── */
 """
 
@@ -94,7 +95,7 @@ def harmonize_string_h(file_path: Path, content: str) -> tuple[str, bool]:
 
     insert_text = """
 /* ──────────────────────────────────────────────── */
-/* SourceHarmonizer v75.43 – C++ / NDK compatibility  */
+/* SourceHarmonizer v75.44 – C++ / NDK compatibility  */
 /* ──────────────────────────────────────────────── */
 
 #ifdef __cplusplus
@@ -118,7 +119,6 @@ extern "C" {
 
 
 def guard_custom_bool_h(file_path: Path, content: str) -> tuple[str, bool]:
-    """Robust line-based guard insertion for bool.h"""
     if '__bool_true_false_are_defined' in content:
         print(f"  [BOOL_H SKIP] Already guarded → {file_path.name}")
         return content, False
@@ -157,10 +157,6 @@ def guard_custom_bool_h(file_path: Path, content: str) -> tuple[str, bool]:
 
 
 def fix_implicit_bool_decls(file_path: Path, content: str) -> tuple[str, bool]:
-    """
-    v75.42: Insert struct AudioInfo; early + function forward decl RIGHT AFTER
-    the full struct AudioInfo definition (so AudioInfo is known type).
-    """
     if file_path.name != "code_1D00.c":
         return content, False
 
@@ -174,7 +170,6 @@ def fix_implicit_bool_decls(file_path: Path, content: str) -> tuple[str, bool]:
 
     lines = content.splitlines(keepends=True)
 
-    # 1. Early forward struct decl (after includes)
     include_end = 0
     for i, line in enumerate(lines):
         if line.strip().startswith("#include"):
@@ -190,7 +185,6 @@ struct AudioInfo;
 
 """
 
-    # 2. Try to find end of struct AudioInfo definition
     struct_end_idx = -1
     for i, line in enumerate(lines):
         stripped = line.strip()
@@ -199,7 +193,6 @@ struct AudioInfo;
             break
 
     if struct_end_idx == -1:
-        # Fallback: before first call
         call_line_idx = -1
         for i, line in enumerate(lines):
             if "audioManager_handleFrameMsg" in line and "(" in line:
@@ -231,10 +224,6 @@ bool audioManager_handleFrameMsg(AudioInfo *info, AudioInfo *prev_info);
 
 
 def fix_return_type_mismatches(file_path: Path, content: str) -> tuple[str, bool]:
-    """
-    v75.43: Fix known bool/int return type conflicts
-    Currently targets func_80253400 in depthbuffer.c (header = bool, body = int)
-    """
     if file_path.name != "depthbuffer.c":
         return content, False
 
@@ -243,19 +232,41 @@ def fix_return_type_mismatches(file_path: Path, content: str) -> tuple[str, bool
         print(f"  [RETURN_MISMATCH SKIP] Already fixed → {file_path.name}")
         return content, False
 
-    # Replace the function signature from int → bool
-    # We assume the signature is "int func_80253400(void)" or similar
-    # This is a simple string replacement – safe as long as no overloads exist
     if "int func_80253400(void)" in content:
         new_content = content.replace(
             "int func_80253400(void)",
             "bool func_80253400(void)",
-            1  # only replace the first (definition) occurrence
+            1
         )
         print(f"  [RETURN_MISMATCH FIXED v75.43] Changed func_80253400 return to bool → {file_path.name}")
         return new_content + "\n" + marker + "\n", True
 
     print(f"  [RETURN_MISMATCH NO MATCH] No int func_80253400 found → {file_path.name}")
+    return content, False
+
+
+def fix_array_init_extension(file_path: Path, content: str) -> tuple[str, bool]:
+    """
+    v75.44: Fix GCC extension array init = another_array in core2/code_41460.c
+    Replace with memcpy (clang/NDK rejects direct array assignment in C89 mode)
+    """
+    if file_path.name != "code_41460.c":
+        return content, False
+
+    marker = "/* SourceHarmonizer v75.44: fix array init GCC extension */"
+    if marker in content:
+        print(f"  [ARRAY_INIT SKIP] Already fixed → {file_path.name}")
+        return content, False
+
+    if "s32 sp70[3] = D_80366418;" in content:
+        new_content = content.replace(
+            "s32 sp70[3] = D_80366418;",
+            "s32 sp70[3];\n    memcpy(sp70, D_80366418, sizeof(sp70));"
+        )
+        print(f"  [ARRAY_INIT FIXED v75.44] Replaced invalid array init with memcpy → {file_path.name}")
+        return new_content + "\n" + marker + "\n", True
+
+    print(f"  [ARRAY_INIT NO MATCH] Pattern not found in code_41460.c → {file_path.name}")
     return content, False
 
 
@@ -276,7 +287,7 @@ def insert_preamble_and_fixes(file_path: Path) -> bool:
 
     # 1. Preamble for .c files
     if is_c:
-        marker = "SourceHarmonizer v75.43 preamble is ACTIVE"
+        marker = "SourceHarmonizer v75.44 preamble is ACTIVE"
         if marker not in content:
             content = PREAMBLE + "\n" + content
             print(f"  [PREAMBLE+STDBOOL] Inserted in {file_path.name}")
@@ -296,33 +307,40 @@ def insert_preamble_and_fixes(file_path: Path) -> bool:
             content = new_content
             modified = True
 
-    # 4. Fix return type mismatches (new in v75.43)
+    # 4. Fix return type mismatches
     if is_c:
         new_content, changed = fix_return_type_mismatches(file_path, content)
         if changed:
             content = new_content
             modified = True
 
-    # 5. string.h fix
+    # 5. Fix GCC array initializer extensions
+    if is_c:
+        new_content, changed = fix_array_init_extension(file_path, content)
+        if changed:
+            content = new_content
+            modified = True
+
+    # 6. string.h fix
     if is_header and "string.h" in fname_lower:
         new_content, changed = harmonize_string_h(file_path, content)
         if changed:
             content = new_content
             modified = True
 
-    # 6. C++ safety net
+    # 7. C++ safety net
     if is_cpp:
         content = re.sub(
             r'^\s*#include\s*["<]string\.h[">].*$',
-            r'// SourceHarmonizer v75.43: disabled conflicting decomp string.h',
+            r'// SourceHarmonizer v75.44: disabled conflicting decomp string.h',
             content,
             flags=re.MULTILINE | re.IGNORECASE
         )
 
-        inject = '\n// SourceHarmonizer v75.43: force standard headers\n#include <cstddef>\n#include <cstring>\n#include <stdbool.h>\n\n'
-        if "SourceHarmonizer v75.43 preamble" in content:
+        inject = '\n// SourceHarmonizer v75.44: force standard headers\n#include <cstddef>\n#include <cstring>\n#include <stdbool.h>\n\n'
+        if "SourceHarmonizer v75.44 preamble" in content:
             content = re.sub(
-                r'(/\* End compat block v75\.43.*?\*/\s*)',
+                r'(/\* End compat block v75\.44.*?\*/\s*)',
                 rf'\1{inject}',
                 content,
                 flags=re.DOTALL | re.IGNORECASE
@@ -353,7 +371,7 @@ def main():
         Path("Android/app/src/main/cpp"),
     ]
 
-    print("SourceHarmonizer v75.43 running – return type fixes + previous forward decls")
+    print("SourceHarmonizer v75.44 running – array init + previous fixes")
 
     count = 0
     for d in dirs:
@@ -366,11 +384,11 @@ def main():
 
     print(f"\nFinished. Changed {count} files.")
     print("Recommended:")
-    print("  git add decomp-files/src/core1/depthbuffer.c decomp-files/src/core1/code_1D00.c")
-    print("  git commit -m 'harmonizer v75.43: fix bool/int return mismatch for func_80253400 in depthbuffer.c'")
+    print("  git add decomp-files/src/core2/code_41460.c decomp-files/src/core1/depthbuffer.c decomp-files/src/core1/code_1D00.c")
+    print("  git commit -m 'harmonizer v75.44: fix GCC array initializer extension in core2/code_41460.c (use memcpy)'")
     print("Verify:")
+    print("  grep -A 5 'sp70' decomp-files/src/core2/code_41460.c")
     print("  grep -A 5 'func_80253400' decomp-files/src/core1/depthbuffer.c")
-    print("  grep -C 8 'audioManager_handleFrameMsg' decomp-files/src/core1/code_1D00.c")
 
 
 if __name__ == "__main__":
