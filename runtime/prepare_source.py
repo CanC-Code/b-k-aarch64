@@ -3,28 +3,30 @@ import re
 from pathlib import Path
 
 """
-SourceHarmonizer v75.33 — More robust string.h rewrite for Android NDK/Clang
+SourceHarmonizer v75.34 — Fix unterminated #ifndef + ensure bool is defined
 
-Changelog v75.33:
-- Much more flexible regex for detecting string.h body (tries multiple guard patterns)
-- Skips rewrite if extern "C" block already exists (avoids double-wrapping)
-- Adds #pragma once style guard detection as fallback
-- Better comment placement & visibility
-- Minor cleanups in other rules
+Changelog v75.34:
+- More defensive string.h rewriting: always add #endif if missing
+- Add #include <stdbool.h> very early in string.h (guarded)
+- If string.h already has extern "C", we skip re-wrapping but still force <stdbool.h>
+- Clean up trailing garbage / mismatched guards
+- Better fallback when no classic guard is found
+- Force #include <stdbool.h> in .c files that include core1/ml.h or framebufferdraw.h
 """
 
 PREAMBLE = """\
 /* ──────────────────────────────────────────────── */
-/* SourceHarmonizer v75.33 — FORCED Android/Ndk compat   */
+/* SourceHarmonizer v75.34 — Android NDK compat fix */
 /* ──────────────────────────────────────────────── */
 
-#pragma message "SourceHarmonizer v75.33 preamble is ACTIVE in this file"
+#pragma message "SourceHarmonizer v75.34 is ACTIVE"
 
 #ifndef F3DEX_GBI_2
 #define F3DEX_GBI_2
 #endif
 
 #include <stddef.h>
+#include <stdbool.h>   /* force bool type availability */
 
 #ifdef min
 #undef min
@@ -38,9 +40,6 @@ PREAMBLE = """\
 
 #ifndef BOOL
 #define BOOL(x) (!!(x))
-#pragma message "BOOL macro defined by SourceHarmonizer"
-#else
-#pragma message "BOOL was already defined before SourceHarmonizer"
 #endif
 
 #ifndef TRUE
@@ -67,122 +66,94 @@ PREAMBLE = """\
 #endif
 
 /* ──────────────────────────────────────────────── */
-/* End forced compat block v75.33                   */
+/* End compat block v75.34                          */
 /* ──────────────────────────────────────────────── */
 """
 
-def insert_preamble_and_fixes(file_path: Path) -> bool:
+def harmonize_file(file_path: Path) -> bool:
     try:
-        content = file_path.read_text(encoding="utf-8", errors="replace")
+        text = file_path.read_text(encoding="utf-8", errors="replace")
     except Exception as e:
         print(f"Cannot read {file_path}: {e}")
         return False
 
-    original = content
-    modified = False
+    original = text
+    changed = False
 
-    is_cpp = file_path.suffix in {".cpp", ".hpp", ".cxx", ".cc", ".c++"}
-    is_header = file_path.suffix == ".h"
-    filename_lower = file_path.name.lower()
-
-    # ────────────────────────────────────────────────
-    # 1. Insert/update preamble (only .c files)
-    # ────────────────────────────────────────────────
-    if file_path.suffix == ".c":
-        preamble_marker = "SourceHarmonizer v75.33 preamble is ACTIVE"
-        if preamble_marker not in content:
-            content = PREAMBLE + "\n" + content
-            print(f"  [PREAMBLE] Inserted/updated in {file_path.name}")
-            modified = True
+    fname_lower = file_path.name.lower()
+    is_c = file_path.suffix == ".c"
+    is_h = file_path.suffix == ".h"
+    is_cpp = file_path.suffix in {".cpp", ".hpp", ".cc", ".cxx", ".c++"}
 
     # ────────────────────────────────────────────────
-    # 2. array = global_symbol  →  memcpy pattern
+    # 1. Preamble for .c files
     # ────────────────────────────────────────────────
-    array_pat = re.compile(
-        r'(?m)^(\s*(?:static\s+)?(?:const\s+)?[a-zA-Z_][\w\s*]*(?:\s*\*+)?)\s+'
-        r'([a-zA-Z_]\w*)\s*\[\s*(\d+(?:\s*\*\s*[a-zA-Z_]\w+)?)\s*\]\s*=\s*'
-        r'([a-zA-Z_][a-zA-Z0-9_]*)\s*;\s*$'
-    )
+    if is_c:
+        if "SourceHarmonizer v75.34 is ACTIVE" not in text:
+            text = PREAMBLE.rstrip() + "\n\n" + text.lstrip()
+            changed = True
+            print(f"  [PREAMBLE] added in {file_path.name}")
 
-    def replace_array(m):
-        decl = m.group(1).rstrip()
-        name = m.group(2)
-        size_expr = m.group(3)
-        src = m.group(4)
-        indent = m.group(0)[:m.start(1) - m.start(0)]
-        return (
-            f"{indent}{decl} {name}[{size_expr}];\n"
-            f"{indent}__builtin_memcpy({name}, {src}, sizeof({name}));"
+    # ────────────────────────────────────────────────
+    # 2. Force <stdbool.h> in files that need bool but break early
+    # ────────────────────────────────────────────────
+    needs_bool = any(x in text for x in [
+        "framebufferdraw.h", "ml.h", "bool alpha_enabled", "bool dim",
+        "bool ml_timer_update", "bool ml_isZero_vec3f"
+    ])
+
+    if (is_c or is_h) and needs_bool:
+        # Insert right after any existing #includes or at top
+        bool_include = '#include <stdbool.h>   /* forced by harmonizer */\n'
+        if bool_include not in text:
+            # Try after first #include block
+            match = re.search(r'((?:^\s*#include\s+.*?\n)+)', text, re.MULTILINE)
+            if match:
+                pos = match.end()
+                text = text[:pos] + bool_include + text[pos:]
+            else:
+                text = bool_include + text
+            changed = True
+            print(f"  [BOOL] forced <stdbool.h> in {file_path.name}")
+
+    # ────────────────────────────────────────────────
+    # 3. Robust rewrite of string.h
+    # ────────────────────────────────────────────────
+    if is_h and "string.h" in fname_lower:
+        # Check if already has extern "C" block
+        has_extern_c = re.search(r'extern\s*"C"\s*{', text, re.IGNORECASE)
+
+        # Remove previous broken wrapping attempts (common failure patterns)
+        text = re.sub(
+            r'(/\*\s*SourceHarmonizer.*?extern "C".*?\*/\s*){2,}',
+            r'/* Cleaned duplicate harmonizer wrap */\n',
+            text, flags=re.DOTALL | re.IGNORECASE
         )
 
-    new_content = array_pat.sub(replace_array, content)
-    if new_content != content:
-        content = new_content
-        modified = True
-        print(f"  [ARRAY→MEMCPY] Applied in {file_path.name}")
+        # Try to fix incomplete #endif
+        if text.count('#ifndef') > text.count('#endif'):
+            text += "\n#endif  /* forced closing by harmonizer */\n"
 
-    # ────────────────────────────────────────────────
-    # 3. Remove 'static' from function definitions (if conflicting)
-    # ────────────────────────────────────────────────
-    static_func_pat = re.compile(
-        r'(?m)^(\s*)static\s+([a-zA-Z_][\w\s*]*(?:\s*\*+)?)\s+'
-        r'([a-zA-Z_]\w*)\s*\(([^)]*)\)\s*\{'
-    )
+        # Force <stdbool.h> near top of string.h
+        if '#include <stdbool.h>' not in text:
+            text = '#include <stdbool.h>   /* harmonizer fix */\n' + text
 
-    def remove_static(m):
-        indent = m.group(1)
-        ret_type = m.group(2)
-        name = m.group(3)
-        params = m.group(4)
-        return f"{indent}{ret_type} {name}({params}) {{"
+        if not has_extern_c:
+            # Common guard patterns
+            guard_re = re.compile(
+                r'((?:#ifndef\s+\w+\s+#define\s+\w+\s*|#pragma\s+once\s*))(.*?)(#endif\s*(?:/\*.*?\*/)?\s*$)',
+                re.DOTALL | re.IGNORECASE | re.MULTILINE
+            )
 
-    new_content = static_func_pat.sub(remove_static, content)
-    if new_content != content:
-        content = new_content
-        modified = True
-        print(f"  [STATIC FUNC] Removed static from defs in {file_path.name}")
+            m = guard_re.search(text)
+            if m:
+                before = m.group(1)
+                body = m.group(2).strip()
+                after = text[m.end():].strip()
 
-    # ────────────────────────────────────────────────
-    # 4. Guard typedef int bool; in bool.h
-    # ────────────────────────────────────────────────
-    if "bool.h" in filename_lower:
-        bool_pat = re.compile(r'^\s*typedef\s+int\s+bool\s*;\s*$', re.MULTILINE)
-        content = bool_pat.sub(
-            r'#ifndef __cplusplus\n\0\n#endif',
-            content
-        )
-        print(f"  [BOOL GUARD] Applied in {file_path.name}")
-        modified = True
-
-    # ────────────────────────────────────────────────
-    # 5. ROBUST string.h rewrite — extern "C" guard
-    # ────────────────────────────────────────────────
-    if is_header and "string.h" in filename_lower:
-        # Skip if already has extern "C" block
-        if re.search(r'extern\s*"C"\s*{', content, re.IGNORECASE):
-            print(f"  [STRING_H] Already has extern \"C\" — skipping rewrite {file_path.name}")
-        else:
-            # Try to find common include-guard patterns and wrap the body
-            guard_patterns = [
-                # Classic #ifndef / #define / #endif style
-                r'(#ifndef\s+[^ \n]+\s+#define\s+[^ \n]+\s*)(.*?)(#endif\s*(?:/\*.*?\*/)?\s*$)',
-                # #pragma once style + content + possible #endif
-                r'(#pragma\s+once\s*)(.*?)(?=\n\s*(?:#endif|/\* End of).*?$|$)',
-                # Fallback: everything after first #include or from start
-                r'((?:#include\s*["<][^">]+[">]\s*)*)(.*?)(?=\n\s*(?:#endif|/\*).*?$|$)',
-            ]
-
-            wrapped = False
-            for pat in guard_patterns:
-                m = re.search(pat, content, re.DOTALL | re.IGNORECASE | re.MULTILINE)
-                if m:
-                    before = m.group(1)
-                    body = m.group(2).strip()
-                    after = content[m.end():].strip()
-
-                    wrap = f"""{before}
+                wrapped = f"""{before}
 /* ──────────────────────────────────────────────── */
-/* SourceHarmonizer v75.33 — Wrapped for C++/NDK compat */
+/* SourceHarmonizer v75.34 — C++/NDK compatibility  */
 /* ──────────────────────────────────────────────── */
 
 #ifdef __cplusplus
@@ -197,92 +168,105 @@ extern "C" {{
 
 {after}
 """
-                    content = wrap
-                    wrapped = True
-                    break
-
-            if wrapped:
-                print(f"  [STRING_H REWRITE v75.33] Added extern \"C\" guard in {file_path.name}")
-                modified = True
+                text = wrapped
+                changed = True
+                print(f"  [STRING_H] wrapped with extern \"C\" in {file_path.name}")
             else:
-                print(f"  [STRING_H WARN] Could not reliably wrap — manual check needed {file_path.name}")
+                # Fallback: wrap almost everything after first line
+                lines = text.splitlines(True)
+                if len(lines) > 3:
+                    header = "".join(lines[:3])
+                    body = "".join(lines[3:])
+                    text = f"""{header}
+/* SourceHarmonizer fallback wrap v75.34 */
+#ifdef __cplusplus
+extern "C" {{
+#endif
+
+{body}
+#ifdef __cplusplus
+}}
+#endif
+"""
+                    changed = True
+                    print(f"  [STRING_H] fallback extern \"C\" wrap in {file_path.name}")
 
     # ────────────────────────────────────────────────
-    # 6. C++ safety net: force <cstddef> + <cstring> early + disable bad #include <string.h>
+    # 4. C++ files safety net (same as before)
     # ────────────────────────────────────────────────
     if is_cpp:
-        # Comment out conflicting #include <string.h>
-        content = re.sub(
+        # Disable conflicting #include <string.h>
+        text = re.sub(
             r'^\s*#include\s*["<]string\.h[">].*$',
-            r'// SourceHarmonizer v75.33: disabled conflicting decomp string.h',
-            content,
+            r'// harmonizer v75.34: disabled conflicting decomp string.h',
+            text,
             flags=re.MULTILINE | re.IGNORECASE
         )
 
-        # Inject standard headers early (after preamble if present)
-        inject = (
-            '\n// SourceHarmonizer v75.33: force standard string/memory headers\n'
-            '#include <cstddef>\n'
-            '#include <cstring>\n\n'
-        )
+        # Force standard headers early
+        inject = """// harmonizer v75.34: force standard headers
+#include <cstddef>
+#include <cstring>
+#include <stdbool.h>
 
-        if "SourceHarmonizer v75.33 preamble is ACTIVE" in content:
-            content = re.sub(
-                r'(/\* End forced compat block v75\.33.*?\*/\s*)',
+"""
+        if "SourceHarmonizer v75.34 is ACTIVE" in text:
+            text = re.sub(
+                r'(/\* End compat block v75\.34.*?\*/\s*)',
                 rf'\1{inject}',
-                content,
+                text,
                 flags=re.DOTALL | re.IGNORECASE
             )
         else:
-            content = inject + content
+            text = inject + text
 
-        print(f"  [C++ SAFETY] Forced <cstddef>/<cstring> in {file_path.name}")
-        modified = True
+        changed = True
+        print(f"  [C++] forced std headers in {file_path.name}")
 
     # ────────────────────────────────────────────────
-    # Write if changed
+    # Save if changed
     # ────────────────────────────────────────────────
-    if content != original:
+    if changed:
         try:
-            file_path.write_text(content, encoding="utf-8")
-            print(f"  [MODIFIED] {file_path.name}")
+            file_path.write_text(text, encoding="utf-8")
+            print(f"  → Modified: {file_path.name}")
             return True
         except Exception as e:
             print(f"Cannot write {file_path}: {e}")
             return False
     else:
-        print(f"  [SKIP] {file_path.name} — no changes")
+        print(f"  → No change: {file_path.name}")
         return False
 
 
 def main():
-    target_dirs = [
+    roots = [
         Path("decomp-files/src"),
         Path("decomp-files/include"),
         Path("Android/app/src/main/cpp"),
     ]
 
-    print("SourceHarmonizer v75.33 — robust string.h extern \"C\" + previous fixes")
+    print("SourceHarmonizer v75.34 — fixing string.h guard + bool type")
 
-    modified_count = 0
+    modified = 0
 
-    for d in target_dirs:
-        if not d.is_dir():
-            print(f"  Directory not found: {d}")
+    for root in roots:
+        if not root.is_dir():
+            print(f"  Dir missing: {root}")
             continue
+        for p in sorted(root.rglob("*.[ch]") + root.rglob("*.[ch]pp")):
+            if harmonize_file(p):
+                modified += 1
 
-        for path in sorted(d.rglob("*.[ch]")) + sorted(d.rglob("*.[ch]pp")):
-            if insert_preamble_and_fixes(path):
-                modified_count += 1
-
-    print(f"\nDone. Modified {modified_count} files.")
-    print("Commit suggestion:")
-    print("  git commit -m 'harmonizer v75.33: robust extern \"C\" wrap in decomp string.h'")
-    print("After push → retrigger CI")
-    print("Quick local verify:")
-    print("  grep -A 12 '__cplusplus' decomp-files/include/string.h")
-    print("  → should show extern \"C\" { ... } with harmonizer comment")
-    print("If still broken → share new build error from first failing .cpp file")
+    print(f"\nFinished. Modified {modified} files.")
+    print("Next steps:")
+    print("  git add decomp-files/include/string.h")
+    print("  git commit -m 'harmonizer v75.34: fix unterminated #ifndef + force bool'")
+    print("  git push && re-run CI")
+    print("")
+    print("Quick check:")
+    print("  grep -A 15 STRING_H decomp-files/include/string.h")
+    print("  → should have proper #endif and extern \"C\" block")
 
 
 if __name__ == "__main__":
