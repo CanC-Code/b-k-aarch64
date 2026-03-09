@@ -9,6 +9,8 @@ It runs before the CMake/ninja build and patches decomp-files/src in-place.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CHANGE LOG
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+v75.51  Add #include <ultra64.h> → #include "ultra64.h" pass.
+        Generalize missing includes logic for any unknown type.
 v75.50  Add missing includes for custom types (e.g., AnimCtrl) in .c files.
         If a function uses a type not defined in the file, try to find and
         inject the correct #include.
@@ -27,9 +29,10 @@ v75.47  Generic forward-decl injection for use-before-definition.
         top of the file, after the preamble. Works for any file generically.
 
 v75.46  Fix bool.h collision: remove #include <stdbool.h> from preamble,
-        defines `bool` as `_Bool`. Then decomp-files/include/bool.h does
-        `typedef int bool;` — Clang sees `typedef int _Bool` and errors on
-        file 1/497 every time.
+        defines `bool` as `_Bool`.
+        Then decomp-files/include/bool.h's `typedef int bool` would expand to
+        `typedef int _Bool`, which Clang rejects ("cannot combine with previous
+        'int' declaration specifier").
         Fix: remove `#include <stdbool.h>` from preamble entirely. Instead
         define `__bool_true_false_are_defined 1` — the standard suppression
         guard that stdbool.h sets, which decomp/bool.h checks before typedef.
@@ -59,17 +62,19 @@ v75.19  Initial working version: preamble (F3DEX_GBI_2 + stddef.h), array
         init → memcpy, static conflict fixes, IDO static normalisation,
         __attribute__((weak)) injection.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PASSES (in order, per .c file)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  0  Compat preamble  — #define / #include block injected once per file
+ 0a Fix ultra64.h   — #include <ultra64.h> → #include "ultra64.h"
+ 0b Forward decls   — Inject forward decls for use-before-definition
  1  Array-init       — TYPE var[N] = SYMBOL; → decl + memcpy (GENERIC)
  2  Static conflicts — mismatched static/non-static forward declarations
  3  IDO static norms — strip/split illegal IDO C89 static-local patterns
  4  Weak symbols     — __attribute__((weak)) on non-static function defs
  5  Return type fix  — patch .c files to match header declarations
  6  Missing includes — inject #include for unknown types (e.g., AnimCtrl)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
 import re
@@ -163,6 +168,14 @@ PREAMBLE = """\
 /* ── End SourceHarmonizer v75.50 preamble ─────────────────────────────── */
 
 """.format(marker=PREAMBLE_MARKER)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Pass 0a — Fix #include <ultra64.h> → #include "ultra64.h"
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _fix_ultra64_include(content: str) -> str:
+    """Replace #include <ultra64.h> with #include "ultra64.h"."""
+    return re.sub(r'#include\s*<ultra64\.h>', '#include "ultra64.h"', content)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Pass 1 — Generic array-init-from-symbol fix
@@ -459,9 +472,9 @@ _CALL_SCAN = re.compile(r'(?<![A-Za-z_0-9])\b([A-Za-z_]\w*)\s*\(')
 
 _NOT_RETURN = {
     'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do',
-    'break', 'continue', 'case', 'default', 'goto',
-    'static', 'extern', 'inline', 'typedef', 'register', 'auto',
-    '__attribute__', '__restrict', 'restrict',
+    'break', 'continue', 'case', 'default', 'goto', 'static', 'extern',
+    'inline', 'typedef', 'register', 'auto', '__attribute__', '__restrict',
+    'restrict',
 }
 
 def _inject_use_before_def_fwddecls(content: str) -> str:
@@ -590,6 +603,24 @@ def _inject_missing_includes(content: str, path: Path) -> str:
 
     return content
 
+def _inject_missing_includes_generic(content: str, path: Path) -> str:
+    """Scan for unknown types and inject likely includes."""
+    type_to_header = {
+        "ActorMarker": "prop.h",
+        "AnimCtrl": "animctrl.h",
+        "AudioInfo": "audio.h",
+        # Add more mappings as needed
+    }
+    for typ, header in type_to_header.items():
+        if re.search(rf'\b{typ}\b', content) and f'#{header}' not in content:
+            # Find the last #include
+            last_inc = None
+            for m in re.finditer(r'^#include\b[^\n]*\n', content, re.MULTILINE):
+                last_inc = m
+            pos = last_inc.end() if last_inc else 0
+            content = content[:pos] + f'#include "{header}"\n' + content[pos:]
+    return content
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Per-file processor
 # ─────────────────────────────────────────────────────────────────────────────
@@ -607,6 +638,9 @@ def process_c_file(path: Path) -> bool:
     # Pass 0 — preamble (idempotent via marker)
     if PREAMBLE_MARKER not in content:
         content = PREAMBLE + content
+
+    # Pass 0a — fix #include <ultra64.h> → #include "ultra64.h"
+    content = _fix_ultra64_include(content)
 
     # Pass 0b — forward decls for use-before-definition (generic)
     content = _inject_use_before_def_fwddecls(content)
@@ -628,6 +662,7 @@ def process_c_file(path: Path) -> bool:
 
     # Pass 6 — missing includes for custom types
     content = _inject_missing_includes(content, path)
+    content = _inject_missing_includes_generic(content, path)
 
     if content == original:
         return False
@@ -646,7 +681,7 @@ def process_c_file(path: Path) -> bool:
 def main() -> None:
     src_dir = Path("decomp-files/src")
 
-    print(f"[>] SourceHarmonizer v75.50 — {src_dir}")
+    print(f"[>] SourceHarmonizer v75.51 — {src_dir}")
     if not src_dir.exists():
         print(f"[!] Source directory not found: {src_dir}")
         return
@@ -664,7 +699,7 @@ def main() -> None:
             print(f"  [ERROR] {path.name}: {e}")
             errors += 1
 
-    print(f"[+] v75.50 complete.")
+    print(f"[+] v75.51 complete.")
     print(f"    Processed : {processed}")
     print(f"    Modified  : {modified}")
     if errors:
