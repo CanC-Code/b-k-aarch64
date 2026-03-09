@@ -7,8 +7,8 @@ from itertools import chain
 SourceHarmonizer v75.45 — forward decls + return types + GCC array init fixes (expanded)
 
 Changelog v75.45:
-- v75.44: fix GCC array init extension in core2/code_41460.c
-- New: also fix two instances in core2/code_4A6F0.c (search_start_cube and sp38)
+- v75.44: fix GCC array init extension in core2/code_41460.c (memcpy)
+- New: also fix similar invalid array inits in core2/code_4A6F0.c
 """
 
 PREAMBLE = """\
@@ -67,13 +67,12 @@ PREAMBLE = """\
 /* ──────────────────────────────────────────────── */
 """
 
-# ... (all previous functions remain unchanged: count_ifdef_endif, harmonize_string_h, guard_custom_bool_h,
-# fix_implicit_bool_decls, fix_return_type_mismatches)
+# ... (keep all previous functions: count_ifdef_endif, harmonize_string_h, guard_custom_bool_h, fix_implicit_bool_decls, fix_return_type_mismatches)
 
 def fix_array_init_extension(file_path: Path, content: str) -> tuple[str, bool]:
     """
     v75.45: Fix GCC extension array init = another_array in multiple core2 files
-    Replaces invalid initializers with memcpy calls.
+    Replaces with memcpy for strict Clang compatibility.
     """
     marker = "/* SourceHarmonizer v75.45: fix array init GCC extension */"
     if marker in content:
@@ -83,32 +82,34 @@ def fix_array_init_extension(file_path: Path, content: str) -> tuple[str, bool]:
     changed = False
     new_content = content
 
-    # Fix 1: code_41460.c (previous)
+    # Pattern 1: code_41460.c (previous)
     if file_path.name == "code_41460.c" and "s32 sp70[3] = D_80366418;" in new_content:
         new_content = new_content.replace(
             "s32 sp70[3] = D_80366418;",
             "s32 sp70[3];\n    memcpy(sp70, D_80366418, sizeof(sp70));"
         )
         changed = True
-        print(f"  [ARRAY_INIT FIXED v75.45] code_41460.c sp70 → memcpy")
+        print(f"  [ARRAY_INIT FIXED] code_41460.c sp70 → memcpy")
 
-    # Fix 2: code_4A6F0.c - line ~161
-    if file_path.name == "code_4A6F0.c" and "s32 search_start_cube[3] = D_80367504;" in new_content:
-        new_content = new_content.replace(
-            "s32 search_start_cube[3] = D_80367504;",
-            "s32 search_start_cube[3];\n    memcpy(search_start_cube, D_80367504, sizeof(search_start_cube));"
-        )
-        changed = True
-        print(f"  [ARRAY_INIT FIXED v75.45] code_4A6F0.c search_start_cube → memcpy")
+    # Pattern 2: code_4A6F0.c (new)
+    if file_path.name == "code_4A6F0.c":
+        # Line ~161
+        if "s32 search_start_cube[3] = D_80367504;" in new_content:
+            new_content = new_content.replace(
+                "s32 search_start_cube[3] = D_80367504;",
+                "s32 search_start_cube[3];\n    memcpy(search_start_cube, D_80367504, sizeof(search_start_cube));"
+            )
+            changed = True
+            print(f"  [ARRAY_INIT FIXED] code_4A6F0.c search_start_cube → memcpy")
 
-    # Fix 3: code_4A6F0.c - line ~538
-    if file_path.name == "code_4A6F0.c" and "f32 sp38[3] = D_80367510;" in new_content:
-        new_content = new_content.replace(
-            "f32 sp38[3] = D_80367510;",
-            "f32 sp38[3];\n    memcpy(sp38, D_80367510, sizeof(sp38));"
-        )
-        changed = True
-        print(f"  [ARRAY_INIT FIXED v75.45] code_4A6F0.c sp38 → memcpy")
+        # Line ~538
+        if "f32 sp38[3] = D_80367510;" in new_content:
+            new_content = new_content.replace(
+                "f32 sp38[3] = D_80367510;",
+                "f32 sp38[3];\n    memcpy(sp38, D_80367510, sizeof(sp38));"
+            )
+            changed = True
+            print(f"  [ARRAY_INIT FIXED] code_4A6F0.c sp38 → memcpy")
 
     if changed:
         return new_content + "\n" + marker + "\n", True
@@ -145,20 +146,11 @@ def insert_preamble_and_fixes(file_path: Path) -> bool:
             modified = True
 
     if is_c:
-        new_content, changed = fix_implicit_bool_decls(file_path, content)
-        if changed:
-            content = new_content
-            modified = True
-
-        new_content, changed = fix_return_type_mismatches(file_path, content)
-        if changed:
-            content = new_content
-            modified = True
-
-        new_content, changed = fix_array_init_extension(file_path, content)
-        if changed:
-            content = new_content
-            modified = True
+        for fixer in [fix_implicit_bool_decls, fix_return_type_mismatches, fix_array_init_extension]:
+            new_content, changed = fixer(file_path, content)
+            if changed:
+                content = new_content
+                modified = True
 
     if is_header and "string.h" in fname_lower:
         new_content, changed = harmonize_string_h(file_path, content)
@@ -222,7 +214,7 @@ def main():
     print(f"\nFinished. Changed {count} files.")
     print("Recommended:")
     print("  git add decomp-files/src/core2/code_4A6F0.c decomp-files/src/core2/code_41460.c")
-    print("  git commit -m 'harmonizer v75.45: fix GCC array initializer extensions in code_4A6F0.c (memcpy)'")
+    print("  git commit -m 'harmonizer v75.45: fix more GCC array initializer extensions in core2/code_4A6F0.c'")
     print("Verify:")
     print("  grep -A 5 'search_start_cube' decomp-files/src/core2/code_4A6F0.c")
     print("  grep -A 5 'sp38' decomp-files/src/core2/code_4A6F0.c")
