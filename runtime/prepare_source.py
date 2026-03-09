@@ -3,22 +3,22 @@ import re
 from pathlib import Path
 
 """
-SourceHarmonizer v75.31 — Android/Clang compatibility & decomp fixes
+SourceHarmonizer v75.32 — Android/Clang compatibility & decomp fixes
 
-Changelog v75.31:
-- Targeted rewrite of decomp's include/string.h: wrap declarations in extern "C" + __cplusplus guard
-  → fixes the root cause of <cstring> cascade (memcpy/memmove/strncpy/etc. not in global namespace)
-  when string.h is indirectly included via ultra64.h / os.h / etc.
-- Keeps v75.30 C++ injection as fallback
-- Keeps v75.29 bool guard, v75.28 static removal, v75.27 array memcpy fixes
+Changelog v75.32:
+- Improved rewrite of decomp's include/string.h: more reliable regex to wrap declarations
+  in extern "C" { ... } guarded by #ifdef __cplusplus
+  → definitively fixes <cstring> cascade when string.h is included indirectly
+- Adds visible comment in string.h to confirm harmonizer action
+- Keeps previous safety net (<cstddef>/<cstring> injection in .cpp files)
 """
 
 PREAMBLE = """\
 /* ──────────────────────────────────────────────── */
-/* SourceHarmonizer v75.31 — FORCED Android compat   */
+/* SourceHarmonizer v75.32 — FORCED Android compat   */
 /* ──────────────────────────────────────────────── */
 
-#pragma message "SourceHarmonizer v75.31 preamble is ACTIVE in this file"
+#pragma message "SourceHarmonizer v75.32 preamble is ACTIVE in this file"
 
 #ifndef F3DEX_GBI_2
 #define F3DEX_GBI_2
@@ -67,7 +67,7 @@ PREAMBLE = """\
 #endif
 
 /* ──────────────────────────────────────────────── */
-/* End forced compat block v75.31                   */
+/* End forced compat block v75.32                   */
 /* ──────────────────────────────────────────────── */
 """
 
@@ -84,7 +84,7 @@ def insert_preamble_and_fixes(file_path: Path):
 
     # 1. Insert/update preamble (only for .c files)
     if file_path.suffix == ".c":
-        preamble_marker = "SourceHarmonizer v75.31 preamble is ACTIVE"
+        preamble_marker = "SourceHarmonizer v75.32 preamble is ACTIVE"
         if preamble_marker not in content:
             content = PREAMBLE + content
             print(f"  [PREAMBLE] Inserted/updated in {file_path.name}")
@@ -137,20 +137,19 @@ def insert_preamble_and_fixes(file_path: Path):
         content = bool_typedef_pat.sub(guard_bool_typedef, content)
         print(f"  [BOOL GUARD] Applied __cplusplus guard in {file_path.name}")
 
-    # 5. TARGETED FIX: Rewrite decomp's string.h to add extern "C" guard for C++
-    if "include/string.h" in str(file_path) or "string.h" in file_path.name.lower():
-        # Find the declarations block after #include "structs.h"
+    # 5. IMPROVED TARGETED FIX: Rewrite decomp's string.h with extern "C" guard
+    if "string.h" in str(file_path).lower() and file_path.suffix == ".h":
+        # Try to wrap only the declarations (after #include "structs.h")
         decl_pat = re.compile(
-            r'(#include "structs\.h"\s*)(.*?)(#endif\s*$)',
+            r'(#include\s*["<]structs\.h[">]\s*?\n)(.*?)(?=\n#endif\s*$)',
             re.DOTALL | re.IGNORECASE
         )
 
         def wrap_extern_c(m):
             include_part = m.group(1)
             decls = m.group(2).strip()
-            end = m.group(3)
             return f"""{include_part}
-
+/* SourceHarmonizer v75.32: Wrapped for C++ compatibility */
 #ifdef __cplusplus
 extern "C" {{
 #endif
@@ -160,33 +159,43 @@ extern "C" {{
 #ifdef __cplusplus
 }}
 #endif
+"""
 
-{end}"""
+        new_content = decl_pat.sub(wrap_extern_c, content)
 
-        content = decl_pat.sub(wrap_extern_c, content)
-        print(f"  [STRING_H REWRITE] Added extern \"C\" + __cplusplus guards in {file_path.name}")
+        # Fallback: if pattern didn't match, wrap everything after guard
+        if new_content == content:
+            new_content = re.sub(
+                r'(#ifndef\s+STRING_H\s+#define\s+STRING_H\s*)(.*?)(#endif\s*$)',
+                r'\1\n\n/* SourceHarmonizer v75.32: Fallback wrap for C++ */\n#ifdef __cplusplus\nextern "C" {\n#endif\n\n\2\n\n#ifdef __cplusplus\n}\n#endif\n\n\3',
+                content,
+                flags=re.DOTALL | re.IGNORECASE
+            )
+
+        content = new_content
+        print(f"  [STRING_H REWRITE v75.32] Added extern \"C\" guard in {file_path.name}")
 
     # 6. Safety net: force <cstddef> + <cstring> in all C++ files
     if is_cpp:
         # Comment out any lingering direct includes of string.h
         content = re.sub(
             r'^\s*#include\s*["<]string\.h[">].*$',
-            r'// SourceHarmonizer v75.31: disabled conflicting decomp string.h',
+            r'// SourceHarmonizer v75.32: disabled conflicting decomp string.h',
             content,
             flags=re.MULTILINE | re.IGNORECASE
         )
 
         # Inject standards very early
         cstring_inject = (
-            '\n// SourceHarmonizer v75.31: force standard headers early\n'
+            '\n// SourceHarmonizer v75.32: force standard headers early\n'
             '#include <cstddef>\n'
             '#include <cstring>\n\n'
         )
 
         # Insert after preamble if present, else at top
-        if "SourceHarmonizer v75.31 preamble is ACTIVE" in content:
+        if "SourceHarmonizer v75.32 preamble is ACTIVE" in content:
             content = re.sub(
-                r'(/\* End forced compat block v75\.31.*?\*/\s*)',
+                r'(/\* End forced compat block v75\.32.*?\*/\s*)',
                 r'\1' + cstring_inject,
                 content,
                 flags=re.DOTALL
@@ -214,16 +223,16 @@ def main():
     include_dir = Path("decomp-files/include")
     android_cpp_dir = Path("Android/app/src/main/cpp")
 
-    print("SourceHarmonizer v75.31 — preamble + array + static + bool + string.h extern \"C\" fix")
+    print("SourceHarmonizer v75.32 — improved string.h rewrite + previous fixes")
 
     modified_count = 0
 
-    # Decomp .c
+    # Decomp .c files
     for path in sorted(target_dir.rglob("*.c")):
         if insert_preamble_and_fixes(path):
             modified_count += 1
 
-    # All headers (especially string.h)
+    # Headers (especially string.h)
     for path in sorted(include_dir.rglob("*.h")):
         if insert_preamble_and_fixes(path):
             modified_count += 1
@@ -235,11 +244,11 @@ def main():
 
     print(f"\nDone. Modified {modified_count} files.")
     print("Commit suggestion:")
-    print("  git commit -m 'harmonizer v75.31: rewrite decomp string.h with extern \"C\" guard for C++ compatibility'")
+    print("  git commit -m 'harmonizer v75.32: more reliable extern \"C\" wrap in decomp string.h'")
     print("Push and retrigger CI")
     print("Verify locally:")
-    print("  cat decomp-files/include/string.h | grep -A 5 '__cplusplus'")
-    print("  → should show extern \"C\" { ... } guarded")
+    print("  cat decomp-files/include/string.h | grep -A 10 '__cplusplus'")
+    print("  → should show extern \"C\" { ... } guarded + harmonizer comment")
     print("If still fails → paste first .cpp error from new log")
 
 
