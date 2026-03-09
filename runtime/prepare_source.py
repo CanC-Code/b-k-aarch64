@@ -4,22 +4,20 @@ from pathlib import Path
 from itertools import chain
 
 """
-SourceHarmonizer v75.42 — forward struct early + function forward decl after struct definition
+SourceHarmonizer v75.43 — forward decl after struct + return type mismatch fixes
 
-Changelog v75.42:
-- Insert struct AudioInfo; right after last #include (early forward declaration)
-- Insert bool audioManager_handleFrameMsg(...) forward declaration RIGHT AFTER
-  the closing } of struct AudioInfo definition (so AudioInfo is a known complete type)
-- Prevents "conflicting types" error between 'struct AudioInfo *' and 'AudioInfo *'
-- Falls back to before first call site if struct definition end cannot be found
+Changelog v75.43:
+- v75.42: struct AudioInfo forward early + function forward decl after struct definition
+- New: fix bool/int return type mismatch for func_80253400 in depthbuffer.c
+  (header says bool, body says int → change body to bool)
 """
 
 PREAMBLE = """\
 /* ──────────────────────────────────────────────── */
-/* SourceHarmonizer v75.42 — Android/NDK compat    */
+/* SourceHarmonizer v75.43 — Android/NDK compat    */
 /* ──────────────────────────────────────────────── */
 
-#pragma message "SourceHarmonizer v75.42 preamble is ACTIVE"
+#pragma message "SourceHarmonizer v75.43 preamble is ACTIVE"
 
 #ifndef F3DEX_GBI_2
 #define F3DEX_GBI_2
@@ -66,7 +64,7 @@ PREAMBLE = """\
 #endif
 
 /* ──────────────────────────────────────────────── */
-/* End compat block v75.42                          */
+/* End compat block v75.43                          */
 /* ──────────────────────────────────────────────── */
 """
 
@@ -96,7 +94,7 @@ def harmonize_string_h(file_path: Path, content: str) -> tuple[str, bool]:
 
     insert_text = """
 /* ──────────────────────────────────────────────── */
-/* SourceHarmonizer v75.42 – C++ / NDK compatibility  */
+/* SourceHarmonizer v75.43 – C++ / NDK compatibility  */
 /* ──────────────────────────────────────────────── */
 
 #ifdef __cplusplus
@@ -137,7 +135,6 @@ def guard_custom_bool_h(file_path: Path, content: str) -> tuple[str, bool]:
     for line in lines:
         stripped = line.strip()
 
-        # Insert guard start right before typedef
         if 'typedef int bool' in stripped and not guard_inserted:
             new_lines.append('#ifndef __bool_true_false_are_defined\n')
             new_lines.append('#define false 0\n')
@@ -146,7 +143,6 @@ def guard_custom_bool_h(file_path: Path, content: str) -> tuple[str, bool]:
 
         new_lines.append(line)
 
-        # Insert guard end just before the file's closing #endif
         if stripped == '#endif' and guard_inserted and not guard_end_inserted:
             new_lines.insert(-1, '#endif /* __bool_true_false_are_defined */\n')
             guard_end_inserted = True
@@ -164,7 +160,6 @@ def fix_implicit_bool_decls(file_path: Path, content: str) -> tuple[str, bool]:
     """
     v75.42: Insert struct AudioInfo; early + function forward decl RIGHT AFTER
     the full struct AudioInfo definition (so AudioInfo is known type).
-    Prevents conflicting types between 'struct AudioInfo *' and 'AudioInfo *'.
     """
     if file_path.name != "code_1D00.c":
         return content, False
@@ -196,17 +191,15 @@ struct AudioInfo;
 """
 
     # 2. Try to find end of struct AudioInfo definition
-    # Look for lines like "} AudioInfo;" or "};" followed by typedef or just "}"
     struct_end_idx = -1
     for i, line in enumerate(lines):
         stripped = line.strip()
         if stripped.startswith("}") and ("AudioInfo" in stripped or ";" in stripped or i > 50):
-            # Rough heuristic: closing } of struct, assume next lines are globals/typedef
-            struct_end_idx = i + 1  # insert right after this line
+            struct_end_idx = i + 1
             break
 
     if struct_end_idx == -1:
-        # Fallback: before first call (old behavior)
+        # Fallback: before first call
         call_line_idx = -1
         for i, line in enumerate(lines):
             if "audioManager_handleFrameMsg" in line and "(" in line:
@@ -215,7 +208,7 @@ struct AudioInfo;
         if call_line_idx == -1:
             print(f"  [IMPLICIT_DECL WARN] No call site or struct end found → {file_path.name}")
             return content, False
-        struct_end_idx = call_line_idx  # fallback position
+        struct_end_idx = call_line_idx
 
     func_decl_pos = sum(len(lines[j]) for j in range(struct_end_idx))
 
@@ -225,7 +218,6 @@ bool audioManager_handleFrameMsg(AudioInfo *info, AudioInfo *prev_info);
 
 """
 
-    # Insert both
     new_content = (
         content[:struct_decl_pos] +
         struct_forward +
@@ -236,6 +228,35 @@ bool audioManager_handleFrameMsg(AudioInfo *info, AudioInfo *prev_info);
 
     print(f"  [IMPLICIT_DECL FIXED v75.42] Forward decl AFTER AudioInfo struct → {file_path.name}")
     return new_content, True
+
+
+def fix_return_type_mismatches(file_path: Path, content: str) -> tuple[str, bool]:
+    """
+    v75.43: Fix known bool/int return type conflicts
+    Currently targets func_80253400 in depthbuffer.c (header = bool, body = int)
+    """
+    if file_path.name != "depthbuffer.c":
+        return content, False
+
+    marker = "/* SourceHarmonizer v75.43: fix bool/int return mismatch */"
+    if marker in content:
+        print(f"  [RETURN_MISMATCH SKIP] Already fixed → {file_path.name}")
+        return content, False
+
+    # Replace the function signature from int → bool
+    # We assume the signature is "int func_80253400(void)" or similar
+    # This is a simple string replacement – safe as long as no overloads exist
+    if "int func_80253400(void)" in content:
+        new_content = content.replace(
+            "int func_80253400(void)",
+            "bool func_80253400(void)",
+            1  # only replace the first (definition) occurrence
+        )
+        print(f"  [RETURN_MISMATCH FIXED v75.43] Changed func_80253400 return to bool → {file_path.name}")
+        return new_content + "\n" + marker + "\n", True
+
+    print(f"  [RETURN_MISMATCH NO MATCH] No int func_80253400 found → {file_path.name}")
+    return content, False
 
 
 def insert_preamble_and_fixes(file_path: Path) -> bool:
@@ -255,7 +276,7 @@ def insert_preamble_and_fixes(file_path: Path) -> bool:
 
     # 1. Preamble for .c files
     if is_c:
-        marker = "SourceHarmonizer v75.42 preamble is ACTIVE"
+        marker = "SourceHarmonizer v75.43 preamble is ACTIVE"
         if marker not in content:
             content = PREAMBLE + "\n" + content
             print(f"  [PREAMBLE+STDBOOL] Inserted in {file_path.name}")
@@ -268,33 +289,40 @@ def insert_preamble_and_fixes(file_path: Path) -> bool:
             content = new_content
             modified = True
 
-    # 3. Fix implicit bool function declarations
+    # 3. Fix implicit / conflicting declarations
     if is_c:
         new_content, changed = fix_implicit_bool_decls(file_path, content)
         if changed:
             content = new_content
             modified = True
 
-    # 4. string.h fix
+    # 4. Fix return type mismatches (new in v75.43)
+    if is_c:
+        new_content, changed = fix_return_type_mismatches(file_path, content)
+        if changed:
+            content = new_content
+            modified = True
+
+    # 5. string.h fix
     if is_header and "string.h" in fname_lower:
         new_content, changed = harmonize_string_h(file_path, content)
         if changed:
             content = new_content
             modified = True
 
-    # 5. C++ safety net
+    # 6. C++ safety net
     if is_cpp:
         content = re.sub(
             r'^\s*#include\s*["<]string\.h[">].*$',
-            r'// SourceHarmonizer v75.42: disabled conflicting decomp string.h',
+            r'// SourceHarmonizer v75.43: disabled conflicting decomp string.h',
             content,
             flags=re.MULTILINE | re.IGNORECASE
         )
 
-        inject = '\n// SourceHarmonizer v75.42: force standard headers\n#include <cstddef>\n#include <cstring>\n#include <stdbool.h>\n\n'
-        if "SourceHarmonizer v75.42 preamble" in content:
+        inject = '\n// SourceHarmonizer v75.43: force standard headers\n#include <cstddef>\n#include <cstring>\n#include <stdbool.h>\n\n'
+        if "SourceHarmonizer v75.43 preamble" in content:
             content = re.sub(
-                r'(/\* End compat block v75\.42.*?\*/\s*)',
+                r'(/\* End compat block v75\.43.*?\*/\s*)',
                 rf'\1{inject}',
                 content,
                 flags=re.DOTALL | re.IGNORECASE
@@ -325,7 +353,7 @@ def main():
         Path("Android/app/src/main/cpp"),
     ]
 
-    print("SourceHarmonizer v75.42 running – forward decl after struct definition")
+    print("SourceHarmonizer v75.43 running – return type fixes + previous forward decls")
 
     count = 0
     for d in dirs:
@@ -338,11 +366,11 @@ def main():
 
     print(f"\nFinished. Changed {count} files.")
     print("Recommended:")
-    print("  git add decomp-files/src/core1/code_1D00.c")
-    print("  git commit -m 'harmonizer v75.42: move bool forward decl after AudioInfo struct to fix conflicting pointer types'")
-    print("Verify locally:")
-    print("  grep -A 20 'struct AudioInfo' decomp-files/src/core1/code_1D00.c")
-    print("  grep -B 10 -A 10 'audioManager_handleFrameMsg' decomp-files/src/core1/code_1D00.c")
+    print("  git add decomp-files/src/core1/depthbuffer.c decomp-files/src/core1/code_1D00.c")
+    print("  git commit -m 'harmonizer v75.43: fix bool/int return mismatch for func_80253400 in depthbuffer.c'")
+    print("Verify:")
+    print("  grep -A 5 'func_80253400' decomp-files/src/core1/depthbuffer.c")
+    print("  grep -C 8 'audioManager_handleFrameMsg' decomp-files/src/core1/code_1D00.c")
 
 
 if __name__ == "__main__":
