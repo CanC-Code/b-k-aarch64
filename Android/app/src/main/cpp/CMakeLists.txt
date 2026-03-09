@@ -27,6 +27,10 @@ include_directories(
 file(GLOB_RECURSE DECOMP_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/src/*.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/src/*.cpp"
+)
+
+# Add all assembly files
+file(GLOB_RECURSE ASM_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/asm/ultra/*.s"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/asm/core1/ultra/*.s"
 )
@@ -55,6 +59,7 @@ set(ULTRA_SOURCES
 # Combine all sources
 set(ALL_SOURCES
     ${DECOMP_SOURCES}
+    ${ASM_SOURCES}
     ${EMULATOR_SOURCES}
     ${MENU_SOURCES}
     ${ULTRA_SOURCES}
@@ -97,8 +102,7 @@ set_target_properties(
 # Enable ASM support for N64 assembly files
 enable_language(ASM)
 set_source_files_properties(
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/asm/ultra/*.s
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/asm/core1/ultra/*.s
+    ${ASM_SOURCES}
     PROPERTIES LANGUAGE ASM
 )
 
