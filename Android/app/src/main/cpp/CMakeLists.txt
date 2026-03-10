@@ -6,9 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(DECOMP_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../decomp-files)
 
-# Force-include only ultratypes.h for C files - this defines u8, s16, s32, u32, u16 etc.
-# Do NOT force-include os.h - it conflicts and is not needed for type definitions.
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -w -fcommon -include ${DECOMP_ROOT}/include/2.0L/PR/ultratypes.h")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -w -fcommon -include stdint.h -Du8=uint8_t -Ds8=int8_t -Du16=uint16_t -Ds16=int16_t -Du32=uint32_t -Ds32=int32_t -Du64=uint64_t -Ds64=int64_t -Df32=float -Df64=double")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w -fcommon")
 
 include_directories(
