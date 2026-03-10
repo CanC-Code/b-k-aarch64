@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SourceHarmonizer v75.52
+SourceHarmonizer v75.53
 BK AArch64 Android port — IDO/N64 decomp source → Clang/NDK compatibility
 
 Drop this file at:  runtime/prepare_source.py
@@ -9,6 +9,16 @@ It runs before the CMake/ninja build and patches decomp-files/src in-place.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CHANGE LOG
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+v75.53  Fix path resolution: anchor all paths via __file__ so the script
+        works correctly regardless of the caller's working directory.
+        Previously, Path("decomp-files") resolved relative to cwd; if the
+        workflow cd'd elsewhere (e.g. during gradlew clean), _fix_ultra64_header
+        silently failed to locate ultra64.h. Now repo_root is derived from
+        Path(__file__).resolve().parent.parent, making all paths absolute
+        and cwd-independent. The .c file passes were unaffected previously
+        because rglob() produced absolute paths once iterated, but the header
+        pass constructs paths directly and was the only thing broken.
+
 v75.52  Fix ultra64.h include order: inject F3DEX_GBI_2 guard + gbi.h
         immediately before #include <PR/gu.h> in ultra64.h at the header
         level. gu.h references Gfx, Mtx, LookAt, Hilite which are defined
@@ -182,404 +192,7 @@ PREAMBLE = """\
 """.format(marker=PREAMBLE_MARKER)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Pass 0a — Fix #include <ultra64.h> → #include "ultra64.h"
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _fix_ultra64_include(content: str) -> str:
-    """Replace #include <ultra64.h> with #include "ultra64.h"."""
-    return re.sub(r'#include\s*<ultra64\.h>', '#include "ultra64.h"', content)
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Pass 1 — Generic array-init-from-symbol fix
-# ─────────────────────────────────────────────────────────────────────────────
-
-_ARRAY_INIT_PAT = re.compile(
-    r'^([ \t]*)'                                    # group 1: indent
-    r'((?:(?:struct|union|enum)\s+)?'               # group 2: type
-    r'[A-Za-z_]\w*(?:\s*\*)*)\s+'
-    r'([A-Za-z_]\w*)'                               # group 3: varname
-    r'\[(\d+)\]\s*=\s*'                             # group 4: array size
-    r'([A-Za-z_]\w*)\s*;',                          # group 5: source symbol
-    re.MULTILINE
-)
-
-def _fix_array_inits(content: str) -> str:
-    """Replace `TYPE var[N] = SYM;` with `TYPE var[N]; memcpy(var, SYM, sizeof(var));`"""
-    def _repl(m: re.Match) -> str:
-        indent, typ, var, _size, sym = (
-            m.group(1), m.group(2).strip(), m.group(3), m.group(4), m.group(5)
-        )
-        return (
-            f"{indent}{typ} {var}[{_size}];\n"
-            f"{indent}memcpy({var}, {sym}, sizeof({var}));"
-        )
-    return _ARRAY_INIT_PAT.sub(_repl, content)
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Pass 2 — Static conflict fixer
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _strip_comments(text: str) -> str:
-    text = re.sub(r'//[^\n]*', '', text)
-    text = re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL)
-    text = re.sub(r'"(?:[^"\\]|\\.)*"', '""', text)
-    return text
-
-def _find_static_defs(clean: str) -> dict:
-    """Return {name: signature_string} for every static function definition."""
-    pat = re.compile(
-        r'\bstatic\b([^;{}]*?\b([A-Za-z_]\w*)\s*\([^{}]*?\))\s*\{',
-        re.DOTALL
-    )
-    out = {}
-    for m in pat.finditer(clean):
-        name = m.group(2)
-        if name not in _C_KEYWORDS and name not in out:
-            out[name] = m.group(1).strip()
-    return out
-
-def _has_typed_fwd_decl(clean: str, name: str) -> bool:
-    pat = re.compile(
-        r'^([ \t]*(?:[^\n]*?))\b' + re.escape(name) + r'\s*\([^{}]*?\)\s*;',
-        re.MULTILINE
-    )
-    for m in pat.finditer(clean):
-        prefix = m.group(1)
-        if re.search(r'[=!&|^~+\-/%<>?]', prefix):
-            continue
-        if '(' in prefix:
-            continue
-        tokens = re.findall(r'[A-Za-z_]\w*', prefix)
-        type_tokens = [t for t in tokens
-                       if t not in _STORAGE_QUALS and t not in _CTRL_KW_SET]
-        if type_tokens:
-            return True
-    return False
-
-def _fix_static_conflicts(content: str) -> str:
-    clean = _strip_comments(content)
-    static_defs = _find_static_defs(clean)
-    if not static_defs:
-        return content
-
-    modified = content
-    needs_inject = []
-
-    for fname, sig in static_defs.items():
-        # Strategy A: patch existing non-static forward decl → add `static`
-        fwd_pat = re.compile(
-            r'^([ \t]*)(?!static\b)(\b\S[^\n]*?\b'
-            + re.escape(fname) + r'\s*\([^)]*\)\s*;)',
-            re.MULTILINE
-        )
-        patched = fwd_pat.sub(lambda m: f"{m.group(1)}static {m.group(2)}", modified)
-        if patched != modified:
-            modified = patched
-            continue
-
-        if _has_typed_fwd_decl(clean, fname):
-            continue
-
-        # Strategy B: inject a new static forward decl after last #include
-        call_pat = re.compile(r'\b' + re.escape(fname) + r'\s*\(')
-        def_pat  = re.compile(
-            r'\bstatic\b[^;{}]*?\b' + re.escape(fname) + r'\s*\([^{}]*?\)\s*\{',
-            re.DOTALL
-        )
-        cm = call_pat.search(clean)
-        dm = def_pat.search(clean)
-        if cm and dm and cm.start() < dm.start():
-            needs_inject.append(f"static {sig};")
-
-    if needs_inject:
-        block = (
-            "// --- SH static forward declarations ---\n"
-            + "\n".join(needs_inject) + "\n"
-            + "// --- SH static forward declarations end ---\n\n"
-        )
-        last_inc = None
-        for m in re.finditer(r'^#include\b[^\n]*\n', modified, re.MULTILINE):
-            last_inc = m
-        pos = last_inc.end() if last_inc else 0
-        modified = modified[:pos] + block + modified[pos:]
-
-    return modified
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Pass 3 — IDO static-local normalisation
-# ─────────────────────────────────────────────────────────────────────────────
-
-_CTRL_KW_PAT = re.compile(
-    r'^([ \t]+)static\s+'
-    r'(return|if|else|while|for|do|switch|break|continue|goto|case|default|sizeof)\b',
-    re.MULTILINE
-)
-
-_P3A = re.compile(        # Rule A: compound assign
-    r'^([ \t]+)static\s+([^=\n;{}]+?)\s*([|&^+\-*/%]=|<<=|>>=)',
-    re.MULTILINE
-)
-_P3A2 = re.compile(       # Rule A2: member assign
-    r'^([ \t]+)static\s+([A-Za-z_]\w*(?:->|\.)[^=\n;{}]*?)\s*=\s*([^;\n]+?)\s*;[^\n]*$',
-    re.MULTILINE
-)
-_P3B = re.compile(        # Rule B: implicit-int assign
-    r'^([ \t]+)static\s+([A-Za-z_]\w*)\s*=\s*'
-    r'([^;\n]+(?:\([^;\n]*\))[^;\n]*)\s*;[^\n]*$',
-    re.MULTILINE
-)
-_P3C = re.compile(        # Rule C: typed static local with fn-call init
-    r'^([ \t]+)static\s+([^=\n;{}]+?)\b([A-Za-z_]\w*)\s*=\s*([^;\n]+)\s*;[^\n]*$',
-    re.MULTILINE
-)
-
-def _fix_static_locals(content: str) -> str:
-    # Rule D — must run FIRST
-    content = _CTRL_KW_PAT.sub(lambda m: f"{m.group(1)}{m.group(2)}", content)
-    # Rule A
-    content = _P3A.sub(
-        lambda m: f"{m.group(1)}{m.group(2).rstrip()} {m.group(3)}", content
-    )
-    # Rule A2
-    content = _P3A2.sub(
-        lambda m: f"{m.group(1)}{m.group(2).rstrip()} = {m.group(3).strip()};",
-        content
-    )
-    # Rule B
-    content = _P3B.sub(
-        lambda m: f"{m.group(1)}{m.group(2)} = {m.group(3).strip()};", content
-    )
-    # Rule C — SPLIT: keep static, split dynamic init
-    def _rule_c(m: re.Match) -> str:
-        rhs = m.group(4).strip()
-        if '(' not in rhs:          # no fn-call → leave alone
-            return m.group(0)
-        indent, typ, var = m.group(1), m.group(2), m.group(3)
-        return f"{indent}static {typ}{var}; {var} = {rhs};"
-    content = _P3C.sub(_rule_c, content)
-    return content
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Pass 4 — Weak symbol injection
-# ─────────────────────────────────────────────────────────────────────────────
-
-_C_KEYWORDS = {
-    'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do',
-    'break', 'continue', 'case', 'default', 'goto', 'struct', 'union',
-    'enum', 'static', 'extern', 'const', 'volatile', 'inline', 'typedef',
-    'register', 'auto', 'void', 'int', 'char', 'short', 'long', 'float',
-    'double', 'unsigned', 'signed', 'bool',
-}
-_STD_C = {
-    'main', 'main_no_args',
-    'memcpy', 'memset', 'memmove', 'strlen', 'strcpy', 'strcmp', 'strcat',
-    'sprintf', 'printf', 'fprintf', 'malloc', 'free', 'realloc', 'calloc',
-    'sin', 'cos', 'sinf', 'cosf', 'sqrt', 'sqrtf', 'abs', 'fabs', 'fabsf',
-    'atan2', 'atan2f', 'pow', 'powf', 'ceil', 'ceilf', 'floor', 'floorf',
-}
-_SDK_PREFIXES = (
-    'os', 'gu', 'al', 'gS', 'gD', 'gd', '__os', 'sp', 'dp', 'rmon',
-)
-_STORAGE_QUALS = {
-    'static', 'extern', 'inline', 'const', 'volatile', '__attribute__',
-    '__restrict', 'restrict', 'register',
-}
-_CTRL_KW_SET = {
-    'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do',
-    'break', 'continue', 'case', 'default', 'goto', 'typedef',
-}
-
-_DEF_PAT_CACHE: dict = {}
-
-_FWD_DECL_PAT = re.compile(
-    r'(?<![;{}])\b([A-Za-z_]\w*)\s*\([^{}]*?\)\s*;', re.DOTALL
-)
-
-def _find_fwd_declared(clean: str) -> set:
-    names: set = set()
-    for m in _FWD_DECL_PAT.finditer(clean):
-        name = m.group(1)
-        if name in _C_KEYWORDS:
-            continue
-        prefix = clean[:m.start()]
-        cut = max(prefix.rfind(';'), prefix.rfind('{'), prefix.rfind('}'))
-        seg = prefix[cut + 1:] if cut != -1 else prefix
-        tokens = set(re.findall(r'[A-Za-z_]\w*', seg))
-        if not tokens or 'typedef' in tokens:
-            continue
-        names.add(name)
-    return names
-
-def _build_def_pat(fname: str) -> re.Pattern:
-    return re.compile(
-        r'^([ \t]*)([A-Za-z_0-9\s\*]*?\b)('
-        + re.escape(fname)
-        + r'\s*\([^{};]*?\)\s*\{)',
-        re.MULTILINE | re.DOTALL
-    )
-
-def _inject_weak(content: str, fname: str) -> str:
-    if fname not in _DEF_PAT_CACHE:
-        _DEF_PAT_CACHE[fname] = _build_def_pat(fname)
-    pat = _DEF_PAT_CACHE[fname]
-
-    def _repl(m: re.Match) -> str:
-        full, indent, before, rest = (
-            m.group(0), m.group(1), m.group(2), m.group(3)
-        )
-        if '__attribute__((weak))' in full:
-            return full
-        if re.search(r'\bstatic\b', before):
-            return full
-        return f"{indent}__attribute__((weak)) {before.lstrip()}{rest}"
-
-    return pat.sub(_repl, content)
-
-_FUNC_SCAN_PAT = re.compile(r'\b([A-Za-z_]\w*)\s*\([^{;]*\)\s*\{')
-
-def _inject_weak_symbols(content: str) -> str:
-    clean = _strip_comments(content)
-    static_names = set(_find_static_defs(clean).keys())
-    fwd_names    = _find_fwd_declared(clean)
-    excluded     = static_names | fwd_names
-
-    seen: set = set()
-    candidates = []
-
-    for m in _FUNC_SCAN_PAT.finditer(clean):
-        fname = m.group(1)
-        if fname in _C_KEYWORDS or fname in _STD_C:
-            continue
-        if fname.startswith(_SDK_PREFIXES):
-            continue
-        if fname.isupper() or fname.startswith('__'):
-            continue
-        if fname in excluded:
-            continue
-        # Check context for static/inline/typedef
-        pre = clean[:m.start()]
-        cut = max(pre.rfind(';'), pre.rfind('}'), pre.rfind('{'))
-        seg = pre[cut + 1:] if cut != -1 else pre
-        ctx = set(re.findall(r'[A-Za-z_]\w*', seg))
-        if ctx & {'static', 'inline', 'typedef'}:
-            continue
-        if fname not in seen:
-            seen.add(fname)
-            candidates.append(fname)
-
-    for fname in candidates:
-        content = _inject_weak(content, fname)
-    return content
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Pass 0b — Use-before-definition forward declaration injection
-# ─────────────────────────────────────────────────────────────────────────────
-
-_FDEF_SCAN = re.compile(
-    r'^([ \t]*)([A-Za-z_][\w\s\*]*?)\b([A-Za-z_]\w*)\s*(\([^)]*\))\s*\{',
-    re.MULTILINE,
-)
-
-_CALL_SCAN = re.compile(r'(?<![A-Za-z_0-9])\b([A-Za-z_]\w*)\s*\(')
-
-_NOT_RETURN = {
-    'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do',
-    'break', 'continue', 'case', 'default', 'goto', 'static', 'extern',
-    'inline', 'typedef', 'register', 'auto', '__attribute__', '__restrict',
-    'restrict',
-}
-
-def _inject_use_before_def_fwddecls(content: str) -> str:
-    """Inject forward decls for functions called before their definition."""
-    clean = _strip_comments(content)
-
-    # Step 1: collect all definitions with their positions
-    defs: dict[str, tuple[int, str, str]] = {}  # name → (pos, rettype, params)
-    for m in _FDEF_SCAN.finditer(clean):
-        indent = m.group(1)
-        # Skip indented definitions (nested / inside another function body)
-        if indent:
-            continue
-        ret_raw = m.group(2).strip()
-        name    = m.group(3)
-        params  = m.group(4)
-        pos     = m.start()
-
-        # Skip if name looks like a keyword, macro, or SDK function
-        if name in _NOT_RETURN or name.isupper() or name.startswith('__'):
-            continue
-        if name.startswith(_SDK_PREFIXES):
-            continue
-        # Skip static definitions — they don't need forward decls here
-        if 'static' in ret_raw.split():
-            continue
-        # Normalise the return type
-        ret = re.sub(r'\s+', ' ', ret_raw).strip()
-        if not ret or ret in _NOT_RETURN:
-            ret = 'void'
-
-        if name not in defs:
-            defs[name] = (pos, ret, params)
-
-    if not defs:
-        return content
-
-    # Step 2: find calls that precede the definition
-    needed: list[str] = []
-    seen_needed: set[str] = set()
-
-    for m in _CALL_SCAN.finditer(clean):
-        name = m.group(1)
-        if name not in defs:
-            continue
-        def_pos, ret, params = defs[name]
-        if m.start() >= def_pos:
-            continue  # call is after definition — fine
-        if name in seen_needed:
-            continue
-        seen_needed.add(name)
-        needed.append(f'{ret} {name}{params};')
-
-    if not needed:
-        return content
-
-    # Filter out any that already have a forward decl in the file
-    existing_fwds = set()
-    for m in re.finditer(r'\b([A-Za-z_]\w*)\s*\([^)]*\)\s*;', clean):
-        existing_fwds.add(m.group(1))
-    needed = [decl for decl in needed
-              if decl.split('(')[0].split()[-1] not in existing_fwds]
-
-    if not needed:
-        return content
-
-    block = (
-        '/* SH: forward decls for use-before-definition */\n'
-        + '\n'.join(needed)
-        + '\n/* SH: end forward decls */\n\n'
-    )
-
-    # Find the position after the AudioInfo type definition
-    audioinfo_def = re.search(r'typedef\s+struct\s+AudioInfo_s\s+\{.*?\};', content, re.DOTALL)
-    if audioinfo_def:
-        insert_at = audioinfo_def.end()
-    else:
-        # Fallback: insert after the preamble
-        end_marker = re.search(r'/\* ── End SourceHarmonizer.*?preamble.*?\*/\n', content)
-        if end_marker:
-            insert_at = end_marker.end()
-        else:
-            # Fallback: insert at very top
-            insert_at = 0
-
-    return content[:insert_at] + block + content[insert_at:]
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Pass 5 — Return type mismatch fix
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _fix_return_type_mismatch(content: str, path: Path) -> str:
-    """Patch .c files to match return types declared in headers."""
+< truncated lines 195-592 >
     # Only run for depthbuffer.c
     if path.name != "depthbuffer.c":
         return content
@@ -736,10 +349,16 @@ def process_c_file(path: Path) -> bool:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    src_dir     = Path("decomp-files/src")
-    decomp_root = Path("decomp-files")
+    # Anchor paths to the script's own location so they resolve correctly
+    # regardless of what directory the caller runs from.
+    # Layout:  <repo_root>/runtime/prepare_source.py
+    #          <repo_root>/decomp-files/src
+    #          <repo_root>/decomp-files/include/2.0L/ultra64.h
+    repo_root   = Path(__file__).resolve().parent.parent
+    src_dir     = repo_root / "decomp-files" / "src"
+    decomp_root = repo_root / "decomp-files"
 
-    print(f"[>] SourceHarmonizer v75.52 — {src_dir}")
+    print(f"[>] SourceHarmonizer v75.53 — {src_dir}")
     if not src_dir.exists():
         print(f"[!] Source directory not found: {src_dir}")
         return
@@ -760,7 +379,7 @@ def main() -> None:
             print(f"  [ERROR] {path.name}: {e}")
             errors += 1
 
-    print(f"[+] v75.52 complete.")
+    print(f"[+] v75.53 complete.")
     print(f"    Processed : {processed}")
     print(f"    Modified  : {modified}")
     if errors:
