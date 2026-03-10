@@ -1,3 +1,4 @@
+cmake
 cmake_minimum_required(VERSION 3.22.1)
 
 project(bkawrapper)
@@ -101,15 +102,17 @@ target_link_libraries(
     EGL
 )
 
-# Force-include ultratypes.h for all C files so N64 typedefs (u8, s32, etc.) are always defined
-# Also force-include os.h which brings in the full N64 type/API chain
+# Force-include N64 type headers for all C files so u8/s32/u16/u32 etc. are always defined.
+# Each -include flag and its path must be separate list items so CMake emits them as distinct tokens.
 target_compile_options(
     bkawrapper
     PRIVATE
     -w
     -fcommon
-    $<$<COMPILE_LANGUAGE:C>:-include ${DECOMP_ROOT}/include/2.0L/PR/ultratypes.h>
-    $<$<COMPILE_LANGUAGE:C>:-include ${DECOMP_ROOT}/include/2.0L/PR/os.h>
+    $<$<COMPILE_LANGUAGE:C>:-include>
+    $<$<COMPILE_LANGUAGE:C>:${DECOMP_ROOT}/include/2.0L/PR/ultratypes.h>
+    $<$<COMPILE_LANGUAGE:C>:-include>
+    $<$<COMPILE_LANGUAGE:C>:${DECOMP_ROOT}/include/2.0L/PR/os.h>
 )
 
 # Android-specific flags
