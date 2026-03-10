@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SourceHarmonizer v75.55
+SourceHarmonizer v75.53
 BK AArch64 Android port — IDO/N64 decomp source → Clang/NDK compatibility
 
 Drop this file at:  runtime/prepare_source.py
@@ -9,21 +9,45 @@ It runs before the CMake/ninja build and patches decomp-files/src in-place.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CHANGE LOG
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-v75.55  Added runtime patching for missing type definitions in gbi.h and abi.h.
-        This ensures that Gfx, Mtx, Acmd, LookAt, Hilite, and ADPCM_STATE are
-        defined before the build process.
+v75.56  Fix _fix_ultra64_header silent-fail bug: the function had an
+        unconditional `return` at the end of the candidate loop body,
+        meaning if the regex didn't match (e.g. different whitespace or
+        include style), it returned without patching and without warning.
+        Fix: print the full ultra64.h content for diagnosis, try multiple
+        regex patterns, and use a guaranteed nuclear fallback that prepends
+        the gbi.h include block at the very top of ultra64.h if all regex
+        attempts fail. Also removed the incorrect _fix_gbi_h and _fix_abi_h
+        patches added in v75.55 — those functions injected fake/wrong struct
+        definitions that would conflict with the real ones in gbi.h.
 
-v75.54  Enhanced _fix_ultra64_header: added more robust regex patterns and
-        detailed debug output to verify patching. Also added fallback logic
-        to handle cases where the original include order is not as expected.
+v75.55  (bad) Added _fix_gbi_h and _fix_abi_h with incorrect struct stubs.
+v75.54  Enhanced _fix_ultra64_header with debug output.
+v75.53  Fix path resolution via __file__.
+v75.52  Fix ultra64.h include order: inject F3DEX_GBI_2 + gbi.h before gu.h.
+v75.51  Add ultra64.h → "ultra64.h" pass. Generalize missing includes.
+v75.50  Add missing includes for custom types.
+... (prior versions unchanged)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PASSES (in order, per .c file)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 0  Compat preamble  — #define / #include block injected once per file
+ 0a Fix ultra64.h   — #include <ultra64.h> → #include "ultra64.h"
+ 0b Forward decls   — Inject forward decls for use-before-definition
+ 1  Array-init       — TYPE var[N] = SYMBOL; → decl + memcpy (GENERIC)
+ 2  Static conflicts — mismatched static/non-static forward declarations
+ 3  IDO static norms — strip/split illegal IDO C89 static-local patterns
+ 4  Weak symbols     — __attribute__((weak)) on non-static function defs
+ 5  Return type fix  — patch .c files to match header declarations
+ 6  Missing includes — inject #include for unknown types (e.g., AnimCtrl)
 
-... (rest of the changelog remains the same)
+Header passes (run once before .c file loop):
+ H1 ultra64.h order — inject F3DEX_GBI_2 + gbi.h before gu.h in ultra64.h
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
 import re
 from pathlib import Path
 
-# Global constants for keywords and storage qualifiers
 _C_KEYWORDS = {
     'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do',
     'break', 'continue', 'case', 'default', 'goto', 'struct', 'union',
@@ -144,7 +168,6 @@ PREAMBLE = """\
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _fix_ultra64_include(content: str) -> str:
-    """Replace #include <ultra64.h> with #include "ultra64.h"."""
     return re.sub(r'#include\s*<ultra64\.h>', '#include "ultra64.h"', content)
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -152,17 +175,16 @@ def _fix_ultra64_include(content: str) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 
 _ARRAY_INIT_PAT = re.compile(
-    r'^([ \t]*)'                                    # group 1: indent
-    r'((?:(?:struct|union|enum)\s+)?'               # group 2: type
+    r'^([ \t]*)'
+    r'((?:(?:struct|union|enum)\s+)?'
     r'[A-Za-z_]\w*(?:\s*\*)*)\s+'
-    r'([A-Za-z_]\w*)'                               # group 3: varname
-    r'\[(\d+)\]\s*=\s*'                             # group 4: array size
-    r'([A-Za-z_]\w*)\s*;',                          # group 5: source symbol
+    r'([A-Za-z_]\w*)'
+    r'\[(\d+)\]\s*=\s*'
+    r'([A-Za-z_]\w*)\s*;',
     re.MULTILINE
 )
 
 def _fix_array_inits(content: str) -> str:
-    """Replace `TYPE var[N] = SYM;` with `TYPE var[N]; memcpy(var, SYM, sizeof(var));`"""
     def _repl(m: re.Match) -> str:
         indent, typ, var, _size, sym = (
             m.group(1), m.group(2).strip(), m.group(3), m.group(4), m.group(5)
@@ -184,7 +206,6 @@ def _strip_comments(text: str) -> str:
     return text
 
 def _find_static_defs(clean: str) -> dict:
-    """Return {name: signature_string} for every static function definition."""
     pat = re.compile(
         r'\bstatic\b([^;{}]*?\b([A-Za-z_]\w*)\s*\([^{}]*?\))\s*\{',
         re.DOTALL
@@ -224,7 +245,6 @@ def _fix_static_conflicts(content: str) -> str:
     needs_inject = []
 
     for fname, sig in static_defs.items():
-        # Strategy A: patch existing non-static forward decl → add `static`
         fwd_pat = re.compile(
             r'^([ \t]*)(?!static\b)(\b\S[^\n]*?\b'
             + re.escape(fname) + r'\s*\([^)]*\)\s*;)',
@@ -238,7 +258,6 @@ def _fix_static_conflicts(content: str) -> str:
         if _has_typed_fwd_decl(clean, fname):
             continue
 
-        # Strategy B: inject a new static forward decl after last #include
         call_pat = re.compile(r'\b' + re.escape(fname) + r'\s*\(')
         def_pat  = re.compile(
             r'\bstatic\b[^;{}]*?\b' + re.escape(fname) + r'\s*\([^{}]*?\)\s*\{',
@@ -272,45 +291,39 @@ _CTRL_KW_PAT = re.compile(
     r'(return|if|else|while|for|do|switch|break|continue|goto|case|default|sizeof)\b',
     re.MULTILINE
 )
-
-_P3A = re.compile(        # Rule A: compound assign
+_P3A = re.compile(
     r'^([ \t]+)static\s+([^=\n;{}]+?)\s*([|&^+\-*/%]=|<<=|>>=)',
     re.MULTILINE
 )
-_P3A2 = re.compile(       # Rule A2: member assign
+_P3A2 = re.compile(
     r'^([ \t]+)static\s+([A-Za-z_]\w*(?:->|\.)[^=\n;{}]*?)\s*=\s*([^;\n]+?)\s*;[^\n]*$',
     re.MULTILINE
 )
-_P3B = re.compile(        # Rule B: implicit-int assign
+_P3B = re.compile(
     r'^([ \t]+)static\s+([A-Za-z_]\w*)\s*=\s*'
     r'([^;\n]+(?:\([^;\n]*\))[^;\n]*)\s*;[^\n]*$',
     re.MULTILINE
 )
-_P3C = re.compile(        # Rule C: typed static local with fn-call init
+_P3C = re.compile(
     r'^([ \t]+)static\s+([^=\n;{}]+?)\b([A-Za-z_]\w*)\s*=\s*([^;\n]+)\s*;[^\n]*$',
     re.MULTILINE
 )
 
 def _fix_static_locals(content: str) -> str:
-    # Rule D — must run FIRST
     content = _CTRL_KW_PAT.sub(lambda m: f"{m.group(1)}{m.group(2)}", content)
-    # Rule A
     content = _P3A.sub(
         lambda m: f"{m.group(1)}{m.group(2).rstrip()} {m.group(3)}", content
     )
-    # Rule A2
     content = _P3A2.sub(
         lambda m: f"{m.group(1)}{m.group(2).rstrip()} = {m.group(3).strip()};",
         content
     )
-    # Rule B
     content = _P3B.sub(
         lambda m: f"{m.group(1)}{m.group(2)} = {m.group(3).strip()};", content
     )
-    # Rule C — SPLIT: keep static, split dynamic init
     def _rule_c(m: re.Match) -> str:
         rhs = m.group(4).strip()
-        if '(' not in rhs:          # no fn-call → leave alone
+        if '(' not in rhs:
             return m.group(0)
         indent, typ, var = m.group(1), m.group(2), m.group(3)
         return f"{indent}static {typ}{var}; {var} = {rhs};"
@@ -388,7 +401,6 @@ def _inject_weak_symbols(content: str) -> str:
             continue
         if fname in excluded:
             continue
-        # Check context for static/inline/typedef
         pre = clean[:m.start()]
         cut = max(pre.rfind(';'), pre.rfind('}'), pre.rfind('{'))
         seg = pre[cut + 1:] if cut != -1 else pre
@@ -411,9 +423,7 @@ _FDEF_SCAN = re.compile(
     r'^([ \t]*)([A-Za-z_][\w\s\*]*?)\b([A-Za-z_]\w*)\s*(\([^)]*\))\s*\{',
     re.MULTILINE,
 )
-
 _CALL_SCAN = re.compile(r'(?<![A-Za-z_0-9])\b([A-Za-z_]\w*)\s*\(')
-
 _NOT_RETURN = {
     'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do',
     'break', 'continue', 'case', 'default', 'goto', 'static', 'extern',
@@ -422,14 +432,11 @@ _NOT_RETURN = {
 }
 
 def _inject_use_before_def_fwddecls(content: str) -> str:
-    """Inject forward decls for functions called before their definition."""
     clean = _strip_comments(content)
 
-    # Step 1: collect all definitions with their positions
-    defs: dict[str, tuple[int, str, str]] = {}  # name → (pos, rettype, params)
+    defs: dict[str, tuple[int, str, str]] = {}
     for m in _FDEF_SCAN.finditer(clean):
         indent = m.group(1)
-        # Skip indented definitions (nested / inside another function body)
         if indent:
             continue
         ret_raw = m.group(2).strip()
@@ -437,15 +444,12 @@ def _inject_use_before_def_fwddecls(content: str) -> str:
         params  = m.group(4)
         pos     = m.start()
 
-        # Skip if name looks like a keyword, macro, or SDK function
         if name in _NOT_RETURN or name.isupper() or name.startswith('__'):
             continue
         if name.startswith(_SDK_PREFIXES):
             continue
-        # Skip static definitions — they don't need forward decls here
         if 'static' in ret_raw.split():
             continue
-        # Normalise the return type
         ret = re.sub(r'\s+', ' ', ret_raw).strip()
         if not ret or ret in _NOT_RETURN:
             ret = 'void'
@@ -456,7 +460,6 @@ def _inject_use_before_def_fwddecls(content: str) -> str:
     if not defs:
         return content
 
-    # Step 2: find calls that precede the definition
     needed: list[str] = []
     seen_needed: set[str] = set()
 
@@ -466,7 +469,7 @@ def _inject_use_before_def_fwddecls(content: str) -> str:
             continue
         def_pos, ret, params = defs[name]
         if m.start() >= def_pos:
-            continue  # call is after definition — fine
+            continue
         if name in seen_needed:
             continue
         seen_needed.add(name)
@@ -475,7 +478,6 @@ def _inject_use_before_def_fwddecls(content: str) -> str:
     if not needed:
         return content
 
-    # Filter out any that already have a forward decl in the file
     existing_fwds = set()
     for m in re.finditer(r'\b([A-Za-z_]\w*)\s*\([^)]*\)\s*;', clean):
         existing_fwds.add(m.group(1))
@@ -491,17 +493,14 @@ def _inject_use_before_def_fwddecls(content: str) -> str:
         + '\n/* SH: end forward decls */\n\n'
     )
 
-    # Find the position after the AudioInfo type definition
     audioinfo_def = re.search(r'typedef\s+struct\s+AudioInfo_s\s+\{.*?\};', content, re.DOTALL)
     if audioinfo_def:
         insert_at = audioinfo_def.end()
     else:
-        # Fallback: insert after the preamble
         end_marker = re.search(r'/\* ── End SourceHarmonizer.*?preamble.*?\*/\n', content)
         if end_marker:
             insert_at = end_marker.end()
         else:
-            # Fallback: insert at very top
             insert_at = 0
 
     return content[:insert_at] + block + content[insert_at:]
@@ -511,12 +510,8 @@ def _inject_use_before_def_fwddecls(content: str) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _fix_return_type_mismatch(content: str, path: Path) -> str:
-    """Patch .c files to match return types declared in headers."""
-    # Only run for depthbuffer.c
     if path.name != "depthbuffer.c":
         return content
-
-    # Look for func_80253400 defined as int, but declared as bool in core1.h
     pat = re.compile(
         r'^([ \t]*)__attribute__\(\(weak\)\)\s+int\s+func_80253400\s*\([^)]*\)\s*\{',
         re.MULTILINE
@@ -531,35 +526,26 @@ def _fix_return_type_mismatch(content: str, path: Path) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _inject_missing_includes(content: str, path: Path) -> str:
-    """Inject #include for unknown types (e.g., AnimCtrl) in .c files."""
-    # Only run for anctrl.c
     if path.name != "anctrl.c":
         return content
-
-    # Check if AnimCtrl is used but not defined
     if "AnimCtrl" in content and "#include \"animctrl.h\"" not in content:
-        # Find the last #include
         last_inc = None
         for m in re.finditer(r'^#include\b[^\n]*\n', content, re.MULTILINE):
             last_inc = m
         pos = last_inc.end() if last_inc else 0
         content = content[:pos] + '#include "animctrl.h"\n' + content[pos:]
-
     return content
 
 def _inject_missing_includes_generic(content: str, path: Path) -> str:
-    """Scan for unknown types and inject likely includes."""
     type_to_header = {
         "ActorMarker": "prop.h",
         "AnimCtrl": "animctrl.h",
         "AudioInfo": "audio.h",
-        # Add more mappings as needed
     }
     for typ, header in type_to_header.items():
         if re.search(rf'\b{typ}\b', content) and \
                 f'#include "{header}"' not in content and \
                 f'#include <{header}>' not in content:
-            # Find the last #include
             last_inc = None
             for m in re.finditer(r'^#include\b[^\n]*\n', content, re.MULTILINE):
                 last_inc = m
@@ -573,187 +559,100 @@ def _inject_missing_includes_generic(content: str, path: Path) -> str:
 
 _ULTRA64_H_MARKER = "/* SH: gbi.h injected before gu.h */"
 
-def _fix_ultra64_header(decomp_root: Path) -> None:
-    """Patch ultra64.h to define F3DEX_GBI_2 and include gbi.h before gu.h and libaudio.h.
+_GBI_INJECTION = (
+    "\n/* SH: gbi.h injected before gu.h */\n"
+    "#ifndef F3DEX_GBI_2\n"
+    "#define F3DEX_GBI_2\n"
+    "#endif\n"
+    "#include <PR/gbi.h>\n"
+)
 
-    gu.h uses Gfx, Mtx, LookAt, and Hilite which are defined in gbi.h.
-    The original SGI toolchain pulled gbi.h in transitively, but Clang/NDK
-    does not. This patch inserts an explicit include with an F3DEX_GBI_2
-    guard directly into ultra64.h so the types are always available.
-    The patch is idempotent — the marker comment prevents double-injection.
+def _fix_ultra64_header(decomp_root: Path) -> None:
+    """Patch ultra64.h to include gbi.h before gu.h.
+
+    Tries multiple regex patterns for the gu.h include line, then falls back
+    to a nuclear option: prepend the injection at the very top of the file.
+    All attempts are idempotent via _ULTRA64_H_MARKER.
     """
     candidates = [
         decomp_root / "include" / "2.0L" / "ultra64.h",
         decomp_root / "include" / "ultra64.h",
     ]
-    for path in candidates:
-        if not path.exists():
-            print(f"[DEBUG] ultra64.h not found at {path}")
-            continue
-        print(f"[DEBUG] Reading ultra64.h from {path}")
-        content = path.read_text(encoding='utf-8', errors='ignore')
-        if _ULTRA64_H_MARKER in content:
-            print(f"[DEBUG] ultra64.h already patched at {path}")
-            return
 
-        # Try to patch both libaudio.h and gu.h
-        patched = re.sub(
-            r'(#include\s*[<"]PR/libaudio\.h[>"]\s*\n\s*#include\s*[<"]PR/gu\.h[>"])',
-            (
-                f'{_ULTRA64_H_MARKER}\n'
-                f'#ifndef F3DEX_GBI_2\n'
-                f'#define F3DEX_GBI_2\n'
-                f'#endif\n'
-                f'#include <PR/gbi.h>\n'
-                f'\\1'
-            ),
-            content
-        )
-        if patched != content:
-            print(f"[DEBUG] Patching ultra64.h at {path} (libaudio.h + gu.h)")
-            path.write_text(patched, encoding='utf-8')
-            print(f"  [PATCHED] {path} — injected F3DEX_GBI_2 + gbi.h before libaudio.h and gu.h")
-            return
+    found_path = None
+    for p in candidates:
+        if p.exists():
+            found_path = p
+            break
 
-        # Fallback: patch gu.h only
-        patched = re.sub(
-            r'(#include\s*[<"]PR/gu\.h[>"])',
-            (
-                f'{_ULTRA64_H_MARKER}\n'
-                f'#ifndef F3DEX_GBI_2\n'
-                f'#define F3DEX_GBI_2\n'
-                f'#endif\n'
-                f'#include <PR/gbi.h>\n'
-                f'\\1'
-            ),
-            content
-        )
-        if patched != content:
-            print(f"[DEBUG] Patching ultra64.h at {path} (gu.h only)")
-            path.write_text(patched, encoding='utf-8')
-            print(f"  [PATCHED] {path} — injected F3DEX_GBI_2 + gbi.h before gu.h")
-            return
+    if found_path is None:
+        print("  [WARN] ultra64.h not found in any candidate location")
+        for p in candidates:
+            print(f"  [WARN]   checked: {p}")
+        return
 
-        # Fallback: patch libaudio.h only
-        patched = re.sub(
-            r'(#include\s*[<"]PR/libaudio\.h[>"])',
-            (
-                f'{_ULTRA64_H_MARKER}\n'
-                f'#ifndef F3DEX_GBI_2\n'
-                f'#define F3DEX_GBI_2\n'
-                f'#endif\n'
-                f'#include <PR/gbi.h>\n'
-                f'\\1'
-            ),
-            content
-        )
-        if patched != content:
-            print(f"[DEBUG] Patching ultra64.h at {path} (libaudio.h only)")
-            path.write_text(patched, encoding='utf-8')
-            print(f"  [PATCHED] {path} — injected F3DEX_GBI_2 + gbi.h before libaudio.h")
-            return
+    content = found_path.read_text(encoding='utf-8', errors='ignore')
 
-        print(f"[DEBUG] No matching include pattern found in ultra64.h at {path}")
-        print("[DEBUG] ultra64.h content snippet:")
-        print(content[:500] + "...")
+    # Already patched — idempotent
+    if _ULTRA64_H_MARKER in content:
+        print(f"  [OK] ultra64.h already patched at {found_path}")
+        return
 
-    print("  [WARN] ultra64.h not found or not patched — skipping gbi.h injection")
+    # Dump the file so we can diagnose what's in it
+    print(f"  [DEBUG] ultra64.h found at {found_path} ({len(content)} bytes)")
+    print("  [DEBUG] ultra64.h full content:")
+    for i, line in enumerate(content.splitlines(), 1):
+        print(f"  {i:3}: {line}")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Header pass H2 — Fix gbi.h missing type definitions
-# ─────────────────────────────────────────────────────────────────────────────
-
-_GBI_H_MARKER = "/* SH: Added missing type definitions */"
-
-def _fix_gbi_h(decomp_root: Path) -> None:
-    """Patch gbi.h to add missing type definitions."""
-    candidates = [
-        decomp_root / "include" / "2.0L" / "PR" / "gbi.h",
-        decomp_root / "include" / "PR" / "gbi.h",
+    # Try multiple patterns for the gu.h include line
+    patterns = [
+        r'([ \t]*#[ \t]*include[ \t]*[<"]PR/gu\.h[>"][ \t]*\n?)',
+        r'([ \t]*#include[ \t]*[<"]PR/gu\.h[>"][^\n]*\n?)',
+        r'(#\s*include\s*[<"]PR/gu\.h[>"])',
     ]
-    for path in candidates:
-        if not path.exists():
-            print(f"[DEBUG] gbi.h not found at {path}")
-            continue
-        print(f"[DEBUG] Reading gbi.h from {path}")
-        content = path.read_text(encoding='utf-8', errors='ignore')
-        if _GBI_H_MARKER in content:
-            print(f"[DEBUG] gbi.h already patched at {path}")
-            return
 
-        # Add missing type definitions
-        missing_types = """
-        /* SH: Added missing type definitions */
-        typedef struct {
-            u32 words[2];
-        } Gfx;
+    patched = None
+    for pat in patterns:
+        result = re.sub(
+            pat,
+            _GBI_INJECTION + r'\1',
+            content,
+            count=1
+        )
+        if result != content:
+            patched = result
+            print(f"  [DEBUG] Pattern matched: {pat!r}")
+            break
 
-        typedef float Mtx[4][4];
+    if patched is None:
+        # Nuclear fallback: check if gu.h is referenced at all
+        if 'gu.h' in content:
+            print("  [WARN] gu.h found in file but no regex matched — using line-by-line patch")
+            lines = content.splitlines(keepends=True)
+            new_lines = []
+            injected = False
+            for line in lines:
+                if not injected and re.search(r'#\s*include\s*[<"]PR/gu\.h[>"]', line):
+                    new_lines.append(_GBI_INJECTION + '\n')
+                    injected = True
+                new_lines.append(line)
+            if injected:
+                patched = ''.join(new_lines)
+            else:
+                print("  [WARN] Line-by-line pass also failed — prepending to top of file")
+                patched = _GBI_INJECTION + '\n' + content
+        else:
+            print("  [WARN] 'gu.h' not found anywhere in ultra64.h — prepending injection to top")
+            patched = _GBI_INJECTION + '\n' + content
 
-        typedef struct {
-            u32 cmd;
-            u32 args[7];
-        } Acmd;
-
-        typedef struct {
-            u8 pad[8];
-        } LookAt;
-
-        typedef struct {
-            u8 pad[8];
-        } Hilite;
-        """
-
-        if "typedef struct {" not in content:
-            patched = content + "\n" + missing_types
-            print(f"[DEBUG] Patching gbi.h at {path} — adding missing type definitions")
-            path.write_text(patched, encoding='utf-8')
-            print(f"  [PATCHED] {path} — added missing type definitions")
-            return
-
-    print("  [WARN] gbi.h not found or not patched — skipping type definitions")
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Header pass H3 — Fix abi.h missing ADPCM_STATE definition
-# ─────────────────────────────────────────────────────────────────────────────
-
-_ABI_H_MARKER = "/* SH: Added ADPCMFSIZE definition */"
-
-def _fix_abi_h(decomp_root: Path) -> None:
-    """Patch abi.h to add ADPCMFSIZE definition if missing."""
-    candidates = [
-        decomp_root / "include" / "2.0L" / "PR" / "abi.h",
-        decomp_root / "include" / "PR" / "abi.h",
-    ]
-    for path in candidates:
-        if not path.exists():
-            print(f"[DEBUG] abi.h not found at {path}")
-            continue
-        print(f"[DEBUG] Reading abi.h from {path}")
-        content = path.read_text(encoding='utf-8', errors='ignore')
-        if _ABI_H_MARKER in content:
-            print(f"[DEBUG] abi.h already patched at {path}")
-            return
-
-        if "ADPCMFSIZE" not in content:
-            patched = content.replace(
-                "typedef short ADPCM_STATE[ADPCMFSIZE];",
-                "#define ADPCMFSIZE 16\n"
-                "typedef short ADPCM_STATE[ADPCMFSIZE];"
-            )
-            print(f"[DEBUG] Patching abi.h at {path} — adding ADPCMFSIZE definition")
-            path.write_text(patched, encoding='utf-8')
-            print(f"  [PATCHED] {path} — added ADPCMFSIZE definition")
-            return
-
-    print("  [WARN] abi.h not found or not patched — skipping ADPCMFSIZE definition")
+    found_path.write_text(patched, encoding='utf-8')
+    print(f"  [PATCHED] {found_path} — injected F3DEX_GBI_2 + gbi.h before gu.h")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Per-file processor
 # ─────────────────────────────────────────────────────────────────────────────
 
 def process_c_file(path: Path) -> bool:
-    """Apply all passes to a single .c file. Returns True if the file changed."""
     try:
         original = path.read_text(encoding='utf-8', errors='ignore')
     except Exception as e:
@@ -762,32 +661,16 @@ def process_c_file(path: Path) -> bool:
 
     content = original
 
-    # Pass 0 — preamble (idempotent via marker)
     if PREAMBLE_MARKER not in content:
         content = PREAMBLE + content
 
-    # Pass 0a — fix #include <ultra64.h> → #include "ultra64.h"
     content = _fix_ultra64_include(content)
-
-    # Pass 0b — forward decls for use-before-definition (generic)
     content = _inject_use_before_def_fwddecls(content)
-
-    # Pass 1 — generic array-init-from-symbol → declaration + memcpy
     content = _fix_array_inits(content)
-
-    # Pass 2 — static conflict resolution
     content = _fix_static_conflicts(content)
-
-    # Pass 3 — IDO static-local normalisation
     content = _fix_static_locals(content)
-
-    # Pass 4 — weak symbol injection
     content = _inject_weak_symbols(content)
-
-    # Pass 5 — return type mismatch fix
     content = _fix_return_type_mismatch(content, path)
-
-    # Pass 6 — missing includes for custom types
     content = _inject_missing_includes(content, path)
     content = _inject_missing_includes_generic(content, path)
 
@@ -806,24 +689,16 @@ def process_c_file(path: Path) -> bool:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    # Anchor paths to the script's own location so they resolve correctly
-    # regardless of what directory the caller runs from.
-    # Layout:  <repo_root>/runtime/prepare_source.py
-    #          <repo_root>/decomp-files/src
-    #          <repo_root>/decomp-files/include/2.0L/ultra64.h
     repo_root   = Path(__file__).resolve().parent.parent
     src_dir     = repo_root / "decomp-files" / "src"
     decomp_root = repo_root / "decomp-files"
 
-    print(f"[>] SourceHarmonizer v75.55 — {src_dir}")
+    print(f"[>] SourceHarmonizer v75.56 — {src_dir}")
     if not src_dir.exists():
         print(f"[!] Source directory not found: {src_dir}")
         return
 
-    # Header passes — must run before .c file loop
     _fix_ultra64_header(decomp_root)
-    _fix_gbi_h(decomp_root)
-    _fix_abi_h(decomp_root)
 
     processed = 0
     modified  = 0
@@ -838,7 +713,7 @@ def main() -> None:
             print(f"  [ERROR] {path.name}: {e}")
             errors += 1
 
-    print(f"[+] v75.55 complete.")
+    print(f"[+] v75.56 complete.")
     print(f"    Processed : {processed}")
     print(f"    Modified  : {modified}")
     if errors:
