@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SourceHarmonizer v75.50
+SourceHarmonizer v75.52
 BK AArch64 Android port — IDO/N64 decomp source → Clang/NDK compatibility
 
 Drop this file at:  runtime/prepare_source.py
@@ -9,6 +9,15 @@ It runs before the CMake/ninja build and patches decomp-files/src in-place.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CHANGE LOG
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+v75.52  Fix ultra64.h include order: inject F3DEX_GBI_2 guard + gbi.h
+        immediately before #include <PR/gu.h> in ultra64.h at the header
+        level. gu.h references Gfx, Mtx, LookAt, Hilite which are defined
+        in gbi.h; the original SGI toolchain pulled gbi.h in transitively
+        but Clang/NDK does not. Patch is idempotent via marker comment.
+        Also fix bug in _inject_missing_includes_generic: guard check was
+        f'#{header}' (e.g. '#animctrl.h') instead of the correct
+        f'#include "{header}"', causing duplicate inject on every run.
+
 v75.51  Add #include <ultra64.h> → #include "ultra64.h" pass.
         Generalize missing includes logic for any unknown type.
 v75.50  Add missing includes for custom types (e.g., AnimCtrl) in .c files.
@@ -74,6 +83,9 @@ PASSES (in order, per .c file)
  4  Weak symbols     — __attribute__((weak)) on non-static function defs
  5  Return type fix  — patch .c files to match header declarations
  6  Missing includes — inject #include for unknown types (e.g., AnimCtrl)
+
+Header passes (run once before .c file loop):
+ H1 ultra64.h order — inject F3DEX_GBI_2 + gbi.h before gu.h in ultra64.h
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
@@ -612,7 +624,9 @@ def _inject_missing_includes_generic(content: str, path: Path) -> str:
         # Add more mappings as needed
     }
     for typ, header in type_to_header.items():
-        if re.search(rf'\b{typ}\b', content) and f'#{header}' not in content:
+        if re.search(rf'\b{typ}\b', content) and \
+                f'#include "{header}"' not in content and \
+                f'#include <{header}>' not in content:
             # Find the last #include
             last_inc = None
             for m in re.finditer(r'^#include\b[^\n]*\n', content, re.MULTILINE):
@@ -620,6 +634,49 @@ def _inject_missing_includes_generic(content: str, path: Path) -> str:
             pos = last_inc.end() if last_inc else 0
             content = content[:pos] + f'#include "{header}"\n' + content[pos:]
     return content
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Header pass H1 — Fix ultra64.h include order (gbi.h must precede gu.h)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_ULTRA64_H_MARKER = "/* SH: gbi.h injected before gu.h */"
+
+def _fix_ultra64_header(decomp_root: Path) -> None:
+    """Patch ultra64.h to define F3DEX_GBI_2 and include gbi.h before gu.h.
+
+    gu.h uses Gfx, Mtx, LookAt, and Hilite which are defined in gbi.h.
+    The original SGI toolchain pulled gbi.h in transitively, but Clang/NDK
+    does not. This patch inserts an explicit include with an F3DEX_GBI_2
+    guard directly into ultra64.h so the types are always available.
+    The patch is idempotent — the marker comment prevents double-injection.
+    """
+    candidates = [
+        decomp_root / "include" / "2.0L" / "ultra64.h",
+        decomp_root / "include" / "ultra64.h",
+    ]
+    for path in candidates:
+        if not path.exists():
+            continue
+        content = path.read_text(encoding='utf-8', errors='ignore')
+        if _ULTRA64_H_MARKER in content:
+            return  # already patched
+        patched = re.sub(
+            r'(#include\s*[<"]PR/gu\.h[>"])',
+            (
+                f'{_ULTRA64_H_MARKER}\n'
+                f'#ifndef F3DEX_GBI_2\n'
+                f'#define F3DEX_GBI_2\n'
+                f'#endif\n'
+                f'#include <PR/gbi.h>\n'
+                f'\\1'
+            ),
+            content
+        )
+        if patched != content:
+            path.write_text(patched, encoding='utf-8')
+            print(f"  [PATCHED] {path} — injected F3DEX_GBI_2 + gbi.h before gu.h")
+        return
+    print("  [WARN] ultra64.h not found — skipping gbi.h injection")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Per-file processor
@@ -679,12 +736,16 @@ def process_c_file(path: Path) -> bool:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    src_dir = Path("decomp-files/src")
+    src_dir     = Path("decomp-files/src")
+    decomp_root = Path("decomp-files")
 
-    print(f"[>] SourceHarmonizer v75.51 — {src_dir}")
+    print(f"[>] SourceHarmonizer v75.52 — {src_dir}")
     if not src_dir.exists():
         print(f"[!] Source directory not found: {src_dir}")
         return
+
+    # Header pass — must run before .c file loop
+    _fix_ultra64_header(decomp_root)
 
     processed = 0
     modified  = 0
@@ -699,7 +760,7 @@ def main() -> None:
             print(f"  [ERROR] {path.name}: {e}")
             errors += 1
 
-    print(f"[+] v75.51 complete.")
+    print(f"[+] v75.52 complete.")
     print(f"    Processed : {processed}")
     print(f"    Modified  : {modified}")
     if errors:
