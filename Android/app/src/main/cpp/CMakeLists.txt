@@ -6,32 +6,51 @@ project(bkawrapper)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Path to decomp-files at repo root (5 levels up from Android/app/src/main/cpp/)
+set(DECOMP_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../decomp-files)
+
 # Include directories for the project
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/ultra
     ${CMAKE_CURRENT_SOURCE_DIR}/emulator
     ${CMAKE_CURRENT_SOURCE_DIR}/tools
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/include/2.0L
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/include/core1
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/include/core2
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/include/gc
+    ${DECOMP_ROOT}/include
+    ${DECOMP_ROOT}/include/2.0L
+    ${DECOMP_ROOT}/include/core1
+    ${DECOMP_ROOT}/include/core2
+    ${DECOMP_ROOT}/include/gc
 )
 
-# Explicitly add core1 sources, including code_0.c
+# Glob core1 sources properly
+file(GLOB CORE1_ROOT_SOURCES
+    "${DECOMP_ROOT}/src/core1/*.c"
+)
+file(GLOB CORE1_GU_SOURCES
+    "${DECOMP_ROOT}/src/core1/gu/*.c"
+)
+file(GLOB CORE1_IO_SOURCES
+    "${DECOMP_ROOT}/src/core1/io/*.c"
+)
+file(GLOB CORE1_OS_SOURCES
+    "${DECOMP_ROOT}/src/core1/os/*.c"
+)
+file(GLOB CORE1_AUDIO_SOURCES
+    "${DECOMP_ROOT}/src/core1/audio/*.c"
+)
+
 set(CORE1_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/src/core1/code_0.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/src/core1/gu/*.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/src/core1/io/*.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/src/core1/os/*.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/src/core1/audio/*.c
+    ${CORE1_ROOT_SOURCES}
+    ${CORE1_GU_SOURCES}
+    ${CORE1_IO_SOURCES}
+    ${CORE1_OS_SOURCES}
+    ${CORE1_AUDIO_SOURCES}
 )
 
 # Glob all assembly files
 file(GLOB_RECURSE ASM_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/asm/ultra/*.s"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/asm/core1/ultra/*.s"
+    "${DECOMP_ROOT}/asm/ultra/*.s"
+    "${DECOMP_ROOT}/asm/core1/ultra/*.s"
 )
 
 # Add emulator and menu sources
