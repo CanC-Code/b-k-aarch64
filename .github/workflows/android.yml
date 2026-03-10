@@ -49,14 +49,13 @@ jobs:
           fi
 
       - name: Prepare C++ Source
-        run: python3 runtime/prepare_source.py   # ← this is your harmonizer / source modifier
+        run: python3 runtime/prepare_source.py
 
-      # ── FORCE CMake full rebuild ────────────────────────────────────────
-      - name: Force clean CMake artifacts (critical for source changes)
+      - name: Force clean CMake artifacts
         run: |
           rm -rf Android/app/.cxx               || true
-          rm -rf Android/app/build              || true   # also nuke build outputs
-          find Android -name "*.o" -delete     || true
+          rm -rf Android/app/build              || true
+          find Android -name "*.o" -delete      || true
           find Android -name "build.ninja" -delete || true
 
       - name: Full Gradle clean
@@ -66,18 +65,23 @@ jobs:
           cd $(dirname "$GRADLEW_PATH")
           ./gradlew clean --no-daemon --stacktrace --info
 
-      # Optional: confirm preamble is present (debug only — remove later)
-      - name: Verify preamble landed in failing file
+      - name: Verify patches landed
         run: |
-          grep -A 10 "SourceHarmonizer v75.25" decomp-files/src/core2/code_5BEB0.c || echo "Preamble NOT found — check prepare_source.py execution"
-          grep -A 5 "#define BOOL" decomp-files/src/core2/code_5BEB0.c || echo "BOOL define NOT found"
+          grep -c "SH-v75.50-preamble" decomp-files/src/core2/code_5BEB0.c \
+            && echo "Preamble OK" || echo "Preamble NOT found"
+          grep -c "SH: gbi.h injected" decomp-files/include/2.0L/ultra64.h \
+            && echo "ultra64.h patch OK" || echo "ultra64.h patch NOT found"
 
       - name: Build with Gradle
         run: |
           GRADLEW_PATH=$(find . -name gradlew)
           chmod +x "$GRADLEW_PATH"
           cd $(dirname "$GRADLEW_PATH")
-          ./gradlew assembleDebug --no-daemon --stacktrace --info
+          ./gradlew assembleDebug \
+            --no-daemon \
+            --stacktrace \
+            --info \
+            -Pandroid.forceJsonSchemaConfiguration=true
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
