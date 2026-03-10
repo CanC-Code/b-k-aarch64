@@ -71,9 +71,12 @@ jobs:
             && echo "Preamble OK" || echo "Preamble NOT found"
           grep -c "SH: gbi.h injected" decomp-files/include/2.0L/ultra64.h \
             && echo "ultra64.h patch OK" || echo "ultra64.h patch NOT found"
-
-          grep -n "undef _GBI_H_" decomp-files/include/structs.h && echo "structs.h undef OK" || echo "structs.h undef NOT FOUND"
-head -20 decomp-files/include/structs.h
+          grep -c "SH: F3DEX_GBI_2" decomp-files/include/structs.h \
+            && echo "structs.h patch OK" || echo "structs.h patch NOT found"
+          grep -n "undef _GBI_H_" decomp-files/include/structs.h \
+            && echo "structs.h undef OK" || echo "structs.h undef NOT FOUND"
+          echo "=== structs.h first 20 lines ==="
+          head -20 decomp-files/include/structs.h
 
       - name: Build with Gradle
         run: |
@@ -84,7 +87,10 @@ head -20 decomp-files/include/structs.h
             --no-daemon \
             --stacktrace \
             --info \
-            -Pandroid.forceJsonSchemaConfiguration=true
+            -Pandroid.forceJsonSchemaConfiguration=true 2>&1 | tee /tmp/build_full.log; \
+          echo "=== FIRST 50 COMPILER ERRORS ==="; \
+          grep -m 50 "error:" /tmp/build_full.log || true; \
+          test ${PIPESTATUS[0]} -eq 0
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
