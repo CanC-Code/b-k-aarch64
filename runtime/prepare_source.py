@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SourceHarmonizer v75.57
+SourceHarmonizer v75.58
 BK AArch64 Android port — IDO/N64 decomp source → Clang/NDK compatibility
 
 Drop this file at:  runtime/prepare_source.py
@@ -9,31 +9,36 @@ It runs before the CMake/ninja build and patches decomp-files/src in-place.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CHANGE LOG
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-v75.57  Add _fix_structs_h (Header pass H2).
-        Root cause identified: structs.h line 4 does #include <ultra64.h>.
-        ultra64.h includes mbi.h which pulls in gbi.h WITHOUT F3DEX_GBI_2,
-        setting gbi.h's include guard (_GBI_H_). Our H1 patch then injects
-        #include <PR/gbi.h> before gu.h, but that include is a no-op because
-        the guard already fired. Gfx/Mtx/LookAt/Hilite are never defined.
-        Fix: patch structs.h to (a) define F3DEX_GBI_2 and (b) undef _GBI_H_
-        immediately before its #include <ultra64.h>, forcing gbi.h to fully
-        re-parse with F3DEX_GBI_2 active when gu.h is reached.
+v75.58  Abandon structs.h / ultra64.h patching as the primary fix.
+        Root cause: _GBI_H_ guard fires the first time any TU pulls in
+        mbi.h (which includes gbi.h without F3DEX_GBI_2). The undef in
+        structs.h only helps TUs that go through structs.h first and haven't
+        seen mbi.h yet — but ninja compiles files in parallel and the guard
+        is per-TU in the preprocessor, so it doesn't matter; what matters is
+        the include ORDER within each TU.
 
-v75.56  Fix _fix_ultra64_header silent-fail bug: unconditional return in loop
-        body meant regex misses went undetected. Added full debug dump of
-        ultra64.h, multiple regex patterns, line-by-line fallback, and nuclear
-        prepend fallback. Removed bad _fix_gbi_h/_fix_abi_h from v75.55.
+        The real fix: patch gu.h and abi.h directly so they include their
+        own dependencies (gbi.h with F3DEX_GBI_2, and abi.h's ADPCMFSIZE).
+        These files are the actual consumers of the missing types. By making
+        them self-sufficient, the include order in every caller becomes
+        irrelevant — the types are always defined by the time they're needed.
 
-v75.55  (bad) Added _fix_gbi_h and _fix_abi_h with incorrect struct stubs.
-v75.54  Enhanced _fix_ultra64_header with debug output.
+        H3 _fix_gu_h:  gu.h gets F3DEX_GBI_2 defined + _GBI_H_ undefed +
+                       gbi.h re-included at its own top, inside its own
+                       include guard so it only fires once per TU.
+        H4 _fix_abi_h: abi.h gets ADPCMFSIZE defined before the
+                       ADPCM_STATE typedef that depends on it, and Acmd
+                       forward-declared if abi.h is pulled in before gbi.h.
+
+v75.57  Add _fix_structs_h (H2) — partially effective but insufficient.
+v75.56  Fix _fix_ultra64_header silent-fail bug.
+v75.55  (bad) Incorrect gbi.h/abi.h struct stubs.
+v75.54  Enhanced debug output.
 v75.53  Fix path resolution via __file__.
-v75.52  Fix ultra64.h include order: inject F3DEX_GBI_2 + gbi.h before gu.h.
-v75.51  Add ultra64.h → "ultra64.h" pass. Generalize missing includes.
-v75.50  Add missing includes for custom types.
-... (prior versions unchanged)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+v75.52  Inject F3DEX_GBI_2 + gbi.h before gu.h in ultra64.h.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PASSES (in order, per .c file)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  0  Compat preamble  — #define / #include block injected once per file
  0a Fix ultra64.h   — #include <ultra64.h> → #include "ultra64.h"
  0b Forward decls   — Inject forward decls for use-before-definition
@@ -47,7 +52,9 @@ PASSES (in order, per .c file)
 Header passes (run once before .c file loop):
  H1 ultra64.h order — inject F3DEX_GBI_2 + gbi.h before gu.h in ultra64.h
  H2 structs.h       — define F3DEX_GBI_2 + undef _GBI_H_ before ultra64.h
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ H3 gu.h            — self-include gbi.h with F3DEX_GBI_2 at gu.h's own top
+ H4 abi.h           — define ADPCMFSIZE + forward-declare Acmd before use
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
 import re
@@ -133,9 +140,6 @@ PREAMBLE = """\
 #endif
 
 /* BOOL: single-argument boolean-cast macro used throughout game logic.      */
-/* Without this, BOOL(expr) in while/if conditions causes Clang parse errors */
-/* when Android system headers have defined BOOL as a type instead of a      */
-/* 1-argument macro.                                                          */
 #ifndef BOOL
 #  define BOOL(x) (!!(x))
 #endif
@@ -559,7 +563,7 @@ def _inject_missing_includes_generic(content: str, path: Path) -> str:
     return content
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Header pass H1 — Fix ultra64.h include order (gbi.h must precede gu.h)
+# Header pass H1 — Fix ultra64.h include order
 # ─────────────────────────────────────────────────────────────────────────────
 
 _ULTRA64_H_MARKER = "/* SH: gbi.h injected before gu.h */"
@@ -573,86 +577,46 @@ _GBI_INJECTION = (
 )
 
 def _fix_ultra64_header(decomp_root: Path) -> None:
-    """Patch ultra64.h to include gbi.h before gu.h."""
     candidates = [
         decomp_root / "include" / "2.0L" / "ultra64.h",
         decomp_root / "include" / "ultra64.h",
     ]
-
     found_path = None
     for p in candidates:
         if p.exists():
             found_path = p
             break
-
     if found_path is None:
-        print("  [WARN] ultra64.h not found in any candidate location")
+        print("  [WARN] ultra64.h not found")
         return
-
     content = found_path.read_text(encoding='utf-8', errors='ignore')
-
     if _ULTRA64_H_MARKER in content:
-        print(f"  [OK] ultra64.h already patched at {found_path}")
+        print(f"  [OK] ultra64.h already patched")
         return
-
     patterns = [
         r'([ \t]*#[ \t]*include[ \t]*[<"]PR/gu\.h[>"][ \t]*\n?)',
         r'([ \t]*#include[ \t]*[<"]PR/gu\.h[>"][^\n]*\n?)',
         r'(#\s*include\s*[<"]PR/gu\.h[>"])',
     ]
-
     patched = None
     for pat in patterns:
         result = re.sub(pat, _GBI_INJECTION + r'\1', content, count=1)
         if result != content:
             patched = result
-            print(f"  [DEBUG] ultra64.h pattern matched: {pat!r}")
             break
-
     if patched is None:
-        if 'gu.h' in content:
-            lines = content.splitlines(keepends=True)
-            new_lines = []
-            injected = False
-            for line in lines:
-                if not injected and re.search(r'#\s*include\s*[<"]PR/gu\.h[>"]', line):
-                    new_lines.append(_GBI_INJECTION + '\n')
-                    injected = True
-                new_lines.append(line)
-            patched = ''.join(new_lines) if injected else (_GBI_INJECTION + '\n' + content)
-        else:
-            patched = _GBI_INJECTION + '\n' + content
-
+        patched = _GBI_INJECTION + '\n' + content
     found_path.write_text(patched, encoding='utf-8')
-    print(f"  [PATCHED] {found_path} — injected F3DEX_GBI_2 + gbi.h before gu.h")
+    print(f"  [PATCHED] {found_path} — H1 done")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Header pass H2 — Fix structs.h gbi.h include guard problem
 # ─────────────────────────────────────────────────────────────────────────────
-#
-# THE ROOT CAUSE:
-#   structs.h line 4:  #include <ultra64.h>
-#   ultra64.h pulls in mbi.h, which includes gbi.h WITHOUT F3DEX_GBI_2.
-#   gbi.h's include guard (_GBI_H_) is now set.
-#   H1 injects #include <PR/gbi.h> before gu.h in ultra64.h, but that
-#   include is a complete no-op — the guard already fired.
-#   Result: Gfx / Mtx / LookAt / Hilite are never defined → gu.h errors.
-#
-# THE FIX:
-#   Immediately before structs.h's #include <ultra64.h>:
-#     1. Define F3DEX_GBI_2  — so gbi.h parses the F3DEX2 type block
-#     2. Undef _GBI_H_       — so the include guard doesn't skip the body
-#   Now when the chain ultra64.h → mbi.h → gbi.h fires, gbi.h re-parses
-#   fully with F3DEX_GBI_2 active, and Gfx/Mtx/LookAt/Hilite are correctly
-#   defined before gu.h is reached.
 
 _STRUCTS_H_MARKER = "/* SH: F3DEX_GBI_2 + _GBI_H_ reset for ultra64.h */"
 
 _STRUCTS_H_INJECTION = """\
 /* SH: F3DEX_GBI_2 + _GBI_H_ reset for ultra64.h */
-/* mbi.h (included by ultra64.h) pulls in gbi.h without F3DEX_GBI_2,        */
-/* setting _GBI_H_ before gu.h is reached. We reset both here so gbi.h      */
-/* re-parses with F3DEX_GBI_2 active and Gfx/Mtx/LookAt/Hilite are defined. */
 #ifndef F3DEX_GBI_2
 #  define F3DEX_GBI_2
 #endif
@@ -662,44 +626,129 @@ _STRUCTS_H_INJECTION = """\
 """
 
 def _fix_structs_h(decomp_root: Path) -> None:
-    """Patch structs.h to force gbi.h re-parse with F3DEX_GBI_2 before ultra64.h."""
     path = decomp_root / "include" / "structs.h"
     if not path.exists():
-        print(f"  [WARN] structs.h not found at {path}")
+        print(f"  [WARN] structs.h not found")
         return
-
     content = path.read_text(encoding='utf-8', errors='ignore')
-
     if _STRUCTS_H_MARKER in content:
         print(f"  [OK] structs.h already patched")
         return
-
-    # Insert injection immediately before #include <ultra64.h>
     patched = re.sub(
-        r'(#include\s*<ultra64\.h>)',
+        r'(#include\s*[<"]ultra64\.h[>"])',
         _STRUCTS_H_INJECTION + r'\1',
-        content,
-        count=1
+        content, count=1
     )
-
     if patched == content:
-        # Try quoted form too
-        patched = re.sub(
-            r'(#include\s*"ultra64\.h")',
-            _STRUCTS_H_INJECTION + r'\1',
-            content,
-            count=1
-        )
-
-    if patched == content:
-        print(f"  [WARN] structs.h: could not find #include <ultra64.h> or \"ultra64.h\"")
-        print(f"  [WARN] structs.h first 10 lines:")
-        for i, line in enumerate(content.splitlines()[:10], 1):
-            print(f"    {i:3}: {line}")
+        print(f"  [WARN] structs.h: ultra64.h include not found")
         return
-
     path.write_text(patched, encoding='utf-8')
-    print(f"  [PATCHED] {path} — injected F3DEX_GBI_2 + undef _GBI_H_ before ultra64.h")
+    print(f"  [PATCHED] {path} — H2 done")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Header pass H3 — Patch gu.h to self-include gbi.h with F3DEX_GBI_2
+# ─────────────────────────────────────────────────────────────────────────────
+
+_GU_H_MARKER = "/* SH: gu.h self-includes gbi.h with F3DEX_GBI_2 */"
+
+_GU_H_INJECTION = """\
+/* SH: gu.h self-includes gbi.h with F3DEX_GBI_2 */
+/* gu.h uses Gfx/Mtx/LookAt/Hilite from gbi.h but never includes it.        */
+/* mbi.h pulls in gbi.h without F3DEX_GBI_2 first, setting _GBI_H_ guard.  */
+/* We undef the guard and re-include with F3DEX_GBI_2 so types are defined. */
+#ifndef F3DEX_GBI_2
+#  define F3DEX_GBI_2
+#endif
+#ifdef _GBI_H_
+#  undef _GBI_H_
+#endif
+#include <PR/gbi.h>
+"""
+
+def _fix_gu_h(decomp_root: Path) -> None:
+    candidates = [
+        decomp_root / "include" / "2.0L" / "PR" / "gu.h",
+        decomp_root / "include" / "PR" / "gu.h",
+    ]
+    for path in candidates:
+        if not path.exists():
+            continue
+        content = path.read_text(encoding='utf-8', errors='ignore')
+        if _GU_H_MARKER in content:
+            print(f"  [OK] gu.h already patched")
+            return
+        # Insert after the #define of the include guard (first #define line)
+        patched = re.sub(
+            r'(#define\s+\S+\s*\n)',
+            r'\1' + _GU_H_INJECTION,
+            content, count=1
+        )
+        if patched == content:
+            # Fallback: after first #ifndef
+            patched = re.sub(
+                r'(#ifndef\s+\S+\s*\n)',
+                r'\1' + _GU_H_INJECTION,
+                content, count=1
+            )
+        if patched == content:
+            patched = _GU_H_INJECTION + content
+        path.write_text(patched, encoding='utf-8')
+        print(f"  [PATCHED] {path} — H3 done")
+        return
+    print("  [WARN] gu.h not found")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Header pass H4 — Patch abi.h for ADPCM_STATE and Acmd
+# ─────────────────────────────────────────────────────────────────────────────
+
+_ABI_H_MARKER = "/* SH: abi.h ADPCMFSIZE + Acmd fix */"
+
+_ABI_H_INJECTION = """\
+/* SH: abi.h ADPCMFSIZE + Acmd fix */
+/* abi.h uses ADPCMFSIZE in typedef but may be included before it's defined. */
+#ifndef ADPCMFSIZE
+#  define ADPCMFSIZE 16
+#endif
+/* Acmd is defined in gbi.h via F3DEX_GBI_2 — forward declare if not yet.   */
+#ifndef F3DEX_GBI_2
+#  define F3DEX_GBI_2
+#endif
+#ifdef _GBI_H_
+#  undef _GBI_H_
+#endif
+#include <PR/gbi.h>
+"""
+
+def _fix_abi_h(decomp_root: Path) -> None:
+    candidates = [
+        decomp_root / "include" / "2.0L" / "PR" / "abi.h",
+        decomp_root / "include" / "PR" / "abi.h",
+    ]
+    for path in candidates:
+        if not path.exists():
+            continue
+        content = path.read_text(encoding='utf-8', errors='ignore')
+        if _ABI_H_MARKER in content:
+            print(f"  [OK] abi.h already patched")
+            return
+        # Insert after the include guard #define
+        patched = re.sub(
+            r'(#define\s+\S+\s*\n)',
+            r'\1' + _ABI_H_INJECTION,
+            content, count=1
+        )
+        if patched == content:
+            patched = re.sub(
+                r'(#ifndef\s+\S+\s*\n)',
+                r'\1' + _ABI_H_INJECTION,
+                content, count=1
+            )
+        if patched == content:
+            patched = _ABI_H_INJECTION + content
+        path.write_text(patched, encoding='utf-8')
+        print(f"  [PATCHED] {path} — H4 done")
+        return
+    print("  [WARN] abi.h not found")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Per-file processor
@@ -746,14 +795,16 @@ def main() -> None:
     src_dir     = repo_root / "decomp-files" / "src"
     decomp_root = repo_root / "decomp-files"
 
-    print(f"[>] SourceHarmonizer v75.57 — {src_dir}")
+    print(f"[>] SourceHarmonizer v75.58 — {src_dir}")
     if not src_dir.exists():
         print(f"[!] Source directory not found: {src_dir}")
         return
 
     # Header passes — must run before .c file loop
-    _fix_ultra64_header(decomp_root)   # H1: inject gbi.h before gu.h in ultra64.h
-    _fix_structs_h(decomp_root)        # H2: force gbi.h re-parse with F3DEX_GBI_2
+    _fix_ultra64_header(decomp_root)   # H1
+    _fix_structs_h(decomp_root)        # H2
+    _fix_gu_h(decomp_root)             # H3 — most important fix
+    _fix_abi_h(decomp_root)            # H4
 
     processed = 0
     modified  = 0
@@ -768,7 +819,7 @@ def main() -> None:
             print(f"  [ERROR] {path.name}: {e}")
             errors += 1
 
-    print(f"[+] v75.57 complete.")
+    print(f"[+] v75.58 complete.")
     print(f"    Processed : {processed}")
     print(f"    Modified  : {modified}")
     if errors:
