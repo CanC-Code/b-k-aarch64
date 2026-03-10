@@ -102,6 +102,33 @@ Header passes (run once before .c file loop):
 import re
 from pathlib import Path
 
+# Global constants for keywords and storage qualifiers
+_C_KEYWORDS = {
+    'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do',
+    'break', 'continue', 'case', 'default', 'goto', 'struct', 'union',
+    'enum', 'static', 'extern', 'const', 'volatile', 'inline', 'typedef',
+    'register', 'auto', 'void', 'int', 'char', 'short', 'long', 'float',
+    'double', 'unsigned', 'signed', 'bool',
+}
+_STD_C = {
+    'main', 'main_no_args',
+    'memcpy', 'memset', 'memmove', 'strlen', 'strcpy', 'strcmp', 'strcat',
+    'sprintf', 'printf', 'fprintf', 'malloc', 'free', 'realloc', 'calloc',
+    'sin', 'cos', 'sinf', 'cosf', 'sqrt', 'sqrtf', 'abs', 'fabs', 'fabsf',
+    'atan2', 'atan2f', 'pow', 'powf', 'ceil', 'ceilf', 'floor', 'floorf',
+}
+_SDK_PREFIXES = (
+    'os', 'gu', 'al', 'gS', 'gD', 'gd', '__os', 'sp', 'dp', 'rmon',
+)
+_STORAGE_QUALS = {
+    'static', 'extern', 'inline', 'const', 'volatile', '__attribute__',
+    '__restrict', 'restrict', 'register',
+}
+_CTRL_KW_SET = {
+    'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do',
+    'break', 'continue', 'case', 'default', 'goto', 'typedef',
+}
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Pass 0 — Compatibility preamble
 # ─────────────────────────────────────────────────────────────────────────────
@@ -362,7 +389,7 @@ def _fix_static_locals(content: str) -> str:
     # Rule C — SPLIT: keep static, split dynamic init
     def _rule_c(m: re.Match) -> str:
         rhs = m.group(4).strip()
-        if '(' not in rhs:
+        if '(' not in rhs:          # no fn-call → leave alone
             return m.group(0)
         indent, typ, var = m.group(1), m.group(2), m.group(3)
         return f"{indent}static {typ}{var}; {var} = {rhs};"
@@ -372,32 +399,6 @@ def _fix_static_locals(content: str) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 # Pass 4 — Weak symbol injection
 # ─────────────────────────────────────────────────────────────────────────────
-
-_C_KEYWORDS = {
-    'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do',
-    'break', 'continue', 'case', 'default', 'goto', 'struct', 'union',
-    'enum', 'static', 'extern', 'const', 'volatile', 'inline', 'typedef',
-    'register', 'auto', 'void', 'int', 'char', 'short', 'long', 'float',
-    'double', 'unsigned', 'signed', 'bool',
-}
-_STD_C = {
-    'main', 'main_no_args',
-    'memcpy', 'memset', 'memmove', 'strlen', 'strcpy', 'strcmp', 'strcat',
-    'sprintf', 'printf', 'fprintf', 'malloc', 'free', 'realloc', 'calloc',
-    'sin', 'cos', 'sinf', 'cosf', 'sqrt', 'sqrtf', 'abs', 'fabs', 'fabsf',
-    'atan2', 'atan2f', 'pow', 'powf', 'ceil', 'ceilf', 'floor', 'floorf',
-}
-_SDK_PREFIXES = (
-    'os', 'gu', 'al', 'gS', 'gD', 'gd', '__os', 'sp', 'dp', 'rmon',
-)
-_STORAGE_QUALS = {
-    'static', 'extern', 'inline', 'const', 'volatile', '__attribute__',
-    '__restrict', 'restrict', 'register',
-}
-_CTRL_KW_SET = {
-    'if', 'while', 'for', 'switch', 'return', 'sizeof', 'else', 'do',
-    'break', 'continue', 'case', 'default', 'goto', 'typedef',
-}
 
 _DEF_PAT_CACHE: dict = {}
 
@@ -466,6 +467,7 @@ def _inject_weak_symbols(content: str) -> str:
             continue
         if fname in excluded:
             continue
+        # Check context for static/inline/typedef
         pre = clean[:m.start()]
         cut = max(pre.rfind(';'), pre.rfind('}'), pre.rfind('{'))
         seg = pre[cut + 1:] if cut != -1 else pre
@@ -502,9 +504,11 @@ def _inject_use_before_def_fwddecls(content: str) -> str:
     """Inject forward decls for functions called before their definition."""
     clean = _strip_comments(content)
 
-    defs: dict[str, tuple[int, str, str]] = {}
+    # Step 1: collect all definitions with their positions
+    defs: dict[str, tuple[int, str, str]] = {}  # name → (pos, rettype, params)
     for m in _FDEF_SCAN.finditer(clean):
         indent = m.group(1)
+        # Skip indented definitions (nested / inside another function body)
         if indent:
             continue
         ret_raw = m.group(2).strip()
@@ -512,12 +516,15 @@ def _inject_use_before_def_fwddecls(content: str) -> str:
         params  = m.group(4)
         pos     = m.start()
 
+        # Skip if name looks like a keyword, macro, or SDK function
         if name in _NOT_RETURN or name.isupper() or name.startswith('__'):
             continue
         if name.startswith(_SDK_PREFIXES):
             continue
+        # Skip static definitions — they don't need forward decls here
         if 'static' in ret_raw.split():
             continue
+        # Normalise the return type
         ret = re.sub(r'\s+', ' ', ret_raw).strip()
         if not ret or ret in _NOT_RETURN:
             ret = 'void'
@@ -528,6 +535,7 @@ def _inject_use_before_def_fwddecls(content: str) -> str:
     if not defs:
         return content
 
+    # Step 2: find calls that precede the definition
     needed: list[str] = []
     seen_needed: set[str] = set()
 
@@ -537,7 +545,7 @@ def _inject_use_before_def_fwddecls(content: str) -> str:
             continue
         def_pos, ret, params = defs[name]
         if m.start() >= def_pos:
-            continue
+            continue  # call is after definition — fine
         if name in seen_needed:
             continue
         seen_needed.add(name)
@@ -546,6 +554,7 @@ def _inject_use_before_def_fwddecls(content: str) -> str:
     if not needed:
         return content
 
+    # Filter out any that already have a forward decl in the file
     existing_fwds = set()
     for m in re.finditer(r'\b([A-Za-z_]\w*)\s*\([^)]*\)\s*;', clean):
         existing_fwds.add(m.group(1))
@@ -561,14 +570,17 @@ def _inject_use_before_def_fwddecls(content: str) -> str:
         + '\n/* SH: end forward decls */\n\n'
     )
 
+    # Find the position after the AudioInfo type definition
     audioinfo_def = re.search(r'typedef\s+struct\s+AudioInfo_s\s+\{.*?\};', content, re.DOTALL)
     if audioinfo_def:
         insert_at = audioinfo_def.end()
     else:
+        # Fallback: insert after the preamble
         end_marker = re.search(r'/\* ── End SourceHarmonizer.*?preamble.*?\*/\n', content)
         if end_marker:
             insert_at = end_marker.end()
         else:
+            # Fallback: insert at very top
             insert_at = 0
 
     return content[:insert_at] + block + content[insert_at:]
@@ -579,9 +591,11 @@ def _inject_use_before_def_fwddecls(content: str) -> str:
 
 def _fix_return_type_mismatch(content: str, path: Path) -> str:
     """Patch .c files to match return types declared in headers."""
+    # Only run for depthbuffer.c
     if path.name != "depthbuffer.c":
         return content
 
+    # Look for func_80253400 defined as int, but declared as bool in core1.h
     pat = re.compile(
         r'^([ \t]*)__attribute__\(\(weak\)\)\s+int\s+func_80253400\s*\([^)]*\)\s*\{',
         re.MULTILINE
@@ -597,10 +611,13 @@ def _fix_return_type_mismatch(content: str, path: Path) -> str:
 
 def _inject_missing_includes(content: str, path: Path) -> str:
     """Inject #include for unknown types (e.g., AnimCtrl) in .c files."""
+    # Only run for anctrl.c
     if path.name != "anctrl.c":
         return content
 
+    # Check if AnimCtrl is used but not defined
     if "AnimCtrl" in content and "#include \"animctrl.h\"" not in content:
+        # Find the last #include
         last_inc = None
         for m in re.finditer(r'^#include\b[^\n]*\n', content, re.MULTILINE):
             last_inc = m
@@ -615,11 +632,13 @@ def _inject_missing_includes_generic(content: str, path: Path) -> str:
         "ActorMarker": "prop.h",
         "AnimCtrl": "animctrl.h",
         "AudioInfo": "audio.h",
+        # Add more mappings as needed
     }
     for typ, header in type_to_header.items():
         if re.search(rf'\b{typ}\b', content) and \
                 f'#include "{header}"' not in content and \
                 f'#include <{header}>' not in content:
+            # Find the last #include
             last_inc = None
             for m in re.finditer(r'^#include\b[^\n]*\n', content, re.MULTILINE):
                 last_inc = m
@@ -634,7 +653,14 @@ def _inject_missing_includes_generic(content: str, path: Path) -> str:
 _ULTRA64_H_MARKER = "/* SH: gbi.h injected before gu.h */"
 
 def _fix_ultra64_header(decomp_root: Path) -> None:
-    """Patch ultra64.h to define F3DEX_GBI_2 and include gbi.h before gu.h."""
+    """Patch ultra64.h to define F3DEX_GBI_2 and include gbi.h before gu.h and libaudio.h.
+
+    gu.h uses Gfx, Mtx, LookAt, and Hilite which are defined in gbi.h.
+    The original SGI toolchain pulled gbi.h in transitively, but Clang/NDK
+    does not. This patch inserts an explicit include with an F3DEX_GBI_2
+    guard directly into ultra64.h so the types are always available.
+    The patch is idempotent — the marker comment prevents double-injection.
+    """
     candidates = [
         decomp_root / "include" / "2.0L" / "ultra64.h",
         decomp_root / "include" / "ultra64.h",
@@ -644,9 +670,11 @@ def _fix_ultra64_header(decomp_root: Path) -> None:
             continue
         content = path.read_text(encoding='utf-8', errors='ignore')
         if _ULTRA64_H_MARKER in content:
-            return
+            return  # already patched
+
+        # Patch both libaudio.h and gu.h
         patched = re.sub(
-            r'(#include\s*[<"]PR/gu\.h[>"])',
+            r'(#include\s*[<"]PR/libaudio\.h[>"]\s*\n\s*#include\s*[<"]PR/gu\.h[>"])',
             (
                 f'{_ULTRA64_H_MARKER}\n'
                 f'#ifndef F3DEX_GBI_2\n'
@@ -659,7 +687,24 @@ def _fix_ultra64_header(decomp_root: Path) -> None:
         )
         if patched != content:
             path.write_text(patched, encoding='utf-8')
-            print(f"  [PATCHED] {path} — injected F3DEX_GBI_2 + gbi.h before gu.h")
+            print(f"  [PATCHED] {path} — injected F3DEX_GBI_2 + gbi.h before libaudio.h and gu.h")
+        else:
+            # Fallback: patch gu.h only if libaudio.h is not found
+            patched = re.sub(
+                r'(#include\s*[<"]PR/gu\.h[>"])',
+                (
+                    f'{_ULTRA64_H_MARKER}\n'
+                    f'#ifndef F3DEX_GBI_2\n'
+                    f'#define F3DEX_GBI_2\n'
+                    f'#endif\n'
+                    f'#include <PR/gbi.h>\n'
+                    f'\\1'
+                ),
+                content
+            )
+            if patched != content:
+                path.write_text(patched, encoding='utf-8')
+                print(f"  [PATCHED] {path} — injected F3DEX_GBI_2 + gbi.h before gu.h")
         return
     print("  [WARN] ultra64.h not found — skipping gbi.h injection")
 
@@ -677,16 +722,32 @@ def process_c_file(path: Path) -> bool:
 
     content = original
 
+    # Pass 0 — preamble (idempotent via marker)
     if PREAMBLE_MARKER not in content:
         content = PREAMBLE + content
 
+    # Pass 0a — fix #include <ultra64.h> → #include "ultra64.h"
     content = _fix_ultra64_include(content)
+
+    # Pass 0b — forward decls for use-before-definition (generic)
     content = _inject_use_before_def_fwddecls(content)
+
+    # Pass 1 — generic array-init-from-symbol → declaration + memcpy
     content = _fix_array_inits(content)
+
+    # Pass 2 — static conflict resolution
     content = _fix_static_conflicts(content)
+
+    # Pass 3 — IDO static-local normalisation
     content = _fix_static_locals(content)
+
+    # Pass 4 — weak symbol injection
     content = _inject_weak_symbols(content)
+
+    # Pass 5 — return type mismatch fix
     content = _fix_return_type_mismatch(content, path)
+
+    # Pass 6 — missing includes for custom types
     content = _inject_missing_includes(content, path)
     content = _inject_missing_includes_generic(content, path)
 
@@ -719,6 +780,7 @@ def main() -> None:
         print(f"[!] Source directory not found: {src_dir}")
         return
 
+    # Header pass — must run before .c file loop
     _fix_ultra64_header(decomp_root)
 
     processed = 0
