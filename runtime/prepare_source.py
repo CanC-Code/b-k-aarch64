@@ -5,56 +5,6 @@ BK AArch64 Android port — IDO/N64 decomp source → Clang/NDK compatibility
 
 Drop this file at:  runtime/prepare_source.py
 It runs before the CMake/ninja build and patches decomp-files/src in-place.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CHANGE LOG
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-v75.58  Abandon structs.h / ultra64.h patching as the primary fix.
-        Root cause: _GBI_H_ guard fires the first time any TU pulls in
-        mbi.h (which includes gbi.h without F3DEX_GBI_2). The undef in
-        structs.h only helps TUs that go through structs.h first and haven't
-        seen mbi.h yet — but ninja compiles files in parallel and the guard
-        is per-TU in the preprocessor, so it doesn't matter; what matters is
-        the include ORDER within each TU.
-
-        The real fix: patch gu.h and abi.h directly so they include their
-        own dependencies (gbi.h with F3DEX_GBI_2, and abi.h's ADPCMFSIZE).
-        These files are the actual consumers of the missing types. By making
-        them self-sufficient, the include order in every caller becomes
-        irrelevant — the types are always defined by the time they're needed.
-
-        H3 _fix_gu_h:  gu.h gets F3DEX_GBI_2 defined + _GBI_H_ undefed +
-                       gbi.h re-included at its own top, inside its own
-                       include guard so it only fires once per TU.
-        H4 _fix_abi_h: abi.h gets ADPCMFSIZE defined before the
-                       ADPCM_STATE typedef that depends on it, and Acmd
-                       forward-declared if abi.h is pulled in before gbi.h.
-
-v75.57  Add _fix_structs_h (H2) — partially effective but insufficient.
-v75.56  Fix _fix_ultra64_header silent-fail bug.
-v75.55  (bad) Incorrect gbi.h/abi.h struct stubs.
-v75.54  Enhanced debug output.
-v75.53  Fix path resolution via __file__.
-v75.52  Inject F3DEX_GBI_2 + gbi.h before gu.h in ultra64.h.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PASSES (in order, per .c file)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- 0  Compat preamble  — #define / #include block injected once per file
- 0a Fix ultra64.h   — #include <ultra64.h> → #include "ultra64.h"
- 0b Forward decls   — Inject forward decls for use-before-definition
- 1  Array-init       — TYPE var[N] = SYMBOL; → decl + memcpy (GENERIC)
- 2  Static conflicts — mismatched static/non-static forward declarations
- 3  IDO static norms — strip/split illegal IDO C89 static-local patterns
- 4  Weak symbols     — __attribute__((weak)) on non-static function defs
- 5  Return type fix  — patch .c files to match header declarations
- 6  Missing includes — inject #include for unknown types (e.g., AnimCtrl)
-
-Header passes (run once before .c file loop):
- H1 ultra64.h order — inject F3DEX_GBI_2 + gbi.h before gu.h in ultra64.h
- H2 structs.h       — define F3DEX_GBI_2 + undef _GBI_H_ before ultra64.h
- H3 gu.h            — self-include gbi.h with F3DEX_GBI_2 at gu.h's own top
- H4 abi.h           — define ADPCMFSIZE + forward-declare Acmd before use
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
 import re
@@ -577,19 +527,11 @@ _GBI_INJECTION = (
 )
 
 def _fix_ultra64_header(decomp_root: Path) -> None:
-    candidates = [
-        decomp_root / "include" / "2.0L" / "ultra64.h",
-        decomp_root / "include" / "ultra64.h",
-    ]
-    found_path = None
-    for p in candidates:
-        if p.exists():
-            found_path = p
-            break
-    if found_path is None:
-        print("  [WARN] ultra64.h not found")
+    path = decomp_root / "include" / "2.0L" / "ultra64.h"
+    if not path.exists():
+        print(f"  [FATAL] ultra64.h not found at: {path}")
         return
-    content = found_path.read_text(encoding='utf-8', errors='ignore')
+    content = path.read_text(encoding='utf-8', errors='ignore')
     if _ULTRA64_H_MARKER in content:
         print(f"  [OK] ultra64.h already patched")
         return
@@ -606,8 +548,8 @@ def _fix_ultra64_header(decomp_root: Path) -> None:
             break
     if patched is None:
         patched = _GBI_INJECTION + '\n' + content
-    found_path.write_text(patched, encoding='utf-8')
-    print(f"  [PATCHED] {found_path} — H1 done")
+    path.write_text(patched, encoding='utf-8')
+    print(f"  [PATCHED] {path} — H1 done")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Header pass H2 — Fix structs.h gbi.h include guard problem
@@ -628,7 +570,7 @@ _STRUCTS_H_INJECTION = """\
 def _fix_structs_h(decomp_root: Path) -> None:
     path = decomp_root / "include" / "structs.h"
     if not path.exists():
-        print(f"  [WARN] structs.h not found")
+        print(f"  [FATAL] structs.h not found at: {path}")
         return
     content = path.read_text(encoding='utf-8', errors='ignore')
     if _STRUCTS_H_MARKER in content:
@@ -640,7 +582,7 @@ def _fix_structs_h(decomp_root: Path) -> None:
         content, count=1
     )
     if patched == content:
-        print(f"  [WARN] structs.h: ultra64.h include not found")
+        print(f"  [WARN] structs.h: ultra64.h include not found — patch skipped")
         return
     path.write_text(patched, encoding='utf-8')
     print(f"  [PATCHED] {path} — H2 done")
@@ -666,36 +608,31 @@ _GU_H_INJECTION = """\
 """
 
 def _fix_gu_h(decomp_root: Path) -> None:
-    candidates = [
-        decomp_root / "include" / "2.0L" / "PR" / "gu.h",
-        decomp_root / "include" / "PR" / "gu.h",
-    ]
-    for path in candidates:
-        if not path.exists():
-            continue
-        content = path.read_text(encoding='utf-8', errors='ignore')
-        if _GU_H_MARKER in content:
-            print(f"  [OK] gu.h already patched")
-            return
-        # Insert after the #define of the include guard (first #define line)
+    path = decomp_root / "include" / "2.0L" / "PR" / "gu.h"
+    if not path.exists():
+        print(f"  [FATAL] gu.h not found at: {path}")
+        return
+    content = path.read_text(encoding='utf-8', errors='ignore')
+    if _GU_H_MARKER in content:
+        print(f"  [OK] gu.h already patched")
+        return
+    # Insert after the #define of the include guard (first #define line)
+    patched = re.sub(
+        r'(#define\s+\S+\s*\n)',
+        r'\1' + _GU_H_INJECTION,
+        content, count=1
+    )
+    if patched == content:
+        # Fallback: after first #ifndef
         patched = re.sub(
-            r'(#define\s+\S+\s*\n)',
+            r'(#ifndef\s+\S+\s*\n)',
             r'\1' + _GU_H_INJECTION,
             content, count=1
         )
-        if patched == content:
-            # Fallback: after first #ifndef
-            patched = re.sub(
-                r'(#ifndef\s+\S+\s*\n)',
-                r'\1' + _GU_H_INJECTION,
-                content, count=1
-            )
-        if patched == content:
-            patched = _GU_H_INJECTION + content
-        path.write_text(patched, encoding='utf-8')
-        print(f"  [PATCHED] {path} — H3 done")
-        return
-    print("  [WARN] gu.h not found")
+    if patched == content:
+        patched = _GU_H_INJECTION + content
+    path.write_text(patched, encoding='utf-8')
+    print(f"  [PATCHED] {path} — H3 done")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Header pass H4 — Patch abi.h for ADPCM_STATE and Acmd
@@ -720,35 +657,30 @@ _ABI_H_INJECTION = """\
 """
 
 def _fix_abi_h(decomp_root: Path) -> None:
-    candidates = [
-        decomp_root / "include" / "2.0L" / "PR" / "abi.h",
-        decomp_root / "include" / "PR" / "abi.h",
-    ]
-    for path in candidates:
-        if not path.exists():
-            continue
-        content = path.read_text(encoding='utf-8', errors='ignore')
-        if _ABI_H_MARKER in content:
-            print(f"  [OK] abi.h already patched")
-            return
-        # Insert after the include guard #define
+    path = decomp_root / "include" / "2.0L" / "PR" / "abi.h"
+    if not path.exists():
+        print(f"  [FATAL] abi.h not found at: {path}")
+        return
+    content = path.read_text(encoding='utf-8', errors='ignore')
+    if _ABI_H_MARKER in content:
+        print(f"  [OK] abi.h already patched")
+        return
+    # Insert after the include guard #define
+    patched = re.sub(
+        r'(#define\s+\S+\s*\n)',
+        r'\1' + _ABI_H_INJECTION,
+        content, count=1
+    )
+    if patched == content:
         patched = re.sub(
-            r'(#define\s+\S+\s*\n)',
+            r'(#ifndef\s+\S+\s*\n)',
             r'\1' + _ABI_H_INJECTION,
             content, count=1
         )
-        if patched == content:
-            patched = re.sub(
-                r'(#ifndef\s+\S+\s*\n)',
-                r'\1' + _ABI_H_INJECTION,
-                content, count=1
-            )
-        if patched == content:
-            patched = _ABI_H_INJECTION + content
-        path.write_text(patched, encoding='utf-8')
-        print(f"  [PATCHED] {path} — H4 done")
-        return
-    print("  [WARN] abi.h not found")
+    if patched == content:
+        patched = _ABI_H_INJECTION + content
+    path.write_text(patched, encoding='utf-8')
+    print(f"  [PATCHED] {path} — H4 done")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Per-file processor
@@ -781,6 +713,7 @@ def process_c_file(path: Path) -> bool:
 
     try:
         path.write_text(content, encoding='utf-8')
+        print(f"  [MODIFIED] {path}")
         return True
     except Exception as e:
         print(f"  [WRITE ERROR] {path}: {e}")
@@ -795,17 +728,20 @@ def main() -> None:
     src_dir     = repo_root / "decomp-files" / "src"
     decomp_root = repo_root / "decomp-files"
 
-    print(f"[>] SourceHarmonizer v75.58 — {src_dir}")
+    print(f"[>] SourceHarmonizer v75.58 — working from repo root: {repo_root}")
+    print(f"    Source dir: {src_dir}")
     if not src_dir.exists():
         print(f"[!] Source directory not found: {src_dir}")
         return
 
     # Header passes — must run before .c file loop
+    print("\nRunning header fixes...")
     _fix_ultra64_header(decomp_root)   # H1
     _fix_structs_h(decomp_root)        # H2
-    _fix_gu_h(decomp_root)             # H3 — most important fix
-    _fix_abi_h(decomp_root)            # H4
+    _fix_gu_h(decomp_root)             # H3 — most important
+    _fix_abi_h(decomp_root)            # H4 — fixes ADPCM_STATE + Acmd
 
+    print("\nProcessing .c files...")
     processed = 0
     modified  = 0
     errors    = 0
@@ -819,7 +755,7 @@ def main() -> None:
             print(f"  [ERROR] {path.name}: {e}")
             errors += 1
 
-    print(f"[+] v75.58 complete.")
+    print(f"\n[+] v75.58 complete.")
     print(f"    Processed : {processed}")
     print(f"    Modified  : {modified}")
     if errors:
