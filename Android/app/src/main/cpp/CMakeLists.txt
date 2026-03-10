@@ -19,13 +19,13 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/include/gc
 )
 
-# Glob all core1 sources, including code_0.c
-file(GLOB_RECURSE CORE1_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/src/core1/*.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/src/core1/gu/*.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/src/core1/io/*.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/src/core1/os/*.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/src/core1/audio/*.c"
+# Explicitly add core1 sources, including code_0.c
+set(CORE1_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/src/core1/code_0.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/src/core1/gu/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/src/core1/io/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/src/core1/os/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../decomp-files/src/core1/audio/*.c
 )
 
 # Glob all assembly files
