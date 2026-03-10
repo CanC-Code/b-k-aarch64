@@ -6,6 +6,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(DECOMP_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../decomp-files)
 
+# Flags set at cmake level to guarantee correct -include flag emission
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -w -fcommon -include ${DECOMP_ROOT}/include/2.0L/PR/ultratypes.h -include ${DECOMP_ROOT}/include/2.0L/PR/os.h")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w -fcommon")
+
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/ultra
@@ -70,15 +74,6 @@ add_library(bkawrapper SHARED ${ALL_SOURCES})
 
 find_library(log-lib log)
 target_link_libraries(bkawrapper ${log-lib} GLESv2 android EGL)
-
-target_compile_options(bkawrapper PRIVATE
-    -w
-    -fcommon
-    $<$<COMPILE_LANGUAGE:C>:-include>
-    $<$<COMPILE_LANGUAGE:C>:${DECOMP_ROOT}/include/2.0L/PR/ultratypes.h>
-    $<$<COMPILE_LANGUAGE:C>:-include>
-    $<$<COMPILE_LANGUAGE:C>:${DECOMP_ROOT}/include/2.0L/PR/os.h>
-)
 
 set_target_properties(bkawrapper PROPERTIES
     C_VISIBILITY_PRESET "hidden"
