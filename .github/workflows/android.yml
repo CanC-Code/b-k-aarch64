@@ -72,7 +72,7 @@ jobs:
           grep -c "SH: gbi.h injected" decomp-files/include/2.0L/ultra64.h \
             && echo "ultra64.h patch OK" || echo "ultra64.h patch NOT found"
 
-grep -n "undef _GBI_H_" decomp-files/include/structs.h && echo "structs.h undef OK" || echo "structs.h undef NOT FOUND"
+          grep -n "undef _GBI_H_" decomp-files/include/structs.h && echo "structs.h undef OK" || echo "structs.h undef NOT FOUND"
 head -20 decomp-files/include/structs.h
 
       - name: Build with Gradle
