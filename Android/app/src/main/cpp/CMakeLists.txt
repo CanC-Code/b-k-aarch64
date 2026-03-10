@@ -17,6 +17,7 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/tools
     ${DECOMP_ROOT}/include
     ${DECOMP_ROOT}/include/2.0L
+    ${DECOMP_ROOT}/include/2.0L/PR
     ${DECOMP_ROOT}/include/core1
     ${DECOMP_ROOT}/include/core2
     ${DECOMP_ROOT}/include/gc
@@ -100,12 +101,15 @@ target_link_libraries(
     EGL
 )
 
-# Disable warnings as errors for decomp code
+# Force-include ultratypes.h for all C files so N64 typedefs (u8, s32, etc.) are always defined
+# Also force-include os.h which brings in the full N64 type/API chain
 target_compile_options(
     bkawrapper
     PRIVATE
     -w
     -fcommon
+    $<$<COMPILE_LANGUAGE:C>:-include ${DECOMP_ROOT}/include/2.0L/PR/ultratypes.h>
+    $<$<COMPILE_LANGUAGE:C>:-include ${DECOMP_ROOT}/include/2.0L/PR/os.h>
 )
 
 # Android-specific flags
