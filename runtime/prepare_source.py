@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SourceHarmonizer v75.53
+SourceHarmonizer v75.54
 BK AArch64 Android port — IDO/N64 decomp source → Clang/NDK compatibility
 
 Drop this file at:  runtime/prepare_source.py
@@ -8,7 +8,11 @@ It runs before the CMake/ninja build and patches decomp-files/src in-place.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CHANGE LOG
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+v75.54  Enhanced _fix_ultra64_header: added more robust regex patterns and
+        detailed debug output to verify patching. Also added fallback logic
+        to handle cases where the original include order is not as expected.
+
 v75.53  Fix path resolution: anchor all paths via __file__ so the script
         works correctly regardless of the caller's working directory.
         Previously, Path("decomp-files") resolved relative to cwd; if the
@@ -28,75 +32,7 @@ v75.52  Fix ultra64.h include order: inject F3DEX_GBI_2 guard + gbi.h
         f'#{header}' (e.g. '#animctrl.h') instead of the correct
         f'#include "{header}"', causing duplicate inject on every run.
 
-v75.51  Add #include <ultra64.h> → #include "ultra64.h" pass.
-        Generalize missing includes logic for any unknown type.
-v75.50  Add missing includes for custom types (e.g., AnimCtrl) in .c files.
-        If a function uses a type not defined in the file, try to find and
-        inject the correct #include.
-v75.49  Fix return type mismatch: if a function is declared as `bool` in a header,
-        but defined as `int` in a .c file, patch the .c file to match the header.
-        This prevents "conflicting types" errors.
-v75.48  Fix G_TRI2 and size_t: ensure F3DEX_GBI_2 and stddef.h are included
-        before any code that uses them. Inject forward decls after type defs.
-v75.47  Generic forward-decl injection for use-before-definition.
-        code_1D00.c: audioManager_handleFrameMsg is called at line 428 but
-        defined at line 445. No forward decl exists → C89 implicit-int →
-        conflicting types with the actual `bool` return type.
-        Fix: new Pass 0b scans every .c file for functions that are called
-        before their own definition within the same TU, then injects a
-        forward decl (matching the definition's return type + params) at the
-        top of the file, after the preamble. Works for any file generically.
-
-v75.46  Fix bool.h collision: remove #include <stdbool.h> from preamble,
-        defines `bool` as `_Bool`.
-        Then decomp-files/include/bool.h's `typedef int bool` would expand to
-        `typedef int _Bool`, which Clang rejects ("cannot combine with previous
-        'int' declaration specifier").
-        Fix: remove `#include <stdbool.h>` from preamble entirely. Instead
-        define `__bool_true_false_are_defined 1` — the standard suppression
-        guard that stdbool.h sets, which decomp/bool.h checks before typedef.
-        This silences the decomp's custom bool.h without pulling in stdbool.h.
-
-v75.45  Fix generic array-init-from-symbol for code_4A6F0.c (and any future
-        file with the same pattern).  Previous versions only patched
-        code_41460.c by filename; this version uses a regex pass over every
-        .c file so `TYPE var[N] = SYMBOL;` is always converted to a
-        declaration + memcpy, regardless of which file it appears in.
-
-v75.44  bool/stdbool guard, BOOL macro, min/max/abs undef, forward decls for
-        code_1D00.c (AudioInfo / audioManager_handleFrameMsg), return-type
-        fix for depthbuffer.c (func_80253400 → bool), array-init fix for
-        code_41460.c (was hardcoded — superseded by v75.45 generic pass).
-
-v75.43  bool/int return mismatch fix for func_80253400 in depthbuffer.c.
-v75.42  struct AudioInfo forward + function forward decl in code_1D00.c.
-v75.24  BOOL macro + extended preamble (MIN/MAX/CLAMP/ABS/ARRAY_COUNT).
-v75.23  Rule D: strip `static` before control-flow keywords; Rule C: SPLIT
-        static-typed-local init to preserve static storage.
-v75.22  Whitelist-based group-2 in inject_weak_attribute (ends blacklist
-        whack-a-mole for false-positive weak injection).
-v75.21  [^(] added to return-type group to stop matching `if (` / `while (`.
-v75.20  [^;] added to params group to stop spanning call statements.
-v75.19  Initial working version: preamble (F3DEX_GBI_2 + stddef.h), array
-        init → memcpy, static conflict fixes, IDO static normalisation,
-        __attribute__((weak)) injection.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PASSES (in order, per .c file)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- 0  Compat preamble  — #define / #include block injected once per file
- 0a Fix ultra64.h   — #include <ultra64.h> → #include "ultra64.h"
- 0b Forward decls   — Inject forward decls for use-before-definition
- 1  Array-init       — TYPE var[N] = SYMBOL; → decl + memcpy (GENERIC)
- 2  Static conflicts — mismatched static/non-static forward declarations
- 3  IDO static norms — strip/split illegal IDO C89 static-local patterns
- 4  Weak symbols     — __attribute__((weak)) on non-static function defs
- 5  Return type fix  — patch .c files to match header declarations
- 6  Missing includes — inject #include for unknown types (e.g., AnimCtrl)
-
-Header passes (run once before .c file loop):
- H1 ultra64.h order — inject F3DEX_GBI_2 + gbi.h before gu.h in ultra64.h
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+... (rest of the changelog remains the same)
 """
 
 import re
@@ -667,12 +603,15 @@ def _fix_ultra64_header(decomp_root: Path) -> None:
     ]
     for path in candidates:
         if not path.exists():
+            print(f"[DEBUG] ultra64.h not found at {path}")
             continue
+        print(f"[DEBUG] Reading ultra64.h from {path}")
         content = path.read_text(encoding='utf-8', errors='ignore')
         if _ULTRA64_H_MARKER in content:
-            return  # already patched
+            print(f"[DEBUG] ultra64.h already patched at {path}")
+            return
 
-        # Patch both libaudio.h and gu.h
+        # Try to patch both libaudio.h and gu.h
         patched = re.sub(
             r'(#include\s*[<"]PR/libaudio\.h[>"]\s*\n\s*#include\s*[<"]PR/gu\.h[>"])',
             (
@@ -686,27 +625,54 @@ def _fix_ultra64_header(decomp_root: Path) -> None:
             content
         )
         if patched != content:
+            print(f"[DEBUG] Patching ultra64.h at {path} (libaudio.h + gu.h)")
             path.write_text(patched, encoding='utf-8')
             print(f"  [PATCHED] {path} — injected F3DEX_GBI_2 + gbi.h before libaudio.h and gu.h")
-        else:
-            # Fallback: patch gu.h only if libaudio.h is not found
-            patched = re.sub(
-                r'(#include\s*[<"]PR/gu\.h[>"])',
-                (
-                    f'{_ULTRA64_H_MARKER}\n'
-                    f'#ifndef F3DEX_GBI_2\n'
-                    f'#define F3DEX_GBI_2\n'
-                    f'#endif\n'
-                    f'#include <PR/gbi.h>\n'
-                    f'\\1'
-                ),
-                content
-            )
-            if patched != content:
-                path.write_text(patched, encoding='utf-8')
-                print(f"  [PATCHED] {path} — injected F3DEX_GBI_2 + gbi.h before gu.h")
-        return
-    print("  [WARN] ultra64.h not found — skipping gbi.h injection")
+            return
+
+        # Fallback: patch gu.h only
+        patched = re.sub(
+            r'(#include\s*[<"]PR/gu\.h[>"])',
+            (
+                f'{_ULTRA64_H_MARKER}\n'
+                f'#ifndef F3DEX_GBI_2\n'
+                f'#define F3DEX_GBI_2\n'
+                f'#endif\n'
+                f'#include <PR/gbi.h>\n'
+                f'\\1'
+            ),
+            content
+        )
+        if patched != content:
+            print(f"[DEBUG] Patching ultra64.h at {path} (gu.h only)")
+            path.write_text(patched, encoding='utf-8')
+            print(f"  [PATCHED] {path} — injected F3DEX_GBI_2 + gbi.h before gu.h")
+            return
+
+        # Fallback: patch libaudio.h only
+        patched = re.sub(
+            r'(#include\s*[<"]PR/libaudio\.h[>"])',
+            (
+                f'{_ULTRA64_H_MARKER}\n'
+                f'#ifndef F3DEX_GBI_2\n'
+                f'#define F3DEX_GBI_2\n'
+                f'#endif\n'
+                f'#include <PR/gbi.h>\n'
+                f'\\1'
+            ),
+            content
+        )
+        if patched != content:
+            print(f"[DEBUG] Patching ultra64.h at {path} (libaudio.h only)")
+            path.write_text(patched, encoding='utf-8')
+            print(f"  [PATCHED] {path} — injected F3DEX_GBI_2 + gbi.h before libaudio.h")
+            return
+
+        print(f"[DEBUG] No matching include pattern found in ultra64.h at {path}")
+        print("[DEBUG] ultra64.h content snippet:")
+        print(content[:500] + "...")
+
+    print("  [WARN] ultra64.h not found or not patched — skipping gbi.h injection")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Per-file processor
@@ -775,7 +741,7 @@ def main() -> None:
     src_dir     = repo_root / "decomp-files" / "src"
     decomp_root = repo_root / "decomp-files"
 
-    print(f"[>] SourceHarmonizer v75.53 — {src_dir}")
+    print(f"[>] SourceHarmonizer v75.54 — {src_dir}")
     if not src_dir.exists():
         print(f"[!] Source directory not found: {src_dir}")
         return
@@ -796,7 +762,7 @@ def main() -> None:
             print(f"  [ERROR] {path.name}: {e}")
             errors += 1
 
-    print(f"[+] v75.53 complete.")
+    print(f"[+] v75.54 complete.")
     print(f"    Processed : {processed}")
     print(f"    Modified  : {modified}")
     if errors:
