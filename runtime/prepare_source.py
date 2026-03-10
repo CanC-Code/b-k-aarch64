@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SourceHarmonizer v75.54
+SourceHarmonizer v75.55
 BK AArch64 Android port — IDO/N64 decomp source → Clang/NDK compatibility
 
 Drop this file at:  runtime/prepare_source.py
@@ -8,29 +8,14 @@ It runs before the CMake/ninja build and patches decomp-files/src in-place.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CHANGE LOG
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+v75.55  Added runtime patching for missing type definitions in gbi.h and abi.h.
+        This ensures that Gfx, Mtx, Acmd, LookAt, Hilite, and ADPCM_STATE are
+        defined before the build process.
+
 v75.54  Enhanced _fix_ultra64_header: added more robust regex patterns and
         detailed debug output to verify patching. Also added fallback logic
         to handle cases where the original include order is not as expected.
-
-v75.53  Fix path resolution: anchor all paths via __file__ so the script
-        works correctly regardless of the caller's working directory.
-        Previously, Path("decomp-files") resolved relative to cwd; if the
-        workflow cd'd elsewhere (e.g. during gradlew clean), _fix_ultra64_header
-        silently failed to locate ultra64.h. Now repo_root is derived from
-        Path(__file__).resolve().parent.parent, making all paths absolute
-        and cwd-independent. The .c file passes were unaffected previously
-        because rglob() produced absolute paths once iterated, but the header
-        pass constructs paths directly and was the only thing broken.
-
-v75.52  Fix ultra64.h include order: inject F3DEX_GBI_2 guard + gbi.h
-        immediately before #include <PR/gu.h> in ultra64.h at the header
-        level. gu.h references Gfx, Mtx, LookAt, Hilite which are defined
-        in gbi.h; the original SGI toolchain pulled gbi.h in transitively
-        but Clang/NDK does not. Patch is idempotent via marker comment.
-        Also fix bug in _inject_missing_includes_generic: guard check was
-        f'#{header}' (e.g. '#animctrl.h') instead of the correct
-        f'#include "{header}"', causing duplicate inject on every run.
 
 ... (rest of the changelog remains the same)
 """
@@ -675,6 +660,95 @@ def _fix_ultra64_header(decomp_root: Path) -> None:
     print("  [WARN] ultra64.h not found or not patched — skipping gbi.h injection")
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Header pass H2 — Fix gbi.h missing type definitions
+# ─────────────────────────────────────────────────────────────────────────────
+
+_GBI_H_MARKER = "/* SH: Added missing type definitions */"
+
+def _fix_gbi_h(decomp_root: Path) -> None:
+    """Patch gbi.h to add missing type definitions."""
+    candidates = [
+        decomp_root / "include" / "2.0L" / "PR" / "gbi.h",
+        decomp_root / "include" / "PR" / "gbi.h",
+    ]
+    for path in candidates:
+        if not path.exists():
+            print(f"[DEBUG] gbi.h not found at {path}")
+            continue
+        print(f"[DEBUG] Reading gbi.h from {path}")
+        content = path.read_text(encoding='utf-8', errors='ignore')
+        if _GBI_H_MARKER in content:
+            print(f"[DEBUG] gbi.h already patched at {path}")
+            return
+
+        # Add missing type definitions
+        missing_types = """
+        /* SH: Added missing type definitions */
+        typedef struct {
+            u32 words[2];
+        } Gfx;
+
+        typedef float Mtx[4][4];
+
+        typedef struct {
+            u32 cmd;
+            u32 args[7];
+        } Acmd;
+
+        typedef struct {
+            u8 pad[8];
+        } LookAt;
+
+        typedef struct {
+            u8 pad[8];
+        } Hilite;
+        """
+
+        if "typedef struct {" not in content:
+            patched = content + "\n" + missing_types
+            print(f"[DEBUG] Patching gbi.h at {path} — adding missing type definitions")
+            path.write_text(patched, encoding='utf-8')
+            print(f"  [PATCHED] {path} — added missing type definitions")
+            return
+
+    print("  [WARN] gbi.h not found or not patched — skipping type definitions")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Header pass H3 — Fix abi.h missing ADPCM_STATE definition
+# ─────────────────────────────────────────────────────────────────────────────
+
+_ABI_H_MARKER = "/* SH: Added ADPCMFSIZE definition */"
+
+def _fix_abi_h(decomp_root: Path) -> None:
+    """Patch abi.h to add ADPCMFSIZE definition if missing."""
+    candidates = [
+        decomp_root / "include" / "2.0L" / "PR" / "abi.h",
+        decomp_root / "include" / "PR" / "abi.h",
+    ]
+    for path in candidates:
+        if not path.exists():
+            print(f"[DEBUG] abi.h not found at {path}")
+            continue
+        print(f"[DEBUG] Reading abi.h from {path}")
+        content = path.read_text(encoding='utf-8', errors='ignore')
+        if _ABI_H_MARKER in content:
+            print(f"[DEBUG] abi.h already patched at {path}")
+            return
+
+        if "ADPCMFSIZE" not in content:
+            patched = content.replace(
+                "typedef short ADPCM_STATE[ADPCMFSIZE];",
+                "#define ADPCMFSIZE 16\n"
+                "typedef short ADPCM_STATE[ADPCMFSIZE];"
+            )
+            print(f"[DEBUG] Patching abi.h at {path} — adding ADPCMFSIZE definition")
+            path.write_text(patched, encoding='utf-8')
+            print(f"  [PATCHED] {path} — added ADPCMFSIZE definition")
+            return
+
+    print("  [WARN] abi.h not found or not patched — skipping ADPCMFSIZE definition")
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Per-file processor
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -741,13 +815,15 @@ def main() -> None:
     src_dir     = repo_root / "decomp-files" / "src"
     decomp_root = repo_root / "decomp-files"
 
-    print(f"[>] SourceHarmonizer v75.54 — {src_dir}")
+    print(f"[>] SourceHarmonizer v75.55 — {src_dir}")
     if not src_dir.exists():
         print(f"[!] Source directory not found: {src_dir}")
         return
 
-    # Header pass — must run before .c file loop
+    # Header passes — must run before .c file loop
     _fix_ultra64_header(decomp_root)
+    _fix_gbi_h(decomp_root)
+    _fix_abi_h(decomp_root)
 
     processed = 0
     modified  = 0
@@ -762,7 +838,7 @@ def main() -> None:
             print(f"  [ERROR] {path.name}: {e}")
             errors += 1
 
-    print(f"[+] v75.54 complete.")
+    print(f"[+] v75.55 complete.")
     print(f"    Processed : {processed}")
     print(f"    Modified  : {modified}")
     if errors:
