@@ -7,7 +7,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 enable_language(ASM)
 
 # --- Path Definitions ---
-set(DECOMP_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../decomp-files)
+# Resolve the relative path into a clean absolute path to avoid "file not found" errors
+get_filename_component(DECOMP_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../decomp-files" ABSOLUTE)
 
 # --- Global Compiler Flags & Definitions ---
 # F3DEX_GBI_2 is mandatory for Banjo-Kazooie's microcode.
@@ -23,8 +24,9 @@ set(COMMON_C_FLAGS "-w -fcommon -include stdint.h")
 # We also define guards for the headers that cause redefinition loops (gbi/abi/ultra64).
 set(HEADER_GUARDS "-D_GBI_H_ -D_ABI_H_ -D_ULTRA64_H_")
 
-# We must include ultratypes.h FIRST so that s16/u8 exist before model.h is parsed.
-set(FORCED_INCLUDES "-include ${DECOMP_ROOT}/include/2.0L/ultratypes.h -include ${DECOMP_ROOT}/include/2.0L/PR/gbi.h -include ${DECOMP_ROOT}/include/2.0L/PR/abi.h")
+# FIXED: Added 'PR/' to the ultratypes.h path. 
+# In the original SDK structure, ultratypes.h lives inside the PR folder.
+set(FORCED_INCLUDES "-include ${DECOMP_ROOT}/include/2.0L/PR/ultratypes.h -include ${DECOMP_ROOT}/include/2.0L/PR/gbi.h -include ${DECOMP_ROOT}/include/2.0L/PR/abi.h")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_C_FLAGS} ${HEADER_GUARDS} ${FORCED_INCLUDES}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w -fcommon")
