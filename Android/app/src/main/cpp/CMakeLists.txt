@@ -21,11 +21,14 @@ set(COMMON_C_FLAGS "-w -fcommon -include stdint.h")
 # Type Aliases for the Banjo-Kazooie/N64 source
 set(TYPE_ALIASES "-Du8=uint8_t -Ds8=int8_t -Du16=uint16_t -Ds16=int16_t -Du32=uint32_t -Ds32=int32_t -Du64=uint64_t -Ds64=int64_t -Df32=float -Df64=double")
 
-# THE FIX: Forced Includes
-# This ensures ADPCM_STATE and Acmd are defined before libaudio.h is ever reached.
+# THE FIX FOR LOG 94: Guarded Forced Includes
+# We define the header guard macros (__GBI_H__ and __ABI_H__) via command line.
+# This prevents the "typedef redefinition" errors by tricking the source files
+# into thinking the headers have already been processed and should be skipped.
+set(HEADER_GUARDS "-D__GBI_H__ -D_GBI_H_ -D__ABI_H__ -D_ABI_H_")
 set(FORCED_INCLUDES "-include ${DECOMP_ROOT}/include/2.0L/PR/gbi.h -include ${DECOMP_ROOT}/include/2.0L/PR/abi.h")
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_C_FLAGS} ${TYPE_ALIASES} ${FORCED_INCLUDES}")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_C_FLAGS} ${TYPE_ALIASES} ${HEADER_GUARDS} ${FORCED_INCLUDES}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w -fcommon")
 
 # --- Include Directories ---
