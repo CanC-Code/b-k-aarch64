@@ -16,23 +16,20 @@ get_filename_component(DECOMP_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../d
 add_definitions(-DF3DEX_GBI_2 -D_LANGUAGE_C)
 
 # Common flags for Android NDK compatibility.
-# -fcommon allows the "multiple definition" style of the original BK source.
 set(COMMON_C_FLAGS "-w -fcommon -include stdint.h")
 
-# THE FIX FOR model.h (Vtx, s16, u8 errors):
-# We force-include the types and the graphics interface at the start of every file.
-# We also define guards for the headers that cause redefinition loops (gbi/abi/ultra64).
-set(HEADER_GUARDS "-D_GBI_H_ -D_ABI_H_ -D_ULTRA64_H_")
+# THE FIX: We removed the HEADER_GUARDS (-D_GBI_H_ etc) because they were 
+# blocking the compiler from actually defining Gfx, Vtx, and Mtx.
 
-# FIXED: Added 'PR/' to the ultratypes.h path. 
-# In the original SDK structure, ultratypes.h lives inside the PR folder.
+# We force-include the SDK headers in the exact order required for dependencies.
+# 1. ultratypes (base types) -> 2. gbi (graphics) -> 3. abi (audio)
 set(FORCED_INCLUDES "-include ${DECOMP_ROOT}/include/2.0L/PR/ultratypes.h -include ${DECOMP_ROOT}/include/2.0L/PR/gbi.h -include ${DECOMP_ROOT}/include/2.0L/PR/abi.h")
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_C_FLAGS} ${HEADER_GUARDS} ${FORCED_INCLUDES}")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_C_FLAGS} ${FORCED_INCLUDES}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w -fcommon")
 
 # --- Include Directories ---
-# Order is critical for BK: 2.0L/PR must come before the root include folder.
+# 2.0L/PR must come first to ensure standard N64 types are found correctly.
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${DECOMP_ROOT}/include/2.0L/PR
@@ -79,7 +76,6 @@ set(WRAPPER_SOURCES
 )
 
 # --- Build Target ---
-# Combine everything into the .so for the APK
 add_library(bkawrapper SHARED 
     ${CORE1_SOURCES} 
     ${ASM_SOURCES} 
