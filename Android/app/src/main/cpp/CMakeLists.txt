@@ -10,29 +10,29 @@ enable_language(ASM)
 set(DECOMP_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../decomp-files)
 
 # --- Global Compiler Flags & Definitions ---
-# F3DEX_GBI_2 is required for Acmd and Gfx types.
-# _LANGUAGE_C is standard for Ultra64 C-source compatibility.
+# F3DEX_GBI_2: Enables G_TRI2 and F3DEX2 GBI opcodes.
+# _LANGUAGE_C: Required for internal Ultra64 header logic.
 add_definitions(-DF3DEX_GBI_2 -D_LANGUAGE_C)
 
-# Common flags for NDK compatibility
-# -fcommon allows multiple definitions of globals (standard in decomp)
+# Common flags for NDK compatibility.
+# -fcommon: Necessary for legacy projects that define the same globals in multiple files.
+# -include stdint.h: Provides standard types to headers that lack them.
 set(COMMON_C_FLAGS "-w -fcommon -include stdint.h")
 
-# Type Aliases for the Banjo-Kazooie/N64 source
-set(TYPE_ALIASES "-Du8=uint8_t -Ds8=int8_t -Du16=uint16_t -Ds16=int16_t -Du32=uint32_t -Ds32=int32_t -Du64=uint64_t -Ds64=int64_t -Df32=float -Df64=double")
+# FIX FOR LOG 95: 
+# We REMOVED manual TYPE_ALIASES (-Du32, etc.) because they clashed with ultratypes.h.
+# Instead, we define the guards for the project's own type headers to prevent collisions.
+set(HEADER_GUARDS "-D__GBI_H__ -D_GBI_H_ -D__ABI_H__ -D_ABI_H_ -D_ULTRA64_H_ -D_ULTRATYPES_H_")
 
-# THE FIX FOR LOG 94: Guarded Forced Includes
-# We define the header guard macros (__GBI_H__ and __ABI_H__) via command line.
-# This prevents the "typedef redefinition" errors by tricking the source files
-# into thinking the headers have already been processed and should be skipped.
-set(HEADER_GUARDS "-D__GBI_H__ -D_GBI_H_ -D__ABI_H__ -D_ABI_H_")
+# THE FIX: Forced Includes
+# Forces the compiler to process these before reading any source file.
 set(FORCED_INCLUDES "-include ${DECOMP_ROOT}/include/2.0L/PR/gbi.h -include ${DECOMP_ROOT}/include/2.0L/PR/abi.h")
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_C_FLAGS} ${TYPE_ALIASES} ${HEADER_GUARDS} ${FORCED_INCLUDES}")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_C_FLAGS} ${HEADER_GUARDS} ${FORCED_INCLUDES}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w -fcommon")
 
 # --- Include Directories ---
-# Prioritize PR headers to resolve types early
+# Search order is critical: PR headers must come before generic SDK headers.
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${DECOMP_ROOT}/include/2.0L/PR
@@ -97,11 +97,10 @@ set(ALL_SOURCES
 )
 
 # --- Build Target ---
-
+# This generates the libbkawrapper.so file used by the Android APK.
 add_library(bkawrapper SHARED ${ALL_SOURCES})
 
 # --- Linker Configuration ---
-
 find_library(log-lib log)
 target_link_libraries(bkawrapper 
     ${log-lib} 
