@@ -1,27 +1,52 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(bkawrapper)
 
+# --- Standard Configuration ---
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+enable_language(ASM)
 
+# --- Path Definitions ---
 set(DECOMP_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../decomp-files)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -w -fcommon -include stdint.h -Du8=uint8_t -Ds8=int8_t -Du16=uint16_t -Ds16=int16_t -Du32=uint32_t -Ds32=int32_t -Du64=uint64_t -Ds64=int64_t -Df32=float -Df64=double")
+# --- Global Compiler Flags & Definitions ---
+# F3DEX_GBI_2 is required for Acmd and Gfx types in N64 headers.
+# _LANGUAGE_C helps headers navigate internal logic blocks correctly.
+add_definitions(-DF3DEX_GBI_2 -D_LANGUAGE_C)
+
+# Common flags for legacy NDK compatibility
+# -fcommon allows multiple definitions of the same global variable (common in decomps)
+# -include stdint.h ensures fixed-width types are always available
+set(COMMON_C_FLAGS "-w -fcommon -include stdint.h")
+
+# Type Aliases for the decomp source
+set(TYPE_ALIASES "-Du8=uint8_t -Ds8=int8_t -Du16=uint16_t -Ds16=int16_t -Du32=uint32_t -Ds32=int32_t -Du64=uint64_t -Ds64=int64_t -Df32=float -Df64=double")
+
+# Forced Includes: These solve the "Unknown type name" errors in libaudio.h 
+# by ensuring gbi and abi are parsed before anything else.
+set(FORCED_INCLUDES "-include ${DECOMP_ROOT}/include/2.0L/PR/gbi.h -include ${DECOMP_ROOT}/include/2.0L/PR/abi.h")
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_C_FLAGS} ${TYPE_ALIASES} ${FORCED_INCLUDES}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w -fcommon")
 
+# --- Include Directories ---
+# Order matters here: PR (Product Record) headers are prioritized
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${DECOMP_ROOT}/include/2.0L/PR
+    ${DECOMP_ROOT}/include/2.0L
+    ${DECOMP_ROOT}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/ultra
     ${CMAKE_CURRENT_SOURCE_DIR}/emulator
     ${CMAKE_CURRENT_SOURCE_DIR}/tools
-    ${DECOMP_ROOT}/include
-    ${DECOMP_ROOT}/include/2.0L
-    ${DECOMP_ROOT}/include/2.0L/PR
     ${DECOMP_ROOT}/include/core1
     ${DECOMP_ROOT}/include/core2
     ${DECOMP_ROOT}/include/gc
 )
 
+# --- Source File Collection ---
+
+# Core Decomp Sources
 file(GLOB CORE1_ROOT_SOURCES   "${DECOMP_ROOT}/src/core1/*.c")
 file(GLOB CORE1_GU_SOURCES     "${DECOMP_ROOT}/src/core1/gu/*.c")
 file(GLOB CORE1_IO_SOURCES     "${DECOMP_ROOT}/src/core1/io/*.c")
@@ -36,11 +61,14 @@ set(CORE1_SOURCES
     ${CORE1_AUDIO_SOURCES}
 )
 
+# ASM Sources
 file(GLOB_RECURSE ASM_SOURCES
     "${DECOMP_ROOT}/asm/ultra/*.s"
     "${DECOMP_ROOT}/asm/core1/ultra/*.s"
 )
+set_source_files_properties(${ASM_SOURCES} PROPERTIES LANGUAGE ASM)
 
+# Emulator / HLE Wrapper Sources
 set(EMULATOR_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/emulator/pi_hle.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/emulator/resource_mgr.cpp
@@ -69,19 +97,27 @@ set(ALL_SOURCES
     ${ULTRA_SOURCES}
 )
 
+# --- Build Target ---
+
 add_library(bkawrapper SHARED ${ALL_SOURCES})
 
+# --- Linker Configuration ---
+
 find_library(log-lib log)
-target_link_libraries(bkawrapper ${log-lib} GLESv2 android EGL)
+target_link_libraries(bkawrapper 
+    ${log-lib} 
+    GLESv2 
+    android 
+    EGL
+)
+
+# --- Final Properties ---
 
 set_target_properties(bkawrapper PROPERTIES
     C_VISIBILITY_PRESET "hidden"
     CXX_VISIBILITY_PRESET "hidden"
     VISIBILITY_INLINES_HIDDEN ON
 )
-
-enable_language(ASM)
-set_source_files_properties(${ASM_SOURCES} PROPERTIES LANGUAGE ASM)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(bkawrapper PRIVATE -O0 -g)
