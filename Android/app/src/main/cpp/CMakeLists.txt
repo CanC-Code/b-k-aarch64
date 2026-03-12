@@ -7,18 +7,24 @@ enable_language(ASM)
 
 get_filename_component(DECOMP_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../decomp-files" ABSOLUTE)
 
-# Definitions for BK microcode and SDK visibility
-add_definitions(-DF3DEX_GBI_2 -D_LANGUAGE_C)
+# --- Compiler Flags ---
+# 1. F3DEX_GBI_2 & _LANGUAGE_C: Standard N64 decomp requirements.
+# 2. _ULTRATYPES_H_: Bypasses N64's s8/u8/s32 to use Android's stdint.h types.
+# 3. _GBI_H_: This is the "Magic Bullet." By defining this, we tell the compiler 
+#    gbi.h is already loaded, preventing abi.h from trying to load it a second time.
+add_definitions(-DF3DEX_GBI_2 -D_LANGUAGE_C -D_ULTRATYPES_H_ -D_GBI_H_)
 
-# FIX: Define _ULTRATYPES_H_ to use Android's s8/u8/s32 types via stdint.h
-set(COMMON_C_FLAGS "-w -fcommon -D_ULTRATYPES_H_ -include stdint.h")
+# Common flags
+set(COMMON_C_FLAGS "-w -fcommon -include stdint.h")
 
-# FIX: Manually force the N64 Graphics and Audio headers since ultratypes is bypassed
-set(FORCED_INCLUDES "-include ${DECOMP_ROOT}/include/2.0L/PR/gbi.h -include ${DECOMP_ROOT}/include/2.0L/PR/abi.h")
+# FORCED INCLUDES: We only force gbi.h. 
+# It contains Gfx, Vtx, and Mtx which are the types causing the most trouble.
+set(FORCED_INCLUDES "-include ${DECOMP_ROOT}/include/2.0L/PR/gbi.h")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_C_FLAGS} ${FORCED_INCLUDES}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w -fcommon")
 
+# --- Include Directories ---
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${DECOMP_ROOT}/include/2.0L/PR
@@ -31,6 +37,7 @@ include_directories(
     ${DECOMP_ROOT}/include/gc
 )
 
+# --- Source Files ---
 file(GLOB CORE1_SOURCES 
     "${DECOMP_ROOT}/src/core1/*.c"
     "${DECOMP_ROOT}/src/core1/gu/*.c"
@@ -59,11 +66,8 @@ set(WRAPPER_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/ultra/setintmask.cpp
 )
 
-add_library(bkawrapper SHARED 
-    ${CORE1_SOURCES} 
-    ${ASM_SOURCES} 
-    ${WRAPPER_SOURCES}
-)
+# --- Build Target ---
+add_library(bkawrapper SHARED ${CORE1_SOURCES} ${ASM_SOURCES} ${WRAPPER_SOURCES})
 
 find_library(log-lib log)
 target_link_libraries(bkawrapper ${log-lib} GLESv2 android EGL)
