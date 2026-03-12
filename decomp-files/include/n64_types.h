@@ -21,7 +21,7 @@ typedef volatile uint32_t vu32;
 #define __OS_THREAD_H__
 #define __OS_MESSAGE_H__
 #define __OS_CONT_H__
-#define __OS_INTERNAL_H__  // Block internal SDK logic
+#define __OS_INTERNAL_H__
 #define _OS_INTERNAL_EXCEPTION_H_ 
 #define _GBI_H_
 #define _MBI_H_
@@ -33,21 +33,39 @@ typedef volatile uint32_t vu32;
 typedef struct { unsigned int w0; unsigned int w1; } Acmd_words;
 typedef union { Acmd_words words; long long force_align; } Acmd;
 
-// 4. OS Stubs, Macros, and Interrupts
+// 4. OS Stubs, Macros, and Messaging
 typedef s32  OSPri;
 typedef s32  OSId;
 typedef void* OSMesg;
-typedef s32  OSHWIntr; // The missing type causing the error
-typedef struct { uint8_t d[48];  } OSMesgQueue;
+typedef s32  OSHWIntr;
+
+// Expanded OSMesgQueue to allow member access found in defragmanager.c
+typedef struct {
+    void* mtqueue;
+    void* fullqueue;
+    s32           validCount; // Required for defragmanager.c
+    s32           first;
+    s32           msgCount;
+    OSMesg* msg;
+} OSMesgQueue;
+
 typedef struct { uint8_t d[128]; } OSThread;
 typedef struct { uint8_t d[64];  } OSContPad;
+typedef struct { uint8_t d[128]; } OSPfs; // Required for bamotor.c
 
-#define OS_IM_NONE 0
+#define OS_MESG_NOBLOCK 0
+#define OS_MESG_BLOCK   1
+
+#define PFS_ERR_ID_FATAL 1
+#define PFS_ERR_DEVICE   2
+
 typedef u32 OSIntMask;
 #define K0_TO_PHYS(x) ((u32)(uintptr_t)(x))
 static inline u32 osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t)vaddr; }
 static inline OSIntMask osGetIntMask(void) { return 0; }
 static inline OSIntMask osSetIntMask(OSIntMask m) { (void)m; return 0; }
+static inline s32 osSendMesg(OSMesgQueue *q, OSMesg m, s32 flag) { return 0; }
+static inline s32 osRecvMesg(OSMesgQueue *q, OSMesg *m, s32 flag) { return 0; }
 
 // 5. Audio Pipeline Constants
 #define ADPCMFSIZE      16
