@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 """
-SourceHarmonizer v75.59
+SourceHarmonizer v75.60
 BK AArch64 Android port — IDO/N64 decomp source → Clang/NDK compatibility
 
 Drop this file at:  runtime/prepare_source.py
 It runs before the CMake/ninja build and patches decomp-files/src in-place.
+
+v75.60 changes vs v75.59:
+  - Added header pass H0: patches ultratypes.h to wrap all primitive typedefs
+    (s8/u8/s16/u16/s32/u32/s64/u64/f32/f64) in #ifndef guards so the file can
+    be included normally without duplicate-typedef errors from NDK stdint.h.
+  - CMakeLists no longer needs -D_ULTRATYPES_H_, -D_GBI_H_, or -include gbi.h.
+    Those band-aids are what caused the "unknown type name 's32'" cascade.
 """
 
 import re
@@ -44,7 +51,7 @@ PREAMBLE_MARKER = "/* SH-v75.50-preamble */"
 
 PREAMBLE = """\
 {marker}
-/* SourceHarmonizer v75.50 — Android/NDK compatibility preamble             */
+/* SourceHarmonizer v75.60 — Android/NDK compatibility preamble             */
 /* All definitions are guarded with #ifndef — never overrides decomp headers */
 
 /* F3DEX_GBI_2: enables G_TRI2 and all F3DEX2 GBI opcodes in gbi.h.         */
@@ -118,7 +125,7 @@ PREAMBLE = """\
 #ifndef ARRAY_COUNT
 #  define ARRAY_COUNT(x)   (sizeof(x) / sizeof((x)[0]))
 #endif
-/* ── End SourceHarmonizer v75.50 preamble ─────────────────────────────── */
+/* ── End SourceHarmonizer v75.60 preamble ─────────────────────────────── */
 
 """.format(marker=PREAMBLE_MARKER)
 
@@ -513,6 +520,82 @@ def _inject_missing_includes_generic(content: str, path: Path) -> str:
     return content
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Header pass H0 — Patch ultratypes.h to guard all primitive typedefs
+#
+# ultratypes.h defines the N64 primitive types:
+#   s8/u8/s16/u16/s32/u32/s64/u64/f32/f64
+# Without guards, including this after <stdint.h> or any NDK header that
+# transitively defines the same underlying types causes "redefinition of
+# typedef" errors in strict Clang mode.
+#
+# The fix: wrap every `typedef <base> <alias>;` line in #ifndef / #endif.
+# This makes ultratypes.h idempotent and safe to include in any order.
+#
+# With this pass active, CMakeLists must NOT define -D_ULTRATYPES_H_,
+# because suppressing the file entirely is what causes os_thread.h /
+# os_message.h to fail with "unknown type name 's32'" etc.
+# ─────────────────────────────────────────────────────────────────────────────
+
+_ULTRATYPES_H_MARKER = "/* SH: ultratypes.h typedef guards */"
+
+# The exact set of aliases ultratypes.h defines (order doesn't matter here).
+_ULTRATYPES_ALIASES = {
+    's8', 'u8', 's16', 'u16', 's32', 'u32', 's64', 'u64', 'f32', 'f64',
+}
+
+# Match:  typedef <anything> <alias>;
+# where <alias> is one of the known N64 primitive names.
+_TYPEDEF_LINE_PAT = re.compile(
+    r'^([ \t]*typedef\s+[^\n]+?\b('
+    + '|'.join(re.escape(a) for a in _ULTRATYPES_ALIASES)
+    + r')\s*;[ \t]*)$',
+    re.MULTILINE
+)
+
+def _fix_ultratypes_h(decomp_root: Path) -> None:
+    # ultratypes.h is typically at include/2.0L/PR/ultratypes.h
+    # Some decomps place it directly under include/2.0L/ — try both.
+    candidates = [
+        decomp_root / "include" / "2.0L" / "PR" / "ultratypes.h",
+        decomp_root / "include" / "2.0L" / "ultratypes.h",
+        decomp_root / "include" / "ultratypes.h",
+    ]
+    path = next((p for p in candidates if p.exists()), None)
+    if path is None:
+        print(f"  [WARN] ultratypes.h not found — H0 skipped (tried: "
+              f"{', '.join(str(p) for p in candidates)})")
+        return
+
+    content = path.read_text(encoding='utf-8', errors='ignore')
+
+    if _ULTRATYPES_H_MARKER in content:
+        print(f"  [OK] ultratypes.h already patched")
+        return
+
+    def _guard_typedef(m: re.Match) -> str:
+        line  = m.group(1).rstrip()
+        alias = m.group(2)
+        # Only guard if not already inside a #ifndef block for this alias.
+        return (
+            f"#ifndef _SH_{alias.upper()}_DEFINED\n"
+            f"#define _SH_{alias.upper()}_DEFINED\n"
+            f"{line}\n"
+            f"#endif"
+        )
+
+    patched = _TYPEDEF_LINE_PAT.sub(_guard_typedef, content)
+
+    if patched == content:
+        print(f"  [WARN] ultratypes.h: no typedef lines matched — H0 patch skipped")
+        return
+
+    # Prepend the marker so idempotency check works on next run.
+    patched = _ULTRATYPES_H_MARKER + "\n" + patched
+
+    path.write_text(patched, encoding='utf-8')
+    print(f"  [PATCHED] {path} — H0 done")
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Header pass H1 — Fix ultra64.h include order
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -616,22 +699,18 @@ def _fix_gu_h(decomp_root: Path) -> None:
     if _GU_H_MARKER in content:
         print(f"  [OK] gu.h already patched")
         return
-    # Prefer inserting after the canonical #ifndef GUARD / #define GUARD pair
-    # to avoid misfiring on a value #define that precedes the include guard.
     patched = re.sub(
         r'(#ifndef\s+\S+\s*\n#define\s+\S+\s*\n)',
         r'\1' + _GU_H_INJECTION,
         content, count=1
     )
     if patched == content:
-        # Fallback: after first bare #define (original behaviour)
         patched = re.sub(
             r'(#define\s+\S+\s*\n)',
             r'\1' + _GU_H_INJECTION,
             content, count=1
         )
     if patched == content:
-        # Last resort: prepend
         patched = _GU_H_INJECTION + content
     path.write_text(patched, encoding='utf-8')
     print(f"  [PATCHED] {path} — H3 done")
@@ -667,7 +746,6 @@ def _fix_abi_h(decomp_root: Path) -> None:
     if _ABI_H_MARKER in content:
         print(f"  [OK] abi.h already patched")
         return
-    # Insert after the include guard #define
     patched = re.sub(
         r'(#define\s+\S+\s*\n)',
         r'\1' + _ABI_H_INJECTION,
@@ -687,13 +765,6 @@ def _fix_abi_h(decomp_root: Path) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 # Header pass H5 — Patch libaudio.h for ADPCM_STATE, Acmd, Gfx
 # ─────────────────────────────────────────────────────────────────────────────
-#
-# libaudio.h references ADPCM_STATE (typedef'd in abi.h), and Acmd / Gfx
-# (union types from gbi.h, available only with F3DEX_GBI_2).  It does not
-# include either header itself.  H4 already makes abi.h self-sufficient, so
-# including <PR/abi.h> here transitively pulls in gbi.h with F3DEX_GBI_2.
-# We also set F3DEX_GBI_2 and reset _GBI_H_ as a belt-and-suspenders measure
-# in case abi.h's include of gbi.h is guarded away in some include paths.
 
 _LIBAUDIO_H_MARKER = "/* SH: libaudio.h abi.h + gbi.h injection */"
 
@@ -713,8 +784,6 @@ _LIBAUDIO_H_INJECTION = """\
 """
 
 def _fix_libaudio_h(decomp_root: Path) -> None:
-    # libaudio.h sits at decomp-files/include/2.0L/PR/libaudio.h
-    # (some decomps place it directly under include/ — try both)
     candidates = [
         decomp_root / "include" / "2.0L" / "PR" / "libaudio.h",
         decomp_root / "include" / "2.0L" / "libaudio.h",
@@ -729,14 +798,12 @@ def _fix_libaudio_h(decomp_root: Path) -> None:
     if _LIBAUDIO_H_MARKER in content:
         print(f"  [OK] libaudio.h already patched")
         return
-    # Insert after the #ifndef / #define include-guard pair
     patched = re.sub(
         r'(#ifndef\s+\S+\s*\n#define\s+\S+\s*\n)',
         r'\1' + _LIBAUDIO_H_INJECTION,
         content, count=1
     )
     if patched == content:
-        # Fallback: after first bare #define
         patched = re.sub(
             r'(#define\s+\S+\s*\n)',
             r'\1' + _LIBAUDIO_H_INJECTION,
@@ -793,7 +860,7 @@ def main() -> None:
     src_dir     = repo_root / "decomp-files" / "src"
     decomp_root = repo_root / "decomp-files"
 
-    print(f"[>] SourceHarmonizer v75.59 — working from repo root: {repo_root}")
+    print(f"[>] SourceHarmonizer v75.60 — working from repo root: {repo_root}")
     print(f"    Source dir: {src_dir}")
     if not src_dir.exists():
         print(f"[!] Source directory not found: {src_dir}")
@@ -801,11 +868,12 @@ def main() -> None:
 
     # Header passes — must run before .c file loop
     print("\nRunning header fixes...")
+    _fix_ultratypes_h(decomp_root)     # H0 — NEW: guard s8/u8/s32/etc typedefs
     _fix_ultra64_header(decomp_root)   # H1
     _fix_structs_h(decomp_root)        # H2
-    _fix_gu_h(decomp_root)             # H3 — most important
-    _fix_abi_h(decomp_root)            # H4 — fixes ADPCM_STATE + Acmd
-    _fix_libaudio_h(decomp_root)       # H5 — fixes libaudio.h ADPCM_STATE/Acmd/Gfx
+    _fix_gu_h(decomp_root)             # H3
+    _fix_abi_h(decomp_root)            # H4
+    _fix_libaudio_h(decomp_root)       # H5
 
     print("\nProcessing .c files...")
     processed = 0
@@ -821,7 +889,7 @@ def main() -> None:
             print(f"  [ERROR] {path.name}: {e}")
             errors += 1
 
-    print(f"\n[+] v75.59 complete.")
+    print(f"\n[+] v75.60 complete.")
     print(f"    Processed : {processed}")
     print(f"    Modified  : {modified}")
     if errors:
