@@ -4,18 +4,12 @@ project(bkawrapper LANGUAGES C CXX)
 get_filename_component(DECOMP_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../decomp-files" ABSOLUTE)
 set(CPP_ROOT  "${CMAKE_CURRENT_SOURCE_DIR}")
 
-# ─── Global Configuration ──────────────────────────────────────────────────
-# We keep the types and hardware definitions forced
-set(FORCED_INCLUDES 
-    "-include ${DECOMP_ROOT}/include/n64_types.h"
-    "-include ${DECOMP_ROOT}/include/2.0L/PR/gbi.h"
-    "-include ${DECOMP_ROOT}/include/2.0L/PR/abi.h"
-)
-string(REPLACE ";" " " FORCED_INCLUDES_STR "${FORCED_INCLUDES}")
+# Define hardware environment
+set(COMMON_FLAGS "-w -fcommon -O2 -D_FINALROM -D_ALHEAP_H_ -D_LANGUAGE_C -D_ULTRATYPES_H_")
+set(FORCED_INCLUDES "-include ${DECOMP_ROOT}/include/n64_types.h")
 
-set(COMMON_FLAGS "-w -fcommon -O2 -D_FINALROM -D_ALHEAP_H_ ${FORCED_INCLUDES_STR}")
-set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   ${COMMON_FLAGS} -D_ULTRATYPES_H_ -D_LANGUAGE_C")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
+set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   ${COMMON_FLAGS} ${FORCED_INCLUDES}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS} ${FORCED_INCLUDES}")
 
 include_directories(SYSTEM
     ${DECOMP_ROOT}/include
@@ -24,11 +18,8 @@ include_directories(SYSTEM
     ${DECOMP_ROOT}/src/core1
 )
 
-# --- Source Management ---
+# Source Discovery
 file(GLOB_RECURSE CORE1_SOURCES "${DECOMP_ROOT}/src/core1/*.c")
-
-# EXCLUDE memory.c and MIPS audio
-# Since we are using System memcpy/memmove, we don't need the legacy implementations
 list(FILTER CORE1_SOURCES EXCLUDE REGEX ".*memory.c")
 list(FILTER CORE1_SOURCES EXCLUDE REGEX ".*n_reverb.*")
 
