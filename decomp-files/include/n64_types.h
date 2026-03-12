@@ -27,16 +27,9 @@ typedef volatile uint32_t vu32;
 #define _GU_H_
 #define _BOOL_H_
 
-// 3. The "Acmd" Structure (Fixes n_abi.h errors)
-typedef struct {
-    unsigned int w0;
-    unsigned int w1;
-} Acmd_words;
-
-typedef union {
-    Acmd_words words;
-    long long  force_structure_alignment;
-} Acmd;
+// 3. The "Acmd" Structure
+typedef struct { unsigned int w0; unsigned int w1; } Acmd_words;
+typedef union { Acmd_words words; long long force_align; } Acmd;
 
 // 4. OS Stubs & Macros
 typedef s32  OSPri;
@@ -57,6 +50,10 @@ static inline OSIntMask osSetIntMask(OSIntMask m) { (void)m; return 0; }
 #define ADPCMFSIZE      16
 #define ADPCMVSIZE      8
 #define LFSAMPLES       4
+#define UNITY_PITCH     0x8000
+#define MAX_RATIO       2
+
+// 6. Audio Command Macros (The "N" Driver IDs)
 #define A_INIT          0x01
 #define A_CONTINUE      0x02
 #define A_LOOP          0x02
@@ -68,8 +65,15 @@ static inline OSIntMask osSetIntMask(OSIntMask m) { (void)m; return 0; }
 #define A_RIGHT         0x80
 #define A_LOADBUFF      0x01
 #define A_ADPCM         0x02
+#define A_SETVOL        0x03
+#define A_ENVMIXER      0x04
+#define A_POLEF         0x05
+#define A_RESAMPLE      0x06
+#define A_SAVEBUFF      0x07
+#define A_LOADADPCM     0x08
+#define A_NOAUX         0x10
 
-// 6. Graphics & Helper Types
+// 7. Graphics & Helper Types
 typedef uint64_t Gfx;
 typedef struct { int32_t m[4][4]; } Mtx;
 typedef struct { uint8_t d[16];  } Vtx;
@@ -83,7 +87,6 @@ typedef int16_t RESAMPLE_STATE[16];
 typedef int16_t POLEF_STATE[4];
 typedef int16_t ENVMIX_STATE[40];
 
-// N64 bit-shifting helpers
 #define _SHIFTL(v, s, w) ((unsigned int)(((unsigned int)(v) & ((0x01 << (w)) - 1)) << (s)))
 #define _SHIFTR(v, s, w) ((unsigned int)(((unsigned int)(v) >> (s)) & ((0x01 << (w)) - 1)))
 
