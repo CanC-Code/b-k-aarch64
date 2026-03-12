@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 import re
 import hashlib
-import os
 from pathlib import Path
 
 # --- CONFIGURATION ---
-PREAMBLE_MARKER = "/* SH-AUTOMORPH-ACTIVE-V81.4-FINAL */"
+PREAMBLE_MARKER = "/* SH-AUTOMORPH-ACTIVE-V81.5-STABLE */"
 
 def get_content_hash(text):
     return hashlib.md5(text.encode('utf-8')).hexdigest()[:8]
@@ -18,14 +17,14 @@ def unique_struct_fix(match):
 
 def deep_clean_sdk(decomp_root: Path):
     """
-    Cleans up the environment to prevent namespace collisions between N64 and Android.
+    Cleans up the SDK headers to prevent conflicts with modern libc.
     """
     # 1. Neutralize bool.h
     bool_h = decomp_root / "include" / "bool.h"
     if bool_h.exists():
         bool_h.write_text("#include <stdbool.h>\n", encoding='utf-8')
 
-    # 2. DELETE SHADOWING HEADERS
+    # 2. Kill Shadowing headers (Recursion loops)
     shadows = [
         decomp_root / "include" / "string.h",
         decomp_root / "include" / "core1" / "mem.h"
@@ -33,9 +32,20 @@ def deep_clean_sdk(decomp_root: Path):
     for s_path in shadows:
         if s_path.exists():
             s_path.unlink()
-            print(f"  [CLEANED] Removed shadowing {s_path.name}")
+            print(f"  [DELETED] {s_path.name}")
 
-    # 3. SDK Header unique tagging
+    # 3. Fix os_libc.h (The source of the bcopy conflict)
+    os_libc = decomp_root / "include/2.0L/PR/os_libc.h"
+    if os_libc.exists():
+        content = os_libc.read_text(encoding='utf-8', errors='ignore')
+        # Neutralize their bcopy/memcpy/strlen to use system versions
+        content = content.replace("extern void     bcopy", "// extern void bcopy")
+        content = content.replace("extern int      strlen", "// extern int strlen")
+        content = content.replace("extern void     memcpy", "// extern void memcpy")
+        os_libc.write_text(content, encoding='utf-8')
+        print("  [SDK PATCHED] os_libc.h conflicts neutralized.")
+
+    # 4. SDK Header unique tagging
     audio_headers = [
         decomp_root / "include/2.0L/PR/libaudio.h",
         decomp_root / "include/2.0L/PR/n_libaudio.h",
@@ -53,7 +63,6 @@ def synthesize_preamble(file_path):
     preamble = f"""{PREAMBLE_MARKER}
 #ifndef _SH_DYNAMIC_GUARD_
 #define _SH_DYNAMIC_GUARD_
-
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -82,7 +91,7 @@ typedef volatile uint8_t  vu8;  typedef volatile int8_t  vs8;
 #endif
 #endif
 
-// Redirect legacy memory calls to our renamed implementations
+// Redirect legacy calls to renamed implementations
 #define memcpy n64_memcpy
 #define memmove n64_memmove
 #define bcopy(src, dst, n) n64_memmove(dst, src, n)
@@ -91,35 +100,34 @@ typedef volatile uint8_t  vu8;  typedef volatile int8_t  vs8;
 #define F3DEX_GBI_2
 #endif
 #define _BOOL_H_
+#endif
 """
     if "code_1D00.c" in str(file_path):
         preamble += "\nstruct AudioInfo_s; typedef struct AudioInfo_s AudioInfo;\n"
         preamble += "bool audioManager_handleFrameMsg(AudioInfo *info, AudioInfo *prev_info);\n"
 
-    preamble += "#endif\n"
     return preamble
 
 def apply_source_fixes(content):
-    # 1. Surgical implementation renaming for memory.c
+    # 1. Implementation renaming
     content = content.replace("void memcpy(void", "void n64_memcpy(void")
     content = content.replace("void memmove(void", "void n64_memmove(void")
-    content = content.replace("void memmove(u8", "void n64_memmove(u8") # Catch the u8 variant
+    content = content.replace("void memmove(u8", "void n64_memmove(void") # Force void* for compatibility
     
-    # 2. Redirect legacy includes
+    # 2. Legacy header cleanup
     content = content.replace('#include "string.h"', '#include <string.h>')
     content = content.replace('#include "core1/mem.h"', '#include <string.h>')
     
-    # 3. 64-bit Pointer Truncation
+    # 3. 64-bit Pointers
     content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
     content = re.sub(r'\(u32\)\s*\((.*?)\)', r'(u32)(uintptr_t)(\1)', content)
     
-    # 4. Signature harmonization
+    # 4. Return types
     content = content.replace("bool func_80253400(void)", "int func_80253400(void)")
     return content
 
 def process_file(path, is_header=False):
     if path.suffix == ".cpp": return False
-    
     raw_content = path.read_text(encoding='utf-8', errors='ignore')
     content = re.sub(r'/\* SH-.*?\*/.*?#endif\n', '', raw_content, flags=re.DOTALL)
     fixed_content = apply_source_fixes(content)
@@ -136,7 +144,7 @@ def main():
     inc_root = repo_root / "decomp-files/include"
     decomp_root = repo_root / "decomp-files"
     
-    print("[>] SourceHarmonizer v81.4: Implementation Renaming Active")
+    print("[>] SourceHarmonizer v81.5: Final SDK Synchronization")
     deep_clean_sdk(decomp_root)
     
     count = 0
