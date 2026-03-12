@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 
 def setup_headers(decomp_root: Path):
-    # 1. Create a bulletproof n64_types.h
+    # 1. Create a bulletproof n64_types.h including 3D types
     types_h = decomp_root / "include" / "n64_types.h"
     types_h.write_text("""#ifndef _N64_TYPES_H_
 #define _N64_TYPES_H_
@@ -22,25 +22,41 @@ typedef float f32;    typedef double f64;
   #define FALSE false
 #endif
 
-// Opaque types for the engine
+// --- Graphics Opaque Types ---
+typedef uint64_t Gfx;
+typedef struct { int32_t m[4][4]; } Mtx;
+typedef struct { u8 d[16]; } Vtx;
+typedef struct { u8 d[32]; } LookAt;
+typedef struct { u8 d[32]; } Hilite;
+typedef struct { u8 d[32]; } Light;
+typedef struct { u8 d[64]; } uSprite;
+typedef struct { u8 d[64]; } PositionalLight;
+
+// --- Audio Opaque Types ---
+typedef uint64_t Acmd;
 typedef struct { uint32_t w0; uint32_t w1; } Awords;
 typedef struct { uint32_t w0; uint32_t w1; } Apolef;
-typedef uint64_t Gfx;
-typedef uint64_t Acmd;
-typedef struct { int32_t m[4][4]; } Mtx;
 typedef struct { u8 d[16]; } ALHeap;
 typedef struct { u8 d[64]; } Aadpcm;
 typedef struct { u8 d[128]; } ADPCM_STATE;
+typedef struct { u8 d[128]; } RESAMPLE_STATE;
+typedef struct { u8 d[128]; } POLEF_STATE;
+typedef struct { u8 d[128]; } ENVMIX_STATE;
 
 #ifndef bcopy
 #define bcopy(src, dst, n) __builtin_memmove(dst, src, n)
 #endif
 
+bool audioManager_handleFrameMsg(void *info, void *prev_info);
+
 #endif
 """, encoding='utf-8')
 
-    # 2. Force Replace "Toxic" SDK Headers with simple redirects
-    # This prevents the compiler from ever seeing 'long Mtx_t' again.
+    # 2. Neutralize the recursion in bool.h
+    bool_h = decomp_root / "include" / "bool.h"
+    bool_h.write_text("#pragma once\n#include <stdbool.h>\n", encoding='utf-8')
+
+    # 3. Force Replace "Toxic" SDK Headers
     toxic_headers = [
         "2.0L/PR/ultratypes.h",
         "2.0L/PR/abi.h",
@@ -53,22 +69,7 @@ typedef struct { u8 d[128]; } ADPCM_STATE;
         if h_path.exists():
             h_path.write_text("#include <n64_types.h>\n", encoding='utf-8')
 
-    # 3. Clean libaudio.h (Remove problematic typedefs entirely)
-    libaudio = decomp_root / "include/2.0L/PR/libaudio.h"
-    if libaudio.exists():
-        content = libaudio.read_text(encoding='utf-8', errors='ignore')
-        # Remove struct definitions that we've already defined in n64_types.h
-        patterns = [
-            r"typedef struct \{.*?\} ALHeap;",
-            r"typedef struct \{.*?\} Aadpcm;",
-            r"typedef short ADPCM_STATE\[.*?\];"
-        ]
-        for p in patterns:
-            content = re.sub(p, f"/* SH-REMOVED-TYPE */", content, flags=re.DOTALL)
-        libaudio.write_text(content, encoding='utf-8')
-
 def apply_source_fixes(content):
-    # Standard Include Pathing
     content = content.replace('#include "string.h"', '#include <string.h>')
     content = content.replace('#include "core1/mem.h"', '#include <string.h>')
     # 64-bit Pointer alignment fix
@@ -78,7 +79,7 @@ def apply_source_fixes(content):
 def main():
     repo_root = Path("./")
     decomp_root = repo_root / "decomp-files"
-    print("[>] SourceHarmonizer v83.0: Stub & Redirect Mode")
+    print("[>] SourceHarmonizer v83.1: Hardware Types Expanded")
     
     setup_headers(decomp_root)
     
@@ -86,9 +87,8 @@ def main():
         for file_path in root.rglob("*.[ch]"):
             if file_path.suffix == ".h" and "PR/" in str(file_path): continue
             raw = file_path.read_text(encoding='utf-8', errors='ignore')
-            # Remove any previous SH preambles
             content = re.sub(r'/\* SH-.* \*/\n', '', raw)
             fixed = apply_source_fixes(content)
-            file_path.write_text(f"/* SH-AUTOMORPH-V83.0 */\n{fixed}", encoding='utf-8')
+            file_path.write_text(f"/* SH-AUTOMORPH-V83.1 */\n{fixed}", encoding='utf-8')
 
 if __name__ == "__main__": main()
