@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-SourceHarmonizer v75.63
+SourceHarmonizer v75.64
 BK AArch64 Android port — IDO/N64 decomp source → Clang/NDK compatibility
 
-This script resolves "unknown type name" errors by standardizing ultratypes.h
-and forcing its inclusion across the PR header stack.
+Aggressive fix for "unknown type name" in SDK headers by forcing early 
+inclusion of standardized types and resolving float/double conflicts.
 """
 
 import re
 from pathlib import Path
 
 # --- GLOBAL CONFIGURATION ---
-PREAMBLE_MARKER = "/* SH-v75.63-preamble */"
+PREAMBLE_MARKER = "/* SH-v75.64-preamble */"
 PREAMBLE = """\
 {marker}
 #ifndef F3DEX_GBI_2
@@ -27,23 +27,20 @@ PREAMBLE = """\
 #    define bool _Bool
 #  endif
 #endif
-
-#ifndef BOOL
-#  define BOOL(x) (!!(x))
-#endif
 """.format(marker=PREAMBLE_MARKER)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# HEADER REPAIR LOGIC
+# SDK HEADER REPAIR (THE "NUCLEAR" OPTION)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _fix_ultratypes_standardization(decomp_root: Path):
-    """H6: Maps N64 types to C99 stdint types to prevent NDK/64-bit conflicts."""
+    """H6: Maps N64 types to C99 stdint types. Updated for v75.64."""
     path = decomp_root / "include" / "2.0L" / "PR" / "ultratypes.h"
     if not path.exists(): return
     content = path.read_text(encoding='utf-8', errors='ignore')
-    if "v75.63 Standard Type Mapping" in content: return
+    if "v75.64 Standard Type Mapping" in content: return
 
+    # Ensure stdint is available
     mapping = {
         r'typedef\s+unsigned\s+char\s+u8;':  'typedef uint8_t u8;',
         r'typedef\s+signed\s+char\s+s8;':    'typedef int8_t s8;',
@@ -57,37 +54,33 @@ def _fix_ultratypes_standardization(decomp_root: Path):
         r'typedef\s+double\s+f64;':          'typedef double f64;',
     }
     
-    header = "/* SH: v75.63 Standard Type Mapping */\n#include <stdint.h>\n"
     for old, new in mapping.items():
         content = re.sub(old, new, content)
     
-    path.write_text(header + content, encoding='utf-8')
-    print(f"  [PATCHED] ultratypes.h standardized")
-
-def _force_ultratypes_inclusion(decomp_root: Path):
-    """H9: Ensures os_thread.h and others have types by forcing ultratypes.h inclusion."""
-    pr_include_dir = decomp_root / "include" / "2.0L" / "PR"
-    target_headers = ["os_thread.h", "os_message.h", "os_pi.h", "os_vi.h"]
+    # Add guard to prevent circular issues with the force-include pass
+    header = "/* SH: v75.64 Standard Type Mapping */\n#ifndef _ULTRATYPES_H_SH_\n#define _ULTRATYPES_H_SH_\n#include <stdint.h>\n"
+    footer = "\n#endif /* _ULTRATYPES_H_SH_ */"
     
-    for header_name in target_headers:
-        path = pr_include_dir / header_name
-        if not path.exists(): continue
+    path.write_text(header + content + footer, encoding='utf-8')
+    print(f"  [PATCHED] ultratypes.h standardized and guarded")
+
+def _force_global_sdk_types(decomp_root: Path):
+    """H9: Recursively forces every PR header to include ultratypes.h first."""
+    pr_dir = decomp_root / "include" / "2.0L" / "PR"
+    if not pr_dir.exists(): return
+
+    for path in pr_dir.glob("*.h"):
+        if path.name == "ultratypes.h": continue
         
         content = path.read_text(encoding='utf-8', errors='ignore')
         if "ultratypes.h" not in content:
-            # Insert after the header guard if it exists, otherwise at the top
-            guard_match = re.search(r'#define\s+_\w+_H_', content)
-            if guard_match:
-                insertion_point = guard_match.end()
-                content = content[:insertion_point] + "\n#include <PR/ultratypes.h>" + content[insertion_point:]
-            else:
-                content = "#include <PR/ultratypes.h>\n" + content
-            
-            path.write_text(content, encoding='utf-8')
-            print(f"  [FIXED] Forced ultratypes.h into {header_name}")
+            # We insert it at the absolute top of the file to beat the type usage
+            new_content = "#include <PR/ultratypes.h>\n" + content
+            path.write_text(new_content, encoding='utf-8')
+            print(f"  [FIXED] Global Type Force: {path.name}")
 
 def _fix_gbi_abi_visibility(decomp_root: Path):
-    """H7: Forward declares Acmd in GBI to stop circular include dependency."""
+    """H7: Forward declares Acmd to stop circular dependencies in graphics headers."""
     gbi_path = decomp_root / "include" / "2.0L" / "PR" / "gbi.h"
     if not gbi_path.exists(): return
     content = gbi_path.read_text(encoding='utf-8')
@@ -97,12 +90,8 @@ def _fix_gbi_abi_visibility(decomp_root: Path):
         print("  [PATCHED] gbi.h visibility fixed")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# FILE PROCESSING LOGIC
+# MAIN EXECUTION
 # ─────────────────────────────────────────────────────────────────────────────
-
-def _fix_pointer_to_int_casts(content: str) -> str:
-    """Fixes 64-bit pointer truncation errors (e.g., casting ptr to u32)."""
-    return re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
 
 def process_c_file(path: Path):
     original = path.read_text(encoding='utf-8', errors='ignore')
@@ -111,31 +100,27 @@ def process_c_file(path: Path):
     if PREAMBLE_MARKER not in content:
         content = PREAMBLE + content
     
-    content = _fix_pointer_to_int_casts(content)
+    # Fix pointer truncation for 64-bit Android
+    content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
     
     if content != original:
         path.write_text(content, encoding='utf-8')
         return True
     return False
 
-# ─────────────────────────────────────────────────────────────────────────────
-# MAIN
-# ─────────────────────────────────────────────────────────────────────────────
-
 def main():
-    # Adjusting path to find decomp-files relative to the script location
     repo_root = Path(__file__).resolve().parent.parent
     decomp_root = repo_root / "decomp-files"
     src_dir = decomp_root / "src"
 
-    print(f"[>] SourceHarmonizer v75.63 Starting...")
+    print(f"[>] SourceHarmonizer v75.64 Starting...")
     
-    # 1. Critical Header Fixes
+    # 1. SDK Infrastructure Repair
     _fix_ultratypes_standardization(decomp_root)
-    _force_ultratypes_inclusion(decomp_root)
+    _force_global_sdk_types(decomp_root)
     _fix_gbi_abi_visibility(decomp_root)
     
-    # 2. Source Code Fixes
+    # 2. Source Code Pass
     modified_count = 0
     if src_dir.exists():
         for path in sorted(src_dir.rglob("*.c")):
