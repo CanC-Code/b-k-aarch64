@@ -32,14 +32,28 @@ jobs:
           sudo apt-get install -y imagemagick
           pip install PyYAML
 
+      - name: Generate Binary Asset Manifests
+        run: python3 runtime/generate_assets_header.py
+
+      - name: Generate App Icons
+        run: |
+          # Ensure the resource directories exist so AAPT doesn't fail
+          mkdir -p Android/app/src/main/res/mipmap-mdpi
+          mkdir -p Android/app/src/main/res/mipmap-hdpi
+          mkdir -p Android/app/src/main/res/mipmap-xhdpi
+          mkdir -p Android/app/src/main/res/mipmap-xxhdpi
+          
+          if [ -f "master_icon.png" ]; then
+            python3 runtime/generate_icons.py master_icon.png
+          else
+            echo "master_icon.png not found, creating placeholder icons"
+            # Create a basic 48x48 icon so the manifest is satisfied
+            convert -size 48x48 xc:gray Android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+            cp Android/app/src/main/res/mipmap-mdpi/ic_launcher.png Android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+          fi
+
       - name: Prepare C++ Source
         run: python3 runtime/prepare_source.py
-
-      - name: Verify patches landed
-        run: |
-          echo "Checking Harmonizer Preamble..."
-          # Using the new generic marker
-          grep -c "SH-AUTOMORPH-ACTIVE" decomp-files/src/core1/audio/auxbus.c && echo "Preamble OK" || echo "Preamble NOT found"
 
       - name: Build with Gradle
         run: |
@@ -53,8 +67,7 @@ jobs:
       - name: Inspect Build Errors on Failure
         if: failure()
         run: |
-          grep -i "error:" /tmp/build_full.log | head -n 100 || echo "No errors found."
-          grep -B 5 -A 10 "error:" /tmp/build_full.log | head -n 50 || true
+          grep -i "error:" /tmp/build_full.log | head -n 100 || echo "No explicit errors in log."
 
       - name: Upload Debug APK
         if: success()
