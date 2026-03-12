@@ -4,7 +4,7 @@ import hashlib
 from pathlib import Path
 
 # --- CONFIGURATION ---
-PREAMBLE_MARKER = "/* SH-AUTOMORPH-ACTIVE-V81.0-STABLE */"
+PREAMBLE_MARKER = "/* SH-AUTOMORPH-ACTIVE-V81.1-CPPFIX */"
 
 def get_content_hash(text):
     return hashlib.md5(text.encode('utf-8')).hexdigest()[:8]
@@ -17,29 +17,32 @@ def unique_struct_fix(match):
 
 def deep_clean_sdk(decomp_root: Path):
     """
-    Physically replaces clashing headers with safety-guarded system redirects.
+    Ensures absolute compatibility between legacy C and modern C++.
     """
     # 1. Neutralize bool.h
     bool_h = decomp_root / "include" / "bool.h"
     if bool_h.exists():
         bool_h.write_text("#include <stdbool.h>\n", encoding='utf-8')
 
-    # 2. Kill the infinite recursion in string.h and mem.h
-    # We use a double-guard to ensure the system header is included without looping
+    # 2. String/Mem Safeguards
     conflict_headers = [
         decomp_root / "include" / "string.h",
         decomp_root / "include" / "core1" / "mem.h"
     ]
     
+    # We use a guard that allows both C and C++ to see the symbols in the global namespace
     safety_string_h = """#ifndef _SH_STRING_SAFE_WRAP_
 #define _SH_STRING_SAFE_WRAP_
 #include <string.h>
+#ifdef __cplusplus
+using std::memcpy; using std::memset; using std::memmove;
+using std::strcpy; using std::strlen; using std::strcat;
+#endif
 #endif
 """
     for c_path in conflict_headers:
         if c_path.exists():
             c_path.write_text(safety_string_h, encoding='utf-8')
-            print(f"  [SAFEGUARDED] {c_path.name} logic replaced with system forwarder.")
 
     # 3. SDK Header unique tagging
     audio_headers = [
@@ -101,7 +104,9 @@ def apply_source_fixes(content):
     return content
 
 def process_file(path, is_header=False):
+    # Only process C files for preamble injection
     if path.suffix == ".cpp": return False
+    
     raw_content = path.read_text(encoding='utf-8', errors='ignore')
     content = re.sub(r'/\* SH-.*?\*/.*?#endif\n', '', raw_content, flags=re.DOTALL)
     fixed_content = apply_source_fixes(content)
@@ -118,7 +123,7 @@ def main():
     inc_root = repo_root / "decomp-files/include"
     decomp_root = repo_root / "decomp-files"
     
-    print("[>] SourceHarmonizer v81.0: Breaking Include Loops")
+    print("[>] SourceHarmonizer v81.1: Fixing C++ Namespace Mapping")
     deep_clean_sdk(decomp_root)
     
     count = 0
