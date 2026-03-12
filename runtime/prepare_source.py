@@ -1,17 +1,26 @@
 #!/usr/bin/env python3
 """
-SourceHarmonizer v75.60
+SourceHarmonizer v75.61
 BK AArch64 Android port — IDO/N64 decomp source → Clang/NDK compatibility
 
 Drop this file at:  runtime/prepare_source.py
 It runs before the CMake/ninja build and patches decomp-files/src in-place.
 
+v75.61 changes vs v75.60:
+  - Removed all `#undef _GBI_H_` from H1/H2/H3/H4/H5 injections.
+    Those undefs were the original workaround for getting F3DEX_GBI_2 in
+    before gbi.h was first included. Now that CMake defines F3DEX_GBI_2
+    globally via add_definitions(), gbi.h picks it up on first include and
+    the include guard (_GBI_H_) correctly blocks all subsequent inclusions.
+    Undeffing the guard caused gbi.h to be parsed multiple times, producing
+    "typedef redefinition with different types" for Vtx, Mtx, Light, etc.
+  - All injections now use `#ifndef _GBI_H_ / #include <PR/gbi.h> / #endif`
+    instead of unconditional includes.
+
 v75.60 changes vs v75.59:
   - Added header pass H0: patches ultratypes.h to wrap all primitive typedefs
-    (s8/u8/s16/u16/s32/u32/s64/u64/f32/f64) in #ifndef guards so the file can
-    be included normally without duplicate-typedef errors from NDK stdint.h.
+    (s8/u8/s16/u16/s32/u32/s64/u64/f32/f64) in #ifndef guards.
   - CMakeLists no longer needs -D_ULTRATYPES_H_, -D_GBI_H_, or -include gbi.h.
-    Those band-aids are what caused the "unknown type name 's32'" cascade.
 """
 
 import re
@@ -51,7 +60,7 @@ PREAMBLE_MARKER = "/* SH-v75.50-preamble */"
 
 PREAMBLE = """\
 {marker}
-/* SourceHarmonizer v75.60 — Android/NDK compatibility preamble             */
+/* SourceHarmonizer v75.61 — Android/NDK compatibility preamble             */
 /* All definitions are guarded with #ifndef — never overrides decomp headers */
 
 /* F3DEX_GBI_2: enables G_TRI2 and all F3DEX2 GBI opcodes in gbi.h.         */
@@ -125,7 +134,7 @@ PREAMBLE = """\
 #ifndef ARRAY_COUNT
 #  define ARRAY_COUNT(x)   (sizeof(x) / sizeof((x)[0]))
 #endif
-/* ── End SourceHarmonizer v75.60 preamble ─────────────────────────────── */
+/* ── End SourceHarmonizer v75.61 preamble ─────────────────────────────── */
 
 """.format(marker=PREAMBLE_MARKER)
 
@@ -602,11 +611,13 @@ def _fix_ultratypes_h(decomp_root: Path) -> None:
 _ULTRA64_H_MARKER = "/* SH: gbi.h injected before gu.h */"
 
 _GBI_INJECTION = (
-    "\n/* SH: gbi.h injected before gu.h */\n"
+    "\n/* SH: gbi.h injected before gu.h — guarded so it only runs once */\n"
     "#ifndef F3DEX_GBI_2\n"
     "#define F3DEX_GBI_2\n"
     "#endif\n"
+    "#ifndef _GBI_H_\n"
     "#include <PR/gbi.h>\n"
+    "#endif\n"
 )
 
 def _fix_ultra64_header(decomp_root: Path) -> None:
@@ -638,15 +649,12 @@ def _fix_ultra64_header(decomp_root: Path) -> None:
 # Header pass H2 — Fix structs.h gbi.h include guard problem
 # ─────────────────────────────────────────────────────────────────────────────
 
-_STRUCTS_H_MARKER = "/* SH: F3DEX_GBI_2 + _GBI_H_ reset for ultra64.h */"
+_STRUCTS_H_MARKER = "/* SH: F3DEX_GBI_2 set before ultra64.h includes gbi.h */"
 
 _STRUCTS_H_INJECTION = """\
-/* SH: F3DEX_GBI_2 + _GBI_H_ reset for ultra64.h */
+/* SH: F3DEX_GBI_2 set before ultra64.h includes gbi.h */
 #ifndef F3DEX_GBI_2
 #  define F3DEX_GBI_2
-#endif
-#ifdef _GBI_H_
-#  undef _GBI_H_
 #endif
 """
 
@@ -678,16 +686,14 @@ _GU_H_MARKER = "/* SH: gu.h self-includes gbi.h with F3DEX_GBI_2 */"
 
 _GU_H_INJECTION = """\
 /* SH: gu.h self-includes gbi.h with F3DEX_GBI_2 */
-/* gu.h uses Gfx/Mtx/LookAt/Hilite from gbi.h but never includes it.        */
-/* mbi.h pulls in gbi.h without F3DEX_GBI_2 first, setting _GBI_H_ guard.  */
-/* We undef the guard and re-include with F3DEX_GBI_2 so types are defined. */
+/* F3DEX_GBI_2 is defined globally by CMake; gbi.h include guard prevents   */
+/* double-inclusion. We only ensure F3DEX_GBI_2 is set before the include.  */
 #ifndef F3DEX_GBI_2
 #  define F3DEX_GBI_2
 #endif
-#ifdef _GBI_H_
-#  undef _GBI_H_
+#ifndef _GBI_H_
+#  include <PR/gbi.h>
 #endif
-#include <PR/gbi.h>
 """
 
 def _fix_gu_h(decomp_root: Path) -> None:
@@ -727,14 +733,13 @@ _ABI_H_INJECTION = """\
 #ifndef ADPCMFSIZE
 #  define ADPCMFSIZE 16
 #endif
-/* Acmd is defined in gbi.h via F3DEX_GBI_2 — forward declare if not yet.   */
+/* Ensure F3DEX_GBI_2 is set so gbi.h exposes Acmd/Gfx when first included. */
 #ifndef F3DEX_GBI_2
 #  define F3DEX_GBI_2
 #endif
-#ifdef _GBI_H_
-#  undef _GBI_H_
+#ifndef _GBI_H_
+#  include <PR/gbi.h>
 #endif
-#include <PR/gbi.h>
 """
 
 def _fix_abi_h(decomp_root: Path) -> None:
@@ -774,10 +779,9 @@ _LIBAUDIO_H_INJECTION = """\
 #ifndef F3DEX_GBI_2
 #  define F3DEX_GBI_2
 #endif
-#ifdef _GBI_H_
-#  undef _GBI_H_
+#ifndef _GBI_H_
+#  include <PR/gbi.h>
 #endif
-#include <PR/gbi.h>
 #ifndef _ABI_H_
 #  include <PR/abi.h>
 #endif
@@ -860,7 +864,7 @@ def main() -> None:
     src_dir     = repo_root / "decomp-files" / "src"
     decomp_root = repo_root / "decomp-files"
 
-    print(f"[>] SourceHarmonizer v75.60 — working from repo root: {repo_root}")
+    print(f"[>] SourceHarmonizer v75.61 — working from repo root: {repo_root}")
     print(f"    Source dir: {src_dir}")
     if not src_dir.exists():
         print(f"[!] Source directory not found: {src_dir}")
@@ -889,7 +893,7 @@ def main() -> None:
             print(f"  [ERROR] {path.name}: {e}")
             errors += 1
 
-    print(f"\n[+] v75.60 complete.")
+    print(f"\n[+] v75.61 complete.")
     print(f"    Processed : {processed}")
     print(f"    Modified  : {modified}")
     if errors:
