@@ -3,47 +3,46 @@ import re
 import os
 from pathlib import Path
 
-def setup_harmonized_environment():
+def sweep_and_harmonize():
     cwd = Path.cwd().resolve()
     decomp_root = cwd / "decomp-files"
     include_dir = decomp_root / "include"
     sdk_dir = include_dir / "2.0L" / "PR"
     
-    print(f"--- [v88.0] DEEP SYMBOL INJECTION: AArch64 ---")
+    print(f"--- [v89.0] REQUIREMENT SWEEPER: AArch64 ---")
 
-    # 1. SDK Redirection
-    toxic = [
-        "ultratypes.h", "abi.h", "mbi.h", "gbi.h", "os_libc.h", 
-        "os_thread.h", "os_message.h", "os_cont.h", "os.h", "gu.h",
-        "os_internal.h", "os_internal_exception.h", "os_pfs.h"
-    ]
+    # 1. SDK Redirection (Absolute)
+    toxic = ["ultratypes.h", "abi.h", "mbi.h", "gbi.h", "os_libc.h", "os.h", "gu.h", "os_internal.h"]
     for name in toxic:
         target = sdk_dir / name
         if target.exists():
             target.write_text("#include <n64_types.h>\n")
 
-    # 2. GLOBAL SOURCE REPAIR & SYMBOL INJECTION
+    # 2. Source Surgery
     for path in decomp_root.rglob("*.[ch]"):
         if "PR/" in str(path): continue
         try:
             content = path.read_text(errors='ignore')
             original = content
             
-            # Pointer safety (MIPS 32 -> ARM 64)
+            # 2a. Fix implicit declaration conflicts (e.g. audioManager_handleFrameMsg)
+            # If the file defines it but the call came before the definition, Clang errors.
+            # We inject a forward declaration to be safe.
+            if "audioManager_handleFrameMsg" in content and "bool audioManager_handleFrameMsg" not in content[:500]:
+                content = "struct AudioInfo; bool audioManager_handleFrameMsg(void *info, void *prev);\n" + content
+
+            # 2b. Global Pointer safety
             content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
             
-            # Deep Injection: If file uses OS_IM_NONE but it's not defined, fix it locally
+            # 2c. Force OS_IM_NONE
             if "OS_IM_NONE" in content and "#define OS_IM_NONE" not in content:
                 content = "#ifndef OS_IM_NONE\n#define OS_IM_NONE 0\n#endif\n" + content
 
-            # Remove local bool typedefs
-            content = content.replace("typedef int bool;", "// Removed")
-            
             if content != original:
                 path.write_text(content)
         except: pass
 
-    print(f"--- Harmonization v88.0 Complete ---")
+    print(f"--- Harmonization Complete. ---")
 
 if __name__ == "__main__":
-    setup_harmonized_environment()
+    sweep_and_harmonize()
