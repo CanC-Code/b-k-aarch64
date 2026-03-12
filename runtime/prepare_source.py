@@ -3,15 +3,40 @@ import re
 from pathlib import Path
 
 # --- CONFIGURATION ---
-PREAMBLE_MARKER = "/* SH-v78.0-AUTOMORPH */"
+PREAMBLE_MARKER = "/* SH-v79.0-AUTOMORPH */"
+
+def neutralize_bool_header(decomp_root: Path):
+    """
+    Physically overwrites the project's bool.h to prevent the 'int' typedef 
+    conflict with Clang's stdbool.h.
+    """
+    bool_h = decomp_root / "include" / "bool.h"
+    if bool_h.exists():
+        content = bool_h.read_text(encoding='utf-8')
+        if "typedef int bool;" in content:
+            # We comment out the legacy typedef and inject stdbool.h
+            content = content.replace("typedef int bool;", "/* typedef int bool; replaced for Android */\n#include <stdbool.h>")
+            bool_h.write_text(content, encoding='utf-8')
+            print("  [PATCHED] include/bool.h neutralized.")
+
+def fix_audio_struct_redefinitions(decomp_root: Path):
+    """
+    Fixes the 'typedef redefinition with different types' error in synthInternals.h
+    by ensuring the struct tag matches the typedef name exactly, neutralizing the '_s' suffix pattern.
+    """
+    synth_h = decomp_root / "include" / "synthInternals.h"
+    if synth_h.exists():
+        content = synth_h.read_text(encoding='utf-8')
+        
+        # Replace 'typedef struct ALFilter_s {' with 'typedef struct ALFilter {'
+        content = re.sub(r'typedef\s+struct\s+ALFilter_s\s*\{', 'typedef struct ALFilter {', content)
+        # Replace 'typedef struct ALAuxBus_s {' with 'typedef struct ALAuxBus {'
+        content = re.sub(r'typedef\s+struct\s+ALAuxBus_s\s*\{', 'typedef struct ALAuxBus {', content)
+        
+        synth_h.write_text(content, encoding='utf-8')
+        print("  [PATCHED] include/synthInternals.h struct tags normalized.")
 
 def synthesize_preamble():
-    """
-    v78.0 discards type synthesis (which causes redefinition and incomplete 
-    type errors) in favor of forced, ordered SDK inclusion. By providing the
-    primitives first, the SDK headers can load successfully and provide the
-    real, complete definitions for ALFilter, ALAuxBus, etc.
-    """
     return f"""{PREAMBLE_MARKER}
 #ifndef _SH_DYNAMIC_GUARD_
 #define _SH_DYNAMIC_GUARD_
@@ -20,7 +45,7 @@ def synthesize_preamble():
 #include <stddef.h>
 #include <stdbool.h>
 
-// 1. Force-inject N64 Primitives FIRST
+// Force-inject N64 Primitives FIRST
 #ifndef _SH_PRIMITIVES_
 #define _SH_PRIMITIVES_
 typedef uint8_t   u8;
@@ -35,52 +60,40 @@ typedef float     f32;
 typedef double    f64;
 #endif
 
-// 2. Resolve boolean conflicts
-#define _BOOL_H_ 
-#define _LIB_BOOL_H_
-
-// 3. Set global flags
 #ifndef F3DEX_GBI_2
 #define F3DEX_GBI_2
 #endif
 
-// 4. Force actual SDK headers to resolve complex/opaque types
-// This ensures ALFilter, ALAuxBus, etc., are fully defined.
-#include <PR/ultratypes.h>
-#include <PR/libaudio.h>
+// Safe Forward Declarations for Audio Types (Normalized in v79.0)
+struct ALFilter;
+typedef struct ALFilter ALFilter;
+struct ALAuxBus;
+typedef struct ALAuxBus ALAuxBus;
+struct ALCSPlayer;
+typedef struct ALCSPlayer ALCSPlayer;
+struct N_ALCSPlayer;
+typedef struct N_ALCSPlayer N_ALCSPlayer;
+struct ALSeqFile;
+typedef struct ALSeqFile ALSeqFile;
+struct ALBankFile;
+typedef struct ALBankFile ALBankFile;
 
 #endif
 """
 
 def apply_dynamic_fixes(content):
-    """
-    Handles AArch64 pointer truncation and inline boolean conflicts.
-    """
-    # Fix pointer truncation: (u32)ptr -> (u32)(uintptr_t)ptr
+    # 64-bit Pointer Truncation Fixes
     content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
     content = re.sub(r'\(u32\)\s*\((.*?)\)', r'(u32)(uintptr_t)(\1)', content)
     
     # Neutralize inline legacy bool typedefs inside .c files
-    content = re.sub(r'^typedef\s+int\s+bool;', r'// typedef int bool; // Handled by stdbool', content, flags=re.M)
-    
-    # NEW in v78.0: Fix conflicting types for 'audioManager_handleFrameMsg'
-    # If the function is defined, ensure we inject a forward declaration
-    # at the top (after includes) so implicit 'int' declarations don't happen.
-    if 'bool audioManager_handleFrameMsg(' in content:
-        decl = "extern bool audioManager_handleFrameMsg(AudioInfo *info, AudioInfo *prev_info);\n"
-        if decl not in content:
-            # Insert after the last include
-            last_include_match = list(re.finditer(r'^#include.*$', content, re.MULTILINE))
-            if last_include_match:
-                insert_pos = last_include_match[-1].end()
-                content = content[:insert_pos] + "\n" + decl + content[insert_pos:]
-
+    content = re.sub(r'^typedef\s+int\s+bool;', r'/* typedef int bool; */', content, flags=re.M)
     return content
 
 def process_file(path):
     raw_content = path.read_text(encoding='utf-8', errors='ignore')
     
-    # Aggressive cleanup of all previous Harmonizer blocks (v75, v76, v77)
+    # Clean old Harmonizer versions
     content = re.sub(r'/\* SH-v7[5678]\..*? \*/.*?#endif\n', '', raw_content, flags=re.DOTALL)
     
     preamble = synthesize_preamble()
@@ -95,17 +108,25 @@ def process_file(path):
 
 def main():
     src_root = Path("./decomp-files/src") 
+    decomp_root = Path("./decomp-files")
+    
     if not src_root.exists():
-        print("[-] Error: Source root './decomp-files/src' not found.")
+        print("[-] Error: Source root not found.")
         return
 
-    print(f"[>] Running Automorph v78.0-AArch64 (SDK Integration Mode)...")
+    print(f"[>] Running Automorph v79.0-AArch64 (Deep Clean Mode)...")
+    
+    # 1. Execute Header-Level Deep Cleans
+    neutralize_bool_header(decomp_root)
+    fix_audio_struct_redefinitions(decomp_root)
+    
+    # 2. Process all C files
     count = 0
     for c_file in src_root.rglob("*.c"):
         if process_file(c_file):
             count += 1
             
-    print(f"\n[!] Success: {count} files processed. 'Incomplete Type' and 'Redefinition' conflicts resolved.")
+    print(f"\n[!] Success: {count} files processed. Struct tags and bool.h neutralized.")
 
 if __name__ == "__main__":
     main()
