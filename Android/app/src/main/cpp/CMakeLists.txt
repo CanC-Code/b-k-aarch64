@@ -10,7 +10,7 @@ set(ULTRA_DIR "${CPP_ROOT}/ultra")
 set(TOOLS_DIR "${CPP_ROOT}/tools")
 
 # ─── Compile flags ────────────────────────────────────────────────────────────
-# REMOVED -fno-builtin to allow the system to handle string/mem functions
+# We remove -fno-builtin and -I priority for project headers
 set(COMMON_FLAGS "-w -fcommon -O2 -D_FINALROM")
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   ${COMMON_FLAGS} -D_ULTRATYPES_H_ -include stdint.h")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
@@ -19,10 +19,15 @@ add_compile_definitions($<$<COMPILE_LANGUAGE:C>:_LANGUAGE_C>)
 add_definitions(-DF3DEX_GBI_2)
 
 # ─── Include directories ─────────────────────────────────────────────────────
+# Priority 1: Modern Wrapper
 include_directories(
     ${CPP_ROOT}
     ${ULTRA_DIR}
     ${TOOLS_DIR}
+)
+
+# Priority 2: Decomp Headers (Marked as SYSTEM to prevent them from overriding NDK headers)
+include_directories(SYSTEM
     ${DECOMP_ROOT}/include/2.0L/PR
     ${DECOMP_ROOT}/include/2.0L
     ${DECOMP_ROOT}/include
@@ -53,4 +58,4 @@ set(WRAPPER_SOURCES
 )
 
 add_library(bkawrapper SHARED ${CORE1_SOURCES} ${WRAPPER_SOURCES})
-target_link_libraries(bkawrapper log android z GLESv2 EGL atomic m)
+target_link_libraries(bkawrapper log android z GLESv2 EGL m atomic)
