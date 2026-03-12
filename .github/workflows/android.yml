@@ -37,7 +37,6 @@ jobs:
 
       - name: Generate App Icons
         run: |
-          # Ensure the resource directories exist so AAPT doesn't fail
           mkdir -p Android/app/src/main/res/mipmap-mdpi
           mkdir -p Android/app/src/main/res/mipmap-hdpi
           mkdir -p Android/app/src/main/res/mipmap-xhdpi
@@ -46,8 +45,7 @@ jobs:
           if [ -f "master_icon.png" ]; then
             python3 runtime/generate_icons.py master_icon.png
           else
-            echo "master_icon.png not found, creating placeholder icons"
-            # Create a basic 48x48 icon so the manifest is satisfied
+            echo "Creating placeholder icons..."
             convert -size 48x48 xc:gray Android/app/src/main/res/mipmap-mdpi/ic_launcher.png
             cp Android/app/src/main/res/mipmap-mdpi/ic_launcher.png Android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
           fi
@@ -61,13 +59,17 @@ jobs:
           GRADLEW_PATH=$(find . -name gradlew)
           chmod +x "$GRADLEW_PATH"
           cd $(dirname "$GRADLEW_PATH")
-          ./gradlew assembleDebug --no-daemon --info 2>&1 | tee /tmp/build_full.log
+          # Clean first to ensure headers are re-read
+          ./gradlew clean assembleDebug --no-daemon --info 2>&1 | tee /tmp/build_full.log
         shell: bash
 
       - name: Inspect Build Errors on Failure
         if: failure()
         run: |
-          grep -i "error:" /tmp/build_full.log | head -n 100 || echo "No explicit errors in log."
+          echo "=== COMPILER ERRORS ==="
+          grep -i "error:" /tmp/build_full.log | head -n 100 || echo "No explicit errors found."
+          echo "=== CONTEXT ==="
+          grep -B 3 -A 5 "error:" /tmp/build_full.log | head -n 50 || true
 
       - name: Upload Debug APK
         if: success()
