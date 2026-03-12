@@ -4,7 +4,7 @@ import hashlib
 from pathlib import Path
 
 # --- CONFIGURATION ---
-PREAMBLE_MARKER = "/* SH-AUTOMORPH-ACTIVE-V80.8 */"
+PREAMBLE_MARKER = "/* SH-AUTOMORPH-ACTIVE-V80.9-FINAL */"
 
 def get_content_hash(text):
     return hashlib.md5(text.encode('utf-8')).hexdigest()[:8]
@@ -16,23 +16,30 @@ def unique_struct_fix(match):
     return f"typedef struct _SH_TAG_{tag_id} {{{struct_body}}} {typename};"
 
 def deep_clean_sdk(decomp_root: Path):
-    """Repairs SDK and Project headers to prevent shadowing and namespace collisions."""
+    """
+    Solves the 'overloadable' attribute error by redirecting all legacy
+    memory and string functions to the modern system library.
+    """
     # 1. Neutralize bool.h
     bool_h = decomp_root / "include" / "bool.h"
     if bool_h.exists():
         bool_h.write_text("#include <stdbool.h>\n", encoding='utf-8')
-    
-    # 2. Fix the string.h conflict (CRITICAL for C++ builds)
-    # This allows <cstring> to find the system string.h instead of the project one
-    proj_string_h = decomp_root / "include" / "string.h"
-    if proj_string_h.exists():
-        original = proj_string_h.read_text(encoding='utf-8', errors='ignore')
-        if "#include_next" not in original:
-            patched = "#include_next <string.h>\n" + original
-            proj_string_h.write_text(patched, encoding='utf-8')
-            print("  [FIXED] string.h shadowed with include_next")
 
-    # 3. Fix redefinition patterns in SDK headers
+    # 2. Kill the conflicting string.h and mem.h declarations
+    # We replace the entire file content with a system include to avoid 'overload' errors
+    conflict_headers = [
+        decomp_root / "include" / "string.h",
+        decomp_root / "include" / "core1" / "mem.h"
+    ]
+    
+    for c_path in conflict_headers:
+        if c_path.exists():
+            # We completely replace these legacy files with a system redirect
+            # This ensures Clang only sees ONE version of memcpy/strcpy (the system one)
+            c_path.write_text("#include <string.h>\n", encoding='utf-8')
+            print(f"  [DELETED CONFLICTS] {c_path.name} redirected to system <string.h>")
+
+    # 3. Standard SDK Struct Fixes
     audio_headers = [
         decomp_root / "include/2.0L/PR/libaudio.h",
         decomp_root / "include/2.0L/PR/n_libaudio.h",
@@ -54,6 +61,7 @@ def synthesize_preamble(file_path):
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <string.h>
 
 #ifndef _SH_PRIMITIVES_
 #define _SH_PRIMITIVES_
@@ -86,30 +94,19 @@ typedef volatile uint8_t  vu8;  typedef volatile int8_t  vs8;
     return preamble
 
 def apply_source_fixes(content):
+    # Pointer Truncation Fixes
     content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
     content = re.sub(r'\(u32\)\s*\((.*?)\)', r'(u32)(uintptr_t)(\1)', content)
     content = content.replace("bool func_80253400(void)", "int func_80253400(void)")
-    
-    clash_patterns = [
-        r'struct\s+ALCSPlayer;', r'typedef\s+struct\s+ALCSPlayer\s+ALCSPlayer;',
-        r'struct\s+N_ALCSPlayer;', r'typedef\s+struct\s+N_ALCSPlayer\s+N_ALCSPlayer;'
-    ]
-    for p in clash_patterns: content = re.sub(p, '', content)
     return content
 
 def process_file(path, is_header=False):
-    # Skip processing .cpp files to avoid messing with modern C++ syntax
     if path.suffix == ".cpp": return False
-    
     raw_content = path.read_text(encoding='utf-8', errors='ignore')
     content = re.sub(r'/\* SH-.*?\*/.*?#endif\n', '', raw_content, flags=re.DOTALL)
     fixed_content = apply_source_fixes(content)
     
-    if not is_header:
-        final_output = synthesize_preamble(path) + fixed_content
-    else:
-        final_output = fixed_content
-        
+    final_output = (synthesize_preamble(path) if not is_header else "") + fixed_content
     if final_output != raw_content:
         path.write_text(final_output, encoding='utf-8')
         return True
@@ -121,7 +118,7 @@ def main():
     inc_root = repo_root / "decomp-files/include"
     decomp_root = repo_root / "decomp-files"
     
-    print("[>] SourceHarmonizer v80.8: C++ Namespace Safety Active")
+    print("[>] SourceHarmonizer v80.9: Final Namespace Resolution")
     deep_clean_sdk(decomp_root)
     
     count = 0
