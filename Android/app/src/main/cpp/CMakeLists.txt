@@ -11,17 +11,14 @@ set(CPP_ROOT  "${CMAKE_CURRENT_SOURCE_DIR}")
 set(ULTRA_DIR "${CPP_ROOT}/ultra")
 
 # ─── Compile flags ────────────────────────────────────────────────────────────
-# -fcommon: Essential for original BK source global variables.
-# -D_ULTRATYPES_H_: We use this to tell the N64 headers to skip their own 
-#    typedefs for s32, u16, etc., and instead use Android's stdint.h.
-# -include stdint.h: Forces the system types to be available everywhere.
-# ─────────────────────────────────────────────────────────────────────────────
+# We keep -D_ULTRATYPES_H_ because even with harmonized code, the NDK's 
+# 'asm-generic/int-ll64.h' will conflict with N64's 'ultratypes.h'.
+# We -include stdint.h to give the compiler the types it expects for s32, u16, etc.
 set(COMMON_C_FLAGS "-w -fcommon -O2 -D_ULTRATYPES_H_ -include stdint.h")
 
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   ${COMMON_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w -fcommon -O2")
 
-# ─── Compile definitions ──────────────────────────────────────────────────────
 add_definitions(
     -D_LANGUAGE_C
     -DF3DEX_GBI_2
@@ -41,16 +38,15 @@ include_directories(
     ${DECOMP_ROOT}/src/core1/audio
 )
 
-# ─── THE AUDIO.H FIX ─────────────────────────────────────────────────────────
-# If the harmonizer isn't catching all instances of "audio.h" vs <audio.h>,
-# we force the compiler to see the Graphics and Audio base types globally.
+# ─── THE CRITICAL FIX FOR AUDIO.H ───────────────────────────────────────────
+# Even if harmonized, the compiler needs to find the N64 SDK's audio definitions
+# when they are referenced in 'structs.h' or 'audio.h'. 
+# This forces the GBI and ABI (audio) headers to load correctly.
 set(FORCED_INCLUDES "-include ${DECOMP_ROOT}/include/2.0L/PR/gbi.h -include ${DECOMP_ROOT}/include/2.0L/PR/abi.h")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FORCED_INCLUDES}")
 
-# ─── Source files ─────────────────────────────────────────────────────────────
-file(GLOB_RECURSE CORE1_SOURCES
-    "${DECOMP_ROOT}/src/core1/*.c"
-)
+# ─── Source / Build ──────────────────────────────────────────────────────────
+file(GLOB_RECURSE CORE1_SOURCES "${DECOMP_ROOT}/src/core1/*.c")
 
 file(GLOB ASM_SOURCES
     "${DECOMP_ROOT}/asm/ultra/*.s"
@@ -72,30 +68,6 @@ set(WRAPPER_SOURCES
     ${CPP_ROOT}/menu/menu.cpp
 )
 
-# ─── Shared library target ───────────────────────────────────────────────────
-add_library(bkawrapper SHARED
-    ${CORE1_SOURCES}
-    ${ASM_SOURCES}
-    ${WRAPPER_SOURCES}
-)
+add_library(bkawrapper SHARED ${CORE1_SOURCES} ${ASM_SOURCES} ${WRAPPER_SOURCES})
 
-# ─── Linked libraries ────────────────────────────────────────────────────────
-find_library(log-lib     log)
-find_library(android-lib android)
-find_library(z-lib       z)
-
-target_link_libraries(bkawrapper
-    ${log-lib}
-    ${android-lib}
-    ${z-lib}
-    GLESv2
-    EGL
-    atomic
-    m
-)
-
-set_target_properties(bkawrapper PROPERTIES
-    C_VISIBILITY_PRESET   "hidden"
-    CXX_VISIBILITY_PRESET "hidden"
-    VISIBILITY_INLINES_HIDDEN ON
-)
+target_link_libraries(bkawrapper log android z GLESv2 EGL atomic m)
