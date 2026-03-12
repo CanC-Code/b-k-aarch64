@@ -9,48 +9,52 @@ get_filename_component(DECOMP_ROOT
 
 set(CPP_ROOT  "${CMAKE_CURRENT_SOURCE_DIR}")
 set(ULTRA_DIR "${CPP_ROOT}/ultra")
+set(TOOLS_DIR "${CPP_ROOT}/tools")
 
-set(COMMON_C_FLAGS "-w -fcommon -O2 -fno-builtin -D_ULTRATYPES_H_ -include stdint.h -D_FINALROM")
-set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   ${COMMON_C_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w -fcommon -O2 -D_FINALROM")
+# ─── Compile flags ────────────────────────────────────────────────────────────
+set(COMMON_FLAGS "-w -fcommon -O2 -D_FINALROM")
+set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   ${COMMON_FLAGS} -fno-builtin -D_ULTRATYPES_H_ -include stdint.h")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
 
-add_definitions(-D_LANGUAGE_C -DF3DEX_GBI_2)
+# Restrict _LANGUAGE_C to C files only so it doesn't break C++ STL headers
+add_compile_definitions($<$<COMPILE_LANGUAGE:C>:_LANGUAGE_C>)
+add_definitions(-DF3DEX_GBI_2)
 
+# ─── Include directories ─────────────────────────────────────────────────────
+# We prioritize the modern wrapper paths so C++ headers are found first
 include_directories(
+    ${CPP_ROOT}
+    ${ULTRA_DIR}
+    ${TOOLS_DIR}
     ${DECOMP_ROOT}/include/2.0L/PR
     ${DECOMP_ROOT}/include/2.0L
     ${DECOMP_ROOT}/include
-    ${CPP_ROOT}
-    ${ULTRA_DIR}
     ${DECOMP_ROOT}/include/core1
     ${DECOMP_ROOT}/include/core2
-    ${DECOMP_ROOT}/include/gc
     ${DECOMP_ROOT}/src/core1
-    ${DECOMP_ROOT}/src/core1/audio
 )
 
 set(FORCED_INCLUDES "-include ${DECOMP_ROOT}/include/2.0L/PR/gbi.h -include ${DECOMP_ROOT}/include/2.0L/PR/abi.h")
+# Only force these includes for C files
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FORCED_INCLUDES}")
 
-# --- SOURCE MANAGEMENT ---
+# ─── Source Management ──────────────────────────────────────────────────────
 file(GLOB_RECURSE CORE1_SOURCES "${DECOMP_ROOT}/src/core1/*.c")
 
-# CRITICAL: We only include ASM if it's explicitly designed for ARM/Android.
-# Removing the global "asm/ultra/*.s" which contains incompatible MIPS code.
-file(GLOB ASM_SOURCES
-    "${CPP_ROOT}/emulator/arm_stubs.s" # Only if you have ARM-specific stubs
-)
+# Assembly - Handled by C++ wrappers or specific ARM stubs
+file(GLOB ASM_SOURCES "${CPP_ROOT}/emulator/arm_stubs.s")
 set_source_files_properties(${ASM_SOURCES} PROPERTIES LANGUAGE ASM)
 
-# C++ Wrapper layers (These replace the N64 exception/audio assembly)
+# C++ Wrapper layers + Rare Decompression
 set(WRAPPER_SOURCES
     ${ULTRA_DIR}/NativeBridge.cpp 
     ${ULTRA_DIR}/otr_builder.cpp
     ${ULTRA_DIR}/audio_helper.cpp 
-    ${ULTRA_DIR}/exceptasm.cpp    # THIS REPLACES exceptasm.s
+    ${ULTRA_DIR}/exceptasm.cpp
     ${ULTRA_DIR}/setintmask.cpp 
     ${ULTRA_DIR}/libm_vals.cpp
     ${ULTRA_DIR}/parameters.cpp 
+    ${TOOLS_DIR}/rare_decompression.cpp
     ${CPP_ROOT}/emulator/pi_hle.cpp
     ${CPP_ROOT}/emulator/resource_mgr.cpp 
     ${CPP_ROOT}/emulator/stubs.cpp
