@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """
-SourceHarmonizer v75.66
+SourceHarmonizer v75.67
 BK AArch64 Android port — IDO/N64 decomp source → Clang/NDK compatibility
 
-Resolving 'cannot combine with previous int' by virtualizing bool.h
-and standardizing boolean logic across the codebase.
+Fixing 'conflicting types' by implementing automatic function prototyping.
 """
 
 import re
 from pathlib import Path
 
 # --- GLOBAL CONFIGURATION ---
-PREAMBLE_MARKER = "/* SH-v75.66-DSI */"
-PREAMBLE = """\
+PREAMBLE_MARKER = "/* SH-v75.67-DSI */"
+PREAMBLE_TEMPLATE = """\
 {marker}
 #ifndef _SH_TYPES_GUARD_
 #define _SH_TYPES_GUARD_
@@ -39,51 +38,59 @@ typedef double    f64;
 // Block legacy bool redefinitions
 #define _BOOL_H_
 #define __bool_true_false_are_defined 1
+
+// --- AUTO-GENERATED PROTOTYPES ---
+{prototypes}
+// ---------------------------------
 #endif
-""".format(marker=PREAMBLE_MARKER)
+"""
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PROTOTYPE EXTRACTION
+# ─────────────────────────────────────────────────────────────────────────────
+
+def extract_local_prototypes(content):
+    """
+    Scans the file for function definitions and returns a string of 
+    forward declarations to prevent 'implicit declaration' errors.
+    """
+    # Pattern looks for: [Type] [FunctionName]( [Args] ) {
+    # It excludes lines ending in ; (declarations) or starting with # (macros)
+    func_pattern = r'^(\w+\s+\*?\w+)\(([^;]*?)\)\s*\{'
+    matches = re.finditer(func_pattern, content, re.MULTILINE)
+    
+    protos = []
+    for m in matches:
+        return_type_and_name = m.group(1)
+        args = m.group(2).strip()
+        # Clean up whitespace and form a prototype
+        proto = f"extern {return_type_and_name}({args});"
+        if proto not in protos:
+            protos.append(proto)
+            
+    return "\n".join(protos)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CORE REPAIR LOGIC
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _neutralize_bool_h(decomp_root: Path):
-    """H11: Wipes the content of bool.h to prevent typedef int bool conflicts."""
-    bool_h = decomp_root / "include" / "bool.h"
-    if bool_h.exists():
-        # Replace content with a simple guard to satisfy includes without errors
-        content = "/* SH-v75.66: Virtualized to prevent Clang conflicts */\n#include <stdbool.h>\n"
-        bool_h.write_text(content, encoding='utf-8')
-        print("  [FIXED] bool.h neutralized")
-
-def _reset_headers(decomp_root: Path):
-    """H12: Standard SDK header cleanup."""
-    pr_dir = decomp_root / "include" / "2.0L" / "PR"
-    if not pr_dir.exists(): return
-
-    for path in pr_dir.glob("*.h"):
-        content = path.read_text(encoding='utf-8', errors='ignore')
-        if any(v in content for v in ["SH-v75.64", "SH-v75.65"]):
-            content = re.sub(r'/\* SH-v75\..*? \*/', '', content)
-            path.write_text(content, encoding='utf-8')
-
-# ─────────────────────────────────────────────────────────────────────────────
-# SOURCE PROCESSING
-# ─────────────────────────────────────────────────────────────────────────────
-
 def process_c_file(path: Path):
     original = path.read_text(encoding='utf-8', errors='ignore')
-    content = original
     
-    # Remove all previous DSI markers
-    content = re.sub(r'/\* SH-v75\.\d+-.*? \*/.*?(?=#ifndef _SH_TYPES_GUARD_|\n)', '', content, flags=re.DOTALL)
-    # Ensure old guards are removed to apply new stdbool logic
-    content = re.sub(r'#ifndef _SH_TYPES_GUARD_.*?#endif\n', '', content, flags=re.DOTALL)
+    # 1. Clean up ALL previous Harmonizer blocks (all versions)
+    content = re.sub(r'/\* SH-v75\..*? \*/.*?#endif\n', '', original, flags=re.DOTALL)
     
-    # Inject v75.66 DSI
-    if PREAMBLE_MARKER not in content:
-        content = PREAMBLE + content
+    # 2. Extract current function signatures from the cleaned content
+    prototypes = extract_local_prototypes(content)
     
-    # Standard 64-bit pointer cast fix
+    # 3. Build the new Preamble with version-specific prototypes
+    final_preamble = PREAMBLE_TEMPLATE.format(
+        marker=PREAMBLE_MARKER,
+        prototypes=prototypes
+    )
+    
+    # 4. Apply 64-bit pointer fixes
+    content = final_preamble + content
     content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
     
     if content != original:
@@ -93,21 +100,22 @@ def process_c_file(path: Path):
 
 def main():
     repo_root = Path(__file__).resolve().parent.parent
-    decomp_root = repo_root / "decomp-files"
-    src_dir = decomp_root / "src"
+    src_dir = repo_root / "decomp-files" / "src"
 
-    print(f"[>] SourceHarmonizer v75.66: Boolean Normalization Mode")
+    print(f"[>] SourceHarmonizer v75.67: Prototype Extraction Mode")
     
-    _reset_headers(decomp_root)
-    _neutralize_bool_h(decomp_root)
-    
+    # Ensure bool.h is still neutralized from v75.66
+    bool_h = repo_root / "decomp-files" / "include" / "bool.h"
+    if bool_h.exists():
+        bool_h.write_text("/* SH-v75.67 */\n#include <stdbool.h>\n", encoding='utf-8')
+
     modified_count = 0
     if src_dir.exists():
         for path in sorted(src_dir.rglob("*.c")):
             if process_c_file(path):
                 modified_count += 1
                 
-    print(f"[+] Done. Processed {modified_count} source files.")
+    print(f"[+] Done. Processed {modified_count} source files with auto-prototyping.")
 
 if __name__ == "__main__":
     main()
