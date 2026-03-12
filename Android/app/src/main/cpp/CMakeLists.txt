@@ -32,16 +32,28 @@ include_directories(
 set(FORCED_INCLUDES "-include ${DECOMP_ROOT}/include/2.0L/PR/gbi.h -include ${DECOMP_ROOT}/include/2.0L/PR/abi.h")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FORCED_INCLUDES}")
 
+# --- SOURCE MANAGEMENT ---
 file(GLOB_RECURSE CORE1_SOURCES "${DECOMP_ROOT}/src/core1/*.c")
-file(GLOB ASM_SOURCES "${DECOMP_ROOT}/asm/ultra/*.s" "${DECOMP_ROOT}/asm/core1/ultra/*.s")
+
+# CRITICAL: We only include ASM if it's explicitly designed for ARM/Android.
+# Removing the global "asm/ultra/*.s" which contains incompatible MIPS code.
+file(GLOB ASM_SOURCES
+    "${CPP_ROOT}/emulator/arm_stubs.s" # Only if you have ARM-specific stubs
+)
 set_source_files_properties(${ASM_SOURCES} PROPERTIES LANGUAGE ASM)
 
+# C++ Wrapper layers (These replace the N64 exception/audio assembly)
 set(WRAPPER_SOURCES
-    ${ULTRA_DIR}/NativeBridge.cpp ${ULTRA_DIR}/otr_builder.cpp
-    ${ULTRA_DIR}/audio_helper.cpp ${ULTRA_DIR}/exceptasm.cpp
-    ${ULTRA_DIR}/setintmask.cpp ${ULTRA_DIR}/libm_vals.cpp
-    ${ULTRA_DIR}/parameters.cpp ${CPP_ROOT}/emulator/pi_hle.cpp
-    ${CPP_ROOT}/emulator/resource_mgr.cpp ${CPP_ROOT}/emulator/stubs.cpp
+    ${ULTRA_DIR}/NativeBridge.cpp 
+    ${ULTRA_DIR}/otr_builder.cpp
+    ${ULTRA_DIR}/audio_helper.cpp 
+    ${ULTRA_DIR}/exceptasm.cpp    # THIS REPLACES exceptasm.s
+    ${ULTRA_DIR}/setintmask.cpp 
+    ${ULTRA_DIR}/libm_vals.cpp
+    ${ULTRA_DIR}/parameters.cpp 
+    ${CPP_ROOT}/emulator/pi_hle.cpp
+    ${CPP_ROOT}/emulator/resource_mgr.cpp 
+    ${CPP_ROOT}/emulator/stubs.cpp
     ${CPP_ROOT}/menu/menu.cpp
 )
 
