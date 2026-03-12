@@ -6,7 +6,7 @@ from pathlib import Path
 def setup_harmonized_environment():
     cwd = Path.cwd().resolve()
     decomp_root = cwd / "decomp-files"
-    # Adjust this if your Android project structure is different
+    # Target the specific JNI folder for the Android project
     cpp_dir = cwd / "Android" / "app" / "src" / "main" / "cpp"
     
     print(f"[>] Harmonizing Environment at: {decomp_root}")
@@ -53,7 +53,7 @@ typedef struct { u8 d[128]; } ADPCM_STATE;
 #endif
 """)
 
-    # 2. Generate the missing NativeBridge.cpp
+    # 2. Generate NativeBridge.cpp (Ensures CMake always has a target)
     cpp_dir.mkdir(parents=True, exist_ok=True)
     bridge_cpp = cpp_dir / "NativeBridge.cpp"
     bridge_cpp.write_text("""#include <jni.h>
@@ -62,7 +62,7 @@ typedef struct { u8 d[128]; } ADPCM_STATE;
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_bk_aarch64_NativeBridge_stringFromJNI(JNIEnv* env, jobject thiz) {
-    return env->NewStringUTF("Banjo-Kazooie Engine Harmonized");
+    return env->NewStringUTF("Banjo-Kazooie Engine Harmonized - v84.2");
 }
 """)
 
@@ -74,12 +74,13 @@ Java_com_bk_aarch64_NativeBridge_stringFromJNI(JNIEnv* env, jobject thiz) {
         if target.exists():
             target.write_text("#include <n64_types.h>\\n")
 
-    # 4. Strip libaudio.h redefinitions
-    libaudio = sdk_dir / "libaudio.h"
-    if libaudio.exists():
-        c = libaudio.read_text(errors='ignore')
-        c = re.sub(r"typedef struct \{.*?\} (ALHeap|Aadpcm);", "/* STUB */", c, flags=re.DOTALL)
-        libaudio.write_text(c)
+    # 4. Global Source Cleanup
+    for path in decomp_root.rglob("*.[ch]"):
+        if "PR/" in str(path): continue
+        content = path.read_text(errors='ignore')
+        content = content.replace('"string.h"', '<string.h>')
+        content = re.sub(r'\(u32\)\s*(&?\\w+(?:->|\\.)?\\w*)', r'(u32)(uintptr_t)\\1', content)
+        path.write_text(content)
 
 if __name__ == "__main__":
     setup_harmonized_environment()
