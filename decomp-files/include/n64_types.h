@@ -33,17 +33,16 @@ typedef volatile uint32_t vu32;
 typedef struct { unsigned int w0; unsigned int w1; } Acmd_words;
 typedef union { Acmd_words words; long long force_align; } Acmd;
 
-// 4. OS Stubs, Macros, and Messaging
+// 4. OS Stubs & Messaging
 typedef s32  OSPri;
 typedef s32  OSId;
 typedef void* OSMesg;
 typedef s32  OSHWIntr;
 
-// Expanded OSMesgQueue to allow member access found in defragmanager.c
 typedef struct {
     void* mtqueue;
     void* fullqueue;
-    s32           validCount; // Required for defragmanager.c
+    s32           validCount; 
     s32           first;
     s32           msgCount;
     OSMesg* msg;
@@ -51,11 +50,14 @@ typedef struct {
 
 typedef struct { uint8_t d[128]; } OSThread;
 typedef struct { uint8_t d[64];  } OSContPad;
-typedef struct { uint8_t d[128]; } OSPfs; // Required for bamotor.c
+typedef struct { uint8_t d[128]; } OSPfs;
+
+#ifndef OS_IM_NONE
+  #define OS_IM_NONE 0
+#endif
 
 #define OS_MESG_NOBLOCK 0
 #define OS_MESG_BLOCK   1
-
 #define PFS_ERR_ID_FATAL 1
 #define PFS_ERR_DEVICE   2
 
@@ -67,14 +69,13 @@ static inline OSIntMask osSetIntMask(OSIntMask m) { (void)m; return 0; }
 static inline s32 osSendMesg(OSMesgQueue *q, OSMesg m, s32 flag) { return 0; }
 static inline s32 osRecvMesg(OSMesgQueue *q, OSMesg *m, s32 flag) { return 0; }
 
-// 5. Audio Pipeline Constants
+// 5. Audio Commands & Constants
 #define ADPCMFSIZE      16
 #define ADPCMVSIZE      8
 #define LFSAMPLES       4
 #define UNITY_PITCH     0x8000
 #define MAX_RATIO       2
 
-// 6. Audio Command Macros
 #define A_INIT          0x01
 #define A_CONTINUE      0x02
 #define A_LOOP          0x02
@@ -94,7 +95,7 @@ static inline s32 osRecvMesg(OSMesgQueue *q, OSMesg *m, s32 flag) { return 0; }
 #define A_LOADADPCM     0x08
 #define A_NOAUX         0x10
 
-// 7. Graphics & Helper Types
+// 6. Graphics & Helper Types
 typedef uint64_t Gfx;
 typedef struct { int32_t m[4][4]; } Mtx;
 typedef struct { uint8_t d[16];  } Vtx;
@@ -114,4 +115,5 @@ typedef int16_t ENVMIX_STATE[40];
 #ifndef bcopy
   #define bcopy(src, dst, n) __builtin_memmove(dst, src, n)
 #endif
+
 #endif
