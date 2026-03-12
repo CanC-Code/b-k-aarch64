@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 import re
 import hashlib
+import os
 from pathlib import Path
 
 # --- CONFIGURATION ---
-PREAMBLE_MARKER = "/* SH-AUTOMORPH-ACTIVE-V81.2-STABLE */"
+PREAMBLE_MARKER = "/* SH-AUTOMORPH-ACTIVE-V81.3-STABLE */"
 
 def get_content_hash(text):
     return hashlib.md5(text.encode('utf-8')).hexdigest()[:8]
@@ -17,50 +18,30 @@ def unique_struct_fix(match):
 
 def deep_clean_sdk(decomp_root: Path):
     """
-    Ensures absolute compatibility between legacy C and modern C++.
+    Deletes shadowing headers and force-redirects to system libraries.
     """
     # 1. Neutralize bool.h
     bool_h = decomp_root / "include" / "bool.h"
     if bool_h.exists():
         bool_h.write_text("#include <stdbool.h>\n", encoding='utf-8')
 
-    # 2. String/Mem Safeguards - The "Nuclear" Option
-    # We define the functions as macros if they aren't present, 
-    # ensuring they always point to the built-in compiler versions.
-    conflict_headers = [
+    # 2. DELETE SHADOWING HEADERS (The Nuclear Option)
+    # These legacy files cause infinite recursion or 'no member' errors in C++
+    shadows = [
         decomp_root / "include" / "string.h",
         decomp_root / "include" / "core1" / "mem.h"
     ]
-    
-    # This redirect is designed to be invisible to both C and C++ namespaces
-    # by using the compiler's own built-in alias system.
-    safety_string_h = """#ifndef _SH_STRING_SAFE_WRAP_
-#define _SH_STRING_SAFE_WRAP_
-#include <string.h>
+    for s_path in shadows:
+        if s_path.exists():
+            s_path.unlink() # Delete the file so the compiler MUST use the system one
+            print(f"  [DELETED SHADOW] {s_path.name} removed to prevent C++ collision.")
 
-#ifdef __cplusplus
-#include <cstring>
-#ifndef _SH_CPP_NAMESPACE_MAPPED_
-#define _SH_CPP_NAMESPACE_MAPPED_
-using ::memcpy; using ::memset; using ::memmove;
-using ::strcpy; using ::strlen; using ::strcat;
-using ::strcmp; using ::strncmp;
-#endif
-#endif
-
-#endif
-"""
-    for c_path in conflict_headers:
-        if c_path.exists():
-            c_path.write_text(safety_string_h, encoding='utf-8')
-
-    # 3. SDK Header unique tagging
+    # 3. Standard SDK Struct Fixes
     audio_headers = [
         decomp_root / "include/2.0L/PR/libaudio.h",
         decomp_root / "include/2.0L/PR/n_libaudio.h",
         decomp_root / "include/synthInternals.h"
     ]
-    
     for h_path in audio_headers:
         if not h_path.exists(): continue
         content = h_path.read_text(encoding='utf-8', errors='ignore')
@@ -70,13 +51,20 @@ using ::strcmp; using ::strncmp;
         h_path.write_text(content, encoding='utf-8')
 
 def synthesize_preamble(file_path):
+    # This preamble ensures all standard functions are available in global namespace
     preamble = f"""{PREAMBLE_MARKER}
 #ifndef _SH_DYNAMIC_GUARD_
 #define _SH_DYNAMIC_GUARD_
+
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
 #include <string.h>
+
+#ifdef __cplusplus
+#include <cstring>
+using namespace std;
+#endif
 
 #ifndef _SH_PRIMITIVES_
 #define _SH_PRIMITIVES_
@@ -95,6 +83,7 @@ typedef volatile uint8_t  vu8;  typedef volatile int8_t  vs8;
 #define FALSE false
 #endif
 #endif
+
 #ifndef F3DEX_GBI_2
 #define F3DEX_GBI_2
 #endif
@@ -108,13 +97,20 @@ typedef volatile uint8_t  vu8;  typedef volatile int8_t  vs8;
     return preamble
 
 def apply_source_fixes(content):
+    # Redirect legacy includes to system brackets
+    content = content.replace('#include "string.h"', '#include <string.h>')
+    content = content.replace('#include "core1/mem.h"', '#include <string.h>')
+    
+    # 64-bit Pointer Truncation
     content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
     content = re.sub(r'\(u32\)\s*\((.*?)\)', r'(u32)(uintptr_t)(\1)', content)
+    
+    # Signature harmonization
     content = content.replace("bool func_80253400(void)", "int func_80253400(void)")
     return content
 
 def process_file(path, is_header=False):
-    # Don't touch our modern C++ wrapper implementation files
+    # Only process C files for preamble injection
     if path.suffix == ".cpp": return False
     
     raw_content = path.read_text(encoding='utf-8', errors='ignore')
@@ -133,7 +129,7 @@ def main():
     inc_root = repo_root / "decomp-files/include"
     decomp_root = repo_root / "decomp-files"
     
-    print("[>] SourceHarmonizer v81.2: Finalizing Wrapper Parity")
+    print("[>] SourceHarmonizer v81.3: Shadow Header Elimination")
     deep_clean_sdk(decomp_root)
     
     count = 0
