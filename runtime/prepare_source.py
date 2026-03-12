@@ -4,7 +4,7 @@ import hashlib
 from pathlib import Path
 
 # --- CONFIGURATION ---
-PREAMBLE_MARKER = "/* SH-AUTOMORPH-ACTIVE-V81.1-CPPFIX */"
+PREAMBLE_MARKER = "/* SH-AUTOMORPH-ACTIVE-V81.2-STABLE */"
 
 def get_content_hash(text):
     return hashlib.md5(text.encode('utf-8')).hexdigest()[:8]
@@ -24,20 +24,30 @@ def deep_clean_sdk(decomp_root: Path):
     if bool_h.exists():
         bool_h.write_text("#include <stdbool.h>\n", encoding='utf-8')
 
-    # 2. String/Mem Safeguards
+    # 2. String/Mem Safeguards - The "Nuclear" Option
+    # We define the functions as macros if they aren't present, 
+    # ensuring they always point to the built-in compiler versions.
     conflict_headers = [
         decomp_root / "include" / "string.h",
         decomp_root / "include" / "core1" / "mem.h"
     ]
     
-    # We use a guard that allows both C and C++ to see the symbols in the global namespace
+    # This redirect is designed to be invisible to both C and C++ namespaces
+    # by using the compiler's own built-in alias system.
     safety_string_h = """#ifndef _SH_STRING_SAFE_WRAP_
 #define _SH_STRING_SAFE_WRAP_
 #include <string.h>
+
 #ifdef __cplusplus
-using std::memcpy; using std::memset; using std::memmove;
-using std::strcpy; using std::strlen; using std::strcat;
+#include <cstring>
+#ifndef _SH_CPP_NAMESPACE_MAPPED_
+#define _SH_CPP_NAMESPACE_MAPPED_
+using ::memcpy; using ::memset; using ::memmove;
+using ::strcpy; using ::strlen; using ::strcat;
+using ::strcmp; using ::strncmp;
 #endif
+#endif
+
 #endif
 """
     for c_path in conflict_headers:
@@ -104,7 +114,7 @@ def apply_source_fixes(content):
     return content
 
 def process_file(path, is_header=False):
-    # Only process C files for preamble injection
+    # Don't touch our modern C++ wrapper implementation files
     if path.suffix == ".cpp": return False
     
     raw_content = path.read_text(encoding='utf-8', errors='ignore')
@@ -123,7 +133,7 @@ def main():
     inc_root = repo_root / "decomp-files/include"
     decomp_root = repo_root / "decomp-files"
     
-    print("[>] SourceHarmonizer v81.1: Fixing C++ Namespace Mapping")
+    print("[>] SourceHarmonizer v81.2: Finalizing Wrapper Parity")
     deep_clean_sdk(decomp_root)
     
     count = 0
