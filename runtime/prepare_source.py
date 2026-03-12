@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-SourceHarmonizer v75.67
+SourceHarmonizer v75.68
 BK AArch64 Android port — IDO/N64 decomp source → Clang/NDK compatibility
 
-Fixing 'conflicting types' by implementing automatic function prototyping.
+Fixing 'unknown type name' errors by virtualizing legacy N64 audio types.
 """
 
 import re
 from pathlib import Path
 
 # --- GLOBAL CONFIGURATION ---
-PREAMBLE_MARKER = "/* SH-v75.67-DSI */"
+PREAMBLE_MARKER = "/* SH-v75.68-DSI */"
 PREAMBLE_TEMPLATE = """\
 {marker}
 #ifndef _SH_TYPES_GUARD_
@@ -39,6 +39,14 @@ typedef double    f64;
 #define _BOOL_H_
 #define __bool_true_false_are_defined 1
 
+// Virtualize Opaque N64 Audio Types
+typedef void ALSeqFile;
+typedef void ALBankFile;
+typedef void ALCSPlayer;
+typedef void N_ALSeqPlayer;
+typedef void N_ALCSPlayer;
+typedef void AudioInfo;
+
 // --- AUTO-GENERATED PROTOTYPES ---
 {prototypes}
 // ---------------------------------
@@ -46,51 +54,38 @@ typedef double    f64;
 """
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PROTOTYPE EXTRACTION
+# UTILITIES
 # ─────────────────────────────────────────────────────────────────────────────
 
 def extract_local_prototypes(content):
-    """
-    Scans the file for function definitions and returns a string of 
-    forward declarations to prevent 'implicit declaration' errors.
-    """
-    # Pattern looks for: [Type] [FunctionName]( [Args] ) {
-    # It excludes lines ending in ; (declarations) or starting with # (macros)
+    """Scans for function definitions to prevent implicit declaration conflicts."""
     func_pattern = r'^(\w+\s+\*?\w+)\(([^;]*?)\)\s*\{'
     matches = re.finditer(func_pattern, content, re.MULTILINE)
-    
     protos = []
     for m in matches:
         return_type_and_name = m.group(1)
         args = m.group(2).strip()
-        # Clean up whitespace and form a prototype
         proto = f"extern {return_type_and_name}({args});"
         if proto not in protos:
             protos.append(proto)
-            
     return "\n".join(protos)
-
-# ─────────────────────────────────────────────────────────────────────────────
-# CORE REPAIR LOGIC
-# ─────────────────────────────────────────────────────────────────────────────
 
 def process_c_file(path: Path):
     original = path.read_text(encoding='utf-8', errors='ignore')
     
-    # 1. Clean up ALL previous Harmonizer blocks (all versions)
+    # 1. Strip previous Harmonizer versions
     content = re.sub(r'/\* SH-v75\..*? \*/.*?#endif\n', '', original, flags=re.DOTALL)
     
-    # 2. Extract current function signatures from the cleaned content
+    # 2. Re-extract prototypes and inject new Preamble
     prototypes = extract_local_prototypes(content)
-    
-    # 3. Build the new Preamble with version-specific prototypes
     final_preamble = PREAMBLE_TEMPLATE.format(
         marker=PREAMBLE_MARKER,
         prototypes=prototypes
     )
     
-    # 4. Apply 64-bit pointer fixes
     content = final_preamble + content
+    
+    # 3. Apply 64-bit pointer fixes (Address -> uintptr_t -> u32)
     content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
     
     if content != original:
@@ -102,12 +97,12 @@ def main():
     repo_root = Path(__file__).resolve().parent.parent
     src_dir = repo_root / "decomp-files" / "src"
 
-    print(f"[>] SourceHarmonizer v75.67: Prototype Extraction Mode")
+    print(f"[>] SourceHarmonizer v75.68: Audio Type Virtualization")
     
-    # Ensure bool.h is still neutralized from v75.66
+    # Neutralize bool.h
     bool_h = repo_root / "decomp-files" / "include" / "bool.h"
     if bool_h.exists():
-        bool_h.write_text("/* SH-v75.67 */\n#include <stdbool.h>\n", encoding='utf-8')
+        bool_h.write_text("/* SH-v75.68 */\n#include <stdbool.h>\n", encoding='utf-8')
 
     modified_count = 0
     if src_dir.exists():
@@ -115,7 +110,7 @@ def main():
             if process_c_file(path):
                 modified_count += 1
                 
-    print(f"[+] Done. Processed {modified_count} source files with auto-prototyping.")
+    print(f"[+] Done. Updated {modified_count} files with virtualized audio types.")
 
 if __name__ == "__main__":
     main()
