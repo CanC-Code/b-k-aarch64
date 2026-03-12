@@ -21,6 +21,8 @@ typedef volatile uint32_t vu32;
 #define __OS_THREAD_H__
 #define __OS_MESSAGE_H__
 #define __OS_CONT_H__
+#define __OS_INTERNAL_H__  // Block internal SDK logic
+#define _OS_INTERNAL_EXCEPTION_H_ 
 #define _GBI_H_
 #define _MBI_H_
 #define _ABI_H_
@@ -31,10 +33,11 @@ typedef volatile uint32_t vu32;
 typedef struct { unsigned int w0; unsigned int w1; } Acmd_words;
 typedef union { Acmd_words words; long long force_align; } Acmd;
 
-// 4. OS Stubs & Macros
+// 4. OS Stubs, Macros, and Interrupts
 typedef s32  OSPri;
 typedef s32  OSId;
 typedef void* OSMesg;
+typedef s32  OSHWIntr; // The missing type causing the error
 typedef struct { uint8_t d[48];  } OSMesgQueue;
 typedef struct { uint8_t d[128]; } OSThread;
 typedef struct { uint8_t d[64];  } OSContPad;
@@ -53,7 +56,7 @@ static inline OSIntMask osSetIntMask(OSIntMask m) { (void)m; return 0; }
 #define UNITY_PITCH     0x8000
 #define MAX_RATIO       2
 
-// 6. Audio Command Macros (The "N" Driver IDs)
+// 6. Audio Command Macros
 #define A_INIT          0x01
 #define A_CONTINUE      0x02
 #define A_LOOP          0x02
