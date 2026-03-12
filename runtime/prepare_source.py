@@ -4,7 +4,7 @@ import hashlib
 from pathlib import Path
 
 # --- CONFIGURATION ---
-PREAMBLE_MARKER = "/* SH-AUTOMORPH-ACTIVE-V80.9-FINAL */"
+PREAMBLE_MARKER = "/* SH-AUTOMORPH-ACTIVE-V81.0-STABLE */"
 
 def get_content_hash(text):
     return hashlib.md5(text.encode('utf-8')).hexdigest()[:8]
@@ -17,29 +17,31 @@ def unique_struct_fix(match):
 
 def deep_clean_sdk(decomp_root: Path):
     """
-    Solves the 'overloadable' attribute error by redirecting all legacy
-    memory and string functions to the modern system library.
+    Physically replaces clashing headers with safety-guarded system redirects.
     """
     # 1. Neutralize bool.h
     bool_h = decomp_root / "include" / "bool.h"
     if bool_h.exists():
         bool_h.write_text("#include <stdbool.h>\n", encoding='utf-8')
 
-    # 2. Kill the conflicting string.h and mem.h declarations
-    # We replace the entire file content with a system include to avoid 'overload' errors
+    # 2. Kill the infinite recursion in string.h and mem.h
+    # We use a double-guard to ensure the system header is included without looping
     conflict_headers = [
         decomp_root / "include" / "string.h",
         decomp_root / "include" / "core1" / "mem.h"
     ]
     
+    safety_string_h = """#ifndef _SH_STRING_SAFE_WRAP_
+#define _SH_STRING_SAFE_WRAP_
+#include <string.h>
+#endif
+"""
     for c_path in conflict_headers:
         if c_path.exists():
-            # We completely replace these legacy files with a system redirect
-            # This ensures Clang only sees ONE version of memcpy/strcpy (the system one)
-            c_path.write_text("#include <string.h>\n", encoding='utf-8')
-            print(f"  [DELETED CONFLICTS] {c_path.name} redirected to system <string.h>")
+            c_path.write_text(safety_string_h, encoding='utf-8')
+            print(f"  [SAFEGUARDED] {c_path.name} logic replaced with system forwarder.")
 
-    # 3. Standard SDK Struct Fixes
+    # 3. SDK Header unique tagging
     audio_headers = [
         decomp_root / "include/2.0L/PR/libaudio.h",
         decomp_root / "include/2.0L/PR/n_libaudio.h",
@@ -80,7 +82,6 @@ typedef volatile uint8_t  vu8;  typedef volatile int8_t  vs8;
 #define FALSE false
 #endif
 #endif
-
 #ifndef F3DEX_GBI_2
 #define F3DEX_GBI_2
 #endif
@@ -94,7 +95,6 @@ typedef volatile uint8_t  vu8;  typedef volatile int8_t  vs8;
     return preamble
 
 def apply_source_fixes(content):
-    # Pointer Truncation Fixes
     content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
     content = re.sub(r'\(u32\)\s*\((.*?)\)', r'(u32)(uintptr_t)(\1)', content)
     content = content.replace("bool func_80253400(void)", "int func_80253400(void)")
@@ -118,7 +118,7 @@ def main():
     inc_root = repo_root / "decomp-files/include"
     decomp_root = repo_root / "decomp-files"
     
-    print("[>] SourceHarmonizer v80.9: Final Namespace Resolution")
+    print("[>] SourceHarmonizer v81.0: Breaking Include Loops")
     deep_clean_sdk(decomp_root)
     
     count = 0
