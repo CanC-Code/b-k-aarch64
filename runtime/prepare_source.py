@@ -1,23 +1,20 @@
 #!/usr/bin/env python3
 import re
-import hashlib
-import os
 from pathlib import Path
 
 # --- CONFIGURATION ---
-PREAMBLE_MARKER = "/* SH-AUTOMORPH-ACTIVE-V82.0-STABLE */"
+PREAMBLE_MARKER = "/* SH-AUTOMORPH-ACTIVE-V82.1-STABLE */"
 
 def deep_clean_sdk(decomp_root: Path):
     """
-    Final sanitation of the include directory to stop redefinition errors.
+    Cleans up the environment and establishes safe type definitions.
     """
     # 1. Neutralize bool.h
     bool_h = decomp_root / "include" / "bool.h"
     if bool_h.exists():
         bool_h.write_text("#include <stdbool.h>\n", encoding='utf-8')
 
-    # 2. DELETE CONFLICTING HEADERS (Instead of renaming, we force system use)
-    # core1/mem.h and string.h are the primary causes of the 'overloadable' error
+    # 2. DELETE CLASHING HEADERS (Force system use)
     death_list = [
         decomp_root / "include/string.h",
         decomp_root / "include/time.h",
@@ -26,11 +23,10 @@ def deep_clean_sdk(decomp_root: Path):
         decomp_root / "include/core1/mem.h"
     ]
     for path in death_list:
-        if path.exists():
-            path.unlink()
-            print(f"  [REMOVED] {path.relative_to(decomp_root)} to prevent collision.")
+        if path.exists(): path.unlink()
 
-    # 3. FIX n64_types.h (Stronger guards)
+    # 3. CLEAN n64_types.h (NO MACRO REDIRECTS HERE)
+    # Removing memcpy/memmove macros from here prevents System Header corruption
     types_h = decomp_root / "include" / "n64_types.h"
     types_h.write_text("""#ifndef _N64_TYPES_H_
 #define _N64_TYPES_H_
@@ -44,67 +40,70 @@ typedef uint32_t u32; typedef int32_t s32;
 typedef uint64_t u64; typedef int64_t s64;
 typedef float f32;    typedef double f64;
 typedef volatile uint32_t vu32; typedef volatile int32_t vs32;
-typedef volatile uint16_t vu16; typedef volatile int16_t vs16;
-typedef volatile uint8_t  vu8;  typedef volatile int8_t  vs8;
 
 #ifndef TRUE
   #define TRUE true
   #define FALSE false
 #endif
 
-// Guard ALHeap to prevent redefinition in libaudio.h
 #ifndef _ALHEAP_H_
 #define _ALHEAP_H_
 typedef struct { u8 dummy[16]; } ALHeap;
 #endif
 
-// Redirect legacy memory calls
-#define memcpy n64_memcpy
-#define memmove n64_memmove
-#define bcopy(src, dst, n) n64_memmove(dst, src, n)
-
 #endif
 """, encoding='utf-8')
 
+def synthesize_preamble():
+    # We move the redirects here. This preamble is injected AFTER system headers 
+    # are included in the .c files, making it safe.
+    return f"""{PREAMBLE_MARKER}
+#ifndef _SH_LOCAL_GUARD_
+#define _SH_LOCAL_GUARD_
+#include <string.h>
+
+// Safe redirects for legacy code (only affects this file)
+#define bcopy(src, dst, n) memmove(dst, src, n)
+#endif
+"""
+
 def apply_source_fixes(content, file_path):
-    # Remove includes of deleted headers
-    content = content.replace('#include "string.h"', '#include <string.h>')
-    content = content.replace('#include "core1/mem.h"', '#include <string.h>')
-    content = content.replace('#include "time.h"', '#include <time.h>')
-    content = content.replace('#include "math.h"', '#include <math.h>')
-    
-    # Implementation renaming for memory.c
+    # Fix the implementations in memory.c
     if "memory.c" in str(file_path):
         content = content.replace("void memcpy(void * dst", "void n64_memcpy(void * _dst")
-        content = content.replace("void memmove(u8* dst", "void n64_memmove(void * _dst")
         content = content.replace("void memmove(void * dst", "void n64_memmove(void * _dst")
+        content = content.replace("void memmove(u8* dst", "void n64_memmove(void * _dst")
 
-    # Fix 64-bit Pointer Truncation
+    # Point headers to system
+    content = content.replace('#include "string.h"', '#include <string.h>')
+    content = content.replace('#include "core1/mem.h"', '#include <string.h>')
+    
+    # 64-bit Pointers
     content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
     return content
 
 def process_file(path):
     if path.suffix == ".cpp": return False
     raw_content = path.read_text(encoding='utf-8', errors='ignore')
-    # Strip old preambles
     content = re.sub(r'/\* SH-.*?\*/.*?#endif\n', '', raw_content, flags=re.DOTALL)
     fixed_content = apply_source_fixes(content, path)
     
-    if fixed_content != raw_content:
-        path.write_text(fixed_content, encoding='utf-8')
+    # Inject the local preamble at the top
+    final_output = synthesize_preamble() + fixed_content
+    
+    if final_output != raw_content:
+        path.write_text(final_output, encoding='utf-8')
         return True
     return False
 
 def main():
     repo_root = Path("./")
     decomp_root = repo_root / "decomp-files"
-    print("[>] SourceHarmonizer v82.0: Finalizing Path Sanitation")
+    print("[>] SourceHarmonizer v82.1: Resolving Macro Collisions")
     deep_clean_sdk(decomp_root)
     
-    count = 0
     for root in [decomp_root / "src", decomp_root / "include"]:
         for file_path in root.rglob("*.[ch]"):
-            if process_file(file_path): count += 1
-    print(f"[!] Success: {count} project files harmonized.")
+            process_file(file_path)
 
 if __name__ == "__main__": main()
