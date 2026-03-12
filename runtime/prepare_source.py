@@ -4,21 +4,18 @@ import hashlib
 from pathlib import Path
 
 # --- CONFIGURATION ---
-PREAMBLE_MARKER = "/* SH-AUTOMORPH-ACTIVE */"
+PREAMBLE_MARKER = "/* SH-AUTOMORPH-ACTIVE-V2 */"
 
 def get_content_hash(text):
-    """Generates a short unique hex string based on text content."""
     return hashlib.md5(text.encode('utf-8')).hexdigest()[:8]
 
 def unique_struct_fix(match):
-    """Ensures anonymous structs have unique tags across all headers."""
     struct_body = match.group(1)
     typename = match.group(2)
     tag_id = get_content_hash(struct_body)
     return f"typedef struct _SH_TAG_{tag_id} {{{struct_body}}} {typename};"
 
 def deep_clean_sdk(decomp_root: Path):
-    """Repairs the physical SDK headers in the include folder."""
     bool_h = decomp_root / "include" / "bool.h"
     if bool_h.exists():
         bool_h.write_text("#include <stdbool.h>\n", encoding='utf-8')
@@ -36,10 +33,10 @@ def deep_clean_sdk(decomp_root: Path):
         content = content.replace("struct ALFilter_s", "struct ALFilter")
         content = content.replace("struct ALAuxBus_s", "struct ALAuxBus")
         h_path.write_text(content, encoding='utf-8')
-        print(f"  [SDK FIXED] {h_path.name}")
 
-def synthesize_preamble():
-    return f"""{PREAMBLE_MARKER}
+def synthesize_preamble(file_path):
+    # Base preamble
+    preamble = f"""{PREAMBLE_MARKER}
 #ifndef _SH_DYNAMIC_GUARD_
 #define _SH_DYNAMIC_GUARD_
 #include <stdint.h>
@@ -57,19 +54,23 @@ typedef float f32; typedef double f64;
 #define F3DEX_GBI_2
 #endif
 #define _BOOL_H_
-#endif
 """
+    # Specific fix for code_1D00.c implicit declaration
+    if "code_1D00.c" in str(file_path):
+        preamble += "\n// Fix implicit declaration conflicts\n"
+        preamble += "struct AudioInfo_s;\n"
+        preamble += "typedef struct AudioInfo_s AudioInfo;\n"
+        preamble += "bool audioManager_handleFrameMsg(AudioInfo *info, AudioInfo *prev_info);\n"
+
+    preamble += "#endif\n"
+    return preamble
 
 def apply_source_fixes(content):
-    """
-    Applies pointer truncation fixes. 
-    Crucial: This must be applied to BOTH .c and .h files.
-    """
-    # Fix 64-bit Pointer Truncation (Pointer -> uintptr_t -> u32)
+    # Fix 64-bit Pointer Truncation
     content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
     content = re.sub(r'\(u32\)\s*\((.*?)\)', r'(u32)(uintptr_t)(\1)', content)
     
-    # Remove clashing forward declarations
+    # Remove clashing forward declarations that we are now handling in the preamble
     clash_patterns = [
         r'struct\s+ALCSPlayer;', r'typedef\s+struct\s+ALCSPlayer\s+ALCSPlayer;',
         r'struct\s+N_ALCSPlayer;', r'typedef\s+struct\s+N_ALCSPlayer\s+N_ALCSPlayer;'
@@ -79,18 +80,14 @@ def apply_source_fixes(content):
     return content
 
 def process_file(path, is_header=False):
-    """Injects preamble and applies signature-matching fixes."""
     raw_content = path.read_text(encoding='utf-8', errors='ignore')
-    
-    # Strip any existing automated blocks
+    # Clean any old SH- blocks
     content = re.sub(r'/\* SH-.*?\*/.*?#endif\n', '', raw_content, flags=re.DOTALL)
     
-    # Apply logic
     fixed_content = apply_source_fixes(content)
     
-    # Only .c files get the heavy preamble; .h files just get the logic fixes
     if not is_header:
-        final_output = synthesize_preamble() + fixed_content
+        final_output = synthesize_preamble(path) + fixed_content
     else:
         final_output = fixed_content
         
@@ -103,21 +100,14 @@ def main():
     repo_root = Path("./")
     src_root = repo_root / "decomp-files/src"
     decomp_root = repo_root / "decomp-files"
-    
-    print("[>] SourceHarmonizer: Synchronizing Signatures & SDK")
-    
-    # 1. Fix SDK Headers
+    print("[>] SourceHarmonizer: Synchronizing Local Scopes")
     deep_clean_sdk(decomp_root)
-    
-    # 2. Fix Source Files and Local Headers
     count = 0
-    # Process .c and .h in the src directory to ensure parity
     for ext in ["*.c", "*.h"]:
         for file_path in src_root.rglob(ext):
             if process_file(file_path, is_header=(ext == "*.h")):
                 count += 1
-                
-    print(f"[!] Success: {count} project files harmonized.")
+    print(f"[!] Success: {count} files harmonized.")
 
 if __name__ == "__main__":
     main()
