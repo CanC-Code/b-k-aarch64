@@ -44,6 +44,10 @@ include_directories(
     ${DECOMP_ROOT}/include/core1
     ${DECOMP_ROOT}/include/core2
     ${DECOMP_ROOT}/include/gc
+    # src/core1 and its audio subdir are needed for quoted includes like
+    # #include "audio.h" in code_1D00.c (audio.h lives in src/core1/audio/)
+    ${DECOMP_ROOT}/src/core1
+    ${DECOMP_ROOT}/src/core1/audio
 )
 
 # ─── Source files ─────────────────────────────────────────────────────────────
