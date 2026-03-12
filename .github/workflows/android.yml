@@ -44,7 +44,6 @@ jobs:
           if [ -f "master_icon.png" ]; then
             python3 runtime/generate_icons.py master_icon.png
           else
-            echo "Creating placeholder icons..."
             convert -size 48x48 xc:gray Android/app/src/main/res/mipmap-mdpi/ic_launcher.png
             cp Android/app/src/main/res/mipmap-mdpi/ic_launcher.png Android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
           fi
