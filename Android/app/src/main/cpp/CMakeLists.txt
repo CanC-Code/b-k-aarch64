@@ -3,9 +3,10 @@ project(bkawrapper LANGUAGES C CXX)
 
 get_filename_component(REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../.." ABSOLUTE)
 set(DECOMP_ROOT "${REPO_ROOT}/decomp-files")
-
-set(COMMON_FLAGS -w -fcommon -O2 -D_FINALROM -D_LANGUAGE_C -D_ULTRATYPES_H_ -DANDROID)
 set(BRIDGE_HEADER "${DECOMP_ROOT}/include/n64_types.h")
+
+# Flags defined as a list for correct Clang argument expansion
+set(COMMON_FLAGS -w -fcommon -O2 -D_FINALROM -D_LANGUAGE_C -D_ULTRATYPES_H_ -DANDROID)
 
 include_directories(SYSTEM
     ${DECOMP_ROOT}/include
@@ -16,7 +17,6 @@ include_directories(SYSTEM
 
 file(GLOB_RECURSE CORE1_SOURCES "${DECOMP_ROOT}/src/core1/*.c")
 list(FILTER CORE1_SOURCES EXCLUDE REGEX ".*memory.c")
-list(FILTER CORE1_SOURCES EXCLUDE REGEX ".*n_reverb.*")
 
 add_library(bkawrapper SHARED ${CORE1_SOURCES} ultra/NativeBridge.cpp)
 
