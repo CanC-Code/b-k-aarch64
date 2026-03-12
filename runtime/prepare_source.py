@@ -9,9 +9,10 @@ def setup_harmonized_environment():
     include_dir = decomp_root / "include"
     sdk_dir = include_dir / "2.0L" / "PR"
     
-    print(f"--- [v85.0] NUCLEAR HARMONIZATION: Banjo-Kazooie AArch64 ---")
+    print(f"--- [v85.1] Patching OS Stubs for AArch64 ---")
 
-    # 1. CREATE MASTER BRIDGE: n64_types.h
+    # 1. UPDATE MASTER BRIDGE: n64_types.h
+    # Fixed osSetIntMask signature and added audio player stubs
     bridge_h = include_dir / "n64_types.h"
     bridge_content = """#ifndef _N64_TYPES_H_
 #define _N64_TYPES_H_
@@ -32,7 +33,7 @@ typedef volatile uint32_t vu32;
   #define FALSE 0
 #endif
 
-// 2. SDK Guards: Pre-emptively "locking" SDK files to stop redefinitions
+// 2. SDK Guards
 #define __OS_THREAD_H__
 #define __OS_MESSAGE_H__
 #define __OS_CONT_H__
@@ -40,7 +41,7 @@ typedef volatile uint32_t vu32;
 #define _MBI_H_
 #define _ABI_H_
 #define _GU_H_
-#define _BOOL_H_ // Blocks the original bool.h
+#define _BOOL_H_
 
 // 3. OS Stubs
 typedef s32  OSPri;
@@ -51,14 +52,14 @@ typedef struct { uint8_t d[128]; } OSThread;
 typedef struct { uint8_t d[64];  } OSContPad;
 typedef struct { uint8_t d[32];  } OSViMode;
 
-// 4. OS Macros & Hardware Helpers
+// 4. OS Macros & Hardware Helpers (FIXED SIGNATURES)
 #define OS_IM_NONE 0
 typedef u32 OSIntMask;
 static inline u32 osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t)vaddr; }
 static inline OSIntMask osGetIntMask(void) { return 0; }
-static inline void osSetIntMask(OSIntMask m) { (void)m; }
+static inline OSIntMask osSetIntMask(OSIntMask m) { (void)m; return 0; } // Return 0 as dummy 'previous' mask
 
-// 5. Audio Commands (Restored for env.c and synth.c)
+// 5. Audio Commands
 #define A_INIT      0x01
 #define A_CONTINUE  0x02
 #define A_MAIN      0x04
@@ -90,44 +91,23 @@ typedef struct { uint8_t d[128]; } ENVMIX_STATE;
 #endif
 """
     bridge_h.write_text(bridge_content)
-    print(f"[+] Master Bridge generated at: {bridge_h}")
 
-    # 2. OVERWRITE bool.h (The Error Source)
-    # We define _BOOL_H_ here so it never tries to typedef 'bool' again.
-    bool_h = include_dir / "bool.h"
-    bool_h.write_text("#ifndef _BOOL_H_\n#define _BOOL_H_\n// Redefined by n64_types.h bridge\n#endif\n")
-    print(f"[!] bool.h neutralized.")
-
-    # 3. NEUTRALIZE Toxic SDK Headers
+    # 2. NEUTRALIZE Toxic SDK Headers
     toxic_list = ["ultratypes.h", "abi.h", "mbi.h", "gbi.h", "os_libc.h", "os_thread.h", "os_message.h", "os_cont.h", "os.h", "gu.h"]
     for name in toxic_list:
         target = sdk_dir / name
         if target.exists():
             target.write_text("#include <n64_types.h>\n")
-    print(f"[!] SDK Headers redirected to bridge.")
 
-    # 4. GLOBAL SOURCE REPAIR
-    print("[*] Performing surgical repair on source files...")
+    # 3. GLOBAL REPAIR (Pointers and Bools)
     for path in decomp_root.rglob("*.[ch]"):
         if "PR/" in str(path): continue 
         try:
             content = path.read_text(errors='ignore')
-            original = content
-            
-            # 4a. Remove any local 'typedef int bool'
-            content = content.replace("typedef int bool;", "// Removed by Harmonizer")
-            
-            # 4b. Fix (u32) Pointer Truncation for AArch64
+            content = content.replace("typedef int bool;", "// Removed")
             content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
-            
-            # 4c. Fix string.h include style
-            content = content.replace('"string.h"', '<string.h>')
-            
-            if content != original:
-                path.write_text(content)
+            path.write_text(content)
         except: pass
-
-    print(f"--- Harmonization Complete. Triggering Build... ---")
 
 if __name__ == "__main__":
     setup_harmonized_environment()
