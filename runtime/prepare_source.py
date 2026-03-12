@@ -9,7 +9,7 @@ def setup_harmonized_environment():
     include_dir = decomp_root / "include"
     sdk_dir = include_dir / "2.0L" / "PR"
     
-    print(f"--- [v87.5] SYMBOL RESTORATION: Message Queues & PFS ---")
+    print(f"--- [v88.0] DEEP SYMBOL INJECTION: AArch64 ---")
 
     # 1. SDK Redirection
     toxic = [
@@ -22,7 +22,7 @@ def setup_harmonized_environment():
         if target.exists():
             target.write_text("#include <n64_types.h>\n")
 
-    # 2. GLOBAL SOURCE REPAIR
+    # 2. GLOBAL SOURCE REPAIR & SYMBOL INJECTION
     for path in decomp_root.rglob("*.[ch]"):
         if "PR/" in str(path): continue
         try:
@@ -31,6 +31,11 @@ def setup_harmonized_environment():
             
             # Pointer safety (MIPS 32 -> ARM 64)
             content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
+            
+            # Deep Injection: If file uses OS_IM_NONE but it's not defined, fix it locally
+            if "OS_IM_NONE" in content and "#define OS_IM_NONE" not in content:
+                content = "#ifndef OS_IM_NONE\n#define OS_IM_NONE 0\n#endif\n" + content
+
             # Remove local bool typedefs
             content = content.replace("typedef int bool;", "// Removed")
             
@@ -38,7 +43,7 @@ def setup_harmonized_environment():
                 path.write_text(content)
         except: pass
 
-    print(f"--- Harmonization v87.5 Complete ---")
+    print(f"--- Harmonization v88.0 Complete ---")
 
 if __name__ == "__main__":
     setup_harmonized_environment()
