@@ -4,7 +4,7 @@ import hashlib
 from pathlib import Path
 
 # --- CONFIGURATION ---
-PREAMBLE_MARKER = "/* SH-AUTOMORPH-ACTIVE-V4 */"
+PREAMBLE_MARKER = "/* SH-AUTOMORPH-ACTIVE-V80.7 */"
 
 def get_content_hash(text):
     return hashlib.md5(text.encode('utf-8')).hexdigest()[:8]
@@ -16,13 +16,10 @@ def unique_struct_fix(match):
     return f"typedef struct _SH_TAG_{tag_id} {{{struct_body}}} {typename};"
 
 def deep_clean_sdk(decomp_root: Path):
-    """Repairs the physical SDK headers in the include folder."""
-    # 1. Neutralize bool.h
     bool_h = decomp_root / "include" / "bool.h"
     if bool_h.exists():
         bool_h.write_text("#include <stdbool.h>\n", encoding='utf-8')
     
-    # 2. Fix redefinition patterns and anonymous structs
     audio_headers = [
         decomp_root / "include/2.0L/PR/libaudio.h",
         decomp_root / "include/2.0L/PR/n_libaudio.h",
@@ -38,7 +35,6 @@ def deep_clean_sdk(decomp_root: Path):
         h_path.write_text(content, encoding='utf-8')
 
 def synthesize_preamble(file_path):
-    """Generates the modern environment preamble including TRUE/FALSE defines."""
     preamble = f"""{PREAMBLE_MARKER}
 #ifndef _SH_DYNAMIC_GUARD_
 #define _SH_DYNAMIC_GUARD_
@@ -53,11 +49,9 @@ typedef uint16_t u16; typedef int16_t s16;
 typedef uint32_t u32; typedef int32_t s32;
 typedef uint64_t u64; typedef int64_t s64;
 typedef float f32;    typedef double f64;
-// Volatiles
 typedef volatile uint32_t vu32; typedef volatile int32_t vs32;
 typedef volatile uint16_t vu16; typedef volatile int16_t vs16;
 typedef volatile uint8_t  vu8;  typedef volatile int8_t  vs8;
-// Boolean Shorthands
 #ifndef TRUE
 #define TRUE true
 #endif
@@ -71,7 +65,7 @@ typedef volatile uint8_t  vu8;  typedef volatile int8_t  vs8;
 #endif
 #define _BOOL_H_
 """
-    # Fix for code_1D00.c implicit declaration
+    # Specialized local patches
     if "code_1D00.c" in str(file_path):
         preamble += "\nstruct AudioInfo_s; typedef struct AudioInfo_s AudioInfo;\n"
         preamble += "bool audioManager_handleFrameMsg(AudioInfo *info, AudioInfo *prev_info);\n"
@@ -87,7 +81,7 @@ def apply_source_fixes(content):
     # Return-type harmonization
     content = content.replace("bool func_80253400(void)", "int func_80253400(void)")
     
-    # Remove clashing declarations
+    # Remove clashing forward declarations
     clash_patterns = [
         r'struct\s+ALCSPlayer;', r'typedef\s+struct\s+ALCSPlayer\s+ALCSPlayer;',
         r'struct\s+N_ALCSPlayer;', r'typedef\s+struct\s+N_ALCSPlayer\s+N_ALCSPlayer;'
@@ -98,7 +92,6 @@ def apply_source_fixes(content):
 def process_file(path, is_header=False):
     raw_content = path.read_text(encoding='utf-8', errors='ignore')
     content = re.sub(r'/\* SH-.*?\*/.*?#endif\n', '', raw_content, flags=re.DOTALL)
-    
     fixed_content = apply_source_fixes(content)
     
     if not is_header:
@@ -117,7 +110,7 @@ def main():
     inc_root = repo_root / "decomp-files/include"
     decomp_root = repo_root / "decomp-files"
     
-    print("[>] SourceHarmonizer v80.6: Boolean & Primitive Synchronization")
+    print("[>] SourceHarmonizer v80.7: Neutralizing MIPS Assembly dependency")
     deep_clean_sdk(decomp_root)
     
     count = 0
