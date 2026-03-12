@@ -4,7 +4,7 @@ import hashlib
 from pathlib import Path
 
 # --- CONFIGURATION ---
-PREAMBLE_MARKER = "/* SH-AUTOMORPH-ACTIVE-V80.7 */"
+PREAMBLE_MARKER = "/* SH-AUTOMORPH-ACTIVE-V80.8 */"
 
 def get_content_hash(text):
     return hashlib.md5(text.encode('utf-8')).hexdigest()[:8]
@@ -16,10 +16,23 @@ def unique_struct_fix(match):
     return f"typedef struct _SH_TAG_{tag_id} {{{struct_body}}} {typename};"
 
 def deep_clean_sdk(decomp_root: Path):
+    """Repairs SDK and Project headers to prevent shadowing and namespace collisions."""
+    # 1. Neutralize bool.h
     bool_h = decomp_root / "include" / "bool.h"
     if bool_h.exists():
         bool_h.write_text("#include <stdbool.h>\n", encoding='utf-8')
     
+    # 2. Fix the string.h conflict (CRITICAL for C++ builds)
+    # This allows <cstring> to find the system string.h instead of the project one
+    proj_string_h = decomp_root / "include" / "string.h"
+    if proj_string_h.exists():
+        original = proj_string_h.read_text(encoding='utf-8', errors='ignore')
+        if "#include_next" not in original:
+            patched = "#include_next <string.h>\n" + original
+            proj_string_h.write_text(patched, encoding='utf-8')
+            print("  [FIXED] string.h shadowed with include_next")
+
+    # 3. Fix redefinition patterns in SDK headers
     audio_headers = [
         decomp_root / "include/2.0L/PR/libaudio.h",
         decomp_root / "include/2.0L/PR/n_libaudio.h",
@@ -65,7 +78,6 @@ typedef volatile uint8_t  vu8;  typedef volatile int8_t  vs8;
 #endif
 #define _BOOL_H_
 """
-    # Specialized local patches
     if "code_1D00.c" in str(file_path):
         preamble += "\nstruct AudioInfo_s; typedef struct AudioInfo_s AudioInfo;\n"
         preamble += "bool audioManager_handleFrameMsg(AudioInfo *info, AudioInfo *prev_info);\n"
@@ -74,14 +86,10 @@ typedef volatile uint8_t  vu8;  typedef volatile int8_t  vs8;
     return preamble
 
 def apply_source_fixes(content):
-    # Fix 64-bit Pointer Truncation
     content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
     content = re.sub(r'\(u32\)\s*\((.*?)\)', r'(u32)(uintptr_t)(\1)', content)
-    
-    # Return-type harmonization
     content = content.replace("bool func_80253400(void)", "int func_80253400(void)")
     
-    # Remove clashing forward declarations
     clash_patterns = [
         r'struct\s+ALCSPlayer;', r'typedef\s+struct\s+ALCSPlayer\s+ALCSPlayer;',
         r'struct\s+N_ALCSPlayer;', r'typedef\s+struct\s+N_ALCSPlayer\s+N_ALCSPlayer;'
@@ -90,6 +98,9 @@ def apply_source_fixes(content):
     return content
 
 def process_file(path, is_header=False):
+    # Skip processing .cpp files to avoid messing with modern C++ syntax
+    if path.suffix == ".cpp": return False
+    
     raw_content = path.read_text(encoding='utf-8', errors='ignore')
     content = re.sub(r'/\* SH-.*?\*/.*?#endif\n', '', raw_content, flags=re.DOTALL)
     fixed_content = apply_source_fixes(content)
@@ -110,7 +121,7 @@ def main():
     inc_root = repo_root / "decomp-files/include"
     decomp_root = repo_root / "decomp-files"
     
-    print("[>] SourceHarmonizer v80.7: Neutralizing MIPS Assembly dependency")
+    print("[>] SourceHarmonizer v80.8: C++ Namespace Safety Active")
     deep_clean_sdk(decomp_root)
     
     count = 0
