@@ -23,7 +23,7 @@ typedef uint8_t  uchar; typedef volatile uint32_t vu32;
   #define FALSE 0
 #endif
 
-// 2. Hardware and Audio Structs (64-bit patched)
+// 2. Hardware and Audio Structs (64-bit patched & Rare-extended)
 typedef uint64_t Gfx;
 typedef struct { int32_t m[4][4]; } Mtx;
 typedef struct { float m[4][4]; } MtxF;
@@ -65,8 +65,11 @@ typedef struct ALWaveTable_s {
 typedef struct { ALMicroTime attackTime; ALMicroTime decayTime; ALMicroTime releaseTime; u8 attackVolume; u8 decayVolume; } ALEnvelope;
 typedef struct { u8 velocityMin; u8 velocityMax; u8 keyMin; u8 keyMax; u8 keyBase; s8 detune; } ALKeyMap;
 typedef struct { s16 priority; s16 fxBus; u8 unityPitch; } ALVoiceConfig;
-typedef struct { ALWaveTable *wavetable; u8 flags; ALEnvelope *envelope; ALKeyMap *keyMap; } ALSound;
-typedef struct { s16 soundCount; u8 flags; u8 tremType; u8 tremRate; u8 tremDepth; u8 tremDelay; u8 vibType; u8 vibRate; u8 vibDepth; u8 vibDelay; ALSound *soundArray[1]; } ALInstrument;
+
+// EXTENDED: Rare's ALSound and ALInstrument
+typedef struct { ALWaveTable *wavetable; u8 flags; ALEnvelope *envelope; ALKeyMap *keyMap; u8 sampleVolume; u8 samplePan; } ALSound;
+typedef struct { s16 soundCount; u8 flags; u8 tremType; u8 tremRate; u8 tremDepth; u8 tremDelay; u8 vibType; u8 vibRate; u8 vibDepth; u8 vibDelay; s16 volume; s16 pan; ALSound *soundArray[1]; } ALInstrument;
+
 typedef struct { u8 flags; s32 instCount; ALInstrument *percussion; ALInstrument *instArray[1]; } ALBank;
 typedef struct { s16 revision; s32 bankCount; ALBank *bankArray[1]; } ALBankFile;
 typedef struct { u8 *offset; s32 len; } ALSeqData;
@@ -80,16 +83,20 @@ typedef ALCSeqMarker ALSeqMarker;
 struct ALVoiceState_s;
 typedef struct { u8 status, byte1, byte2, duration; s32 ticks; } ALMIDIEvent;
 typedef struct { u8 status, type, byte1, byte2, byte3; s32 ticks; u32 len; } ALTempoEvent;
-typedef struct { s16 type; s32 ticks; union { ALMIDIEvent midi; ALTempoEvent tempo; struct { void *seq; } spseq; struct { void *bank; } spbank; struct { s16 vol; } spvol; struct { s16 vol; void* voice; s32 delta; } vol; struct { void* voice; } note; struct { struct ALVoiceState_s *vs; void* oscState; u8 chan; } osc; struct { u8 chan; u8 priority; } sppriority; struct { void* loop; } loop; struct { void *data; u32 unk0, unk4; } unk18; s32 i; } msg; } ALEvent;
+
+// EXTENDED: Rare's custom ALEvent loop
+typedef struct { s16 type; s32 ticks; union { ALMIDIEvent midi; ALTempoEvent tempo; struct { void *seq; } spseq; struct { void *bank; } spbank; struct { s16 vol; } spvol; struct { s16 vol; void* voice; s32 delta; } vol; struct { void* voice; } note; struct { struct ALVoiceState_s *vs; void* oscState; u8 chan; } osc; struct { u8 chan; u8 priority; } sppriority; struct { void* loop; void* start; void* end; s32 count; } loop; struct { void *data; u32 unk0, unk4; } unk18; s32 i; } msg; } ALEvent;
 
 typedef struct ALEventListItem_s { ALLink node; ALMicroTime delta; ALEvent evt; } ALEventListItem;
 typedef ALEventListItem N_ALEventListItem;
 typedef struct { ALLink allocList; ALLink freeList; s32 eventCount; s32 maxEventCount; ALMicroTime curTime; OSMesgQueue msgQ; OSMesg msg; } ALEventQueue;
 typedef struct { ALInstrument *instrument; s16 bendRange; u16 vol; u8 pan; u8 priority; u8 fxmix; u8 sustain; u8 unkA; u8 unkB; f32 pitchBend; u16 pad; } ALChanState;
 typedef ALChanState N_ALChanState;
-typedef struct ALVoice_s { ALLink node; struct PVoice_s *pvoice; ALWaveTable *table; void *clientPrivate; s16 state; s16 priority; s16 fxBus; s16 pan; } ALVoice;
+typedef struct ALVoice_s { ALLink node; struct PVoice_s *pvoice; ALWaveTable *table; void *clientPrivate; s16 state; s16 priority; s16 fxBus; s16 pan; u8 unityPitch; } ALVoice;
 typedef ALVoice N_ALVoice;
-typedef struct ALVoiceState_s { struct ALVoiceState_s *next; ALVoice voice; ALWaveTable *table; void *clientPrivate; s16 state; s16 priority; s16 fxBus; s16 pan; ALSound *sound; u8 flags; u8 envPhase; u8 phase; u8 channel; u8 velocity; ALMicroTime envEndTime; s16 envGain; u8 tremelo; f32 vibrato; f32 pitch; } ALVoiceState;
+
+// EXTENDED: Rare's custom ALVoiceState
+typedef struct ALVoiceState_s { struct ALVoiceState_s *next; ALVoice voice; ALWaveTable *table; void *clientPrivate; s16 state; s16 priority; s16 fxBus; s16 pan; ALSound *sound; u8 flags; u8 envPhase; u8 phase; u8 channel; u8 velocity; u8 key; ALMicroTime envEndTime; s16 envGain; u8 tremelo; f32 vibrato; f32 pitch; } ALVoiceState;
 typedef ALVoiceState N_ALVoiceState;
 
 typedef struct ALResampler_s { RESAMPLE_STATE *state; f32 delta; s32 first; s16 motion; f32 ratio; s32 upitch; void* ctrlList; void* ctrlTail; } ALResampler;
@@ -101,15 +108,18 @@ typedef struct ALFilter_s { struct ALFilter_s *source; void* (*handler)(struct A
 typedef struct { ALFilter filter; ALSetFXParam paramHdl; u8 section_count; u32 length; ALDelay *delay; s16 *base; s16 *input; } ALFx;
 
 typedef struct { ALFilter filter; s32 sourceCount; s32 maxSources; ALFilter **sources; } ALMainBus;
-typedef struct { ALFilter filter; s32 sourceCount; s32 maxSources; ALFilter **sources; ALFx *fx; } ALAuxBus;
+typedef struct { ALFilter filter; s32 sourceCount; s32 maxSources; ALFilter **sources; ALFx *fx; ALFx *fx_array[1]; } ALAuxBus;
 typedef struct { ALLink head; s16 numVoices; s16 curVol; s16 curPan; s16 curPitch; ALAuxBus *auxBus; ALMainBus *mainBus; void *filterList; void *pFreeList; void *pAllocList; void *pLameList; void *paramList; uint8_t pad[256]; } ALSynth;
 typedef struct N_ALFilter_s { struct N_ALFilter_s *source; void* (*handler)(s32 sampleOffset, struct N_ALFilter_s *filter); s16 type; s16 inp; s16 outp; s32 count; } N_ALFilter;
 typedef struct { N_ALFilter filter; s32 sourceCount; s32 maxSources; N_ALFilter **sources; } N_ALMainBus;
-typedef struct { ALLink head; s16 numVoices; s16 curVol; s16 curPan; s16 curPitch; ALAuxBus *auxBus; N_ALMainBus *mainBus; void *filterList; void *pFreeList; void *pAllocList; void *pLameList; void *paramList; s32 outputRate; void* sv_dramout; uint8_t pad[256]; } N_ALSynth;
+typedef struct { ALLink head; s16 numVoices; s16 curVol; s16 curPan; s16 curPitch; ALAuxBus *auxBus; N_ALMainBus *mainBus; void *filterList; void *pFreeList; void *pAllocList; void *pLameList; void *paramList; s32 outputRate; void* sv_dramout; void* n_sndp; void* n_seqp1; s32 curSamples; uint8_t pad[256]; } N_ALSynth;
 typedef struct { s32 maxVoices; s32 maxEvents; u8 maxChannels; u8 debugFlags; ALHeap *heap; void* (*initOsc)(void**, f32*, u8, u8, u8, u8); ALMicroTime (*updateOsc)(void*, f32*); void (*stopOsc)(void*); } ALSeqpConfig;
 typedef struct { s16 maxVVoices; s16 maxPVoices; s16 maxUpdates; s16 maxFXbusses; void* dmaproc; ALHeap* heap; s32 fxType; s32 outputRate; void* params; } ALSynConfig;
-typedef struct { ALLink node; ALEvent nextEvent; ALEventQueue evtq; ALChanState *chanState; ALSeq *target; ALMicroTime uspt; ALBank *bank; ALSynth *drvr; u32 chanMask; ALMicroTime nextDelta; s32 state; u16 vol; u8 maxChannels; u8 debugFlags; ALMicroTime frameTime; ALMicroTime curTime; void* (*initOsc)(void**, f32*, u8, u8, u8, u8); ALMicroTime (*updateOsc)(void*, f32*); void (*stopOsc)(void*); ALVoiceState *vFreeList; ALVoiceState *vAllocHead; ALVoiceState *vAllocTail; void* loopStart; void* loopEnd; s32 loopCount; uint8_t padding[64]; } ALCSPlayer;
-typedef ALCSPlayer ALSeqPlayer; typedef ALCSPlayer N_ALSeqPlayer; typedef ALCSPlayer N_ALCSPlayer;
+
+// ALCSPlayer definition matched to ALPlayer usage
+typedef struct ALCSPlayer_s { ALLink node; ALEvent nextEvent; ALEventQueue evtq; ALChanState *chanState; ALSeq *target; ALMicroTime uspt; ALBank *bank; ALSynth *drvr; u32 chanMask; ALMicroTime nextDelta; s32 state; u16 vol; u8 maxChannels; u8 debugFlags; ALMicroTime frameTime; ALMicroTime curTime; void* (*initOsc)(void**, f32*, u8, u8, u8, u8); ALMicroTime (*updateOsc)(void*, f32*); void (*stopOsc)(void*); ALVoiceState *vFreeList; ALVoiceState *vAllocHead; ALVoiceState *vAllocTail; void* loopStart; void* loopEnd; s32 loopCount; struct ALCSPlayer_s *next; s32 samplesLeft; uint8_t padding[64]; } ALCSPlayer;
+typedef ALCSPlayer ALPlayer; typedef ALCSPlayer ALSeqPlayer; typedef ALCSPlayer N_ALSeqPlayer; typedef ALCSPlayer N_ALCSPlayer;
+
 typedef ALEvent N_ALEvent; typedef struct { N_ALSynth drvr; } ALGlobals; extern ALGlobals *alGlobals;
 typedef u32 OSIntMask;
 
@@ -177,6 +187,7 @@ extern "C" int sched_yield(void);
 #define AL_VIB_OSC_EVT 125
 #define AL_CSP_NOTEOFF_EVT 126
 #define AL_SEQP_PRIORITY_EVT 127
+#define AL_SEQP_LOOP_EVT 128
 #define AL_MIDI_StatusMask 0xF0
 #define AL_MIDI_ChannelMask 0x0F
 
@@ -186,6 +197,15 @@ extern "C" int sched_yield(void);
 #define AL_MIDI_PRIORITY_CTRL 0x06
 #define AL_MIDI_SUSTAIN_CTRL 0x40
 #define AL_MIDI_FX1_CTRL 0x5B
+#define AL_MIDI_FX3_CTRL 0x5D
+#define AL_MIDI_FX_CTRL_0 0x10
+#define AL_MIDI_FX_CTRL_1 0x11
+#define AL_MIDI_FX_CTRL_2 0x12
+#define AL_MIDI_FX_CTRL_3 0x13
+#define AL_MIDI_FX_CTRL_4 0x14
+#define AL_MIDI_FX_CTRL_5 0x15
+#define AL_MIDI_FX_CTRL_6 0x16
+#define AL_MIDI_FX_CTRL_7 0x17
 
 typedef void* ALFxRef;
 
@@ -217,7 +237,7 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 def harvest_n64_macros(pr_dir: Path):
     harvested = set()
     output = "\n// --- DYNAMICALLY HARVESTED N64 SDK MACROS ---\n"
-    bad_macros = {"ALGlobals", "ALSynth", "ALSeqPlayer", "ALVoice", "ALVoiceState", "ALEvent", "ALCSeq", "ALHeap", "ALWaveTable", "ALFilter", "ALMainBus", "ALFx"}
+    bad_macros = {"ALGlobals", "ALSynth", "ALSeqPlayer", "ALVoice", "ALVoiceState", "ALEvent", "ALCSeq", "ALHeap", "ALWaveTable", "ALFilter", "ALMainBus", "ALFx", "N_ALVoice", "N_ALVoiceState"}
     if not pr_dir.exists(): return output
     for h_file in pr_dir.glob("*.h"):
         try:
@@ -276,7 +296,7 @@ def deploy_dynamic_patch():
     include_dir = decomp / "include"
     pr_folder = include_dir / "2.0L" / "PR"
     
-    print("--- [v161.0] RUNNING MIDI MASTER SCRUBBER ---")
+    print("--- [v162.0] RUNNING FINAL AUDIO REFINEMENT ---")
     dynamic_macros = harvest_n64_macros(pr_folder)
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT + dynamic_macros)
 
@@ -292,7 +312,7 @@ def deploy_dynamic_patch():
         p = include_dir / h
         if p.exists(): p.write_text("/* Blocked */\n")
 
-    clash_types = {"MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad", "ALDelay", "ALResampler", "ALLowPass"}
+    clash_types = {"MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad", "ALDelay", "ALResampler", "ALLowPass", "ALSound", "ALBank"}
 
     for path in decomp.rglob("*.[ch]"):
         if path.name == "n64_types.h": continue
@@ -320,7 +340,7 @@ def deploy_dynamic_patch():
             if content != original: path.write_text(content)
         except Exception: pass
 
-    print("--- MIDI Master Scrubber Complete. Run Ninja! ---")
+    print("--- Final Audio Refinement Complete. Run Ninja! ---")
 
 if __name__ == "__main__":
     deploy_dynamic_patch()
