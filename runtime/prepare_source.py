@@ -100,7 +100,10 @@ typedef struct {
     u32 validTracks; u32 lastTicks; u32 lastDeltaTicks; u8 *curLoc[16]; u8 *curBUPtr[16]; u32 curBULen[16]; u8 lastStatus[16]; u32 evtDeltaTicks[16];
 } ALCSeqMarker;
 
-// FIXED: Restored spvol while keeping vol, note, and osc payloads
+// Forward declare ALVoiceState for the event union
+struct ALVoiceState_s;
+
+// FIXED: Added osc event payload for LFO updates
 typedef struct {
     s16 type; s32 ticks;
     union {
@@ -111,7 +114,7 @@ typedef struct {
         struct { s16 vol; } spvol;
         struct { s16 vol; void* voice; s32 delta; } vol;
         struct { void* voice; } note;
-        struct { void* osc; void* voice; } osc;
+        struct { struct ALVoiceState_s *vs; void* oscState; u8 chan; } osc;
         struct { void *data; u32 unk0, unk4; } unk18;
         s32 i;
     } msg;
@@ -127,14 +130,24 @@ typedef struct {
     OSMesgQueue msgQ; OSMesg msg;
 } ALEventQueue;
 
-typedef struct { u16 vol; u8 pan; u8 priority; u8 fxmix; u8 unkA; u8 unkB; u16 pad; } ALChanState;
+// FIXED: Added pitchBend to channel state
+typedef struct { u16 vol; u8 pan; u8 priority; u8 fxmix; u8 unkA; u8 unkB; f32 pitchBend; u16 pad; } ALChanState;
 typedef ALChanState N_ALChanState;
 
+// FIXED: Extracted ALVoice ahead of VoiceState
+typedef struct ALVoice_s {
+    ALLink node; struct PVoice_s *pvoice; ALWaveTable *table; void *clientPrivate;
+    s16 state; s16 priority; s16 fxBus; s16 pan;
+} ALVoice;
+typedef ALVoice N_ALVoice;
+
+// FIXED: Added tremelo, vibrato, and pitch f32 trackers
 typedef struct ALVoiceState_s {
     struct ALVoiceState_s *next;
-    void* pvoice; ALWaveTable *table; void *clientPrivate;
+    ALVoice voice; ALWaveTable *table; void *clientPrivate;
     s16 state; s16 priority; s16 fxBus; s16 pan; ALSound *sound; 
     u8 flags; u8 envPhase; ALMicroTime envEndTime; s16 envGain;
+    u8 tremelo; f32 vibrato; f32 pitch;
 } ALVoiceState;
 
 typedef struct ALFilter_s {
@@ -172,33 +185,33 @@ typedef struct {
     uint8_t pad[256];
 } N_ALSynth;
 
+// FIXED: Restored actual executable function pointers to config
 typedef struct {
     s32 maxVoices; s32 maxEvents; u8 maxChannels; u8 debugFlags; ALHeap *heap;
-    void *initOsc; void *updateOsc; void *stopOsc;
+    void* (*initOsc)(void**, f32*, u8, u8, u8, u8);
+    ALMicroTime (*updateOsc)(void*, f32*);
+    void (*stopOsc)(void*);
 } ALSeqpConfig;
 
 typedef struct { s16 maxVVoices; s16 maxPVoices; s16 maxUpdates; s16 maxFXbusses; void* dmaproc; ALHeap* heap; s32 fxType; s32 outputRate; void* params; } ALSynConfig;
 
+// FIXED: Restored executable function pointers to Sequence Player
 typedef struct {
     ALLink node; ALEvent nextEvent; void *evtq; ALChanState *chanState; 
     ALCSeq *target; ALMicroTime uspt; void *bank; ALSynth *drvr;
     u32 chanMask; ALMicroTime nextDelta; s32 state; u16 vol;
     u8 maxChannels; u8 debugFlags; ALMicroTime frameTime; ALMicroTime curTime;
-    void *initOsc; void *updateOsc; void *stopOsc;
+    void* (*initOsc)(void**, f32*, u8, u8, u8, u8);
+    ALMicroTime (*updateOsc)(void*, f32*);
+    void (*stopOsc)(void*);
     ALVoiceState *vFreeList; ALVoiceState *vAllocHead; ALVoiceState *vAllocTail;
     uint8_t padding[64];
 } ALCSPlayer;
-
-typedef struct ALVoice_s {
-    ALLink node; struct PVoice_s *pvoice; ALWaveTable *table; void *clientPrivate;
-    s16 state; s16 priority; s16 fxBus; s16 pan;
-} ALVoice;
 
 typedef ALCSPlayer ALSeqPlayer;
 typedef ALCSPlayer N_ALSeqPlayer;
 typedef ALCSPlayer N_ALCSPlayer;
 typedef ALEvent N_ALEvent;
-typedef ALVoice N_ALVoice;
 
 typedef struct { N_ALSynth drvr; } ALGlobals_t;
 extern ALGlobals_t *alGlobals;
@@ -267,6 +280,7 @@ extern ALGlobals_t *alGlobals;
 #define AL_UNK18_EVT 18
 #define AL_SEQP_ENV_EVT 19
 #define AL_TREM_OSC_EVT 20
+#define AL_VIB_OSC_EVT 21
 
 #define AL_CMIDI_BLOCK_CODE 0xFE
 #define AL_CMIDI_LOOPSTART_CODE 0x2E
@@ -292,12 +306,12 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_master_volume_patch():
+def deploy_lfo_modulator():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v126.0] DEPLOYING MASTER VOLUME PATCH ---")
+    print("--- [v127.0] DEPLOYING LFO MODULATOR ---")
     
     bridge_path = include_dir / "n64_types.h"
     bridge_path.write_text(BRIDGE_CONTENT)
@@ -310,7 +324,7 @@ def deploy_master_volume_patch():
     for h in toxic:
         p = include_dir / h
         if p.exists():
-            p.write_text("/* Terminated by v126.0 */\n")
+            p.write_text("/* Terminated by v127.0 */\n")
     
     clash_types = [
         "MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", 
@@ -339,7 +353,7 @@ def deploy_master_volume_patch():
                 path.write_text(content)
         except: continue
         
-    print("--- Master Volume Patch Deployed. ---")
+    print("--- LFO Modulator Deployed. The Sequence Player is complete. ---")
 
 if __name__ == "__main__":
-    deploy_master_volume_patch()
+    deploy_lfo_modulator()
