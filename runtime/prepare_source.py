@@ -92,33 +92,13 @@ typedef ALVoice N_ALVoice;
 typedef struct ALVoiceState_s { struct ALVoiceState_s *next; ALVoice voice; ALWaveTable *table; void *clientPrivate; s16 state; s16 priority; s16 fxBus; s16 pan; ALSound *sound; u8 flags; u8 envPhase; u8 phase; u8 channel; u8 velocity; ALMicroTime envEndTime; s16 envGain; u8 tremelo; f32 vibrato; f32 pitch; } ALVoiceState;
 typedef ALVoiceState N_ALVoiceState;
 
-// FIXED: DSP Structs
 typedef struct ALResampler_s { RESAMPLE_STATE *state; f32 delta; s32 first; s16 motion; f32 ratio; s32 upitch; void* ctrlList; void* ctrlTail; } ALResampler;
 typedef struct ALLowPass_s { POLEF_STATE *fstate; s16 fc; s16 fgain; s16 first; struct { s16 fccoef[16]; } fcvec; } ALLowPass;
-
-// rsdelta is now an s32 to allow array indexing
 typedef struct { s32 input; s32 output; s16 fbcoef; s16 ffcoef; s16 gain; f32 mute; f32 vol; f32 rsinc; f32 rsgain; f32 rsval; s32 rsdelta; ALResampler *rs; ALLowPass *lp; } ALDelay;
 
 typedef s32 (*ALSetFXParam)(void *filter, s32 paramID, void *param);
-
-// Filter is decoupled from Fx
-typedef struct ALFilter_s { 
-    struct ALFilter_s *source; 
-    void* (*handler)(struct ALFilter_s *filter, s16 *outp, s32 outLen, s32 sampleOffset, void *p); 
-    void (*setParam)(struct ALFilter_s *filter, s32 paramID, void *param); 
-    s16 type; s16 inp; s16 outp; s32 count; 
-} ALFilter;
-
-// Fx is a struct containing a Filter
-typedef struct {
-    ALFilter filter;
-    ALSetFXParam paramHdl;
-    u8 section_count;
-    u32 length;
-    ALDelay *delay;
-    s16 *base;
-    s16 *input;
-} ALFx;
+typedef struct ALFilter_s { struct ALFilter_s *source; void* (*handler)(struct ALFilter_s *filter, s16 *outp, s32 outLen, s32 sampleOffset, void *p); void (*setParam)(struct ALFilter_s *filter, s32 paramID, void *param); s16 type; s16 inp; s16 outp; s32 count; } ALFilter;
+typedef struct { ALFilter filter; ALSetFXParam paramHdl; u8 section_count; u32 length; ALDelay *delay; s16 *base; s16 *input; } ALFx;
 
 typedef struct { ALFilter filter; s32 sourceCount; s32 maxSources; ALFilter **sources; } ALMainBus;
 typedef struct { ALFilter filter; s32 sourceCount; s32 maxSources; ALFilter **sources; ALFx *fx; } ALAuxBus;
@@ -143,7 +123,7 @@ typedef u32 OSIntMask;
 extern "C" int sched_yield(void);
 #endif
 
-// 4. Core Audio Constants
+// 4. Core Audio & MIDI Constants
 #define AL_ADPCM_WAVE 0
 #define AL_RAW16_WAVE 1
 #define AL_BANK_VERSION 0x424c
@@ -164,6 +144,9 @@ extern "C" int sched_yield(void);
 #define AL_PLAYING 1
 #define AL_STOPPING 2
 #define AL_MIDI_NoteOn 0x90
+#define AL_MIDI_NoteOff 0x80
+#define AL_MIDI_PolyKeyPressure 0xA0
+#define AL_MIDI_PitchBendChange 0xE0
 #define AL_MIDI_ProgramChange 0xC0
 #define AL_MIDI_ChannelPressure 0xD0
 #define AL_MIDI_Meta 0xFF
@@ -186,8 +169,6 @@ extern "C" int sched_yield(void);
 #define AL_SEQP_PROG_EVT 113
 #define AL_SEQP_META_EVT 114
 #define AL_SEQP_STOPPING_EVT 115
-
-// NEW: CSPlayer Enums
 #define AL_SEQP_API_EVT 120
 #define AL_SEQ_REF_EVT 121
 #define AL_NOTE_END_EVT 122
@@ -198,6 +179,14 @@ extern "C" int sched_yield(void);
 #define AL_SEQP_PRIORITY_EVT 127
 #define AL_MIDI_StatusMask 0xF0
 #define AL_MIDI_ChannelMask 0x0F
+
+// MIDI Controllers
+#define AL_MIDI_VOLUME_CTRL 0x07
+#define AL_MIDI_PAN_CTRL 0x0A
+#define AL_MIDI_PRIORITY_CTRL 0x06
+#define AL_MIDI_SUSTAIN_CTRL 0x40
+#define AL_MIDI_FX1_CTRL 0x5B
+
 typedef void* ALFxRef;
 
 #define AL_CMIDI_LOOPSTART_CODE 102
@@ -228,15 +217,8 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 def harvest_n64_macros(pr_dir: Path):
     harvested = set()
     output = "\n// --- DYNAMICALLY HARVESTED N64 SDK MACROS ---\n"
-    
-    bad_macros = {
-        "ALGlobals", "ALSynth", "ALSeqPlayer", "ALVoice", "ALVoiceState", 
-        "ALEvent", "ALCSeq", "ALHeap", "ALWaveTable", "ALFilter", "ALMainBus", "ALFx"
-    }
-    
-    if not pr_dir.exists():
-        return output
-
+    bad_macros = {"ALGlobals", "ALSynth", "ALSeqPlayer", "ALVoice", "ALVoiceState", "ALEvent", "ALCSeq", "ALHeap", "ALWaveTable", "ALFilter", "ALMainBus", "ALFx"}
+    if not pr_dir.exists(): return output
     for h_file in pr_dir.glob("*.h"):
         try:
             content = h_file.read_text(errors='ignore')
@@ -246,13 +228,10 @@ def harvest_n64_macros(pr_dir: Path):
                     continue
                 harvested.add(name)
                 output += f"#define {name} {val.strip()}\n"
-        except Exception:
-            pass
-            
+        except Exception: pass
     output += "\n// --- BLOCKING SDK MACROS ---\n"
     for blocked in ["_ULTRATYPES_H_", "_GBI_H_", "_ABI_H_", "_MBI_H_", "_LIBAUDIO_H_", "_N_LIBAUDIO_H_", "_GU_H_", "_SP_H_", "__OS_H__", "_MTXF_H_", "_BOOL_H_", "_SPTASK_H_", "_REGION_H_", "_RAMROM_H_", "_RCP_H_", "_ULTRAERROR_H_", "_ULTRALOG_H_", "_RMON_H_"]:
         output += f"#define {blocked}\n"
-        
     output += "\n#endif // _N64_TYPES_H_\n"
     return output
 
@@ -261,14 +240,11 @@ def scrub_types_ast(content, type_names):
     pos = 0
     while True:
         match = pattern.search(content, pos)
-        if not match:
-            break
-        
+        if not match: break
         start_idx = match.start()
         brace_count = 0
         in_struct = False
         end_brace_idx = -1
-        
         for i in range(match.end() - 1, len(content)):
             if content[i] == '{':
                 brace_count += 1
@@ -278,7 +254,6 @@ def scrub_types_ast(content, type_names):
                 if in_struct and brace_count == 0:
                     end_brace_idx = i
                     break
-                    
         if end_brace_idx != -1:
             after_brace = content[end_brace_idx+1 : end_brace_idx+150]
             m = re.match(r'\s*([^;]+);', after_brace)
@@ -290,12 +265,9 @@ def scrub_types_ast(content, type_names):
                     content = content[:start_idx] + "/* Scrubbed block by AST parser */\n" + content[full_match_end:]
                     pos = start_idx
                     continue
-                    
         pos = match.end()
-        
     for name in type_names:
         content = re.sub(r'typedef\s+(struct|union)\s+[a-zA-Z0-9_]+\s+' + name + r'\s*;', f'/* Scrubbed fwd {name} */\n', content)
-        
     return content
 
 def deploy_dynamic_patch():
@@ -304,8 +276,7 @@ def deploy_dynamic_patch():
     include_dir = decomp / "include"
     pr_folder = include_dir / "2.0L" / "PR"
     
-    print("--- [v160.0] RUNNING FINAL AUDIO SCRUBBER ---")
-    
+    print("--- [v161.0] RUNNING MIDI MASTER SCRUBBER ---")
     dynamic_macros = harvest_n64_macros(pr_folder)
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT + dynamic_macros)
 
@@ -313,54 +284,31 @@ def deploy_dynamic_patch():
         p = include_dir / sh
         if p.exists(): p.unlink()
             
-    sched_p = pr_folder / "sched.h"
-    if sched_p.exists():
-        sched_p.unlink()
-
     if pr_folder.exists():
         for file in pr_folder.glob("*.h"):
-            if file.name != "sched.h":
-                file.write_text("/* Blocked */\n")
+            file.write_text("/* Blocked */\n")
             
     for h in ["2.0L/ultra64.h", "bool.h", "macros.h"]:
         p = include_dir / h
-        if p.exists():
-            p.write_text("/* Blocked */\n")
+        if p.exists(): p.write_text("/* Blocked */\n")
 
     clash_types = {"MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad", "ALDelay", "ALResampler", "ALLowPass"}
-
-    for path in decomp.rglob("*.h"):
-        if path.name in ["mem.h", "functions.h", "synthInternals.h"]:
-            content = path.read_text(errors='ignore')
-            content = re.sub(r'void\s+memcpy\s*\([^;]+;', '/* Scrubbed memcpy */;', content)
-            content = re.sub(r'void\s+memmove\s*\([^;]+;', '/* Scrubbed memmove */;', content)
-            content = re.sub(r'void\s*\*\s*malloc\s*\([^;]+;', '/* Scrubbed malloc */;', content)
-            content = re.sub(r'void\s*\*\s*realloc\s*\([^;]+;', '/* Scrubbed realloc */;', content)
-            content = re.sub(r'typedef\s+s32\s*\(\s*\*\s*ALSetFXParam\s*\)\s*\([^;]+;', '/* Scrubbed ALSetFXParam */', content)
-            path.write_text(content)
 
     for path in decomp.rglob("*.[ch]"):
         if path.name == "n64_types.h": continue
         try:
             content = path.read_text(errors='ignore')
             original = content
-            
             if '#include "n64_types.h"' not in content:
                 content = '#include "n64_types.h"\n' + content
-                
             if path.name in ["mem.h", "functions.h", "synthInternals.h"]:
                 content = re.sub(r'void\s+memcpy\s*\([^;]+;', '/* Scrubbed memcpy */;', content)
                 content = re.sub(r'void\s+memmove\s*\([^;]+;', '/* Scrubbed memmove */;', content)
                 content = re.sub(r'void\s*\*\s*malloc\s*\([^;]+;', '/* Scrubbed malloc */;', content)
                 content = re.sub(r'void\s*\*\s*realloc\s*\([^;]+;', '/* Scrubbed realloc */;', content)
-                content = re.sub(r'typedef\s+s32\s*\(\s*\*\s*ALSetFXParam\s*\)\s*\([^;]+;', '/* Scrubbed ALSetFXParam */', content)
-
             content = scrub_types_ast(content, clash_types)
-            
-            if content != original:
-                path.write_text(content)
-        except Exception:
-            continue
+            if content != original: path.write_text(content)
+        except Exception: continue
 
     android_cpp_dir = root / "Android" / "app" / "src" / "main" / "cpp"
     for path in android_cpp_dir.rglob("*.cpp"):
@@ -369,12 +317,10 @@ def deploy_dynamic_patch():
             original = content
             content = content.replace('#include "tools/rare_decompression.h"', '#include "rare_decompression.h"')
             content = scrub_types_ast(content, clash_types)
-            if content != original:
-                path.write_text(content)
-        except Exception:
-            pass
+            if content != original: path.write_text(content)
+        except Exception: pass
 
-    print("--- Final Audio Scrubber Complete. Run Ninja! ---")
+    print("--- MIDI Master Scrubber Complete. Run Ninja! ---")
 
 if __name__ == "__main__":
     deploy_dynamic_patch()
