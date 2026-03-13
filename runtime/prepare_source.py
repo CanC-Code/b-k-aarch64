@@ -165,6 +165,8 @@ extern ALGlobals *alGlobals;
 
 #if defined(__cplusplus)
 #include <sched.h>
+// Force declaration of sched_yield for Android NDK C++ compiler
+extern "C" int sched_yield(void);
 #endif
 
 // 4. Constants
@@ -187,6 +189,34 @@ extern ALGlobals *alGlobals;
 #define AL_STOPPED 0
 #define AL_PLAYING 1
 #define AL_STOPPING 2
+
+// NEW: MIDI and Audio Event Constants
+#define AL_MIDI_NoteOn 0x90
+#define AL_MIDI_ProgramChange 0xC0
+#define AL_MIDI_ChannelPressure 0xD0
+#define AL_MIDI_Meta 0xFF
+#define AL_MIDI_META_TEMPO 0x51
+#define AL_MIDI_META_EOT 0x2F
+
+#define AL_TRACK_END 99
+#define AL_SEQ_END_EVT 100
+#define AL_TEMPO_EVT 101
+#define AL_SEQ_MIDI_EVT 102
+#define AL_CSP_LOOPSTART 103
+#define AL_CSP_LOOPEND 104
+#define AL_SEQP_SEQ_EVT 105
+#define AL_SEQP_PLAY_EVT 106
+#define AL_SEQP_BANK_EVT 107
+#define AL_SEQP_STOP_EVT 108
+#define AL_SEQP_VOL_EVT 109
+#define AL_SEQP_PAN_EVT 110
+#define AL_SEQP_FX_EVT 111
+#define AL_SEQP_TEMPO_EVT 112
+#define AL_SEQP_PROG_EVT 113
+
+#define AL_CMIDI_LOOPSTART_CODE 102
+#define AL_CMIDI_LOOPEND_CODE 103
+#define AL_CMIDI_BLOCK_CODE 104
 
 #define K0_TO_PHYS(x) ((u32)(uintptr_t)(x))
 static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t)vaddr; }
@@ -214,31 +244,27 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_last_mile():
+def deploy_audio_thread_patch():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v148.0] DEPLOYING LAST MILE FIX ---")
+    print("--- [v149.0] DEPLOYING AUDIO & THREAD PATCH ---")
     
     (include_dir / "n64_types.h").write_text(BRIDGE_CONTENT)
 
-    # 1. Physically DESTROY imposter standard headers so they don't shadow the NDK
     std_headers = ["string.h", "math.h", "stdarg.h", "time.h", "basic_types.h"]
     for sh in std_headers:
         p = include_dir / sh
         if p.exists(): p.unlink()
             
-    # CRITICAL: Physically delete sched.h from PR folder instead of blocking it!
     sched_p = include_dir / "2.0L" / "PR" / "sched.h"
     if sched_p.exists():
         sched_p.unlink()
-        print("Destroyed PR/sched.h to unblock Android NDK threading!")
 
     pr_folder = include_dir / "2.0L" / "PR"
     if pr_folder.exists():
         for file in pr_folder.glob("*.h"):
-            # Block the remaining ones
             if file.name != "sched.h":
                 file.write_text("/* Blocked */\n")
             
@@ -247,7 +273,7 @@ def deploy_last_mile():
         if p.exists():
             p.write_text("/* Blocked */\n")
 
-    # 2. Scrub Custom N64 Memory Definitions
+    # Scrub Custom N64 Memory Definitions
     mem_h = include_dir / "core1" / "mem.h"
     if mem_h.exists():
         content = mem_h.read_text(errors='ignore')
@@ -262,7 +288,6 @@ def deploy_last_mile():
         content = re.sub(r'void\s*\*\s*realloc\s*\([^;]+;', '/* Scrubbed realloc */;', content)
         funcs_h.write_text(content)
 
-    # 3. Global scrub for all local clashes
     clash_types = ["MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad"]
 
     for path in decomp.rglob("*.[ch]"):
@@ -297,7 +322,7 @@ def deploy_last_mile():
                 path.write_text(content)
         except: pass
 
-    print("--- Last Mile Complete. ---")
+    print("--- Audio & Thread Patch Complete. ---")
 
 if __name__ == "__main__":
-    deploy_last_mile()
+    deploy_audio_thread_patch()
