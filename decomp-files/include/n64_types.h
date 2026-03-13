@@ -13,71 +13,112 @@ typedef int64_t  s64; typedef uint64_t u64;
 typedef float    f32; typedef double   f64;
 typedef volatile uint32_t vu32;
 
-// 2. Total Eclipse Guards
+#ifndef TRUE
+  #define TRUE 1
+  #define FALSE 0
+#endif
+
+// 2. SDK Guards
 #define __OS_H__
 #define __OS_THREAD_H__
 #define __OS_MESSAGE_H__
 #define __OS_CONT_H__
 #define _GBI_H_
-#define _MBI_H_
 #define _ABI_H_
+#define _MBI_H_
+#define _LIBAUDIO_H_
+#define _N_LIBAUDIO_H_
 #define _GU_H_
-#define _SP_H_
 #define _ULTRATYPES_H_
 
-// 3. Audio Library (AL) Structure Emulation
-typedef struct { s16 seqCount; s32 seqArray[1]; } ALSeqFile;
-typedef struct { u8 type; u8 flags; u8 *base; u32 len; } ALWaveTable;
-typedef struct { uint8_t d[32]; } ALEnvelope;
-typedef struct { uint8_t d[32]; } ALKeyMap;
-typedef struct { uint8_t d[32]; } ALInstrument;
-typedef struct { uint8_t d[32]; } ALSound;
+// 3. Audio State Arrays
+typedef int16_t ADPCM_STATE[16];
+typedef int16_t RESAMPLE_STATE[16];
+typedef int16_t POLEF_STATE[4];
+typedef int16_t ENVMIX_STATE[40];
+
+// 4. Detailed Audio Structure Emulation
+typedef s32 ALMicroTime;
+typedef s32 ALPan;
+typedef void* ALDMAproc;
+typedef void* ALDMANew;
+typedef struct { uint8_t d[32]; } ALHeap;
+typedef struct ALLink_s { struct ALLink_s *next; struct ALLink_s *prev; } ALLink;
+
+// Structures for bnkf.c (Audio Bank Loading)
 typedef struct { uint8_t d[32]; } ALADPCMBook;
 typedef struct { uint8_t d[32]; } ALADPCMloop;
 typedef struct { uint8_t d[32]; } ALRawLoop;
 
-typedef struct { 
-    s16 type; 
-    union { s32 i; void *ptr; } msg; 
+typedef struct {
+    union {
+        struct { ALADPCMBook *book; ALADPCMloop *loop; } adpcmWave;
+        struct { ALRawLoop *loop; } rawWave;
+    } waveInfo;
+    u8 *base;
+    u32 len;
+    u8 type;
+    u8 flags;
+} ALWaveTable;
+
+typedef struct {
+    uint8_t d[32]; // Opaque envelope
+} ALEnvelope;
+
+typedef struct {
+    uint8_t d[32]; // Opaque keymap
+} ALKeyMap;
+
+typedef struct {
+    ALEnvelope *envelope;
+    ALKeyMap   *keyMap;
+    ALWaveTable *wavetable;
+    u8 flags;
+} ALSound;
+
+typedef struct {
+    s16 seqCount;
+    s32 seqArray[1]; 
+} ALSeqFile;
+
+// ALEvent Union (Fixes code_21AF0.c)
+typedef struct {
+    s16 type;
+    union {
+        struct { u8 status; u8 byte1; u8 byte2; } midi;
+        struct { void *data; } unk18;
+        s32 i;
+    } msg;
 } ALEvent;
 
-typedef struct { void *evtq; uint8_t d[64]; } ALCSPlayer;
-typedef ALCSPlayer N_ALSeqPlayer;
+typedef struct { void *evtq; } ALCSPlayer;
+typedef struct { uint8_t d[64]; } ALSynConfig;
 typedef struct { uint8_t d[64]; } ALSynth;
-typedef ALSynth N_ALSynth;
 
+// 5. System & Graphics
+typedef uint64_t Gfx;
+typedef struct { int32_t m[4][4]; } Mtx;
+typedef struct { uint8_t d[16]; } Vtx;
+typedef struct { uint8_t d[64]; } LookAt;
+typedef struct { uint8_t d[64]; } Hilite;
+typedef struct { uint8_t d[64]; } Light;
+typedef struct { uint8_t d[128]; } uSprite;
+
+typedef void* OSMesg;
+typedef struct { void* mt; void* full; int validCount; } OSMesgQueue;
+
+// 6. Macros & Inlines
+#define OS_IM_NONE 0
+#define ADPCMFSIZE 16
+#define ADPCMVSIZE 8
+#define UNITY_PITCH 0x8000
 #define AL_ADPCM_WAVE 0
 #define AL_RAW16_WAVE 1
 #define AL_SEQP_MIDI_EVT 2
 #define AL_MIDI_ControlChange 3
 #define AL_UNK18_EVT 18
 
-// 4. Graphics Utility (GU) Types
-typedef struct { uint8_t d[64]; } LookAt;
-typedef struct { uint8_t d[64]; } Hilite;
-typedef struct { uint8_t d[64]; } Light;
-typedef struct { uint8_t d[64]; } PositionalLight;
-typedef struct { uint8_t d[128]; } uSprite;
-typedef struct { uint8_t d[128]; } Sprite;
-
-// 5. System & Graphics ABI
-typedef uint64_t Gfx;
-typedef struct { int32_t m[4][4]; } Mtx;
-typedef struct { uint8_t d[16]; } Vtx;
-typedef struct { unsigned int w0, w1; } Acmd_words;
-typedef union { Acmd_words words; long long align; } Acmd;
-
-typedef void* OSMesg;
-typedef struct { void* mt; void* full; int validCount; } OSMesgQueue;
-typedef struct { uint8_t d[128]; } OSThread;
-typedef struct { uint8_t d[64];  } OSContPad;
-
-#define OS_IM_NONE 0
-#define ADPCMFSIZE 16
-#define UNITY_PITCH 0x8000
-
 static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t)vaddr; }
-
 #ifndef bcopy
   #define bcopy(src, dst, n) __builtin_memmove(dst, src, n)
 #endif
