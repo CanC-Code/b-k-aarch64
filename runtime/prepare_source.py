@@ -47,11 +47,19 @@ typedef struct { uint8_t d[64];  } OSContPad;
 typedef struct { unsigned int w0, w1; } Acmd_words;
 typedef union { Acmd_words words; long long force_align; } Acmd;
 
+// --- DMA & Memory Heap ---
+typedef s32 (*ALDMAproc)(s32 addr, s32 len, void *state);
+typedef ALDMAproc (*ALDMANew)(void **state);
+
+typedef struct {
+    u8 *base;
+    u8 *cur;
+    u32 len;
+    s32 count;
+} ALHeap;
+
 typedef s32 ALMicroTime;
 typedef s32 ALPan;
-typedef void* ALDMAproc;
-typedef void* ALDMANew;
-typedef struct { uint8_t d[48]; } ALHeap;
 typedef struct { s16 maxVVoices; s16 maxPVoices; s16 maxUpdates; s16 maxFXbusses; void* dmaproc; ALHeap* heap; s32 fxType; s32 outputRate; void* params; } ALSynConfig;
 typedef struct ALLink_s { struct ALLink_s *next; struct ALLink_s *prev; } ALLink;
 
@@ -83,34 +91,15 @@ typedef struct { s16 revision; s32 bankCount; ALBank *bankArray[1]; } ALBankFile
 typedef struct { u8 *offset; s32 len; } ALSeqData;
 typedef struct { s16 seqCount; ALSeqData seqArray[1]; } ALSeqFile;
 
-typedef struct { 
-    u32 division; 
-    s32 trackOffset[16]; 
-} ALCMidiHdr;
+typedef struct { u32 division; s32 trackOffset[16]; } ALCMidiHdr;
 
 typedef struct {
-    ALCMidiHdr *base;
-    u32 validTracks;
-    u32 lastDeltaTicks;
-    u32 lastTicks;
-    u32 deltaFlag;
-    f32 qnpt; 
-    u8 *curLoc[16];
-    u8 *curBUPtr[16];
-    u32 curBULen[16];
-    u8 lastStatus[16];
-    u32 evtDeltaTicks[16];
+    ALCMidiHdr *base; u32 validTracks; u32 lastDeltaTicks; u32 lastTicks; u32 deltaFlag;
+    f32 qnpt; u8 *curLoc[16]; u8 *curBUPtr[16]; u32 curBULen[16]; u8 lastStatus[16]; u32 evtDeltaTicks[16];
 } ALCSeq;
 
 typedef struct {
-    u32 validTracks;
-    u32 lastTicks;
-    u32 lastDeltaTicks;
-    u8 *curLoc[16];
-    u8 *curBUPtr[16];
-    u32 curBULen[16];
-    u8 lastStatus[16];
-    u32 evtDeltaTicks[16];
+    u32 validTracks; u32 lastTicks; u32 lastDeltaTicks; u8 *curLoc[16]; u8 *curBUPtr[16]; u32 curBULen[16]; u8 lastStatus[16]; u32 evtDeltaTicks[16];
 } ALCSeqMarker;
 
 typedef struct {
@@ -130,11 +119,7 @@ typedef struct {
 typedef struct { u8 pad[10]; u8 unkA; u8 pad2[21]; } N_ALChanState;
 
 typedef struct {
-    void *evtq;
-    N_ALChanState *chanState;
-    ALCSeq *target;
-    ALMicroTime uspt;
-    uint8_t padding[256];
+    void *evtq; N_ALChanState *chanState; ALCSeq *target; ALMicroTime uspt; uint8_t padding[256];
 } ALCSPlayer;
 
 typedef struct { uint8_t d[128]; } ALSynth;
@@ -143,8 +128,13 @@ typedef ALCSPlayer N_ALSeqPlayer;
 typedef ALCSPlayer N_ALCSPlayer;
 typedef ALSynth N_ALSynth;
 
+// Globals stub
+typedef struct { N_ALSynth drvr; } ALGlobals_t;
+extern ALGlobals_t *alGlobals;
+
 // Audio Driver States & Effects
 #define AL_STOPPED 0
+#define AL_PLAYING 1
 #define AL_FX_SMALLROOM 0
 #define AL_FX_BIGROOM 1
 #define AL_FX_ECHO 2
@@ -192,18 +182,33 @@ typedef ALSynth N_ALSynth;
 #define AL_RAW16_WAVE 1
 #define UNITY_PITCH 0x8000
 
+// --- RSP ABI Audio Commands ---
+#define A_INIT 1
+#define A_CONTINUE 0
+#define A_RATE 0
+#define A_VOL 1
+#define A_LEFT 2
+#define A_RIGHT 0
+#define A_MAIN 0
+#define A_AUX 2
+
+#define AL_MAIN_L_OUT 0
+#define AL_MAIN_R_OUT 0
+#define AL_AUX_L_OUT 0
+#define AL_AUX_R_OUT 0
+
 #define K0_TO_PHYS(x) ((u32)(uintptr_t)(x))
 static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t)vaddr; }
 
 #endif
 """
 
-def deploy_complete_conductor():
+def deploy_hardware_synthesizer():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v115.0] DEPLOYING COMPLETE CONDUCTOR ---")
+    print("--- [v116.0] DEPLOYING HARDWARE SYNTHESIZER ---")
     
     bridge_path = include_dir / "n64_types.h"
     bridge_path.write_text(BRIDGE_CONTENT)
@@ -216,7 +221,7 @@ def deploy_complete_conductor():
     for h in toxic:
         p = include_dir / h
         if p.exists():
-            p.write_text("/* Terminated by Conductor */\n")
+            p.write_text("/* Terminated by Hardware Synth */\n")
     
     for path in decomp.rglob("*.[ch]"):
         if path.name == "n64_types.h": continue
@@ -224,7 +229,7 @@ def deploy_complete_conductor():
             content = path.read_text(errors='ignore')
             original = content
 
-            content = re.sub(r'typedef\s+struct\s*\{[^}]*\}\s*(MtxF|Mtx|Vtx|ALEvent|ALCSeq|ALCSPlayer|ALCSeqMarker)\s*;', '/* Terminated */', content)
+            content = re.sub(r'typedef\s+struct\s*\{[^}]*\}\s*(MtxF|Mtx|Vtx|ALEvent|ALCSeq|ALCSPlayer|ALCSeqMarker|ALHeap)\s*;', '/* Terminated */', content)
             content = content.replace("typedef int bool;", "/* Terminated */")
             content = content.replace("typedef char bool;", "/* Terminated */")
             
@@ -237,7 +242,7 @@ def deploy_complete_conductor():
                 path.write_text(content)
         except: continue
         
-    print("--- Conductor Deployed. Executing Build Sequence. ---")
+    print("--- Hardware Synthesizer Deployed. Executing Build Sequence. ---")
 
 if __name__ == "__main__":
-    deploy_complete_conductor()
+    deploy_hardware_synthesizer()
