@@ -57,7 +57,6 @@ typedef ALDMAproc (*ALDMANew)(void **state);
 typedef struct { u8 *base; u8 *cur; u32 len; s32 count; } ALHeap;
 typedef s32 ALMicroTime;
 typedef s32 ALPan;
-typedef struct { s16 maxVVoices; s16 maxPVoices; s16 maxUpdates; s16 maxFXbusses; void* dmaproc; ALHeap* heap; s32 fxType; s32 outputRate; void* params; } ALSynConfig;
 typedef struct ALLink_s { struct ALLink_s *next; struct ALLink_s *prev; } ALLink;
 
 typedef int16_t ADPCM_STATE[16];
@@ -122,25 +121,46 @@ typedef struct {
     OSMesgQueue msgQ; OSMesg msg;
 } ALEventQueue;
 
-typedef struct { u8 pad[10]; u8 unkA; u8 pad2[21]; } N_ALChanState;
+// FIXED: Channel & Voice States
+typedef struct { u16 vol; u8 pan; u8 priority; u8 fxmix; u8 pad[3]; } ALChanState;
 
-// FIXED: Sequence Player Configuration
+typedef struct ALVoiceState_s {
+    struct ALVoiceState_s *next;
+    void* pvoice; ALWaveTable *table; void *clientPrivate;
+    s16 state; s16 priority; s16 fxBus; s16 pan; ALSound *sound; 
+} ALVoiceState;
+
+// FIXED: DSP Filter and Bus Structures
+typedef struct ALFilter_s {
+    struct ALFilter_s *source;
+    void* (*handler)(s32, void*);
+    s16 type; s16 inp; s16 outp; s32 count;
+} ALFilter;
+
+typedef struct { ALFilter filter; } ALMainBus;
+
+// Configs and Synth setup
 typedef struct {
     s32 maxVoices; s32 maxEvents; u8 maxChannels; u8 debugFlags;
+    ALHeap *heap;
     void *initOsc; void *updateOsc; void *stopOsc;
 } ALSeqpConfig;
 
-// FIXED: n_audio Synth & Player expanded fields
+typedef struct { s16 maxVVoices; s16 maxPVoices; s16 maxUpdates; s16 maxFXbusses; void* dmaproc; ALHeap* heap; s32 fxType; s32 outputRate; void* params; } ALSynConfig;
+
 typedef struct {
     ALLink head; s16 numVoices; s16 curVol; s16 curPan; s16 curPitch;
-    void *auxBus; void *mainBus; void *filterList;
+    void *auxBus; ALMainBus *mainBus; void *filterList;
     void *pFreeList; void *pAllocList; void *pLameList; void *paramList;
     uint8_t pad[256];
 } ALSynth;
 
+// FIXED: Completely Mapped Sequence Player
 typedef struct {
+    ALLink node;
+    ALEvent nextEvent;
     void *evtq; 
-    N_ALChanState *chanState; 
+    ALChanState *chanState; 
     ALCSeq *target; 
     ALMicroTime uspt;
     void *bank;
@@ -149,13 +169,17 @@ typedef struct {
     ALMicroTime nextDelta;
     s32 state;
     u16 vol;
+    u8 maxChannels;
     u8 debugFlags;
     ALMicroTime frameTime;
     ALMicroTime curTime;
     void *initOsc;
     void *updateOsc;
     void *stopOsc;
-    uint8_t padding[128];
+    ALVoiceState *vFreeList;
+    ALVoiceState *vAllocHead;
+    ALVoiceState *vAllocTail;
+    uint8_t padding[64];
 } ALCSPlayer;
 
 typedef struct ALVoice_s {
@@ -163,18 +187,13 @@ typedef struct ALVoice_s {
     s16 state; s16 priority; s16 fxBus; s16 pan;
 } ALVoice;
 
-typedef struct {
-    void* pvoice; ALWaveTable *table; void *clientPrivate;
-    s16 state; s16 priority; s16 fxBus; s16 pan; ALSound *sound; 
-} ALVoiceState;
-
-// FIXED: n_audio aliases
 typedef ALCSPlayer ALSeqPlayer;
 typedef ALCSPlayer N_ALSeqPlayer;
 typedef ALCSPlayer N_ALCSPlayer;
 typedef ALSynth N_ALSynth;
 typedef ALEvent N_ALEvent;
 typedef ALVoice N_ALVoice;
+typedef ALChanState N_ALChanState;
 
 typedef struct { N_ALSynth drvr; } ALGlobals_t;
 extern ALGlobals_t *alGlobals;
@@ -183,6 +202,7 @@ extern ALGlobals_t *alGlobals;
 #define OS_IM_NONE 0
 #define AL_EVTQ_END 0x7FFFFFFF
 #define AL_USEC_PER_FRAME 16667
+#define MAX_RATIO 1.99996f
 
 // Hardware ADPCM
 #define ADPCMFBYTES 9
@@ -194,7 +214,7 @@ extern ALGlobals_t *alGlobals;
 #define AL_RAW16_WAVE 1
 #define UNITY_PITCH 0x8000
 
-// RSP ABI Audio Commands
+// RSP ABI Audio Commands (EXPANDED)
 #define A_INIT 1
 #define A_CONTINUE 0
 #define A_RATE 0
@@ -206,6 +226,9 @@ extern ALGlobals_t *alGlobals;
 #define A_LOOP 2
 #define A_LOADBUFF 2
 #define A_ADPCM 1
+#define A_SETVOL 3
+#define A_ENVMIXER 4
+#define A_NOAUX 0
 
 #define AL_MAIN_L_OUT 0
 #define AL_MAIN_R_OUT 0
@@ -222,7 +245,7 @@ extern ALGlobals_t *alGlobals;
 #define AL_FX_FLANGE 4
 #define AL_FX_CUSTOM 5
 
-// Core Engine Event IDs
+// Core Engine Event IDs (EXPANDED)
 #define AL_SEQ_MIDI_EVT 1
 #define AL_SEQP_MIDI_EVT 2
 #define AL_TEMPO_EVT 5
@@ -235,6 +258,8 @@ extern ALGlobals_t *alGlobals;
 #define AL_SEQP_META_EVT 12
 #define AL_CSP_LOOPSTART 13
 #define AL_CSP_LOOPEND 14
+#define AL_SEQP_API_EVT 15
+#define AL_SEQ_REF_EVT 16
 #define AL_UNK18_EVT 18
 
 // Compressed MIDI Markers
@@ -263,12 +288,12 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_naudio_expansion():
+def deploy_dsp_microcode_bridge():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v120.0] DEPLOYING N_AUDIO EXPANSION ---")
+    print("--- [v121.0] DEPLOYING DSP MICROCODE BRIDGE ---")
     
     bridge_path = include_dir / "n64_types.h"
     bridge_path.write_text(BRIDGE_CONTENT)
@@ -281,13 +306,13 @@ def deploy_naudio_expansion():
     for h in toxic:
         p = include_dir / h
         if p.exists():
-            p.write_text("/* Terminated by v120.0 */\n")
+            p.write_text("/* Terminated by v121.0 */\n")
     
     clash_types = [
         "MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", 
         "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", 
         "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig",
-        "N_ALEvent", "N_ALVoice"
+        "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState"
     ]
 
     for path in decomp.rglob("*.[ch]"):
@@ -311,7 +336,7 @@ def deploy_naudio_expansion():
                 path.write_text(content)
         except: continue
         
-    print("--- N_Audio Expansion Deployed. Executing Build Sequence. ---")
+    print("--- DSP Microcode Bridge Deployed. Executing Build Sequence. ---")
 
 if __name__ == "__main__":
-    deploy_naudio_expansion()
+    deploy_dsp_microcode_bridge()
