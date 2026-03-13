@@ -33,7 +33,7 @@ BRIDGE_CONTENT = """
   #define FALSE 0
 #endif
 
-// Total Eclipse: Kill all original SDK headers
+// Guard macros so nothing tries to redefine them
 #define _GBI_H_
 #define _ABI_H_
 #define _MBI_H_
@@ -48,10 +48,6 @@ BRIDGE_CONTENT = """
 #define _REGION_H_
 #define _RAMROM_H_
 #define _RCP_H_
-#define _ULTRAERROR_H_
-#define _ULTRALOG_H_
-#define _RMON_H_
-#define _SCHED_H_
 
 typedef uint64_t Gfx;
 typedef struct { int32_t m[4][4]; } Mtx;
@@ -210,38 +206,61 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_total_eclipse():
+def deploy_c89_purifier():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v142.0] DEPLOYING TOTAL ECLIPSE ---")
+    print("--- [v143.0] DEPLOYING C89 PURIFIER ---")
     
     (include_dir / "basic_types.h").write_text(BASIC_TYPES)
     (include_dir / "n64_types.h").write_text(BRIDGE_CONTENT)
 
-    # Use Binary Write to force a clean EOF with no trailing whitespace or backslashes
-    toxic = [
-        "2.0L/PR/os.h", "2.0L/PR/ultratypes.h", "2.0L/PR/rcp.h", "2.0L/PR/ultraerror.h",
-        "2.0L/PR/region.h", "2.0L/PR/sptask.h", "2.0L/PR/gbi.h", "2.0L/PR/mbi.h",
-        "2.0L/PR/abi.h", "2.0L/PR/libaudio.h", "2.0L/PR/n_libaudio.h", "bool.h"
-    ]
-    for h in toxic:
+    # 1. Nuclear Wipe: Target the entire PR folder and ultra64.h dynamically
+    pr_folder = include_dir / "2.0L" / "PR"
+    if pr_folder.exists():
+        for file in pr_folder.glob("*.h"):
+            file.write_text("/* Blocked */\n")
+            
+    # Also block ultra64.h and bool.h explicitly using C89 compliant comments
+    for h in ["2.0L/ultra64.h", "bool.h"]:
         p = include_dir / h
         if p.exists():
-            with open(p, "wb") as f:
-                f.write(b"// Cleanly Blocked\\n")
+            p.write_text("/* Blocked */\n")
 
-    # Scrub redefinitions in source-related headers
+    # 2. Scrub redefinitions in our actual game headers
     for target in ["model.h", "structs.h", "string.h", "rarezip.h"]:
         p = include_dir / target
         if p.exists():
             content = p.read_text(errors='ignore')
-            content = '#include "basic_types.h"\\n' + content
+            content = '#include "basic_types.h"\n' + content
+            # Scrub any Vtx/Mtx/OSTask redefinitions
             content = re.sub(r'typedef\s+struct\s*[a-zA-Z0-9_]*\s*\{[^}]*\}\s*(OSTask_t|Vtx|Mtx|Gfx|MtxF);', '/* Scrubbed */', content)
             p.write_text(content)
 
-    print("--- Total Eclipse Deployed. Run Ninja. ---")
+    # 3. Clean up the rest of the source tree
+    clash_types = ["MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler", "OSRegion", "RamRomBuffer"]
+
+    for path in decomp.rglob("*.[ch]"):
+        if path.name == "n64_types.h" or path.name == "basic_types.h": 
+            continue
+        try:
+            content = path.read_text(errors='ignore')
+            original = content
+            
+            # Inject basic_types for safety
+            if "#include" in content and 'basic_types.h' not in content:
+                content = '#include "basic_types.h"\n' + content
+                
+            for ct in clash_types:
+                content = re.sub(r'typedef\s+struct\s*[a-zA-Z0-9_]*\s*\{[^}]*\}\s*' + ct + r'\s*;', f'/* Terminated {ct} */', content)
+            
+            content = content.replace("evt.midi", "evt.msg.midi")
+            if content != original:
+                path.write_text(content)
+        except: continue
+        
+    print("--- C89 Purifier Deployed. Run Ninja. ---")
 
 if __name__ == "__main__":
-    deploy_total_eclipse()
+    deploy_c89_purifier()
