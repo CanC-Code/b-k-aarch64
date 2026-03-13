@@ -42,10 +42,14 @@ typedef struct { int32_t m[4][4]; } Mtx;
 typedef struct { float m[4][4]; } MtxF;
 typedef struct { uint8_t d[16]; } Vtx;
 
+// NEW: Animation & OS Stubs
 typedef struct { float d[16]; } BoneTransform;
+typedef struct { BoneTransform *transforms; int count; } BoneTransformList;
 typedef void* VLA;
 typedef void* FLA;
 typedef struct { u32 t[16]; } OSTask_t;
+typedef void (*OSErrorHandler)(void);
+typedef struct { u32 d[16]; } OSLog;
 
 typedef void* OSMesg;
 typedef struct { void* mt; void* full; int count; } OSMesgQueue;
@@ -189,19 +193,16 @@ typedef ALEvent N_ALEvent;
 typedef struct { N_ALSynth drvr; } ALGlobals;
 extern ALGlobals *alGlobals;
 
-// FIXED: Use Guarded macros to prevent clashing with original enums in synthInternals.h
+// FIX: Guarded macros for synthInternals
 #ifndef _SYNTHINTERNALS_H_
   #define AL_FILTER_ADD_SOURCE 1
   #define AL_RESAMPLE 1
   #define AL_ADPCM 2
 #endif
 
-// Constants for Loader
 #define AL_ADPCM_WAVE 0
 #define AL_RAW16_WAVE 1
 #define AL_BANK_VERSION 0x424c
-
-// MIDI and Events
 #define AL_SEQP_MIDI_EVT 2
 #define AL_UNK18_EVT 18
 #define AL_MIDI_ControlChange 0xB0
@@ -225,32 +226,42 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_enum_harmonizer():
+def deploy_jni_harbinger():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v135.0] DEPLOYING ENUM HARMONIZER ---")
+    print("--- [v136.0] DEPLOYING JNI HARBINGER ---")
     
+    # 1. Update Bridge
     bridge_path = include_dir / "n64_types.h"
     bridge_path.write_text(BRIDGE_CONTENT)
 
-    toxic = ["2.0L/PR/os.h", "2.0L/PR/gbi.h", "2.0L/PR/abi.h", "2.0L/PR/mbi.h", "2.0L/PR/gu.h", "2.0L/PR/sp.h", "2.0L/PR/ultratypes.h", "2.0L/PR/libaudio.h", "2.0L/PR/n_libaudio.h", "2.0L/PR/sptask.h", "2.0L/PR/R4300.h", "bool.h"]
+    # 2. Terminate legacy headers with Binary write to prevent trailing char issues
+    toxic = [
+        "2.0L/PR/os.h", "2.0L/PR/gbi.h", "2.0L/PR/abi.h", "2.0L/PR/mbi.h", 
+        "2.0L/PR/gu.h", "2.0L/PR/sp.h", "2.0L/PR/ultratypes.h", 
+        "2.0L/PR/libaudio.h", "2.0L/PR/n_libaudio.h", "2.0L/PR/sptask.h", 
+        "2.0L/PR/ultraerror.h", "2.0L/PR/ultralog.h", "2.0L/PR/rmon.h",
+        "2.0L/PR/R4300.h", "bool.h"
+    ]
     for h in toxic:
         p = include_dir / h
-        if p.exists(): p.write_text("/* Terminated */\\n")
+        if p.exists():
+            with open(p, "wb") as f:
+                f.write(b"/* Terminated */\\n")
     
-    # NEW: Actively wrapping synthInternals.h with an include guard if it's missing
+    # 3. Aggressive Header scrubbing for synthInternals
     synth_int = include_dir / "synthInternals.h"
     if synth_int.exists():
         content = synth_int.read_text(errors='ignore')
         if "#ifndef _SYNTHINTERNALS_H_" not in content:
             content = "#ifndef _SYNTHINTERNALS_H_\\n#define _SYNTHINTERNALS_H_\\n" + content + "\\n#endif"
-        # Scrub original redefinitions
         content = re.sub(r'typedef\s+struct\s*ALFx_s\s*\{[^}]*\}\s*ALFx\s*;', '/* Scrubbed */', content)
         synth_int.write_text(content)
 
-    clash_types = ["MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "VLA", "FLA"]
+    # 4. Source cleanup
+    clash_types = ["MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler"]
 
     for path in decomp.rglob("*.[ch]"):
         if path.name == "n64_types.h": continue
@@ -261,10 +272,11 @@ def deploy_enum_harmonizer():
                 content = re.sub(r'typedef\s+struct\s*[a-zA-Z0-9_]*\s*\{[^}]*\}\s*' + ct + r'\s*;', f'/* Terminated {ct} */', content)
             
             content = content.replace("evt.midi", "evt.msg.midi")
-            if content != original: path.write_text(content)
+            if content != original:
+                path.write_text(content)
         except: continue
         
-    print("--- Enum Harmonizer Deployed. Build. ---")
+    print("--- JNI Harbinger Deployed. ---")
 
 if __name__ == "__main__":
-    deploy_enum_harmonizer()
+    deploy_jni_harbinger()
