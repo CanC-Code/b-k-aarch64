@@ -165,7 +165,6 @@ extern ALGlobals *alGlobals;
 
 #if defined(__cplusplus)
 #include <sched.h>
-// Force declaration of sched_yield for Android NDK C++ compiler
 extern "C" int sched_yield(void);
 #endif
 
@@ -190,7 +189,7 @@ extern "C" int sched_yield(void);
 #define AL_PLAYING 1
 #define AL_STOPPING 2
 
-// NEW: MIDI and Audio Event Constants
+// MIDI and Audio Event Constants
 #define AL_MIDI_NoteOn 0x90
 #define AL_MIDI_ProgramChange 0xC0
 #define AL_MIDI_ChannelPressure 0xD0
@@ -213,6 +212,7 @@ extern "C" int sched_yield(void);
 #define AL_SEQP_FX_EVT 111
 #define AL_SEQP_TEMPO_EVT 112
 #define AL_SEQP_PROG_EVT 113
+#define AL_SEQP_META_EVT 114
 
 #define AL_CMIDI_LOOPSTART_CODE 102
 #define AL_CMIDI_LOOPEND_CODE 103
@@ -244,12 +244,12 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_audio_thread_patch():
+def deploy_missing_macro_patch():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v149.0] DEPLOYING AUDIO & THREAD PATCH ---")
+    print("--- [v150.0] DEPLOYING MISSING MACRO PATCH ---")
     
     (include_dir / "n64_types.h").write_text(BRIDGE_CONTENT)
 
@@ -273,7 +273,6 @@ def deploy_audio_thread_patch():
         if p.exists():
             p.write_text("/* Blocked */\n")
 
-    # Scrub Custom N64 Memory Definitions
     mem_h = include_dir / "core1" / "mem.h"
     if mem_h.exists():
         content = mem_h.read_text(errors='ignore')
@@ -322,7 +321,7 @@ def deploy_audio_thread_patch():
                 path.write_text(content)
         except: pass
 
-    print("--- Audio & Thread Patch Complete. ---")
+    print("--- Patch Complete. Run Ninja! ---")
 
 if __name__ == "__main__":
-    deploy_audio_thread_patch()
+    deploy_missing_macro_patch()
