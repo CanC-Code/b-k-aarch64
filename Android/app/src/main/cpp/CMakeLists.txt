@@ -11,26 +11,24 @@ set(COMMON_FLAGS
     -include "${BRIDGE_HEADER}"
 )
 
-# Include all emulator helpers and core directories
+# FIXED: Explicitly include 'emulator' and 'ultra' in search paths
 include_directories(SYSTEM
     ${DECOMP_ROOT}/include
     ${DECOMP_ROOT}/include/2.0L
     ${DECOMP_ROOT}/include/2.0L/PR
     ${DECOMP_ROOT}/src/core1
     ${DECOMP_ROOT}/src/core2
-    ultra
-    emulator
+    "${CMAKE_CURRENT_SOURCE_DIR}/ultra"
+    "${CMAKE_CURRENT_SOURCE_DIR}/emulator"
 )
 
-# Explicitly collect all C/CPP files from the core and emulator folders
 file(GLOB_RECURSE CORE_SOURCES
     "${DECOMP_ROOT}/src/core1/*.c"
     "${DECOMP_ROOT}/src/core2/*.c"
-    "ultra/*.cpp"
-    "emulator/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ultra/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/emulator/*.cpp"
 )
 
-# Exclude original memory manager (we use Android's malloc)
 list(FILTER CORE_SOURCES EXCLUDE REGEX ".*memory.c")
 
 add_library(bkawrapper SHARED ${CORE_SOURCES})
