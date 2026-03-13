@@ -84,9 +84,25 @@ typedef struct { s16 revision; s32 bankCount; ALBank *bankArray[1]; } ALBankFile
 typedef struct { u8 *offset; s32 len; } ALSeqData;
 typedef struct { s16 seqCount; ALSeqData seqArray[1]; } ALSeqFile;
 
-// 7. Sequencer Blueprints (MIDI Control)
-typedef struct { u32 division; uint8_t d[28]; } ALCMidiHdr;
-typedef struct { ALCMidiHdr *base; uint8_t d[256]; } ALCSeq;
+// 7. Sequencer Blueprints (16-Track MIDI Control)
+typedef struct { 
+    u32 division; 
+    s32 trackOffset[16]; // Mapped to the actual 16 MIDI tracks
+} ALCMidiHdr;
+
+typedef struct {
+    ALCMidiHdr *base;
+    u32 validTracks;
+    u32 lastDeltaTicks;
+    u32 lastTicks;
+    u32 deltaFlag;
+    f32 qnpt; // Quarter notes per tick
+    u8 *curLoc[16];
+    u8 *curBUPtr[16];
+    u32 curBULen[16];
+    u8 lastStatus[16];
+    u32 evtDeltaTicks[16];
+} ALCSeq;
 
 typedef struct {
     s16 type;
@@ -106,8 +122,8 @@ typedef struct { u8 pad[10]; u8 unkA; u8 pad2[21]; } N_ALChanState;
 typedef struct {
     void *evtq;
     N_ALChanState *chanState;
-    ALMicroTime target;
-    ALMicroTime uspt;
+    ALCSeq *target; // FIXED: Target is a pointer to the sequence, not an integer time!
+    ALMicroTime uspt; // Microseconds per tick
     uint8_t padding[256];
 } ALCSPlayer;
 
