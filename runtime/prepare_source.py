@@ -12,7 +12,9 @@ BRIDGE_CONTENT = """
 #include <string.h>
 #include <stdlib.h>
 
-// Primitive Types - MUST BE FIRST
+// Primitive Types - Guarded to prevent any redefinition issues
+#ifndef _ULTRATYPES_H_
+#define _ULTRATYPES_H_
 typedef int8_t   s8;  typedef uint8_t  u8;
 typedef int16_t  s16; typedef uint16_t u16;
 typedef int32_t  s32; typedef uint32_t u32;
@@ -20,13 +22,14 @@ typedef int64_t  s64; typedef uint64_t u64;
 typedef float    f32; typedef double   f64;
 typedef volatile uint32_t vu32;
 typedef u32 OSIntMask;
+#endif
 
 #ifndef TRUE
   #define TRUE 1
   #define FALSE 0
 #endif
 
-// Block legacy headers from the SDK
+// Block legacy SDK headers
 #define _GBI_H_
 #define _ABI_H_
 #define _MBI_H_
@@ -34,13 +37,13 @@ typedef u32 OSIntMask;
 #define _N_LIBAUDIO_H_
 #define _GU_H_
 #define _SP_H_
-#define _ULTRATYPES_H_
 #define __OS_H__
 #define _MTXF_H_
 #define _BOOL_H_
 #define _SPTASK_H_
 #define _REGION_H_
 #define _RAMROM_H_
+#define _RCP_H_
 
 typedef uint64_t Gfx;
 typedef struct { int32_t m[4][4]; } Mtx;
@@ -97,7 +100,7 @@ typedef struct { u8 velocityMin; u8 velocityMax; u8 keyMin; u8 keyMax; u8 keyBas
 typedef struct { s16 priority; s16 fxBus; u8 unityPitch; } ALVoiceConfig;
 
 typedef struct { ALWaveTable *wavetable; u8 flags; ALEnvelope *envelope; ALKeyMap *keyMap; } ALSound;
-typedef struct { s16 soundCount; u8 flags; u8 tremType; u8 tremRate; u8 tremDepth; u8 tremDelay; u8 vibType; u8 vibRate; u8 vibDepth; u8 vibDelay; ALSound *soundArray[1]; } ALInstrument;
+typedef struct { soundCount; u8 flags; u8 tremType; u8 tremRate; u8 tremDepth; u8 tremDelay; u8 vibType; u8 vibRate; u8 vibDepth; u8 vibDelay; ALSound *soundArray[1]; } ALInstrument;
 typedef struct { u8 flags; s32 instCount; ALInstrument *percussion; ALInstrument *instArray[1]; } ALBank;
 typedef struct { s16 revision; s32 bankCount; ALBank *bankArray[1]; } ALBankFile;
 
@@ -227,35 +230,38 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_absolute_zero_fixed():
+def deploy_sledgehammer():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v139.1] DEPLOYING ABSOLUTE ZERO (FIXED) ---")
+    print("--- [v140.0] DEPLOYING SLEDGEHAMMER ---")
     
+    # Write the master bridge
     bridge_path = include_dir / "n64_types.h"
     bridge_path.write_text(BRIDGE_CONTENT)
 
+    # Empty problematic headers completely to stop #endif without #if errors
     toxic = [
         "2.0L/PR/os.h", "2.0L/PR/gbi.h", "2.0L/PR/abi.h", "2.0L/PR/mbi.h", 
         "2.0L/PR/gu.h", "2.0L/PR/sp.h", "2.0L/PR/ultratypes.h", 
         "2.0L/PR/libaudio.h", "2.0L/PR/n_libaudio.h", "2.0L/PR/sptask.h", 
         "2.0L/PR/ultraerror.h", "2.0L/PR/ultralog.h", "2.0L/PR/rmon.h",
-        "2.0L/PR/R4300.h", "2.0L/PR/region.h", "2.0L/PR/ramrom.h", "bool.h"
+        "2.0L/PR/R4300.h", "2.0L/PR/region.h", "2.0L/PR/ramrom.h", "2.0L/PR/rcp.h", "bool.h"
     ]
-    
     for h in toxic:
         p = include_dir / h
         if p.exists():
-            p.write_text("/* Terminated Header */\\n")
+            p.write_text("/* Blocked */\n")
 
+    # Force definitions into model.h/structs.h to bypass circular include issues
     for target in ["model.h", "structs.h", "synthInternals.h"]:
         p = include_dir / target
         if p.exists():
+            # We inject the bridge at the VERY top and scrub original types
             content = p.read_text(errors='ignore')
-            content = re.sub(r'typedef\s+(signed\s+short|short|int|long)\s+(s16|s32|u32|u16|s8|u8)\s*;', '/* Scrubbed Native Type */', content)
-            content = re.sub(r'typedef\s+struct\s*ALFx_s\s*\{[^}]*\}\s*ALFx\s*;', '/* Scrubbed ALFx */', content)
+            content = "#include \"n64_types.h\"\n" + content
+            content = re.sub(r'typedef\s+(signed\s+short|short|int|long|unsigned\s+int)\s+(s16|s32|u32|u16|s8|u8)\s*;', '/* Scrubbed */', content)
             p.write_text(content)
 
     clash_types = ["MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler", "OSRegion", "RamRomBuffer"]
@@ -266,10 +272,9 @@ def deploy_absolute_zero_fixed():
             content = path.read_text(errors='ignore')
             original = content
             
-            # FIXED INJECTION LOGIC
+            # Inject bridge into every source file
             if "#include" in content and 'n64_types.h' not in content:
-                header_line = '#include "n64_types.h"\\n'
-                content = header_line + content
+                content = "#include \"n64_types.h\"\n" + content
             
             for ct in clash_types:
                 content = re.sub(r'typedef\s+struct\s*[a-zA-Z0-9_]*\s*\{[^}]*\}\s*' + ct + r'\s*;', f'/* Terminated {ct} */', content)
@@ -279,7 +284,7 @@ def deploy_absolute_zero_fixed():
                 path.write_text(content)
         except: continue
         
-    print("--- Fixed Absolute Zero Deployed. Run build. ---")
+    print("--- Sledgehammer Deployed. Run Ninja. ---")
 
 if __name__ == "__main__":
-    deploy_absolute_zero_fixed()
+    deploy_sledgehammer()
