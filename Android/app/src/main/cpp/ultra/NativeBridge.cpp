@@ -9,13 +9,19 @@
 // Include our N64 bridge to get the 64-bit safe types
 #include "n64_types.h"
 
-// Bring in the original N64 audio definitions so C++ knows the size of ALGlobals
+// MACRO SHIELD: Prevent C++ from choking on N64 header redefinitions
+#define Gfx __Gfx_ignore
+#define Acmd __Acmd_ignore
+#define ALDMANew __ALDMANew_ignore
+
 extern "C" {
     #include <PR/libaudio.h>
-    
-    // In some Banjo-Kazooie decomps, ALGlobals is hidden in the synth internals
-    #include "synthInternals.h" 
 }
+
+// Remove the shield so we can use the 64-bit types normally
+#undef Gfx
+#undef Acmd
+#undef ALDMANew
 
 #define LOG_TAG "BKA_NATIVE"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -23,6 +29,9 @@ extern "C" {
 extern "C" {
     void mainLoop(void);
     void ResourceMgr_Init(const char* otrPath, uint8_t* manifestBuf, uint32_t manifestSize);
+    
+    // OPAQUE POINTER: Link to the C engine's global audio pointer without needing the struct
+    extern void* alGlobals;
 }
 
 extern "C" {
@@ -31,10 +40,10 @@ JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_nativeGameBoot(JNIEnv* env, jclass clazz, jstring otrPath, jobject assetManager) {
     LOGI("Starting Banjo-Kazooie Native Boot Sequence...");
 
-    // 1. Initialize N64 Audio Globals to prevent null pointer crashes
+    // 1. Initialize N64 Audio Globals using a raw block of memory
     if (alGlobals == nullptr) {
-        alGlobals = (ALGlobals*)malloc(sizeof(ALGlobals));
-        memset(alGlobals, 0, sizeof(ALGlobals));
+        alGlobals = malloc(4096); // 4KB is safely larger than the N64 ALGlobals struct
+        memset(alGlobals, 0, 4096);
         LOGI("Audio Globals Initialized.");
     }
 
