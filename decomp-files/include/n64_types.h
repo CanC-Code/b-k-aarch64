@@ -31,7 +31,7 @@ typedef volatile uint32_t vu32;
 #define _MTXF_H_
 #define _BOOL_H_
 
-// 3. System & Graphics Core (Placed early to prevent cascade failures)
+// 3. System & Graphics Core
 typedef uint64_t Gfx;
 typedef struct { int32_t m[4][4]; } Mtx;
 typedef struct { float m[4][4]; } MtxF;
@@ -80,20 +80,25 @@ typedef struct { ALWaveTable *wavetable; u8 flags; ALEnvelope *envelope; ALKeyMa
 typedef struct { s16 soundCount; u8 flags; ALSound *soundArray[1]; } ALInstrument;
 typedef struct { u8 flags; s32 instCount; ALInstrument *percussion; ALInstrument *instArray[1]; } ALBank;
 typedef struct { s16 revision; s32 bankCount; ALBank *bankArray[1]; } ALBankFile;
-typedef struct { s16 seqCount; s32 seqArray[1]; } ALSeqFile;
 
-// ALEvent (Rare Unified Layout)
+// Fixed: ALSeqFile uses an array of structs for offsets
+typedef struct { u8 *offset; s32 len; } ALSeqData;
+typedef struct { s16 seqCount; ALSeqData seqArray[1]; } ALSeqFile;
+
+// Fixed: ALEvent nested ticks
 typedef struct {
     s16 type;
     s32 ticks;
     union {
-        struct { u8 status, byte1, byte2; } midi;
+        struct { u8 status, byte1, byte2; s32 ticks; } midi;
         struct { void *data; u32 unk0, unk4; } unk18;
         s32 i;
     } msg;
 } ALEvent;
 
-typedef struct { void *evtq; void *chanState; } ALCSPlayer;
+// Fixed: Channel State for the Sequence Player
+typedef struct { u8 pad[10]; u8 unkA; u8 pad2[21]; } N_ALChanState;
+typedef struct { void *evtq; N_ALChanState *chanState; } ALCSPlayer;
 typedef struct { uint8_t d[128]; } ALSynth;
 
 // Rare 'N_' Aliases
