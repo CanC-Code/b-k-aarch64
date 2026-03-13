@@ -197,7 +197,7 @@ extern ALGlobals *alGlobals;
 #define K0_TO_PHYS(x) ((u32)(uintptr_t)(x))
 static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t)vaddr; }
 
-// 5. Macro blocks
+// 5. Macro blocks (Removed _SCHED_H_ to avoid killing Android NDK headers)
 #define _ULTRATYPES_H_
 #define _GBI_H_
 #define _ABI_H_
@@ -216,29 +216,25 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #define _ULTRAERROR_H_
 #define _ULTRALOG_H_
 #define _RMON_H_
-#define _SCHED_H_
 
 #endif
 """
 
-def deploy_ultimate_exorcist():
+def deploy_precision_fix():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v146.0] DEPLOYING ULTIMATE EXORCIST ---")
+    print("--- [v147.0] DEPLOYING PRECISION FIX ---")
     
     (include_dir / "n64_types.h").write_text(BRIDGE_CONTENT)
 
-    # 1. Delete standard library imposters!
     std_headers = ["string.h", "math.h", "stdarg.h", "time.h", "basic_types.h"]
     for sh in std_headers:
         p = include_dir / sh
         if p.exists():
             p.unlink()
-            print(f"Deleted fake std header: {sh}")
 
-    # 2. Block N64 SDK headers physically
     pr_folder = include_dir / "2.0L" / "PR"
     if pr_folder.exists():
         for file in pr_folder.glob("*.h"):
@@ -249,7 +245,6 @@ def deploy_ultimate_exorcist():
         if p.exists():
             p.write_text("/* Blocked */\n")
 
-    # 3. Scrub redefinitions in game headers
     for target in ["model.h", "structs.h", "rarezip.h"]:
         p = include_dir / target
         if p.exists():
@@ -257,7 +252,6 @@ def deploy_ultimate_exorcist():
             content = re.sub(r'typedef\s+struct\s*[a-zA-Z0-9_]*\s*\{[^}]*\}\s*(OSTask_t|Vtx|Mtx|Gfx|MtxF|ALHeap);', '/* Scrubbed */', content)
             p.write_text(content)
 
-    # 4. Global scrub for all local clashes
     clash_types = ["MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad"]
 
     for path in decomp.rglob("*.[ch]"):
@@ -278,19 +272,22 @@ def deploy_ultimate_exorcist():
                 path.write_text(content)
         except: continue
 
-    # 5. Target Android wrapper files
     android_cpp_dir = root / "Android" / "app" / "src" / "main" / "cpp"
     for path in android_cpp_dir.rglob("*.cpp"):
         try:
             content = path.read_text(errors='ignore')
             original = content
+            
+            # Target the double-pathed include and fix it globally
+            content = content.replace('#include "tools/rare_decompression.h"', '#include "rare_decompression.h"')
+            
             for ct in clash_types:
                 content = re.sub(r'typedef\s+struct\s*[a-zA-Z0-9_]*\s*\{[^}]*\}\s*' + ct + r'\s*;', f'/* Scrubbed {ct} */', content)
             if content != original:
                 path.write_text(content)
         except: pass
 
-    print("--- Ultimate Exorcism Complete. ---")
+    print("--- Precision Fix Complete. ---")
 
 if __name__ == "__main__":
-    deploy_ultimate_exorcist()
+    deploy_precision_fix()
