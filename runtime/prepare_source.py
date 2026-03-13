@@ -126,9 +126,9 @@ typedef struct ALVoiceState_s {
 } ALVoiceState;
 typedef ALVoiceState N_ALVoiceState;
 
-// NEW: Delay struct for the Reverb Engine
+// FIXED: Signature changed from void to s32
 typedef struct { s32 input; s32 output; s16 fbcoef; s16 ffcoef; s16 gain; f32 mute; f32 vol; } ALDelay;
-typedef void (*ALSetFXParam)(void *filter, s32 paramID, void *param);
+typedef s32 (*ALSetFXParam)(void *filter, s32 paramID, void *param);
 
 typedef struct ALFilter_s { 
     struct ALFilter_s *source; 
@@ -280,12 +280,12 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_reverb_patch():
+def deploy_synth_exorcist_patch():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v151.0] DEPLOYING REVERB & ENVELOPE PATCH ---")
+    print("--- [v152.0] DEPLOYING SYNTH EXORCIST PATCH ---")
     
     (include_dir / "n64_types.h").write_text(BRIDGE_CONTENT)
 
@@ -309,6 +309,7 @@ def deploy_reverb_patch():
         if p.exists():
             p.write_text("/* Blocked */\n")
 
+    # Scrub Custom N64 Memory Definitions
     mem_h = include_dir / "core1" / "mem.h"
     if mem_h.exists():
         content = mem_h.read_text(errors='ignore')
@@ -323,7 +324,15 @@ def deploy_reverb_patch():
         content = re.sub(r'void\s*\*\s*realloc\s*\([^;]+;', '/* Scrubbed realloc */;', content)
         funcs_h.write_text(content)
 
-    clash_types = ["MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad"]
+    # NEW: Scrub the leftovers from synthInternals.h
+    synth_h = include_dir / "synthInternals.h"
+    if synth_h.exists():
+        content = synth_h.read_text(errors='ignore')
+        content = re.sub(r'typedef\s+struct\s*\{[^}]*\}\s*ALDelay\s*;', '/* Scrubbed ALDelay */', content)
+        content = re.sub(r'typedef\s+s32\s*\(\s*\*\s*ALSetFXParam\s*\)\s*\([^;]+;', '/* Scrubbed ALSetFXParam */', content)
+        synth_h.write_text(content)
+
+    clash_types = ["MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad", "ALDelay"]
 
     for path in decomp.rglob("*.[ch]"):
         if path.name == "n64_types.h": continue
@@ -355,7 +364,7 @@ def deploy_reverb_patch():
                 path.write_text(content)
         except: pass
 
-    print("--- Reverb Patch Complete. ---")
+    print("--- Synth Exorcist Patch Complete. ---")
 
 if __name__ == "__main__":
-    deploy_reverb_patch()
+    deploy_synth_exorcist_patch()
