@@ -55,7 +55,6 @@ typedef struct { u8 *base; u8 *cur; u32 len; s32 count; } ALHeap;
 typedef s32 ALMicroTime;
 typedef s32 ALPan;
 
-// FIXED: Polymorphic Voice Handler Link
 typedef struct ALLink_s {
     struct ALLink_s *next;
     struct ALLink_s *prev;
@@ -101,7 +100,7 @@ typedef struct {
     u32 validTracks; u32 lastTicks; u32 lastDeltaTicks; u8 *curLoc[16]; u8 *curBUPtr[16]; u32 curBULen[16]; u8 lastStatus[16]; u32 evtDeltaTicks[16];
 } ALCSeqMarker;
 
-// FIXED: Event Payloads
+// FIXED: Restored spvol while keeping vol, note, and osc payloads
 typedef struct {
     s16 type; s32 ticks;
     union {
@@ -109,6 +108,7 @@ typedef struct {
         struct { u8 status, type, byte1, byte2, byte3; s32 ticks; } tempo;
         struct { void *seq; } spseq;
         struct { void *bank; } spbank;
+        struct { s16 vol; } spvol;
         struct { s16 vol; void* voice; s32 delta; } vol;
         struct { void* voice; } note;
         struct { void* osc; void* voice; } osc;
@@ -130,7 +130,6 @@ typedef struct {
 typedef struct { u16 vol; u8 pan; u8 priority; u8 fxmix; u8 unkA; u8 unkB; u16 pad; } ALChanState;
 typedef ALChanState N_ALChanState;
 
-// FIXED: Voice Envelope Tracking
 typedef struct ALVoiceState_s {
     struct ALVoiceState_s *next;
     void* pvoice; ALWaveTable *table; void *clientPrivate;
@@ -138,7 +137,6 @@ typedef struct ALVoiceState_s {
     u8 flags; u8 envPhase; ALMicroTime envEndTime; s16 envGain;
 } ALVoiceState;
 
-// Standard Filter
 typedef struct ALFilter_s {
     struct ALFilter_s *source;
     void* (*handler)(struct ALFilter_s *filter, s16 *outp, s32 outLen, s32 sampleOffset, void *p);
@@ -157,7 +155,6 @@ typedef struct {
     uint8_t pad[256];
 } ALSynth;
 
-// N_Audio Filter
 typedef struct N_ALFilter_s {
     struct N_ALFilter_s *source;
     void* (*handler)(s32 sampleOffset, struct N_ALFilter_s *filter);
@@ -295,12 +292,12 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_envelope_tracker():
+def deploy_master_volume_patch():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v125.0] DEPLOYING ENVELOPE TRACKER ---")
+    print("--- [v126.0] DEPLOYING MASTER VOLUME PATCH ---")
     
     bridge_path = include_dir / "n64_types.h"
     bridge_path.write_text(BRIDGE_CONTENT)
@@ -313,7 +310,7 @@ def deploy_envelope_tracker():
     for h in toxic:
         p = include_dir / h
         if p.exists():
-            p.write_text("/* Terminated by v125.0 */\n")
+            p.write_text("/* Terminated by v126.0 */\n")
     
     clash_types = [
         "MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", 
@@ -342,7 +339,7 @@ def deploy_envelope_tracker():
                 path.write_text(content)
         except: continue
         
-    print("--- Envelope Tracker Deployed. ---")
+    print("--- Master Volume Patch Deployed. ---")
 
 if __name__ == "__main__":
-    deploy_envelope_tracker()
+    deploy_master_volume_patch()
