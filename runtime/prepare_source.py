@@ -65,13 +65,7 @@ typedef int16_t RESAMPLE_STATE[16];
 typedef int16_t POLEF_STATE[4];
 typedef int16_t ENVMIX_STATE[40];
 
-// FIXED: ADPCM Predictive Math Codebook
-typedef struct {
-    s32 order;
-    s32 npredictors;
-    s16 book[1]; // Flexible array member for coefficients
-} ALADPCMBook;
-
+typedef struct { s32 order; s32 npredictors; s16 book[1]; } ALADPCMBook;
 typedef struct { uint32_t start, end, count; ADPCM_STATE state; } ALADPCMloop;
 typedef struct { uint32_t start, end, count; } ALRawLoop;
 
@@ -118,35 +112,51 @@ typedef struct {
     } msg;
 } ALEvent;
 
-// FIXED: Intrusive Linked Lists for Event Queues
 typedef struct ALEventListItem_s {
-    ALLink node;
-    ALMicroTime delta;
-    ALEvent evt;
+    ALLink node; ALMicroTime delta; ALEvent evt;
 } ALEventListItem;
 
 typedef struct {
-    ALLink allocList;
-    ALLink freeList;
-    s32 eventCount;
-    s32 maxEventCount;
-    ALMicroTime curTime;
-    OSMesgQueue msgQ;
-    OSMesg msg;
+    ALLink allocList; ALLink freeList;
+    s32 eventCount; s32 maxEventCount; ALMicroTime curTime;
+    OSMesgQueue msgQ; OSMesg msg;
 } ALEventQueue;
 
 typedef struct { u8 pad[10]; u8 unkA; u8 pad2[21]; } N_ALChanState;
 
+// FIXED: Sequence Player Configuration
 typedef struct {
-    void *evtq; N_ALChanState *chanState; ALCSeq *target; ALMicroTime uspt; uint8_t padding[256];
-} ALCSPlayer;
+    s32 maxVoices; s32 maxEvents; u8 maxChannels; u8 debugFlags;
+    void *initOsc; void *updateOsc; void *stopOsc;
+} ALSeqpConfig;
 
+// FIXED: n_audio Synth & Player expanded fields
 typedef struct {
     ALLink head; s16 numVoices; s16 curVol; s16 curPan; s16 curPitch;
     void *auxBus; void *mainBus; void *filterList;
     void *pFreeList; void *pAllocList; void *pLameList; void *paramList;
     uint8_t pad[256];
 } ALSynth;
+
+typedef struct {
+    void *evtq; 
+    N_ALChanState *chanState; 
+    ALCSeq *target; 
+    ALMicroTime uspt;
+    void *bank;
+    ALSynth *drvr;
+    u32 chanMask;
+    ALMicroTime nextDelta;
+    s32 state;
+    u16 vol;
+    u8 debugFlags;
+    ALMicroTime frameTime;
+    ALMicroTime curTime;
+    void *initOsc;
+    void *updateOsc;
+    void *stopOsc;
+    uint8_t padding[128];
+} ALCSPlayer;
 
 typedef struct ALVoice_s {
     ALLink node; struct PVoice_s *pvoice; ALWaveTable *table; void *clientPrivate;
@@ -158,10 +168,13 @@ typedef struct {
     s16 state; s16 priority; s16 fxBus; s16 pan; ALSound *sound; 
 } ALVoiceState;
 
+// FIXED: n_audio aliases
 typedef ALCSPlayer ALSeqPlayer;
 typedef ALCSPlayer N_ALSeqPlayer;
 typedef ALCSPlayer N_ALCSPlayer;
 typedef ALSynth N_ALSynth;
+typedef ALEvent N_ALEvent;
+typedef ALVoice N_ALVoice;
 
 typedef struct { N_ALSynth drvr; } ALGlobals_t;
 extern ALGlobals_t *alGlobals;
@@ -169,6 +182,7 @@ extern ALGlobals_t *alGlobals;
 // --- Constants & Macros ---
 #define OS_IM_NONE 0
 #define AL_EVTQ_END 0x7FFFFFFF
+#define AL_USEC_PER_FRAME 16667
 
 // Hardware ADPCM
 #define ADPCMFBYTES 9
@@ -249,12 +263,12 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_precision_linker():
+def deploy_naudio_expansion():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v119.0] DEPLOYING PRECISION LINKER ---")
+    print("--- [v120.0] DEPLOYING N_AUDIO EXPANSION ---")
     
     bridge_path = include_dir / "n64_types.h"
     bridge_path.write_text(BRIDGE_CONTENT)
@@ -267,12 +281,13 @@ def deploy_precision_linker():
     for h in toxic:
         p = include_dir / h
         if p.exists():
-            p.write_text("/* Terminated by v119.0 */\n")
+            p.write_text("/* Terminated by v120.0 */\n")
     
     clash_types = [
         "MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", 
         "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", 
-        "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook"
+        "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig",
+        "N_ALEvent", "N_ALVoice"
     ]
 
     for path in decomp.rglob("*.[ch]"):
@@ -296,7 +311,7 @@ def deploy_precision_linker():
                 path.write_text(content)
         except: continue
         
-    print("--- Precision Linker Deployed. Executing Build Sequence. ---")
+    print("--- N_Audio Expansion Deployed. Executing Build Sequence. ---")
 
 if __name__ == "__main__":
-    deploy_precision_linker()
+    deploy_naudio_expansion()
