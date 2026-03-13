@@ -168,12 +168,6 @@ extern ALGlobals *alGlobals;
 #endif
 
 // 4. Constants
-#ifndef _SYNTHINTERNALS_H_
-  #define AL_FILTER_ADD_SOURCE 1
-  #define AL_RESAMPLE 1
-  #define AL_ADPCM 2
-#endif
-
 #define AL_ADPCM_WAVE 0
 #define AL_RAW16_WAVE 1
 #define AL_BANK_VERSION 0x424c
@@ -197,7 +191,7 @@ extern ALGlobals *alGlobals;
 #define K0_TO_PHYS(x) ((u32)(uintptr_t)(x))
 static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t)vaddr; }
 
-// 5. Macro blocks (Removed _SCHED_H_ to avoid killing Android NDK headers)
+// 5. Macro blocks 
 #define _ULTRATYPES_H_
 #define _GBI_H_
 #define _ABI_H_
@@ -220,38 +214,55 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_precision_fix():
+def deploy_last_mile():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v147.0] DEPLOYING PRECISION FIX ---")
+    print("--- [v148.0] DEPLOYING LAST MILE FIX ---")
     
     (include_dir / "n64_types.h").write_text(BRIDGE_CONTENT)
 
+    # 1. Physically DESTROY imposter standard headers so they don't shadow the NDK
     std_headers = ["string.h", "math.h", "stdarg.h", "time.h", "basic_types.h"]
     for sh in std_headers:
         p = include_dir / sh
-        if p.exists():
-            p.unlink()
+        if p.exists(): p.unlink()
+            
+    # CRITICAL: Physically delete sched.h from PR folder instead of blocking it!
+    sched_p = include_dir / "2.0L" / "PR" / "sched.h"
+    if sched_p.exists():
+        sched_p.unlink()
+        print("Destroyed PR/sched.h to unblock Android NDK threading!")
 
     pr_folder = include_dir / "2.0L" / "PR"
     if pr_folder.exists():
         for file in pr_folder.glob("*.h"):
-            file.write_text("/* Blocked */\n")
+            # Block the remaining ones
+            if file.name != "sched.h":
+                file.write_text("/* Blocked */\n")
             
     for h in ["2.0L/ultra64.h", "bool.h", "macros.h"]:
         p = include_dir / h
         if p.exists():
             p.write_text("/* Blocked */\n")
 
-    for target in ["model.h", "structs.h", "rarezip.h"]:
-        p = include_dir / target
-        if p.exists():
-            content = p.read_text(errors='ignore')
-            content = re.sub(r'typedef\s+struct\s*[a-zA-Z0-9_]*\s*\{[^}]*\}\s*(OSTask_t|Vtx|Mtx|Gfx|MtxF|ALHeap);', '/* Scrubbed */', content)
-            p.write_text(content)
+    # 2. Scrub Custom N64 Memory Definitions
+    mem_h = include_dir / "core1" / "mem.h"
+    if mem_h.exists():
+        content = mem_h.read_text(errors='ignore')
+        content = re.sub(r'void\s+memcpy\s*\([^;]+;', '/* Scrubbed memcpy */;', content)
+        content = re.sub(r'void\s+memmove\s*\([^;]+;', '/* Scrubbed memmove */;', content)
+        mem_h.write_text(content)
 
+    funcs_h = include_dir / "functions.h"
+    if funcs_h.exists():
+        content = funcs_h.read_text(errors='ignore')
+        content = re.sub(r'void\s*\*\s*malloc\s*\([^;]+;', '/* Scrubbed malloc */;', content)
+        content = re.sub(r'void\s*\*\s*realloc\s*\([^;]+;', '/* Scrubbed realloc */;', content)
+        funcs_h.write_text(content)
+
+    # 3. Global scrub for all local clashes
     clash_types = ["MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad"]
 
     for path in decomp.rglob("*.[ch]"):
@@ -278,7 +289,6 @@ def deploy_precision_fix():
             content = path.read_text(errors='ignore')
             original = content
             
-            # Target the double-pathed include and fix it globally
             content = content.replace('#include "tools/rare_decompression.h"', '#include "rare_decompression.h"')
             
             for ct in clash_types:
@@ -287,7 +297,7 @@ def deploy_precision_fix():
                 path.write_text(content)
         except: pass
 
-    print("--- Precision Fix Complete. ---")
+    print("--- Last Mile Complete. ---")
 
 if __name__ == "__main__":
-    deploy_precision_fix()
+    deploy_last_mile()
