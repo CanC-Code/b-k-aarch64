@@ -2,7 +2,6 @@ import os
 import re
 from pathlib import Path
 
-# We define the types in a completely isolated block
 BASIC_TYPES = """
 #ifndef _BASIC_TYPES_H_
 #define _BASIC_TYPES_H_
@@ -34,6 +33,7 @@ BRIDGE_CONTENT = """
   #define FALSE 0
 #endif
 
+// Total Eclipse: Kill all original SDK headers
 #define _GBI_H_
 #define _ABI_H_
 #define _MBI_H_
@@ -48,6 +48,10 @@ BRIDGE_CONTENT = """
 #define _REGION_H_
 #define _RAMROM_H_
 #define _RCP_H_
+#define _ULTRAERROR_H_
+#define _ULTRALOG_H_
+#define _RMON_H_
+#define _SCHED_H_
 
 typedef uint64_t Gfx;
 typedef struct { int32_t m[4][4]; } Mtx;
@@ -206,36 +210,38 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_loop_breaker():
+def deploy_total_eclipse():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v141.0] DEPLOYING LOOP BREAKER ---")
+    print("--- [v142.0] DEPLOYING TOTAL ECLIPSE ---")
     
-    # 1. Write Sacred Basic Types
     (include_dir / "basic_types.h").write_text(BASIC_TYPES)
-    
-    # 2. Write Master Bridge
     (include_dir / "n64_types.h").write_text(BRIDGE_CONTENT)
 
-    # 3. Aggressively inject types into the problematic headers
+    # Use Binary Write to force a clean EOF with no trailing whitespace or backslashes
+    toxic = [
+        "2.0L/PR/os.h", "2.0L/PR/ultratypes.h", "2.0L/PR/rcp.h", "2.0L/PR/ultraerror.h",
+        "2.0L/PR/region.h", "2.0L/PR/sptask.h", "2.0L/PR/gbi.h", "2.0L/PR/mbi.h",
+        "2.0L/PR/abi.h", "2.0L/PR/libaudio.h", "2.0L/PR/n_libaudio.h", "bool.h"
+    ]
+    for h in toxic:
+        p = include_dir / h
+        if p.exists():
+            with open(p, "wb") as f:
+                f.write(b"// Cleanly Blocked\\n")
+
+    # Scrub redefinitions in source-related headers
     for target in ["model.h", "structs.h", "string.h", "rarezip.h"]:
         p = include_dir / target
         if p.exists():
             content = p.read_text(errors='ignore')
-            # Move basic_types.h to the absolute top of the file
-            content = "#include \"basic_types.h\"\\n" + content
+            content = '#include "basic_types.h"\\n' + content
+            content = re.sub(r'typedef\s+struct\s*[a-zA-Z0-9_]*\s*\{[^}]*\}\s*(OSTask_t|Vtx|Mtx|Gfx|MtxF);', '/* Scrubbed */', content)
             p.write_text(content)
 
-    # 4. Clean up toxicity
-    toxic = ["2.0L/PR/os.h", "2.0L/PR/ultratypes.h", "2.0L/PR/rcp.h", "2.0L/PR/ultraerror.h", "bool.h"]
-    for h in toxic:
-        p = include_dir / h
-        if p.exists():
-            p.write_text("/* Blocked */\\n")
-
-    print("--- Loop Breaker Deployed. Run Ninja. ---")
+    print("--- Total Eclipse Deployed. Run Ninja. ---")
 
 if __name__ == "__main__":
-    deploy_loop_breaker()
+    deploy_total_eclipse()
