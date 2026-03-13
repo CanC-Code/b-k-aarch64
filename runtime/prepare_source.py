@@ -109,7 +109,7 @@ def deploy_dynamic_patch():
     include_dir = decomp / "include"
     pr_folder = include_dir / "2.0L" / "PR"
     
-    print("--- [v164.0] RUNNING HARDWARE SCRUBBER ---")
+    print("--- [v165.0] RUNNING DYNAMIC BOOLEAN SCRUBBER ---")
     
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT)
 
@@ -117,11 +117,19 @@ def deploy_dynamic_patch():
         p = include_dir / sh
         if p.exists(): p.unlink()
             
+    # CRITICAL: If bool.h exists, kill the redefinition
+    bool_h = include_dir / "bool.h"
+    if bool_h.exists():
+        print(f"Found {bool_h.name}, scrubbing legacy typedefs...")
+        content = bool_h.read_text(errors='ignore')
+        content = content.replace("typedef int bool;", "/* Handled by stdbool.h */")
+        content = content.replace("typedef int32_t bool;", "/* Handled by stdbool.h */")
+        bool_h.write_text(content)
+
     sched_p = pr_folder / "sched.h"
     if sched_p.exists():
         sched_p.unlink()
 
-    # The hardware types we MUST override for 64-bit safety
     clash_types = {"Gfx", "Acmd", "OSTask_t", "MtxF", "Mtx", "Vtx", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad"}
 
     for path in decomp.rglob("*.[ch]"):
@@ -132,6 +140,9 @@ def deploy_dynamic_patch():
             
             if '#include "n64_types.h"' not in content:
                 content = '#include "n64_types.h"\n' + content
+                
+            # Inline boolean scrubber for headers/sources
+            content = content.replace("typedef int bool;", "/* Scrubbed bool */")
                 
             if path.name in ["mem.h", "functions.h", "synthInternals.h"]:
                 content = re.sub(r'void\s+memcpy\s*\([^;]+;', '/* Scrubbed memcpy */;', content)
@@ -145,10 +156,7 @@ def deploy_dynamic_patch():
             if "rsdelta" in content and "ALDelay" in content:
                 content = content.replace("f32 rsdelta;", "s32 rsdelta; // 64-bit int fix")
 
-            # Scrub structs via AST
             content = scrub_types_ast(content, clash_types)
-            
-            # Scrub function pointer typedefs
             content = re.sub(r'typedef\s+.*?\(\*ALDMANew\).*?;', '/* Scrubbed ALDMANew */', content)
             content = re.sub(r'typedef\s+.*?\(\*OSErrorHandler\).*?;', '/* Scrubbed OSErrorHandler */', content)
 
@@ -157,19 +165,7 @@ def deploy_dynamic_patch():
         except Exception:
             continue
 
-    android_cpp_dir = root / "Android" / "app" / "src" / "main" / "cpp"
-    for path in android_cpp_dir.rglob("*.cpp"):
-        try:
-            content = path.read_text(errors='ignore')
-            original = content
-            content = content.replace('#include "tools/rare_decompression.h"', '#include "rare_decompression.h"')
-            content = scrub_types_ast(content, clash_types)
-            if content != original:
-                path.write_text(content)
-        except Exception:
-            pass
-
-    print("--- Hardware Scrubber Complete. Run Ninja! ---")
+    print("--- Boolean Scrubber Complete. Run Ninja! ---")
 
 if __name__ == "__main__":
     deploy_dynamic_patch()
