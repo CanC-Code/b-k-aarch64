@@ -42,7 +42,6 @@ typedef struct { int32_t m[4][4]; } Mtx;
 typedef struct { float m[4][4]; } MtxF;
 typedef struct { uint8_t d[16]; } Vtx;
 
-// NEW: Core2 / Gameplay Stubs
 typedef struct { float d[16]; } BoneTransform;
 typedef void* VLA;
 typedef void* FLA;
@@ -190,7 +189,24 @@ typedef ALEvent N_ALEvent;
 typedef struct { N_ALSynth drvr; } ALGlobals;
 extern ALGlobals *alGlobals;
 
-// Macros
+// FIXED: Use Guarded macros to prevent clashing with original enums in synthInternals.h
+#ifndef _SYNTHINTERNALS_H_
+  #define AL_FILTER_ADD_SOURCE 1
+  #define AL_RESAMPLE 1
+  #define AL_ADPCM 2
+#endif
+
+// Constants for Loader
+#define AL_ADPCM_WAVE 0
+#define AL_RAW16_WAVE 1
+#define AL_BANK_VERSION 0x424c
+
+// MIDI and Events
+#define AL_SEQP_MIDI_EVT 2
+#define AL_UNK18_EVT 18
+#define AL_MIDI_ControlChange 0xB0
+#define AL_MIDI_ChannelModeSelect 0xB0
+
 #define AL_EVTQ_END 0x7FFFFFFF
 #define AL_USEC_PER_FRAME 16667
 #define AL_PHASE_ATTACK 0
@@ -202,9 +218,6 @@ extern ALGlobals *alGlobals;
 #define AL_STOPPED 0
 #define AL_PLAYING 1
 #define AL_STOPPING 2
-#define AL_FILTER_ADD_SOURCE 1
-#define AL_RESAMPLE 1
-#define AL_ADPCM 2
 
 #define K0_TO_PHYS(x) ((u32)(uintptr_t)(x))
 static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t)vaddr; }
@@ -212,37 +225,31 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_clean_slate():
+def deploy_enum_harmonizer():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v134.0] DEPLOYING CLEAN SLATE ---")
+    print("--- [v135.0] DEPLOYING ENUM HARMONIZER ---")
     
-    # 1. Update Bridge
     bridge_path = include_dir / "n64_types.h"
     bridge_path.write_text(BRIDGE_CONTENT)
 
-    # 2. Terminate problematic legacy headers with NO BACKSLASH
-    toxic = [
-        "2.0L/PR/os.h", "2.0L/PR/gbi.h", "2.0L/PR/abi.h", "2.0L/PR/mbi.h", 
-        "2.0L/PR/gu.h", "2.0L/PR/sp.h", "2.0L/PR/ultratypes.h", 
-        "2.0L/PR/libaudio.h", "2.0L/PR/n_libaudio.h", "2.0L/PR/sptask.h", 
-        "2.0L/PR/R4300.h", "bool.h"
-    ]
+    toxic = ["2.0L/PR/os.h", "2.0L/PR/gbi.h", "2.0L/PR/abi.h", "2.0L/PR/mbi.h", "2.0L/PR/gu.h", "2.0L/PR/sp.h", "2.0L/PR/ultratypes.h", "2.0L/PR/libaudio.h", "2.0L/PR/n_libaudio.h", "2.0L/PR/sptask.h", "2.0L/PR/R4300.h", "bool.h"]
     for h in toxic:
         p = include_dir / h
-        if p.exists():
-            p.write_text("/* Terminated by v134.0 */\n") # Real newline, no literal \n
+        if p.exists(): p.write_text("/* Terminated */\\n")
     
-    # 3. Scrub synthInternals.h
+    # NEW: Actively wrapping synthInternals.h with an include guard if it's missing
     synth_int = include_dir / "synthInternals.h"
     if synth_int.exists():
         content = synth_int.read_text(errors='ignore')
+        if "#ifndef _SYNTHINTERNALS_H_" not in content:
+            content = "#ifndef _SYNTHINTERNALS_H_\\n#define _SYNTHINTERNALS_H_\\n" + content + "\\n#endif"
+        # Scrub original redefinitions
         content = re.sub(r'typedef\s+struct\s*ALFx_s\s*\{[^}]*\}\s*ALFx\s*;', '/* Scrubbed */', content)
         synth_int.write_text(content)
 
-    # 4. Mass Cleanup in Source
     clash_types = ["MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "VLA", "FLA"]
 
     for path in decomp.rglob("*.[ch]"):
@@ -253,14 +260,11 @@ def deploy_clean_slate():
             for ct in clash_types:
                 content = re.sub(r'typedef\s+struct\s*[a-zA-Z0-9_]*\s*\{[^}]*\}\s*' + ct + r'\s*;', f'/* Terminated {ct} */', content)
             
-            # Fix the MIDI access pattern one last time
             content = content.replace("evt.midi", "evt.msg.midi")
-            
-            if content != original:
-                path.write_text(content)
+            if content != original: path.write_text(content)
         except: continue
         
-    print("--- Clean Slate Deployed. Run Ninja. ---")
+    print("--- Enum Harmonizer Deployed. Build. ---")
 
 if __name__ == "__main__":
-    deploy_clean_slate()
+    deploy_enum_harmonizer()
