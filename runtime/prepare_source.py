@@ -122,7 +122,70 @@ typedef u32 OSIntMask;
 extern "C" int sched_yield(void);
 #endif
 
-// 4. Memory Mapper
+// 4. Core Audio Constants (Bulletproofed)
+#define AL_ADPCM_WAVE 0
+#define AL_RAW16_WAVE 1
+#define AL_BANK_VERSION 0x424c
+#define ERR_ALBNKFNEW 0
+#define AL_SEQP_MIDI_EVT 2
+#define AL_UNK18_EVT 18
+#define AL_MIDI_ControlChange 0xB0
+#define AL_MIDI_ChannelModeSelect 0xB0
+#define AL_EVTQ_END 0x7FFFFFFF
+#define AL_USEC_PER_FRAME 16667
+#define AL_PHASE_ATTACK 0
+#define AL_PHASE_DECAY 1
+#define AL_PHASE_SUSTAIN 2
+#define AL_PHASE_RELEASE 3
+#define AL_PHASE_NOTEON 4
+#define AL_PHASE_SUSTREL 5
+#define AL_STOPPED 0
+#define AL_PLAYING 1
+#define AL_STOPPING 2
+#define AL_MIDI_NoteOn 0x90
+#define AL_MIDI_ProgramChange 0xC0
+#define AL_MIDI_ChannelPressure 0xD0
+#define AL_MIDI_Meta 0xFF
+#define AL_MIDI_META_TEMPO 0x51
+#define AL_MIDI_META_EOT 0x2F
+#define AL_TRACK_END 99
+#define AL_SEQ_END_EVT 100
+#define AL_TEMPO_EVT 101
+#define AL_SEQ_MIDI_EVT 102
+#define AL_CSP_LOOPSTART 103
+#define AL_CSP_LOOPEND 104
+#define AL_SEQP_SEQ_EVT 105
+#define AL_SEQP_PLAY_EVT 106
+#define AL_SEQP_BANK_EVT 107
+#define AL_SEQP_STOP_EVT 108
+#define AL_SEQP_VOL_EVT 109
+#define AL_SEQP_PAN_EVT 110
+#define AL_SEQP_FX_EVT 111
+#define AL_SEQP_TEMPO_EVT 112
+#define AL_SEQP_PROG_EVT 113
+#define AL_SEQP_META_EVT 114
+#define AL_SEQP_STOPPING_EVT 115
+#define AL_CMIDI_LOOPSTART_CODE 102
+#define AL_CMIDI_LOOPEND_CODE 103
+#define AL_CMIDI_BLOCK_CODE 104
+#define A_INIT      1
+#define A_CONTINUE  2
+#define A_RATE      3
+#define A_VOL       4
+#define A_LEFT      5
+#define A_RIGHT     6
+#define A_MAIN      7
+#define A_AUX       8
+#define AL_FX_NONE         0
+#define AL_FX_SMALLROOM    1
+#define AL_FX_BIGROOM      2
+#define AL_FX_CHORUS       3
+#define AL_FX_FLANGE       4
+#define AL_FX_ECHO         5
+#define AL_FX_CUSTOM       6
+#define OS_IM_NONE 0
+
+// 5. Memory Mapper
 #define K0_TO_PHYS(x) ((u32)(uintptr_t)(x))
 static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t)vaddr; }
 
@@ -132,7 +195,6 @@ def harvest_n64_macros(pr_dir: Path):
     harvested = set()
     output = "\n// --- DYNAMICALLY HARVESTED N64 SDK MACROS ---\n"
     
-    # Do not harvest type re-mappings that conflict with our bridge structs!
     bad_macros = {
         "ALGlobals", "ALSynth", "ALSeqPlayer", "ALVoice", "ALVoiceState", 
         "ALEvent", "ALCSeq", "ALHeap", "ALWaveTable", "ALFilter", "ALMainBus"
@@ -144,18 +206,16 @@ def harvest_n64_macros(pr_dir: Path):
     for h_file in pr_dir.glob("*.h"):
         try:
             content = h_file.read_text(errors='ignore')
+            # Extract anything that looks like a define, but we already have the core ones protected above
             matches = re.findall(r'^\s*#define\s+([A-Za-z0-9_]+)\s+([^\\\n]+)$', content, re.MULTILINE)
             
             for name, val in matches:
-                # Filter out system macros, known bad re-maps, and values starting with 'N_' (type redirects)
                 if name.startswith('_') or "SCHED" in name or name in harvested or name in bad_macros or val.strip().startswith('N_'):
                     continue
-                    
                 harvested.add(name)
                 output += f"#define {name} {val.strip()}\n"
-                
         except Exception as e:
-            print(f"Skipping {h_file.name} for harvesting due to error.")
+            pass
             
     output += "\n// --- BLOCKING SDK MACROS ---\n"
     for blocked in ["_ULTRATYPES_H_", "_GBI_H_", "_ABI_H_", "_MBI_H_", "_LIBAUDIO_H_", "_N_LIBAUDIO_H_", "_GU_H_", "_SP_H_", "__OS_H__", "_MTXF_H_", "_BOOL_H_", "_SPTASK_H_", "_REGION_H_", "_RAMROM_H_", "_RCP_H_", "_ULTRAERROR_H_", "_ULTRALOG_H_", "_RMON_H_"]:
@@ -170,7 +230,7 @@ def deploy_dynamic_patch():
     include_dir = decomp / "include"
     pr_folder = include_dir / "2.0L" / "PR"
     
-    print("--- [v155.0] RUNNING DYNAMIC MACRO HARVESTER ---")
+    print("--- [v156.0] RUNNING BULLETPROOF HARVESTER ---")
     
     dynamic_macros = harvest_n64_macros(pr_folder)
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT + dynamic_macros)
@@ -203,6 +263,9 @@ def deploy_dynamic_patch():
             content = re.sub(r'void\s*\*\s*realloc\s*\([^;]+;', '/* Scrubbed realloc */;', content)
             content = re.sub(r'typedef\s+struct\s*\{[^}]*\}\s*ALDelay\s*;', '/* Scrubbed ALDelay */', content)
             content = re.sub(r'typedef\s+s32\s*\(\s*\*\s*ALSetFXParam\s*\)\s*\([^;]+;', '/* Scrubbed ALSetFXParam */', content)
+            # NEW: Scrub ALLowPass variants
+            content = re.sub(r'typedef\s+struct\s*\{[^}]*\}\s*ALLowPass\s*;', '/* Scrubbed ALLowPass */', content)
+            content = re.sub(r'typedef\s+struct\s*ALLowPass_s\s*\{[^}]*\}\s*ALLowPass\s*;', '/* Scrubbed ALLowPass */', content)
             p.write_text(content)
 
     clash_types = ["MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad", "ALDelay", "ALResampler", "ALLowPass"]
@@ -237,7 +300,7 @@ def deploy_dynamic_patch():
                 path.write_text(content)
         except: pass
 
-    print("--- Harvester Complete. Run Ninja! ---")
+    print("--- Bulletproof Harvester Complete. Run Ninja! ---")
 
 if __name__ == "__main__":
     deploy_dynamic_patch()
