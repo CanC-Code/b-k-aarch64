@@ -29,9 +29,6 @@ extern "C" {
 extern "C" {
     void mainLoop(void);
     void ResourceMgr_Init(const char* otrPath, uint8_t* manifestBuf, uint32_t manifestSize);
-    
-    // OPAQUE POINTER: Link to the C engine's global audio pointer without needing the struct
-    extern void* alGlobals;
 }
 
 extern "C" {
@@ -42,7 +39,8 @@ Java_com_bkawrapper_NativeBridge_nativeGameBoot(JNIEnv* env, jclass clazz, jstri
 
     // 1. Initialize N64 Audio Globals using a raw block of memory
     if (alGlobals == nullptr) {
-        alGlobals = malloc(4096); // 4KB is safely larger than the N64 ALGlobals struct
+        // C++ requires an explicit cast from malloc's void* return type
+        alGlobals = (ALGlobals*)malloc(4096); 
         memset(alGlobals, 0, 4096);
         LOGI("Audio Globals Initialized.");
     }
