@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-// 1. Basic N64 Primitives
+// 1. Basic N64 Primitives (64-bit Safe)
 typedef int8_t   s8;  typedef uint8_t  u8;
 typedef int16_t  s16; typedef uint16_t u16;
 typedef int32_t  s32; typedef uint32_t u32;
@@ -18,7 +18,7 @@ typedef volatile uint32_t vu32;
   #define FALSE 0
 #endif
 
-// 2. Global SDK Blockers
+// 2. Global SDK Blockers (Nuke legacy headers)
 #define _GBI_H_
 #define _ABI_H_
 #define _MBI_H_
@@ -28,15 +28,14 @@ typedef volatile uint32_t vu32;
 #define _SP_H_
 #define _ULTRATYPES_H_
 #define __OS_H__
-#define _MTXF_H_ // Block local MtxF
+#define _MTXF_H_
 
-// 3. Audio State Arrays
-typedef int16_t ADPCM_STATE[16];
-typedef int16_t RESAMPLE_STATE[16];
-typedef int16_t POLEF_STATE[4];
-typedef int16_t ENVMIX_STATE[40];
+// 3. Command Lists (Acmd & Gfx) - The "Invisible" Types
+typedef struct { unsigned int w0, w1; } Acmd_words;
+typedef union { Acmd_words words; long long force_align; } Acmd;
+typedef uint64_t Gfx;
 
-// 4. Core Audio Engine Structures
+// 4. Audio Engine Blueprints (Rare/Banjo Layout)
 typedef s32 ALMicroTime;
 typedef s32 ALPan;
 typedef void* ALDMAproc;
@@ -44,8 +43,8 @@ typedef void* ALDMANew;
 typedef struct { uint8_t d[48]; } ALHeap;
 typedef struct ALLink_s { struct ALLink_s *next; struct ALLink_s *prev; } ALLink;
 
-typedef struct { uint8_t d[128]; } ALADPCMBook;
 typedef struct { uint32_t start, end, count; int16_t state[16]; } ALADPCMloop;
+typedef struct { uint8_t d[128]; } ALADPCMBook;
 typedef struct { uint32_t start, end, count; } ALRawLoop;
 
 typedef struct {
@@ -53,47 +52,16 @@ typedef struct {
         struct { ALADPCMBook *book; ALADPCMloop *loop; } adpcmWave;
         struct { ALRawLoop *loop; } rawWave;
     } waveInfo;
-    u8 *base;
-    u32 len;
-    u8 type;
-    u8 flags;
+    u8 *base; u32 len; u8 type, flags;
 } ALWaveTable;
 
-typedef struct { uint8_t d[32]; } ALEnvelope;
-typedef struct { uint8_t d[32]; } ALKeyMap;
+typedef struct { ALWaveTable *wavetable; u8 flags; void* envelope; void* keyMap; } ALSound;
+typedef struct { s32 soundCount; u8 flags; ALSound *soundArray[1]; } ALInstrument;
+typedef struct { u8 flags; s32 instCount; ALInstrument *percussion; ALInstrument *instArray[1]; } ALBank;
+typedef struct { s16 revision; s32 bankCount; ALBank *bankArray[1]; } ALBankFile;
+typedef struct { s16 seqCount; s32 seqArray[1]; } ALSeqFile;
 
-typedef struct {
-    ALEnvelope *envelope;
-    ALKeyMap   *keyMap;
-    ALWaveTable *wavetable;
-    u8 flags;
-} ALSound;
-
-typedef struct {
-    s16 soundCount;
-    u8 flags;
-    ALSound *soundArray[1];
-} ALInstrument;
-
-typedef struct {
-    u8 flags;
-    s32 instCount;
-    ALInstrument *percussion;
-    ALInstrument *instArray[1];
-} ALBank;
-
-typedef struct {
-    s16 revision;
-    s32 bankCount;
-    ALBank *bankArray[1];
-} ALBankFile;
-
-typedef struct {
-    s16 seqCount;
-    s32 seqArray[1]; 
-} ALSeqFile;
-
-// ALEvent (Rare/Banjo Unified Layout)
+// ALEvent (Rare Unified Layout)
 typedef struct {
     s16 type;
     s32 ticks;
@@ -105,35 +73,18 @@ typedef struct {
 } ALEvent;
 
 typedef struct { void *evtq; void *chanState; } ALCSPlayer;
-typedef ALCSPlayer N_ALSeqPlayer;
-typedef ALCSPlayer N_ALCSPlayer;
-
-typedef struct { uint8_t d[64]; } ALSynConfig;
 typedef struct { uint8_t d[128]; } ALSynth;
-typedef ALSynth N_ALSynth;
 
-// 5. System & Graphics
-typedef uint64_t Gfx;
+// 5. System & Graphics Structures
 typedef struct { int32_t m[4][4]; } Mtx;
 typedef struct { float m[4][4]; } MtxF;
 typedef struct { uint8_t d[16]; } Vtx;
 
-typedef void* OSMesg;
-typedef struct { void* mt; void* full; int count; } OSMesgQueue;
-typedef struct { uint8_t d[256]; } OSThread;
-typedef struct { uint8_t d[64];  } OSContPad;
-
-// 6. Audio Constants
 #define AL_BANK_VERSION 0x424c
-#define AL_ADPCM_WAVE 0
-#define AL_RAW16_WAVE 1
 #define AL_SEQP_MIDI_EVT 2
-#define AL_MIDI_ControlChange 3
-#define AL_MIDI_ChannelModeSelect 4
 #define AL_UNK18_EVT 18
 #define UNITY_PITCH 0x8000
 
-#define K0_TO_PHYS(x) ((u32)(uintptr_t)(x))
 static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t)vaddr; }
 
 #endif
