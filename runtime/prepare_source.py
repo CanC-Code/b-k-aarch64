@@ -23,6 +23,7 @@ typedef u32 OSIntMask;
   #define FALSE 0
 #endif
 
+// Block legacy headers
 #define _GBI_H_
 #define _ABI_H_
 #define _MBI_H_
@@ -34,11 +35,18 @@ typedef u32 OSIntMask;
 #define __OS_H__
 #define _MTXF_H_
 #define _BOOL_H_
+#define _SPTASK_H_
 
 typedef uint64_t Gfx;
 typedef struct { int32_t m[4][4]; } Mtx;
 typedef struct { float m[4][4]; } MtxF;
 typedef struct { uint8_t d[16]; } Vtx;
+
+// NEW: Core2 / Gameplay Stubs
+typedef struct { float d[16]; } BoneTransform;
+typedef void* VLA;
+typedef void* FLA;
+typedef struct { u32 t[16]; } OSTask_t;
 
 typedef void* OSMesg;
 typedef struct { void* mt; void* full; int count; } OSMesgQueue;
@@ -90,8 +98,6 @@ typedef struct { s16 revision; s32 bankCount; ALBank *bankArray[1]; } ALBankFile
 
 typedef struct { u8 *offset; s32 len; } ALSeqData;
 typedef struct { s16 seqCount; ALSeqData seqArray[1]; } ALSeqFile;
-
-// FIXED: Moved ALCMidiHdr ABOVE ALCSeq to fix 'unknown type name' error
 typedef struct { u32 division; s32 trackOffset[16]; } ALCMidiHdr;
 
 typedef struct {
@@ -150,8 +156,6 @@ typedef struct ALFilter_s {
     void  (*setParam)(struct ALFilter_s *filter, s32 paramID, void *param);
     s16 type; s16 inp; s16 outp; s32 count;
 } ALFilter;
-
-// DEFINITION: Unified ALFx
 typedef ALFilter ALFx;
 
 typedef struct { ALFilter filter; s32 sourceCount; s32 maxSources; ALFilter **sources; } ALMainBus;
@@ -186,112 +190,21 @@ typedef ALEvent N_ALEvent;
 typedef struct { N_ALSynth drvr; } ALGlobals;
 extern ALGlobals *alGlobals;
 
-#define OS_IM_NONE 0
+// Macros
 #define AL_EVTQ_END 0x7FFFFFFF
 #define AL_USEC_PER_FRAME 16667
-#define MAX_RATIO 1.99996f
-#define ADPCMFBYTES 9
-#define LFSAMPLES 4
-#define ADPCMFSIZE 16
-#define ADPCMVSIZE 8
-#define AL_BANK_VERSION 0x424c
-#define AL_ADPCM_WAVE 0
-#define AL_RAW16_WAVE 1
-#define UNITY_PITCH 0x8000
 #define AL_PHASE_ATTACK 0
 #define AL_PHASE_DECAY 1
 #define AL_PHASE_SUSTAIN 2
 #define AL_PHASE_RELEASE 3
 #define AL_PHASE_NOTEON 4
 #define AL_PHASE_SUSTREL 5
-#define AL_SUSTAIN 63
-#define NO_SOUND_ERR_MASK 0x01
-#define NO_VOICE_ERR_MASK 0x02
-#define NOTE_OFF_ERR_MASK 0x04
-#define AL_VOL_FULL 127
-#define A_INIT 1
-#define A_CONTINUE 0
-#define A_RATE 0
-#define A_VOL 1
-#define A_LEFT 2
-#define A_RIGHT 0
-#define A_MAIN 0
-#define A_AUX 2
-#define A_LOOP 2
-#define A_LOADBUFF 2
-#define A_ADPCM 1
-#define A_SETVOL 3
-#define A_ENVMIXER 4
-#define A_NOAUX 0
-#define A_RESAMPLE 1
-#define A_SAVEBUFF 3
-#define A_LOADADPCM 2
-#define A_POLEF 4
-#define AL_MAIN_L_OUT 0
-#define AL_MAIN_R_OUT 0
-#define AL_AUX_L_OUT 0
-#define AL_AUX_R_OUT 0
 #define AL_STOPPED 0
 #define AL_PLAYING 1
 #define AL_STOPPING 2
-#define AL_FX_SMALLROOM 0
-#define AL_FX_BIGROOM 1
-#define AL_FX_ECHO 2
-#define AL_FX_CHORUS 3
-#define AL_FX_FLANGE 4
-#define AL_FX_CUSTOM 5
-#define AL_SEQ_MIDI_EVT 1
-#define AL_SEQP_MIDI_EVT 2
-#define AL_TEMPO_EVT 5
-#define AL_SEQ_END_EVT 6
-#define AL_SEQP_SEQ_EVT 7
-#define AL_SEQP_PLAY_EVT 8
-#define AL_SEQP_BANK_EVT 9
-#define AL_SEQP_STOPPING_EVT 10
-#define AL_SEQP_VOL_EVT 11
-#define AL_SEQP_META_EVT 12
-#define AL_CSP_LOOPSTART 13
-#define AL_CSP_LOOPEND 14
-#define AL_SEQP_API_EVT 15
-#define AL_SEQ_REF_EVT 16
-#define AL_NOTE_END_EVT 17
-#define AL_UNK18_EVT 18
-#define AL_SEQP_ENV_EVT 19
-#define AL_TREM_OSC_EVT 20
-#define AL_VIB_OSC_EVT 21
-#define AL_SEQP_STOP_EVT 22
-#define AL_CSP_NOTEOFF_EVT 23
-#define AL_SEQP_PRIORITY_EVT 24
-#define AL_SEQP_LOOP_EVT 25
-#define AL_CMIDI_BLOCK_CODE 0xFE
-#define AL_CMIDI_LOOPSTART_CODE 0x2E
-#define AL_CMIDI_LOOPEND_CODE 0x2D
-#define AL_MIDI_StatusMask 0x80
-#define AL_MIDI_ChannelMask 0x0F
-#define AL_MIDI_NoteOff 0x80
-#define AL_MIDI_NoteOn 0x90
-#define AL_MIDI_PolyKeyPressure 0xA0
-#define AL_MIDI_ControlChange 0xB0
-#define AL_MIDI_ChannelModeSelect 0xB0
-#define AL_MIDI_ProgramChange 0xC0
-#define AL_MIDI_ChannelPressure 0xD0
-#define AL_MIDI_PitchBendChange 0xE0
-#define AL_MIDI_Meta 0xFF
-#define AL_MIDI_VOLUME_CTRL 0x07
-#define AL_MIDI_PAN_CTRL 0x0A
-#define AL_MIDI_PRIORITY_CTRL 0x10
-#define AL_MIDI_SUSTAIN_CTRL 0x40
-#define AL_MIDI_FX1_CTRL 0x5B
-#define AL_MIDI_FX_CTRL_0 0x14
-#define AL_MIDI_FX_CTRL_1 0x15
-#define AL_MIDI_FX_CTRL_2 0x16
-#define AL_MIDI_FX_CTRL_3 0x17
-#define AL_MIDI_FX_CTRL_4 0x18
-#define AL_MIDI_FX_CTRL_5 0x19
-#define ALFxRef void*
-#define AL_TRACK_END 0x2F
-#define AL_MIDI_META_TEMPO 0x51
-#define AL_MIDI_META_EOT 0x2F
+#define AL_FILTER_ADD_SOURCE 1
+#define AL_RESAMPLE 1
+#define AL_ADPCM 2
 
 #define K0_TO_PHYS(x) ((u32)(uintptr_t)(x))
 static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t)vaddr; }
@@ -299,31 +212,38 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_unified_truth():
+def deploy_clean_slate():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v133.0] DEPLOYING UNIFIED TRUTH ---")
+    print("--- [v134.0] DEPLOYING CLEAN SLATE ---")
     
+    # 1. Update Bridge
     bridge_path = include_dir / "n64_types.h"
     bridge_path.write_text(BRIDGE_CONTENT)
 
-    # Toxic header termination
-    toxic = ["2.0L/PR/os.h", "2.0L/PR/gbi.h", "2.0L/PR/abi.h", "2.0L/PR/mbi.h", "2.0L/PR/gu.h", "2.0L/PR/sp.h", "2.0L/PR/ultratypes.h", "2.0L/PR/libaudio.h", "2.0L/PR/n_libaudio.h", "2.0L/PR/R4300.h", "bool.h"]
+    # 2. Terminate problematic legacy headers with NO BACKSLASH
+    toxic = [
+        "2.0L/PR/os.h", "2.0L/PR/gbi.h", "2.0L/PR/abi.h", "2.0L/PR/mbi.h", 
+        "2.0L/PR/gu.h", "2.0L/PR/sp.h", "2.0L/PR/ultratypes.h", 
+        "2.0L/PR/libaudio.h", "2.0L/PR/n_libaudio.h", "2.0L/PR/sptask.h", 
+        "2.0L/PR/R4300.h", "bool.h"
+    ]
     for h in toxic:
         p = include_dir / h
-        if p.exists(): p.write_text("/* Terminated by v133.0 */\\n")
+        if p.exists():
+            p.write_text("/* Terminated by v134.0 */\n") # Real newline, no literal \n
     
-    # NEW: Actively scrubbing synthInternals.h to prevent ALFx conflict
+    # 3. Scrub synthInternals.h
     synth_int = include_dir / "synthInternals.h"
     if synth_int.exists():
         content = synth_int.read_text(errors='ignore')
-        # Scrub original ALFx typedef
-        content = re.sub(r'typedef\s+struct\s*ALFx_s\s*\{[^}]*\}\s*ALFx\s*;', '/* Scrubbed ALFx */', content)
+        content = re.sub(r'typedef\s+struct\s*ALFx_s\s*\{[^}]*\}\s*ALFx\s*;', '/* Scrubbed */', content)
         synth_int.write_text(content)
 
-    clash_types = ["MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr"]
+    # 4. Mass Cleanup in Source
+    clash_types = ["MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "VLA", "FLA"]
 
     for path in decomp.rglob("*.[ch]"):
         if path.name == "n64_types.h": continue
@@ -332,13 +252,15 @@ def deploy_unified_truth():
             original = content
             for ct in clash_types:
                 content = re.sub(r'typedef\s+struct\s*[a-zA-Z0-9_]*\s*\{[^}]*\}\s*' + ct + r'\s*;', f'/* Terminated {ct} */', content)
-            content = content.replace("typedef int bool;", "/* Terminated */")
+            
+            # Fix the MIDI access pattern one last time
             content = content.replace("evt.midi", "evt.msg.midi")
-            content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
-            if content != original: path.write_text(content)
+            
+            if content != original:
+                path.write_text(content)
         except: continue
         
-    print("--- Unified Truth Deployed. Triggering Build. ---")
+    print("--- Clean Slate Deployed. Run Ninja. ---")
 
 if __name__ == "__main__":
-    deploy_unified_truth()
+    deploy_clean_slate()
