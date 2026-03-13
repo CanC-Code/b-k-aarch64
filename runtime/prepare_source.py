@@ -47,22 +47,33 @@ typedef struct { uint8_t d[64];  } OSContPad;
 typedef struct { unsigned int w0, w1; } Acmd_words;
 typedef union { Acmd_words words; long long force_align; } Acmd;
 typedef s32 (*ALDMAproc)(s32 addr, s32 len, void *state);
-typedef ALDMAproc (*ALDMANew)(void *state); // Fixed to void* to match SDK
+typedef ALDMAproc (*ALDMANew)(void *state);
 
 typedef u32 OSIntMask;
 
-// 3. System Standard Libraries (Pull from Android Sysroot)
+// 3. System Standard Libraries
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 
-#if defined(__cplusplus)
-#include <sched.h>
-extern "C" int sched_yield(void);
-#endif
+// 4. PREEMPTIVE BLOCKADE - Prevent N64 headers from redefining types
+#define __OS_H__
+#define _OS_THREAD_H_
+#define _OS_MESSAGE_H_
+#define _OS_CONT_H_
+#define _OS_LIBC_H_
+#define _GBI_H_
+#define _ABI_H_
+#define _SPTASK_H_
+#define _ULTRALOG_H_
+#define _ULTRAERROR_H_
+#define _OS_CONVERT_H_
+#define _OS_PI_H_
+#define _REGION_H_
+#define _GU_H_
 
-// 4. Memory Mapper
+// 5. Memory Mapper
 #define K0_TO_PHYS(x) ((u32)(uintptr_t)(x))
 static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t)vaddr; }
 
@@ -73,68 +84,28 @@ def deploy_dynamic_patch():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
-    pr_folder = include_dir / "2.0L" / "PR"
     
-    print("--- [v167.0] RUNNING SURGICAL LINKAGE FIXER ---")
+    print("--- [v168.0] DEPLOYING TOTAL BLOCKADE ---")
     
     # 1. Write the Bridge
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT)
 
-    # 2. DELETE local clones of standard C headers to force usage of NDK headers
-    # This prevents "no member named memcpy in global namespace"
-    for sh in ["string.h", "math.h", "stdarg.h", "time.h", "stdio.h", "stdlib.h", "ctype.h", "basic_types.h"]:
-        p = include_dir / sh
-        if p.exists(): 
-            print(f"Removing colliding header: {sh}")
-            p.unlink()
-            
-    # 3. Lobotomize specific SDK headers that conflict with modern Linkage
-    sdk_fixes = {
-        "os_libc.h": [
-            (r'extern\s+int\s+sprintf', '// Scrubbed sprintf'),
-            (r'extern\s+int\s+strlen', '// Scrubbed strlen'),
-            (r'extern\s+void\s+\*memcpy', '// Scrubbed memcpy')
-        ],
-        "os_convert.h": [
-            (r'extern\s+u32\s+osVirtualToPhysical', '// Scrubbed v2p')
-        ],
-        "libaudio.h": [
-            (r'typedef\s+ALDMAproc\s+\(\*ALDMANew\)\(void\s+\*\*state\);', 'typedef ALDMAproc (*ALDMANew)(void *state);')
-        ]
-    }
-
-    for h_name, fixes in sdk_fixes.items():
-        p = pr_folder / h_name
-        if p.exists():
-            content = p.read_text(errors='ignore')
-            for pattern, replacement in fixes:
-                content = re.sub(pattern, replacement, content)
-            p.write_text(content)
-
-    # 4. Global Source Patching
-    clash_types = {"Gfx", "Acmd", "OSTask_t", "MtxF", "Mtx", "Vtx", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad", "OSThread_s"}
-
-    for path in decomp.rglob("*.[ch]"):
-        if path.name == "n64_types.h": continue
+    # 2. Correct the Rare Decompression Include Paths in C++ files
+    android_cpp_dir = root / "Android" / "app" / "src" / "main" / "cpp"
+    for path in android_cpp_dir.rglob("*.cpp"):
         try:
             content = path.read_text(errors='ignore')
-            original = content
-            
-            # Ensure every file starts with our bridge
-            if '#include "n64_types.h"' not in content:
-                content = '#include "n64_types.h"\n' + content
-                
-            # Remove legacy boolean redefs
-            content = content.replace("typedef int bool;", "/* Scrubbed bool */")
-            
-            # Fix sprintf linkages if they are manually declared
-            content = content.replace("extern int sprintf", "// extern int sprintf")
-
-            if content != original:
+            if '#include "tools/rare_decompression.h"' in content:
+                content = content.replace('#include "tools/rare_decompression.h"', '#include "rare_decompression.h"')
                 path.write_text(content)
-        except Exception: continue
+        except Exception: pass
 
-    print("--- Surgical Linkage Fix Complete. Run Ninja! ---")
+    # 3. Clean up legacy headers in decomp-files
+    for sh in ["string.h", "math.h", "stdio.h", "stdlib.h", "bool.h", "basic_types.h"]:
+        p = include_dir / sh
+        if p.exists(): p.unlink()
+
+    print("--- Blockade Deployed. Run Ninja! ---")
 
 if __name__ == "__main__":
     deploy_dynamic_patch()
