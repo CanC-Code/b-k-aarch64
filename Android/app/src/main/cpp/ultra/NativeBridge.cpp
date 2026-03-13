@@ -4,15 +4,21 @@
 #include <android/log.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
-// Include our N64 bridge to get the types
+// Include our N64 bridge to get the 64-bit safe types
 #include "n64_types.h"
+
+// Bring in the original N64 audio definitions so C++ knows the size of ALGlobals
+extern "C" {
+    #include <PR/libaudio.h>
+    
+    // In some Banjo-Kazooie decomps, ALGlobals is hidden in the synth internals
+    #include "synthInternals.h" 
+}
 
 #define LOG_TAG "BKA_NATIVE"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-
-// The N64 engine expects this global to exist for audio to function
-ALGlobals *alGlobals = nullptr;
 
 extern "C" {
     void mainLoop(void);
