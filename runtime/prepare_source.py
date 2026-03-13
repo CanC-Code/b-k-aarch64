@@ -65,8 +65,13 @@ typedef int16_t RESAMPLE_STATE[16];
 typedef int16_t POLEF_STATE[4];
 typedef int16_t ENVMIX_STATE[40];
 
-// Audio Wave & Bank Data
-typedef struct { uint8_t d[128]; } ALADPCMBook;
+// FIXED: ADPCM Predictive Math Codebook
+typedef struct {
+    s32 order;
+    s32 npredictors;
+    s16 book[1]; // Flexible array member for coefficients
+} ALADPCMBook;
+
 typedef struct { uint32_t start, end, count; ADPCM_STATE state; } ALADPCMloop;
 typedef struct { uint32_t start, end, count; } ALRawLoop;
 
@@ -113,14 +118,21 @@ typedef struct {
     } msg;
 } ALEvent;
 
+// FIXED: Intrusive Linked Lists for Event Queues
 typedef struct ALEventListItem_s {
-    struct ALEventListItem_s *next; struct ALEventListItem_s *prev; ALEvent evt;
+    ALLink node;
+    ALMicroTime delta;
+    ALEvent evt;
 } ALEventListItem;
 
 typedef struct {
-    ALEventListItem *allocList; ALEventListItem *freeList;
-    s32 eventCount; s32 maxEventCount; ALMicroTime curTime;
-    OSMesgQueue msgQ; OSMesg msg;
+    ALLink allocList;
+    ALLink freeList;
+    s32 eventCount;
+    s32 maxEventCount;
+    ALMicroTime curTime;
+    OSMesgQueue msgQ;
+    OSMesg msg;
 } ALEventQueue;
 
 typedef struct { u8 pad[10]; u8 unkA; u8 pad2[21]; } N_ALChanState;
@@ -154,13 +166,15 @@ typedef ALSynth N_ALSynth;
 typedef struct { N_ALSynth drvr; } ALGlobals_t;
 extern ALGlobals_t *alGlobals;
 
-// --- Constants & Macros (RESTORED) ---
+// --- Constants & Macros ---
 #define OS_IM_NONE 0
+#define AL_EVTQ_END 0x7FFFFFFF
 
 // Hardware ADPCM
 #define ADPCMFBYTES 9
 #define LFSAMPLES 4
 #define ADPCMFSIZE 16
+#define ADPCMVSIZE 8
 #define AL_BANK_VERSION 0x424c
 #define AL_ADPCM_WAVE 0
 #define AL_RAW16_WAVE 1
@@ -235,12 +249,12 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_unabridged_bridge():
+def deploy_precision_linker():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v118.0] DEPLOYING UNABRIDGED BRIDGE ---")
+    print("--- [v119.0] DEPLOYING PRECISION LINKER ---")
     
     bridge_path = include_dir / "n64_types.h"
     bridge_path.write_text(BRIDGE_CONTENT)
@@ -253,12 +267,12 @@ def deploy_unabridged_bridge():
     for h in toxic:
         p = include_dir / h
         if p.exists():
-            p.write_text("/* Terminated by v118.0 */\n")
+            p.write_text("/* Terminated by v119.0 */\n")
     
     clash_types = [
         "MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", 
         "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", 
-        "ALVoice", "ALVoiceState", "ALSeqPlayer"
+        "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook"
     ]
 
     for path in decomp.rglob("*.[ch]"):
@@ -282,7 +296,7 @@ def deploy_unabridged_bridge():
                 path.write_text(content)
         except: continue
         
-    print("--- Unabridged Bridge Deployed. Execute Build Sequence. ---")
+    print("--- Precision Linker Deployed. Executing Build Sequence. ---")
 
 if __name__ == "__main__":
-    deploy_unabridged_bridge()
+    deploy_precision_linker()
