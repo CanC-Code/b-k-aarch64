@@ -6,12 +6,16 @@ BRIDGE_CONTENT = """
 #ifndef _N64_TYPES_H_
 #define _N64_TYPES_H_
 
+// Force C linkage for C++ consumers
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include <string.h>
-#include <stdlib.h>
 
+// 1. CORE TYPES - Defined before anything else
 typedef int8_t   s8;  typedef uint8_t  u8;
 typedef int16_t  s16; typedef uint16_t u16;
 typedef int32_t  s32; typedef uint32_t u32;
@@ -25,7 +29,7 @@ typedef u32 OSIntMask;
   #define FALSE 0
 #endif
 
-// Block legacy headers
+// 2. BLOCK LEGACY HEADERS
 #define _GBI_H_
 #define _ABI_H_
 #define _MBI_H_
@@ -40,17 +44,19 @@ typedef u32 OSIntMask;
 #define _SPTASK_H_
 #define _REGION_H_
 #define _RAMROM_H_
+#define _SCHED_H_
 
+// 3. MATH & GFX
 typedef uint64_t Gfx;
 typedef struct { int32_t m[4][4]; } Mtx;
 typedef struct { float m[4][4]; } MtxF;
 typedef struct { uint8_t d[16]; } Vtx;
 
+// 4. SCAFFOLDING STUBS
 typedef struct { float d[16]; } BoneTransform;
 typedef struct { BoneTransform *transforms; int count; } BoneTransformList;
 typedef void* VLA;
 typedef void* FLA;
-
 typedef struct { u32 t[16]; } OSTask_t;
 typedef void (*OSErrorHandler)(void);
 typedef struct { u32 d[16]; } OSLog;
@@ -59,6 +65,7 @@ typedef struct { void* mt; void* full; int count; } OSMesgQueue;
 typedef struct { uint8_t d[256]; } OSThread;
 typedef struct { uint8_t d[64];  } OSContPad;
 
+// 5. AUDIO SYSTEM
 typedef struct { unsigned int w0, w1; } Acmd_words;
 typedef union { Acmd_words words; long long force_align; } Acmd;
 typedef s32 (*ALDMAproc)(s32 addr, s32 len, void *state);
@@ -223,60 +230,81 @@ extern ALGlobals *alGlobals;
 #define K0_TO_PHYS(x) ((u32)(uintptr_t)(x))
 static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t)vaddr; }
 
+#ifdef __cplusplus
+}
+#endif
+
 #endif
 """
 
-def deploy_cpp_reconciliation():
+def deploy_total_war():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v138.0] DEPLOYING CPP RECONCILIATION ---")
+    print("--- [v139.0] DEPLOYING TOTAL WAR PATCH ---")
     
-    # Write Bridge
+    # 1. Update Bridge with types at the TOP and extern "C"
     bridge_path = include_dir / "n64_types.h"
     bridge_path.write_text(BRIDGE_CONTENT)
 
-    # Terminate legacy headers with safe C-style comments, no backslashes
+    # 2. Terminate legacy headers WITHOUT backslashes and WITHOUT characters that confuse C++
     toxic = [
         "2.0L/PR/os.h", "2.0L/PR/gbi.h", "2.0L/PR/abi.h", "2.0L/PR/mbi.h", 
         "2.0L/PR/gu.h", "2.0L/PR/sp.h", "2.0L/PR/ultratypes.h", 
         "2.0L/PR/libaudio.h", "2.0L/PR/n_libaudio.h", "2.0L/PR/sptask.h", 
         "2.0L/PR/ultraerror.h", "2.0L/PR/ultralog.h", "2.0L/PR/rmon.h",
-        "2.0L/PR/R4300.h", "2.0L/PR/region.h", "2.0L/PR/ramrom.h", "bool.h"
+        "2.0L/PR/R4300.h", "2.0L/PR/region.h", "2.0L/PR/ramrom.h", 
+        "2.0L/PR/sched.h", "bool.h"
     ]
     
     for h in toxic:
         p = include_dir / h
         if p.exists():
-            p.write_text("/* Cleanly Terminated */\\n")
+            # Use a safe single-line comment. NO NEWLINE LITERALS.
+            with open(p, "w") as f:
+                f.write("// Header Terminated v139")
     
-    # Scrub synthInternals
-    synth_int = include_dir / "synthInternals.h"
-    if synth_int.exists():
-        content = synth_int.read_text(errors='ignore')
-        if "#ifndef _SYNTHINTERNALS_H_" not in content:
-            content = "#ifndef _SYNTHINTERNALS_H_\\n#define _SYNTHINTERNALS_H_\\n" + content + "\\n#endif"
-        content = re.sub(r'typedef\s+struct\s*ALFx_s\s*\{[^}]*\}\s*ALFx\s*;', '/* Scrubbed */', content)
-        synth_int.write_text(content)
+    # 3. Aggressively clean standard header clones in decomp-files
+    # Some decomp projects copy string.h/stdlib.h. We must ensure they don't block n64_types.h
+    std_clones = ["string.h", "stdlib.h", "stdarg.h", "math.h", "time.h"]
+    for std in std_clones:
+        p = include_dir / std
+        if p.exists():
+            content = p.read_text(errors='ignore')
+            if "#include \\"n64_types.h\\"" not in content:
+                p.write_text("#include \\"n64_types.h\\"\\n" + content)
 
-    # Clean Source
-    clash_types = ["MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler", "OSRegion", "RamRomBuffer"]
+    # 4. Source cleanup (Model, Skeletal, etc.)
+    clash_types = [
+        "MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", 
+        "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", 
+        "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", 
+        "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", 
+        "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", 
+        "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", 
+        "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", 
+        "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", 
+        "OSErrorHandler", "OSRegion", "RamRomBuffer", "BKVtxRef"
+    ]
 
     for path in decomp.rglob("*.[ch]"):
         if path.name == "n64_types.h": continue
         try:
             content = path.read_text(errors='ignore')
             original = content
+            # Wipe re-typedefs
             for ct in clash_types:
                 content = re.sub(r'typedef\s+struct\s*[a-zA-Z0-9_]*\s*\{[^}]*\}\s*' + ct + r'\s*;', f'/* Terminated {ct} */', content)
             
+            # Map MIDI correctly
             content = content.replace("evt.midi", "evt.msg.midi")
+            
             if content != original:
                 path.write_text(content)
         except: continue
         
-    print("--- CPP Reconciliation Deployed. ---")
+    print("--- Total War Patch Deployed. Run Ninja. ---")
 
 if __name__ == "__main__":
-    deploy_cpp_reconciliation()
+    deploy_total_war()
