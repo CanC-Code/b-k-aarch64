@@ -126,7 +126,24 @@ typedef struct ALVoiceState_s {
 } ALVoiceState;
 typedef ALVoiceState N_ALVoiceState;
 
-typedef struct ALFilter_s { struct ALFilter_s *source; void* (*handler)(struct ALFilter_s *filter, s16 *outp, s32 outLen, s32 sampleOffset, void *p); void (*setParam)(struct ALFilter_s *filter, s32 paramID, void *param); s16 type; s16 inp; s16 outp; s32 count; } ALFilter;
+// NEW: Delay struct for the Reverb Engine
+typedef struct { s32 input; s32 output; s16 fbcoef; s16 ffcoef; s16 gain; f32 mute; f32 vol; } ALDelay;
+typedef void (*ALSetFXParam)(void *filter, s32 paramID, void *param);
+
+typedef struct ALFilter_s { 
+    struct ALFilter_s *source; 
+    void* (*handler)(struct ALFilter_s *filter, s16 *outp, s32 outLen, s32 sampleOffset, void *p); 
+    void (*setParam)(struct ALFilter_s *filter, s32 paramID, void *param); 
+    s16 type; s16 inp; s16 outp; s32 count; 
+    
+    // Extended Audio FX fields
+    ALSetFXParam paramHdl;
+    u8 section_count;
+    u32 length;
+    ALDelay *delay;
+    s16 *base;
+    s16 *input;
+} ALFilter;
 typedef ALFilter ALFx;
 
 typedef struct { ALFilter filter; s32 sourceCount; s32 maxSources; ALFilter **sources; } ALMainBus;
@@ -189,7 +206,6 @@ extern "C" int sched_yield(void);
 #define AL_PLAYING 1
 #define AL_STOPPING 2
 
-// MIDI and Audio Event Constants
 #define AL_MIDI_NoteOn 0x90
 #define AL_MIDI_ProgramChange 0xC0
 #define AL_MIDI_ChannelPressure 0xD0
@@ -213,10 +229,30 @@ extern "C" int sched_yield(void);
 #define AL_SEQP_TEMPO_EVT 112
 #define AL_SEQP_PROG_EVT 113
 #define AL_SEQP_META_EVT 114
+#define AL_SEQP_STOPPING_EVT 115
 
 #define AL_CMIDI_LOOPSTART_CODE 102
 #define AL_CMIDI_LOOPEND_CODE 103
 #define AL_CMIDI_BLOCK_CODE 104
+
+// Envelope Mixer Macros
+#define A_INIT      1
+#define A_CONTINUE  2
+#define A_RATE      3
+#define A_VOL       4
+#define A_LEFT      5
+#define A_RIGHT     6
+#define A_MAIN      7
+#define A_AUX       8
+
+// Reverb / Environment Macros
+#define AL_FX_NONE         0
+#define AL_FX_SMALLROOM    1
+#define AL_FX_BIGROOM      2
+#define AL_FX_CHORUS       3
+#define AL_FX_FLANGE       4
+#define AL_FX_ECHO         5
+#define AL_FX_CUSTOM       6
 
 #define K0_TO_PHYS(x) ((u32)(uintptr_t)(x))
 static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t)vaddr; }
@@ -244,12 +280,12 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_missing_macro_patch():
+def deploy_reverb_patch():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v150.0] DEPLOYING MISSING MACRO PATCH ---")
+    print("--- [v151.0] DEPLOYING REVERB & ENVELOPE PATCH ---")
     
     (include_dir / "n64_types.h").write_text(BRIDGE_CONTENT)
 
@@ -312,16 +348,14 @@ def deploy_missing_macro_patch():
         try:
             content = path.read_text(errors='ignore')
             original = content
-            
             content = content.replace('#include "tools/rare_decompression.h"', '#include "rare_decompression.h"')
-            
             for ct in clash_types:
                 content = re.sub(r'typedef\s+struct\s*[a-zA-Z0-9_]*\s*\{[^}]*\}\s*' + ct + r'\s*;', f'/* Scrubbed {ct} */', content)
             if content != original:
                 path.write_text(content)
         except: pass
 
-    print("--- Patch Complete. Run Ninja! ---")
+    print("--- Reverb Patch Complete. ---")
 
 if __name__ == "__main__":
-    deploy_missing_macro_patch()
+    deploy_reverb_patch()
