@@ -40,7 +40,6 @@ typedef struct { u32 d[16]; } OSLog;
 typedef void* OSMesg;
 typedef struct { void* mt; void* full; int count; } OSMesgQueue;
 
-// --- UPDATED OSThread ---
 typedef struct OSThread_s {
     struct OSThread_s *next;
     u32 priority;
@@ -159,17 +158,16 @@ typedef ALEvent N_ALEvent;
 typedef struct { N_ALSynth drvr; } ALGlobals;
 extern ALGlobals *alGlobals;
 
-// 3. System Standard Libraries (Included safely AFTER our types are defined)
+// 3. System Standard Libraries
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
 
-// 4. POSIX Thread Fix (For sched_yield)
 #if defined(__cplusplus)
 #include <sched.h>
 #endif
 
-// 5. Constants
+// 4. Constants
 #ifndef _SYNTHINTERNALS_H_
   #define AL_FILTER_ADD_SOURCE 1
   #define AL_RESAMPLE 1
@@ -199,7 +197,7 @@ extern ALGlobals *alGlobals;
 #define K0_TO_PHYS(x) ((u32)(uintptr_t)(x))
 static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t)vaddr; }
 
-// 6. Total Block of N64 SDK
+// 5. Macro blocks
 #define _ULTRATYPES_H_
 #define _GBI_H_
 #define _ABI_H_
@@ -223,17 +221,44 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_header_exorcist_v2():
+def deploy_ultimate_exorcist():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v145.0] DEPLOYING HEADER EXORCIST V2 ---")
+    print("--- [v146.0] DEPLOYING ULTIMATE EXORCIST ---")
     
     (include_dir / "n64_types.h").write_text(BRIDGE_CONTENT)
 
-    # Clean up source C files to remove local OSThread definitions
-    clash_types = ["MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler", "OSRegion", "RamRomBuffer", "OSThread"]
+    # 1. Delete standard library imposters!
+    std_headers = ["string.h", "math.h", "stdarg.h", "time.h", "basic_types.h"]
+    for sh in std_headers:
+        p = include_dir / sh
+        if p.exists():
+            p.unlink()
+            print(f"Deleted fake std header: {sh}")
+
+    # 2. Block N64 SDK headers physically
+    pr_folder = include_dir / "2.0L" / "PR"
+    if pr_folder.exists():
+        for file in pr_folder.glob("*.h"):
+            file.write_text("/* Blocked */\n")
+            
+    for h in ["2.0L/ultra64.h", "bool.h", "macros.h"]:
+        p = include_dir / h
+        if p.exists():
+            p.write_text("/* Blocked */\n")
+
+    # 3. Scrub redefinitions in game headers
+    for target in ["model.h", "structs.h", "rarezip.h"]:
+        p = include_dir / target
+        if p.exists():
+            content = p.read_text(errors='ignore')
+            content = re.sub(r'typedef\s+struct\s*[a-zA-Z0-9_]*\s*\{[^}]*\}\s*(OSTask_t|Vtx|Mtx|Gfx|MtxF|ALHeap);', '/* Scrubbed */', content)
+            p.write_text(content)
+
+    # 4. Global scrub for all local clashes
+    clash_types = ["MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad"]
 
     for path in decomp.rglob("*.[ch]"):
         if path.name == "n64_types.h": continue
@@ -241,24 +266,31 @@ def deploy_header_exorcist_v2():
             content = path.read_text(errors='ignore')
             original = content
             
+            if "#include" in content and 'n64_types.h' not in content:
+                content = '#include "n64_types.h"\n' + content
+                
             for ct in clash_types:
-                # Also target the 'struct OSThread_s' syntax
                 content = re.sub(r'typedef\s+struct\s*[a-zA-Z0-9_]*\s*\{[^}]*\}\s*' + ct + r'\s*;', f'/* Terminated {ct} */', content)
                 content = re.sub(r'typedef\s+struct\s*' + ct + r'_s\s*\{[^}]*\}\s*' + ct + r'\s*;', f'/* Terminated {ct} */', content)
+                content = re.sub(r'typedef\s+union\s*[a-zA-Z0-9_]*\s*\{[^}]*\}\s*' + ct + r'\s*;', f'/* Terminated {ct} */', content)
                 
             if content != original:
                 path.write_text(content)
         except: continue
-        
-    # Specifically target exceptasm.cpp since it's in the Android tree, not decomp-files
-    exceptasm_path = root / "Android" / "app" / "src" / "main" / "cpp" / "ultra" / "exceptasm.cpp"
-    if exceptasm_path.exists():
-        content = exceptasm_path.read_text(errors='ignore')
-        content = re.sub(r'typedef\s+struct\s*OSThread_s\s*\{[^}]*\}\s*OSThread\s*;', '/* Scrubbed OSThread */', content)
-        exceptasm_path.write_text(content)
-        print("Scrubbed OSThread from exceptasm.cpp")
-        
-    print("--- Exorcism V2 Complete. ---")
+
+    # 5. Target Android wrapper files
+    android_cpp_dir = root / "Android" / "app" / "src" / "main" / "cpp"
+    for path in android_cpp_dir.rglob("*.cpp"):
+        try:
+            content = path.read_text(errors='ignore')
+            original = content
+            for ct in clash_types:
+                content = re.sub(r'typedef\s+struct\s*[a-zA-Z0-9_]*\s*\{[^}]*\}\s*' + ct + r'\s*;', f'/* Scrubbed {ct} */', content)
+            if content != original:
+                path.write_text(content)
+        except: pass
+
+    print("--- Ultimate Exorcism Complete. ---")
 
 if __name__ == "__main__":
-    deploy_header_exorcist_v2()
+    deploy_ultimate_exorcist()
