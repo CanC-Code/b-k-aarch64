@@ -84,7 +84,6 @@ typedef struct { s16 soundCount; u8 flags; ALSound *soundArray[1]; } ALInstrumen
 typedef struct { u8 flags; s32 instCount; ALInstrument *percussion; ALInstrument *instArray[1]; } ALBank;
 typedef struct { s16 revision; s32 bankCount; ALBank *bankArray[1]; } ALBankFile;
 
-// Sequencer & MIDI Data
 typedef struct { u8 *offset; s32 len; } ALSeqData;
 typedef struct { s16 seqCount; ALSeqData seqArray[1]; } ALSeqFile;
 typedef struct { u32 division; s32 trackOffset[16]; } ALCMidiHdr;
@@ -121,7 +120,9 @@ typedef struct {
     OSMesgQueue msgQ; OSMesg msg;
 } ALEventQueue;
 
-typedef struct { u16 vol; u8 pan; u8 priority; u8 fxmix; u8 unkA; u8 pad[2]; } ALChanState;
+// FIXED: Channel State featuring the required Rare variables
+typedef struct { u16 vol; u8 pan; u8 priority; u8 fxmix; u8 unkA; u8 unkB; u16 pad; } ALChanState;
+typedef ALChanState N_ALChanState;
 
 typedef struct ALVoiceState_s {
     struct ALVoiceState_s *next;
@@ -129,15 +130,16 @@ typedef struct ALVoiceState_s {
     s16 state; s16 priority; s16 fxBus; s16 pan; ALSound *sound; 
 } ALVoiceState;
 
-// FIXED: DSP Filter Parameters & Functions
+// ==========================================
+// STANDARD AUDIO ARCHITECTURE (5-Arg Handlers)
+// ==========================================
 typedef struct ALFilter_s {
     struct ALFilter_s *source;
-    void* (*handler)(void *filter, s16 *outp, s32 outLen, s32 sampleOffset, void *p);
+    void* (*handler)(struct ALFilter_s *filter, s16 *outp, s32 outLen, s32 sampleOffset, void *p);
     void  (*setParam)(struct ALFilter_s *filter, s32 paramID, void *param);
     s16 type; s16 inp; s16 outp; s32 count;
 } ALFilter;
 
-// FIXED: Main Bus source tracking
 typedef struct { 
     ALFilter filter;
     s32 sourceCount;
@@ -145,7 +147,37 @@ typedef struct {
     ALFilter **sources;
 } ALMainBus;
 
-// Configs and Synth setup
+typedef struct {
+    ALLink head; s16 numVoices; s16 curVol; s16 curPan; s16 curPitch;
+    void *auxBus; ALMainBus *mainBus; void *filterList;
+    void *pFreeList; void *pAllocList; void *pLameList; void *paramList;
+    uint8_t pad[256];
+} ALSynth;
+
+// ==========================================
+// N_AUDIO ARCHITECTURE (Optimized 2-Arg Handlers)
+// ==========================================
+typedef struct N_ALFilter_s {
+    struct N_ALFilter_s *source;
+    void* (*handler)(s32 sampleOffset, struct N_ALFilter_s *filter);
+    s16 type; s16 inp; s16 outp; s32 count;
+} N_ALFilter;
+
+typedef struct { 
+    N_ALFilter filter;
+    s32 sourceCount;
+    s32 maxSources;
+    N_ALFilter **sources;
+} N_ALMainBus;
+
+typedef struct {
+    ALLink head; s16 numVoices; s16 curVol; s16 curPan; s16 curPitch;
+    void *auxBus; N_ALMainBus *mainBus; void *filterList;
+    void *pFreeList; void *pAllocList; void *pLameList; void *paramList;
+    uint8_t pad[256];
+} N_ALSynth;
+
+// Player configurations
 typedef struct {
     s32 maxVoices; s32 maxEvents; u8 maxChannels; u8 debugFlags;
     ALHeap *heap;
@@ -155,36 +187,12 @@ typedef struct {
 typedef struct { s16 maxVVoices; s16 maxPVoices; s16 maxUpdates; s16 maxFXbusses; void* dmaproc; ALHeap* heap; s32 fxType; s32 outputRate; void* params; } ALSynConfig;
 
 typedef struct {
-    ALLink head; s16 numVoices; s16 curVol; s16 curPan; s16 curPitch;
-    void *auxBus; ALMainBus *mainBus; void *filterList;
-    void *pFreeList; void *pAllocList; void *pLameList; void *paramList;
-    uint8_t pad[256];
-} ALSynth;
-
-// Sequence Player
-typedef struct {
-    ALLink node;
-    ALEvent nextEvent;
-    void *evtq; 
-    ALChanState *chanState; 
-    ALCSeq *target; 
-    ALMicroTime uspt;
-    void *bank;
-    ALSynth *drvr;
-    u32 chanMask;
-    ALMicroTime nextDelta;
-    s32 state;
-    u16 vol;
-    u8 maxChannels;
-    u8 debugFlags;
-    ALMicroTime frameTime;
-    ALMicroTime curTime;
-    void *initOsc;
-    void *updateOsc;
-    void *stopOsc;
-    ALVoiceState *vFreeList;
-    ALVoiceState *vAllocHead;
-    ALVoiceState *vAllocTail;
+    ALLink node; ALEvent nextEvent; void *evtq; ALChanState *chanState; 
+    ALCSeq *target; ALMicroTime uspt; void *bank; ALSynth *drvr;
+    u32 chanMask; ALMicroTime nextDelta; s32 state; u16 vol;
+    u8 maxChannels; u8 debugFlags; ALMicroTime frameTime; ALMicroTime curTime;
+    void *initOsc; void *updateOsc; void *stopOsc;
+    ALVoiceState *vFreeList; ALVoiceState *vAllocHead; ALVoiceState *vAllocTail;
     uint8_t padding[64];
 } ALCSPlayer;
 
@@ -196,10 +204,8 @@ typedef struct ALVoice_s {
 typedef ALCSPlayer ALSeqPlayer;
 typedef ALCSPlayer N_ALSeqPlayer;
 typedef ALCSPlayer N_ALCSPlayer;
-typedef ALSynth N_ALSynth;
 typedef ALEvent N_ALEvent;
 typedef ALVoice N_ALVoice;
-typedef ALChanState N_ALChanState;
 
 typedef struct { N_ALSynth drvr; } ALGlobals_t;
 extern ALGlobals_t *alGlobals;
@@ -210,7 +216,6 @@ extern ALGlobals_t *alGlobals;
 #define AL_USEC_PER_FRAME 16667
 #define MAX_RATIO 1.99996f
 
-// Hardware ADPCM
 #define ADPCMFBYTES 9
 #define LFSAMPLES 4
 #define ADPCMFSIZE 16
@@ -220,18 +225,6 @@ extern ALGlobals_t *alGlobals;
 #define AL_RAW16_WAVE 1
 #define UNITY_PITCH 0x8000
 
-// Filter Update IDs
-#define AL_FILTER_START 1
-#define AL_FILTER_STOP 2
-#define AL_FILTER_FREE 3
-#define AL_FILTER_SET_WAVETABLE 4
-#define AL_FILTER_SET_PITCH 5
-#define AL_FILTER_SET_VOL 6
-#define AL_FILTER_SET_PAN 7
-#define AL_FILTER_SET_FXAMT 8
-#define AL_FILTER_RESET 9
-
-// RSP ABI Audio Commands
 #define A_INIT 1
 #define A_CONTINUE 0
 #define A_RATE 0
@@ -252,7 +245,6 @@ extern ALGlobals_t *alGlobals;
 #define AL_AUX_L_OUT 0
 #define AL_AUX_R_OUT 0
 
-// Audio Driver States & Effects
 #define AL_STOPPED 0
 #define AL_PLAYING 1
 #define AL_FX_SMALLROOM 0
@@ -262,7 +254,6 @@ extern ALGlobals_t *alGlobals;
 #define AL_FX_FLANGE 4
 #define AL_FX_CUSTOM 5
 
-// Core Engine Event IDs
 #define AL_SEQ_MIDI_EVT 1
 #define AL_SEQP_MIDI_EVT 2
 #define AL_TEMPO_EVT 5
@@ -279,12 +270,10 @@ extern ALGlobals_t *alGlobals;
 #define AL_SEQ_REF_EVT 16
 #define AL_UNK18_EVT 18
 
-// Compressed MIDI Markers
 #define AL_CMIDI_BLOCK_CODE 0xFE
 #define AL_CMIDI_LOOPSTART_CODE 0x2E
 #define AL_CMIDI_LOOPEND_CODE 0x2D
 
-// Raw MIDI Command Parsing
 #define AL_MIDI_NoteOff 0x80
 #define AL_MIDI_NoteOn 0x90
 #define AL_MIDI_PolyKeyPressure 0xA0
@@ -305,12 +294,12 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_filter_bridge():
+def deploy_dual_architecture():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v123.0] DEPLOYING THE FINAL FILTER BRIDGE ---")
+    print("--- [v124.0] DEPLOYING DUAL ARCHITECTURE ---")
     
     bridge_path = include_dir / "n64_types.h"
     bridge_path.write_text(BRIDGE_CONTENT)
@@ -323,13 +312,14 @@ def deploy_filter_bridge():
     for h in toxic:
         p = include_dir / h
         if p.exists():
-            p.write_text("/* Terminated by v123.0 */\n")
+            p.write_text("/* Terminated by v124.0 */\n")
     
     clash_types = [
         "MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", 
         "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", 
         "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig",
-        "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState"
+        "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState",
+        "N_ALFilter", "N_ALMainBus", "N_ALSynth"
     ]
 
     for path in decomp.rglob("*.[ch]"):
@@ -343,17 +333,15 @@ def deploy_filter_bridge():
 
             content = content.replace("typedef int bool;", "/* Terminated */")
             content = content.replace("typedef char bool;", "/* Terminated */")
-            
             content = content.replace("evt.midi", "evt.msg.midi")
             content = content.replace("evt.unk18", "evt.msg.unk18")
-            
             content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
 
             if content != original:
                 path.write_text(content)
         except: continue
         
-    print("--- Filter Bridge Deployed. Executing Build Sequence. ---")
+    print("--- Dual Architecture Deployed. Ready for Final Execution. ---")
 
 if __name__ == "__main__":
-    deploy_filter_bridge()
+    deploy_dual_architecture()
