@@ -52,7 +52,7 @@ typedef s32 ALPan;
 typedef void* ALDMAproc;
 typedef void* ALDMANew;
 typedef struct { uint8_t d[48]; } ALHeap;
-typedef struct { uint8_t d[64]; } ALSynConfig;
+typedef struct { s16 maxVVoices; s16 maxPVoices; s16 maxUpdates; s16 maxFXbusses; void* dmaproc; ALHeap* heap; s32 fxType; s32 outputRate; void* params; } ALSynConfig;
 typedef struct ALLink_s { struct ALLink_s *next; struct ALLink_s *prev; } ALLink;
 
 typedef int16_t ADPCM_STATE[16];
@@ -103,13 +103,25 @@ typedef struct {
 } ALCSeq;
 
 typedef struct {
+    u32 validTracks;
+    u32 lastTicks;
+    u32 lastDeltaTicks;
+    u8 *curLoc[16];
+    u8 *curBUPtr[16];
+    u32 curBULen[16];
+    u8 lastStatus[16];
+    u32 evtDeltaTicks[16];
+} ALCSeqMarker;
+
+typedef struct {
     s16 type;
     s32 ticks;
     union {
-        struct { u8 status, byte1, byte2; s32 ticks; } midi;
+        struct { u8 status, byte1, byte2, duration; s32 ticks; } midi;
         struct { u8 status, type, byte1, byte2, byte3; s32 ticks; } tempo;
         struct { void *seq; } spseq;
         struct { void *bank; } spbank;
+        struct { s16 vol; } spvol;
         struct { void *data; u32 unk0, unk4; } unk18;
         s32 i;
     } msg;
@@ -131,24 +143,53 @@ typedef ALCSPlayer N_ALSeqPlayer;
 typedef ALCSPlayer N_ALCSPlayer;
 typedef ALSynth N_ALSynth;
 
-#define AL_BANK_VERSION 0x424c
-#define AL_ADPCM_WAVE 0
-#define AL_RAW16_WAVE 1
+// Audio Driver States & Effects
+#define AL_STOPPED 0
+#define AL_FX_SMALLROOM 0
+#define AL_FX_BIGROOM 1
+#define AL_FX_ECHO 2
+#define AL_FX_CHORUS 3
+#define AL_FX_FLANGE 4
+#define AL_FX_CUSTOM 5
+
+// Core Engine Event IDs
+#define AL_SEQ_MIDI_EVT 1
+#define AL_SEQP_MIDI_EVT 2
+#define AL_TEMPO_EVT 5
+#define AL_SEQ_END_EVT 6
+#define AL_SEQP_SEQ_EVT 7
+#define AL_SEQP_PLAY_EVT 8
+#define AL_SEQP_BANK_EVT 9
+#define AL_SEQP_STOPPING_EVT 10
+#define AL_SEQP_VOL_EVT 11
+#define AL_SEQP_META_EVT 12
+#define AL_CSP_LOOPSTART 13
+#define AL_CSP_LOOPEND 14
+#define AL_UNK18_EVT 18
+
+// Compressed MIDI Markers
+#define AL_CMIDI_BLOCK_CODE 0xFE
+#define AL_CMIDI_LOOPSTART_CODE 0x2E
+#define AL_CMIDI_LOOPEND_CODE 0x2D
+
+// Raw MIDI Command Parsing
+#define AL_MIDI_NoteOff 0x80
+#define AL_MIDI_NoteOn 0x90
+#define AL_MIDI_PolyKeyPressure 0xA0
+#define AL_MIDI_ControlChange 0xB0
+#define AL_MIDI_ChannelModeSelect 0xB0
+#define AL_MIDI_ProgramChange 0xC0
+#define AL_MIDI_ChannelPressure 0xD0
+#define AL_MIDI_PitchBendChange 0xE0
+#define AL_MIDI_Meta 0xFF
 
 #define AL_TRACK_END 0x2F
-#define AL_MIDI_Meta 0xFF
 #define AL_MIDI_META_TEMPO 0x51
 #define AL_MIDI_META_EOT 0x2F
 
-#define AL_SEQP_MIDI_EVT 2
-#define AL_MIDI_ControlChange 3
-#define AL_MIDI_ChannelModeSelect 4
-#define AL_TEMPO_EVT 5
-#define AL_SEQP_SEQ_EVT 6
-#define AL_SEQP_PLAY_EVT 7
-#define AL_SEQP_BANK_EVT 8
-#define AL_UNK18_EVT 18
-
+#define AL_BANK_VERSION 0x424c
+#define AL_ADPCM_WAVE 0
+#define AL_RAW16_WAVE 1
 #define UNITY_PITCH 0x8000
 
 #define K0_TO_PHYS(x) ((u32)(uintptr_t)(x))
@@ -157,19 +198,16 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def generate_and_sanitize():
+def deploy_complete_conductor():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v114.0] GENERATING THE GOLDEN BRIDGE ---")
+    print("--- [v115.0] DEPLOYING COMPLETE CONDUCTOR ---")
     
-    # 1. Force Write n64_types.h (Guarantees the compiler sees it)
     bridge_path = include_dir / "n64_types.h"
     bridge_path.write_text(BRIDGE_CONTENT)
-    print("[+] n64_types.h successfully generated.")
 
-    # 2. Terminate Legacy Headers
     toxic = [
         "2.0L/PR/os.h", "2.0L/PR/gbi.h", "2.0L/PR/abi.h", "2.0L/PR/mbi.h", 
         "2.0L/PR/gu.h", "2.0L/PR/sp.h", "2.0L/PR/ultratypes.h", 
@@ -178,33 +216,28 @@ def generate_and_sanitize():
     for h in toxic:
         p = include_dir / h
         if p.exists():
-            p.write_text("/* Terminated by Auto-Injector */\n")
-            print(f"[-] Terminated: {h}")
+            p.write_text("/* Terminated by Conductor */\n")
     
-    # 3. Source File Sanitization
     for path in decomp.rglob("*.[ch]"):
         if path.name == "n64_types.h": continue
         try:
             content = path.read_text(errors='ignore')
             original = content
 
-            # Nuke Clashing Definitions 
-            content = re.sub(r'typedef\s+struct\s*\{[^}]*\}\s*(MtxF|Mtx|Vtx|ALEvent|ALCSeq|ALCSPlayer)\s*;', '/* Terminated */', content)
+            content = re.sub(r'typedef\s+struct\s*\{[^}]*\}\s*(MtxF|Mtx|Vtx|ALEvent|ALCSeq|ALCSPlayer|ALCSeqMarker)\s*;', '/* Terminated */', content)
             content = content.replace("typedef int bool;", "/* Terminated */")
             content = content.replace("typedef char bool;", "/* Terminated */")
             
-            # Map Rare's custom audio calls
             content = content.replace("evt.midi", "evt.msg.midi")
             content = content.replace("evt.unk18", "evt.msg.unk18")
             
-            # 64-bit Pointer alignment fix for Android
             content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
 
             if content != original:
                 path.write_text(content)
         except: continue
         
-    print("--- Sanitization v114.0 Complete. ---")
+    print("--- Conductor Deployed. Executing Build Sequence. ---")
 
 if __name__ == "__main__":
-    generate_and_sanitize()
+    deploy_complete_conductor()
