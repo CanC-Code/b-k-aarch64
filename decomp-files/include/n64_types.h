@@ -60,7 +60,7 @@ typedef int16_t RESAMPLE_STATE[16];
 typedef int16_t POLEF_STATE[4];
 typedef int16_t ENVMIX_STATE[40];
 
-// 6. Audio Engine Blueprints (Rare/Banjo Layout)
+// 6. Audio Bank Blueprints (Rare/Banjo Layout)
 typedef struct { uint8_t d[128]; } ALADPCMBook;
 typedef struct { uint32_t start, end, count; ADPCM_STATE state; } ALADPCMloop;
 typedef struct { uint32_t start, end, count; } ALRawLoop;
@@ -81,24 +81,36 @@ typedef struct { s16 soundCount; u8 flags; ALSound *soundArray[1]; } ALInstrumen
 typedef struct { u8 flags; s32 instCount; ALInstrument *percussion; ALInstrument *instArray[1]; } ALBank;
 typedef struct { s16 revision; s32 bankCount; ALBank *bankArray[1]; } ALBankFile;
 
-// Fixed: ALSeqFile uses an array of structs for offsets
 typedef struct { u8 *offset; s32 len; } ALSeqData;
 typedef struct { s16 seqCount; ALSeqData seqArray[1]; } ALSeqFile;
 
-// Fixed: ALEvent nested ticks
+// 7. Sequencer Blueprints (MIDI Control)
+typedef struct { u32 division; uint8_t d[28]; } ALCMidiHdr;
+typedef struct { ALCMidiHdr *base; uint8_t d[256]; } ALCSeq;
+
 typedef struct {
     s16 type;
     s32 ticks;
     union {
         struct { u8 status, byte1, byte2; s32 ticks; } midi;
+        struct { u8 status, type, byte1, byte2, byte3; s32 ticks; } tempo;
+        struct { void *seq; } spseq;
+        struct { void *bank; } spbank;
         struct { void *data; u32 unk0, unk4; } unk18;
         s32 i;
     } msg;
 } ALEvent;
 
-// Fixed: Channel State for the Sequence Player
 typedef struct { u8 pad[10]; u8 unkA; u8 pad2[21]; } N_ALChanState;
-typedef struct { void *evtq; N_ALChanState *chanState; } ALCSPlayer;
+
+typedef struct {
+    void *evtq;
+    N_ALChanState *chanState;
+    ALMicroTime target;
+    ALMicroTime uspt;
+    uint8_t padding[256];
+} ALCSPlayer;
+
 typedef struct { uint8_t d[128]; } ALSynth;
 
 // Rare 'N_' Aliases
@@ -106,14 +118,25 @@ typedef ALCSPlayer N_ALSeqPlayer;
 typedef ALCSPlayer N_ALCSPlayer;
 typedef ALSynth N_ALSynth;
 
-// 7. Audio Constants
+// 8. Audio/MIDI Constants
 #define AL_BANK_VERSION 0x424c
 #define AL_ADPCM_WAVE 0
 #define AL_RAW16_WAVE 1
+
+#define AL_TRACK_END 0x2F
+#define AL_MIDI_Meta 0xFF
+#define AL_MIDI_META_TEMPO 0x51
+#define AL_MIDI_META_EOT 0x2F
+
 #define AL_SEQP_MIDI_EVT 2
 #define AL_MIDI_ControlChange 3
 #define AL_MIDI_ChannelModeSelect 4
+#define AL_TEMPO_EVT 5
+#define AL_SEQP_SEQ_EVT 6
+#define AL_SEQP_PLAY_EVT 7
+#define AL_SEQP_BANK_EVT 8
 #define AL_UNK18_EVT 18
+
 #define UNITY_PITCH 0x8000
 
 #define K0_TO_PHYS(x) ((u32)(uintptr_t)(x))
