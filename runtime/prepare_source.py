@@ -2,7 +2,6 @@ import os
 import re
 from pathlib import Path
 
-# Our carefully crafted 64-bit safe structs (DO NOT AUTO-GENERATE THESE)
 BASE_BRIDGE_CONTENT = """
 #ifndef _N64_TYPES_H_
 #define _N64_TYPES_H_
@@ -130,9 +129,14 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 """
 
 def harvest_n64_macros(pr_dir: Path):
-    """Dynamically parses N64 SDK headers to extract raw macros/constants."""
     harvested = set()
     output = "\n// --- DYNAMICALLY HARVESTED N64 SDK MACROS ---\n"
+    
+    # Do not harvest type re-mappings that conflict with our bridge structs!
+    bad_macros = {
+        "ALGlobals", "ALSynth", "ALSeqPlayer", "ALVoice", "ALVoiceState", 
+        "ALEvent", "ALCSeq", "ALHeap", "ALWaveTable", "ALFilter", "ALMainBus"
+    }
     
     if not pr_dir.exists():
         return output
@@ -140,14 +144,11 @@ def harvest_n64_macros(pr_dir: Path):
     for h_file in pr_dir.glob("*.h"):
         try:
             content = h_file.read_text(errors='ignore')
-            
-            # Regex to find standard constants: #define AL_FX_BIGROOM 2
-            # Ignores function macros like #define MAX(a,b)
             matches = re.findall(r'^\s*#define\s+([A-Za-z0-9_]+)\s+([^\\\n]+)$', content, re.MULTILINE)
             
             for name, val in matches:
-                # Filter out compiler system macros, memory macros, and known clashing macros
-                if name.startswith('_') or "SCHED" in name or name in harvested:
+                # Filter out system macros, known bad re-maps, and values starting with 'N_' (type redirects)
+                if name.startswith('_') or "SCHED" in name or name in harvested or name in bad_macros or val.strip().startswith('N_'):
                     continue
                     
                 harvested.add(name)
@@ -156,7 +157,6 @@ def harvest_n64_macros(pr_dir: Path):
         except Exception as e:
             print(f"Skipping {h_file.name} for harvesting due to error.")
             
-    # Add include guards to suppress further SDK calls dynamically
     output += "\n// --- BLOCKING SDK MACROS ---\n"
     for blocked in ["_ULTRATYPES_H_", "_GBI_H_", "_ABI_H_", "_MBI_H_", "_LIBAUDIO_H_", "_N_LIBAUDIO_H_", "_GU_H_", "_SP_H_", "__OS_H__", "_MTXF_H_", "_BOOL_H_", "_SPTASK_H_", "_REGION_H_", "_RAMROM_H_", "_RCP_H_", "_ULTRAERROR_H_", "_ULTRALOG_H_", "_RMON_H_"]:
         output += f"#define {blocked}\n"
@@ -170,15 +170,11 @@ def deploy_dynamic_patch():
     include_dir = decomp / "include"
     pr_folder = include_dir / "2.0L" / "PR"
     
-    print("--- [v154.0] RUNNING DYNAMIC MACRO HARVESTER ---")
+    print("--- [v155.0] RUNNING DYNAMIC MACRO HARVESTER ---")
     
-    # 1. Harvest Macros dynamically BEFORE blocking the files
     dynamic_macros = harvest_n64_macros(pr_folder)
-    
-    # 2. Write the combined Hand-Crafted + Dynamic Bridge
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT + dynamic_macros)
 
-    # 3. Clean up System imposters
     for sh in ["string.h", "math.h", "stdarg.h", "time.h", "basic_types.h"]:
         p = include_dir / sh
         if p.exists(): p.unlink()
@@ -187,7 +183,6 @@ def deploy_dynamic_patch():
     if sched_p.exists():
         sched_p.unlink()
 
-    # 4. Block original SDK files now that we've harvested them
     if pr_folder.exists():
         for file in pr_folder.glob("*.h"):
             if file.name != "sched.h":
@@ -198,7 +193,6 @@ def deploy_dynamic_patch():
         if p.exists():
             p.write_text("/* Blocked */\n")
 
-    # 5. Scrub Game Custom Clashes
     for f in ["core1/mem.h", "functions.h", "synthInternals.h"]:
         p = include_dir / f
         if p.exists():
@@ -211,7 +205,6 @@ def deploy_dynamic_patch():
             content = re.sub(r'typedef\s+s32\s*\(\s*\*\s*ALSetFXParam\s*\)\s*\([^;]+;', '/* Scrubbed ALSetFXParam */', content)
             p.write_text(content)
 
-    # 6. Struct Terminator Loop
     clash_types = ["MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad", "ALDelay", "ALResampler", "ALLowPass"]
 
     for path in decomp.rglob("*.[ch]"):
