@@ -2,48 +2,54 @@ import os
 import re
 from pathlib import Path
 
-def total_eclipse_harmonization():
+def logic_gated_harmonization():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v96.0] COMMENCING TOTAL ECLIPSE ---")
+    print("--- [v97.0] COMMENCING LOOP-PROOF HARMONIZATION ---")
 
-    # 1. TOTAL ECLIPSE: Wipe the toxic SDK headers
-    # Instead of including n64_types.h, we make them do NOTHING.
-    # This prevents the "Typedef Redefinition" error.
+    # 1. Total Eclipse: Neutralize legacy SDK headers
+    # We replace them with a simple comment to prevent redefinitions.
     sdk_path = include_dir / "2.0L" / "PR"
-    toxic = ["gbi.h", "abi.h", "mbi.h", "ultratypes.h", "os_thread.h", "os_message.h", "os_cont.h", "sp.h"]
+    toxic = [
+        "gbi.h", "abi.h", "mbi.h", "ultratypes.h", "os_thread.h", 
+        "os_message.h", "os_cont.h", "sp.h", "os.h", "libaudio.h"
+    ]
     
     for name in toxic:
         p = sdk_path / name
         if p.exists():
-            p.write_text("// Eclipsed by Harmonizer\n")
-            print(f"[!] Eclipsed: {name}")
+            p.write_text("// Eclipsed to prevent redefinition conflicts.\n")
 
-    # 2. IDENTIFY & INJECT: Scan source for missing requirements
+    # 2. Source Surgery and Identifier Injection
+    # We identify files that need n64_types.h but don't have it.
     for path in decomp.rglob("*.[ch]"):
+        # SKIP the bridge itself to prevent infinite nesting
+        if path.name == "n64_types.h":
+            continue
+            
         try:
             content = path.read_text(errors='ignore')
             original = content
 
-            # Fix 64-bit pointer math truncations
-            content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
-            
-            # Remove any local 'typedef int bool' that causes the 'cannot combine with int' error
+            # Remove conflicting bool and type definitions
             content = content.replace("typedef int bool;", "/* DELETED */")
             content = content.replace("typedef char bool;", "/* DELETED */")
+            
+            # Fix 64-bit pointer truncation (MIPS 32-bit addresses -> ARM64)
+            content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
 
-            # Infill missing basic types if the file seems to need them
-            # This is the "Automated Content" part
-            if "s8" in content and "typedef" not in content[:100]:
+            # Check if file uses N64 types but doesn't include the bridge
+            # If so, we prepended it (only if not already there)
+            if ("u8" in content or "s32" in content or "Gfx" in content) and "n64_types.h" not in content:
                 content = "#include <n64_types.h>\n" + content
 
             if content != original:
                 path.write_text(content)
         except: continue
 
-    print("--- Total Eclipse Complete. Ready for Ninja. ---")
+    print("--- Harmonization v97.0 Complete. ---")
 
 if __name__ == "__main__":
-    total_eclipse_harmonization()
+    logic_gated_harmonization()
