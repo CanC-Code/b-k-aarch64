@@ -11,7 +11,7 @@ set(COMMON_FLAGS
     -include "${BRIDGE_HEADER}"
 )
 
-# FIXED: Explicitly include 'emulator' and 'ultra' in search paths
+# FIXED: Added the 'tools' directory to include paths
 include_directories(SYSTEM
     ${DECOMP_ROOT}/include
     ${DECOMP_ROOT}/include/2.0L
@@ -20,6 +20,7 @@ include_directories(SYSTEM
     ${DECOMP_ROOT}/src/core2
     "${CMAKE_CURRENT_SOURCE_DIR}/ultra"
     "${CMAKE_CURRENT_SOURCE_DIR}/emulator"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tools"
 )
 
 file(GLOB_RECURSE CORE_SOURCES
@@ -27,6 +28,7 @@ file(GLOB_RECURSE CORE_SOURCES
     "${DECOMP_ROOT}/src/core2/*.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/ultra/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/emulator/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tools/*.cpp"
 )
 
 list(FILTER CORE_SOURCES EXCLUDE REGEX ".*memory.c")
