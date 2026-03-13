@@ -18,14 +18,18 @@ typedef volatile uint32_t vu32;
   #define FALSE 0
 #endif
 
-// 2. Total Eclipse Guards: Block original SDK headers
+// 2. SDK Guards: Stop the original SDK from ever running
+#define __OS_H__
+#define __OS_THREAD_H__
+#define __OS_MESSAGE_H__
+#define __OS_CONT_H__
 #define _GBI_H_
 #define _ABI_H_
 #define _MBI_H_
 #define _LIBAUDIO_H_
 #define _N_LIBAUDIO_H_
+#define _GU_H_
 #define _ULTRATYPES_H_
-#define __OS_H__
 
 // 3. Audio & Graphics State Buffers
 typedef int16_t ADPCM_STATE[16];
@@ -38,32 +42,49 @@ typedef struct { int32_t m[4][4]; } Mtx;
 typedef struct { uint8_t d[16]; } Vtx;
 typedef uint64_t Gfx;
 
-// 4. Command Structures (Acmd)
-typedef struct { unsigned int w0; unsigned int w1; } Acmd_words;
-typedef union { Acmd_words words; long long force_align; } Acmd;
-
-// 5. Audio Library (AL) Structures
-typedef struct { uint8_t d[32]; } ALHeap;
-typedef struct { uint8_t d[32]; } ALSynConfig;
-typedef struct { s32 ticks; s32 type; union { s32 i; void *p; } msg; } ALEvent;
+// 4. Detailed Audio Structure Emulation (N_Audio Version)
 typedef s32 ALMicroTime;
 typedef s32 ALPan;
 typedef void* ALDMAproc;
 typedef void* ALDMANew;
+typedef struct { uint8_t d[32]; } ALHeap;
 typedef struct ALLink_s { struct ALLink_s *next; struct ALLink_s *prev; } ALLink;
 
-// 6. System Stubs
+typedef struct { uint32_t start; uint32_t end; uint32_t count; ADPCM_STATE state; } ALADPCMloop;
+typedef struct { uint32_t start; uint32_t end; uint32_t count; } ALRawLoop;
+
+// Banjo-Kazooie specific flattened Event structure
+typedef struct {
+    s16 type;
+    s32 ticks;
+    union {
+        struct { u8 status; u8 byte1; u8 byte2; } midi;
+        struct { void *data; u32 unk0; u32 unk4; } unk18;
+        s32 i;
+    } msg;
+} ALEvent;
+
+typedef struct { void *evtq; } ALCSPlayer;
+typedef struct { void *evtq; } N_ALSeqPlayer;
+typedef struct { void *evtq; } N_ALCSPlayer;
+typedef struct { uint8_t d[128]; } ALSynth;
+typedef ALSynth N_ALSynth;
+
+// 5. System Stubs
 typedef void* OSMesg;
 typedef struct { void* mt; void* full; int count; } OSMesgQueue;
-typedef struct { uint8_t d[128]; } OSThread;
+typedef struct { uint8_t d[256]; } OSThread;
 typedef struct { uint8_t d[64];  } OSContPad;
 
-// 7. 64-bit Pointer Math Safety
+// 6. Constants used by Rare Audio
+#define AL_SEQP_MIDI_EVT 2
+#define AL_MIDI_ControlChange 3
+#define AL_MIDI_ChannelModeSelect 4
+#define AL_UNK18_EVT 18
+#define UNITY_PITCH 0x8000
+
+// 7. Virtualization
 #define K0_TO_PHYS(x) ((u32)(uintptr_t)(x))
 static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t)vaddr; }
-
-#ifndef bcopy
-  #define bcopy(src, dst, n) __builtin_memmove(dst, src, n)
-#endif
 
 #endif
