@@ -227,12 +227,12 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_absolute_zero():
+def deploy_absolute_zero_fixed():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v139.0] DEPLOYING ABSOLUTE ZERO ---")
+    print("--- [v139.1] DEPLOYING ABSOLUTE ZERO (FIXED) ---")
     
     bridge_path = include_dir / "n64_types.h"
     bridge_path.write_text(BRIDGE_CONTENT)
@@ -245,21 +245,16 @@ def deploy_absolute_zero():
         "2.0L/PR/R4300.h", "2.0L/PR/region.h", "2.0L/PR/ramrom.h", "bool.h"
     ]
     
-    # Safe termination: No backslashes, no escaped chars
     for h in toxic:
         p = include_dir / h
         if p.exists():
-            with open(p, "w") as f:
-                f.write("/* Terminated Header */\\n")
+            p.write_text("/* Terminated Header */\\n")
 
-    # Scrub model.h and structs.h to ensure they respect the bridge
     for target in ["model.h", "structs.h", "synthInternals.h"]:
         p = include_dir / target
         if p.exists():
             content = p.read_text(errors='ignore')
-            # Kill redefinitions of s16, s32, u32 etc
             content = re.sub(r'typedef\s+(signed\s+short|short|int|long)\s+(s16|s32|u32|u16|s8|u8)\s*;', '/* Scrubbed Native Type */', content)
-            # Ensure ALFx is killed in synthInternals
             content = re.sub(r'typedef\s+struct\s*ALFx_s\s*\{[^}]*\}\s*ALFx\s*;', '/* Scrubbed ALFx */', content)
             p.write_text(content)
 
@@ -270,9 +265,11 @@ def deploy_absolute_zero():
         try:
             content = path.read_text(errors='ignore')
             original = content
-            # Add the bridge to everything
-            if "#include" in content and "n64_types.h" not in content:
-                content = "#include \\"n64_types.h\\"\\n" + content
+            
+            # FIXED INJECTION LOGIC
+            if "#include" in content and 'n64_types.h' not in content:
+                header_line = '#include "n64_types.h"\\n'
+                content = header_line + content
             
             for ct in clash_types:
                 content = re.sub(r'typedef\s+struct\s*[a-zA-Z0-9_]*\s*\{[^}]*\}\s*' + ct + r'\s*;', f'/* Terminated {ct} */', content)
@@ -282,7 +279,7 @@ def deploy_absolute_zero():
                 path.write_text(content)
         except: continue
         
-    print("--- Absolute Zero Deployed. ---")
+    print("--- Fixed Absolute Zero Deployed. Run build. ---")
 
 if __name__ == "__main__":
-    deploy_absolute_zero()
+    deploy_absolute_zero_fixed()
