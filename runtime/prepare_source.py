@@ -23,7 +23,6 @@ typedef u32 OSIntMask;
   #define FALSE 0
 #endif
 
-// Block legacy SDK headers
 #define _GBI_H_
 #define _ABI_H_
 #define _MBI_H_
@@ -36,7 +35,6 @@ typedef u32 OSIntMask;
 #define _MTXF_H_
 #define _BOOL_H_
 
-// System & Graphics
 typedef uint64_t Gfx;
 typedef struct { int32_t m[4][4]; } Mtx;
 typedef struct { float m[4][4]; } MtxF;
@@ -50,14 +48,20 @@ typedef struct { uint8_t d[64];  } OSContPad;
 typedef struct { unsigned int w0, w1; } Acmd_words;
 typedef union { Acmd_words words; long long force_align; } Acmd;
 
-// DMA & Memory Heap
 typedef s32 (*ALDMAproc)(s32 addr, s32 len, void *state);
 typedef ALDMAproc (*ALDMANew)(void **state);
 
 typedef struct { u8 *base; u8 *cur; u32 len; s32 count; } ALHeap;
 typedef s32 ALMicroTime;
 typedef s32 ALPan;
-typedef struct ALLink_s { struct ALLink_s *next; struct ALLink_s *prev; } ALLink;
+
+// FIXED: Polymorphic Voice Handler Link
+typedef struct ALLink_s {
+    struct ALLink_s *next;
+    struct ALLink_s *prev;
+    void* (*handler)(void*);
+    void* clientData;
+} ALLink;
 
 typedef int16_t ADPCM_STATE[16];
 typedef int16_t RESAMPLE_STATE[16];
@@ -97,6 +101,7 @@ typedef struct {
     u32 validTracks; u32 lastTicks; u32 lastDeltaTicks; u8 *curLoc[16]; u8 *curBUPtr[16]; u32 curBULen[16]; u8 lastStatus[16]; u32 evtDeltaTicks[16];
 } ALCSeqMarker;
 
+// FIXED: Event Payloads
 typedef struct {
     s16 type; s32 ticks;
     union {
@@ -104,7 +109,9 @@ typedef struct {
         struct { u8 status, type, byte1, byte2, byte3; s32 ticks; } tempo;
         struct { void *seq; } spseq;
         struct { void *bank; } spbank;
-        struct { s16 vol; } spvol;
+        struct { s16 vol; void* voice; s32 delta; } vol;
+        struct { void* voice; } note;
+        struct { void* osc; void* voice; } osc;
         struct { void *data; u32 unk0, unk4; } unk18;
         s32 i;
     } msg;
@@ -120,19 +127,18 @@ typedef struct {
     OSMesgQueue msgQ; OSMesg msg;
 } ALEventQueue;
 
-// FIXED: Channel State featuring the required Rare variables
 typedef struct { u16 vol; u8 pan; u8 priority; u8 fxmix; u8 unkA; u8 unkB; u16 pad; } ALChanState;
 typedef ALChanState N_ALChanState;
 
+// FIXED: Voice Envelope Tracking
 typedef struct ALVoiceState_s {
     struct ALVoiceState_s *next;
     void* pvoice; ALWaveTable *table; void *clientPrivate;
     s16 state; s16 priority; s16 fxBus; s16 pan; ALSound *sound; 
+    u8 flags; u8 envPhase; ALMicroTime envEndTime; s16 envGain;
 } ALVoiceState;
 
-// ==========================================
-// STANDARD AUDIO ARCHITECTURE (5-Arg Handlers)
-// ==========================================
+// Standard Filter
 typedef struct ALFilter_s {
     struct ALFilter_s *source;
     void* (*handler)(struct ALFilter_s *filter, s16 *outp, s32 outLen, s32 sampleOffset, void *p);
@@ -141,10 +147,7 @@ typedef struct ALFilter_s {
 } ALFilter;
 
 typedef struct { 
-    ALFilter filter;
-    s32 sourceCount;
-    s32 maxSources;
-    ALFilter **sources;
+    ALFilter filter; s32 sourceCount; s32 maxSources; ALFilter **sources;
 } ALMainBus;
 
 typedef struct {
@@ -154,9 +157,7 @@ typedef struct {
     uint8_t pad[256];
 } ALSynth;
 
-// ==========================================
-// N_AUDIO ARCHITECTURE (Optimized 2-Arg Handlers)
-// ==========================================
+// N_Audio Filter
 typedef struct N_ALFilter_s {
     struct N_ALFilter_s *source;
     void* (*handler)(s32 sampleOffset, struct N_ALFilter_s *filter);
@@ -164,10 +165,7 @@ typedef struct N_ALFilter_s {
 } N_ALFilter;
 
 typedef struct { 
-    N_ALFilter filter;
-    s32 sourceCount;
-    s32 maxSources;
-    N_ALFilter **sources;
+    N_ALFilter filter; s32 sourceCount; s32 maxSources; N_ALFilter **sources;
 } N_ALMainBus;
 
 typedef struct {
@@ -177,10 +175,8 @@ typedef struct {
     uint8_t pad[256];
 } N_ALSynth;
 
-// Player configurations
 typedef struct {
-    s32 maxVoices; s32 maxEvents; u8 maxChannels; u8 debugFlags;
-    ALHeap *heap;
+    s32 maxVoices; s32 maxEvents; u8 maxChannels; u8 debugFlags; ALHeap *heap;
     void *initOsc; void *updateOsc; void *stopOsc;
 } ALSeqpConfig;
 
@@ -210,7 +206,6 @@ typedef ALVoice N_ALVoice;
 typedef struct { N_ALSynth drvr; } ALGlobals_t;
 extern ALGlobals_t *alGlobals;
 
-// --- Constants & Macros ---
 #define OS_IM_NONE 0
 #define AL_EVTQ_END 0x7FFFFFFF
 #define AL_USEC_PER_FRAME 16667
@@ -224,6 +219,9 @@ extern ALGlobals_t *alGlobals;
 #define AL_ADPCM_WAVE 0
 #define AL_RAW16_WAVE 1
 #define UNITY_PITCH 0x8000
+
+#define AL_PHASE_ATTACK 0
+#define AL_PHASE_DECAY 1
 
 #define A_INIT 1
 #define A_CONTINUE 0
@@ -268,7 +266,10 @@ extern ALGlobals_t *alGlobals;
 #define AL_CSP_LOOPEND 14
 #define AL_SEQP_API_EVT 15
 #define AL_SEQ_REF_EVT 16
+#define AL_NOTE_END_EVT 17
 #define AL_UNK18_EVT 18
+#define AL_SEQP_ENV_EVT 19
+#define AL_TREM_OSC_EVT 20
 
 #define AL_CMIDI_BLOCK_CODE 0xFE
 #define AL_CMIDI_LOOPSTART_CODE 0x2E
@@ -294,12 +295,12 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_dual_architecture():
+def deploy_envelope_tracker():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v124.0] DEPLOYING DUAL ARCHITECTURE ---")
+    print("--- [v125.0] DEPLOYING ENVELOPE TRACKER ---")
     
     bridge_path = include_dir / "n64_types.h"
     bridge_path.write_text(BRIDGE_CONTENT)
@@ -312,7 +313,7 @@ def deploy_dual_architecture():
     for h in toxic:
         p = include_dir / h
         if p.exists():
-            p.write_text("/* Terminated by v124.0 */\n")
+            p.write_text("/* Terminated by v125.0 */\n")
     
     clash_types = [
         "MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", 
@@ -341,7 +342,7 @@ def deploy_dual_architecture():
                 path.write_text(content)
         except: continue
         
-    print("--- Dual Architecture Deployed. Ready for Final Execution. ---")
+    print("--- Envelope Tracker Deployed. ---")
 
 if __name__ == "__main__":
-    deploy_dual_architecture()
+    deploy_envelope_tracker()
