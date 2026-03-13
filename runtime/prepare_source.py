@@ -2,41 +2,41 @@ import os
 import re
 from pathlib import Path
 
-def total_eclipse_harmonization():
+def rare_aware_harmonization():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
-    include_dir = decomp / "include"
+    include_dir = root / "decomp-files/include"
     
-    print("--- [v103.0] COMMENCING TOTAL ECLIPSE ---")
+    print("--- [v104.0] COMMENCING RARE-AWARE HARMONIZATION ---")
 
-    # 1. PHYSICAL WIPING: Legacy SDK headers are the enemy. 
-    # We strip their contents to stop the "typedef redefinition" wall.
-    sdk_path = include_dir / "2.0L" / "PR"
+    # 1. Neutralize SDK Headers
+    sdk_path = include_dir / "2.0L/PR"
     toxic = ["os.h", "gbi.h", "abi.h", "mbi.h", "gu.h", "sp.h", "ultratypes.h", "libaudio.h", "n_libaudio.h"]
-    
     for header in toxic:
         p = sdk_path / header
         if p.exists():
-            # We don't delete the file (that would break #include lines), 
-            # we just empty it and point it to our bridge.
             p.write_text("#include <n64_types.h>\n")
-            print(f"[!] Eclipsed: {header}")
 
-    # 2. SOURCE SURGERY: Force AArch64 compatibility
+    # 2. Project-wide code injection
     for path in decomp.rglob("*.[ch]"):
         if path.name == "n64_types.h": continue
         try:
             content = path.read_text(errors='ignore')
             original = content
 
-            # Fix 64-bit pointer math truncation (Critical for Android NDK)
+            # Fix 64-bit pointer truncation (The uintptr_t vaccine)
             content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
             
-            # Kill clashing local bool redefinitions
-            content = content.replace("typedef int bool;", "/* ALIGNED */")
-            content = content.replace("typedef char bool;", "/* ALIGNED */")
+            # Fix ALEvent Member Access: Map 'evt.midi' to our union 'evt.msg.midi'
+            # The log showed code trying to access evt.midi direktly.
+            content = content.replace("evt.midi", "evt.msg.midi")
+            content = content.replace("evt.unk18", "evt.msg.unk18")
+            
+            # Physically remove the old bool.h content to prevent redefinition errors
+            if path.name == "bool.h":
+                content = "// Eclipsed"
 
-            # Force include of n64_types.h if not present
+            # Force include n64_types.h
             if "n64_types.h" not in content:
                 content = "#include <n64_types.h>\n" + content
 
@@ -44,7 +44,7 @@ def total_eclipse_harmonization():
                 path.write_text(content)
         except: continue
 
-    print("--- Eclipse Complete. Ready for build. ---")
+    print("--- Harmonization Complete. ---")
 
 if __name__ == "__main__":
-    total_eclipse_harmonization()
+    rare_aware_harmonization()
