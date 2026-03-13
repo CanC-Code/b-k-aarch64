@@ -104,7 +104,6 @@ typedef struct {
 
 typedef struct { ALWaveTable *wavetable; u8 flags; ALEnvelope *envelope; ALKeyMap *keyMap; } ALSound;
 
-// FIXED: Fully mapped ALInstrument with Tremolo and Vibrato parameters
 typedef struct { 
     s16 soundCount; 
     u8 flags; 
@@ -133,11 +132,14 @@ struct ALVoiceState_s;
 
 typedef struct { u8 status, byte1, byte2, duration; s32 ticks; } ALMIDIEvent;
 
+// FIXED: Explicitly declared ALTempoEvent
+typedef struct { u8 status, type, byte1, byte2, byte3; s32 ticks; } ALTempoEvent;
+
 typedef struct {
     s16 type; s32 ticks;
     union {
         ALMIDIEvent midi;
-        struct { u8 status, type, byte1, byte2, byte3; s32 ticks; } tempo;
+        ALTempoEvent tempo;
         struct { void *seq; } spseq;
         struct { void *bank; } spbank;
         struct { s16 vol; } spvol;
@@ -160,8 +162,8 @@ typedef struct {
     OSMesgQueue msgQ; OSMesg msg;
 } ALEventQueue;
 
-// FIXED: Added instrument tracker to channel state
-typedef struct { ALInstrument *instrument; u16 vol; u8 pan; u8 priority; u8 fxmix; u8 sustain; u8 unkA; u8 unkB; f32 pitchBend; u16 pad; } ALChanState;
+// FIXED: Added bendRange
+typedef struct { ALInstrument *instrument; s16 bendRange; u16 vol; u8 pan; u8 priority; u8 fxmix; u8 sustain; u8 unkA; u8 unkB; f32 pitchBend; u16 pad; } ALChanState;
 typedef ALChanState N_ALChanState;
 
 typedef struct ALVoice_s {
@@ -170,7 +172,6 @@ typedef struct ALVoice_s {
 } ALVoice;
 typedef ALVoice N_ALVoice;
 
-// FIXED: Added velocity tracker
 typedef struct ALVoiceState_s {
     struct ALVoiceState_s *next;
     ALVoice voice; ALWaveTable *table; void *clientPrivate;
@@ -224,9 +225,10 @@ typedef struct {
 
 typedef struct { s16 maxVVoices; s16 maxPVoices; s16 maxUpdates; s16 maxFXbusses; void* dmaproc; ALHeap* heap; s32 fxType; s32 outputRate; void* params; } ALSynConfig;
 
+// FIXED: Bank is now ALBank*, and evtq is an embedded struct instead of a void*
 typedef struct {
-    ALLink node; ALEvent nextEvent; void *evtq; ALChanState *chanState; 
-    ALCSeq *target; ALMicroTime uspt; void *bank; ALSynth *drvr;
+    ALLink node; ALEvent nextEvent; ALEventQueue evtq; ALChanState *chanState; 
+    ALCSeq *target; ALMicroTime uspt; ALBank *bank; ALSynth *drvr;
     u32 chanMask; ALMicroTime nextDelta; s32 state; u16 vol;
     u8 maxChannels; u8 debugFlags; ALMicroTime frameTime; ALMicroTime curTime;
     void* (*initOsc)(void**, f32*, u8, u8, u8, u8);
@@ -270,7 +272,6 @@ extern ALGlobals_t *alGlobals;
 #define NO_VOICE_ERR_MASK 0x02
 #define NOTE_OFF_ERR_MASK 0x04
 
-// FIXED: Master default full volume macro
 #define AL_VOL_FULL 127
 
 #define A_INIT 1
@@ -343,10 +344,12 @@ extern ALGlobals_t *alGlobals;
 #define AL_MIDI_PitchBendChange 0xE0
 #define AL_MIDI_Meta 0xFF
 
-// FIXED: Added MIDI control channels
+// FIXED: Added Sustain and FX1 MIDI controls
 #define AL_MIDI_VOLUME_CTRL 0x07
 #define AL_MIDI_PAN_CTRL 0x0A
 #define AL_MIDI_PRIORITY_CTRL 0x10
+#define AL_MIDI_SUSTAIN_CTRL 0x40
+#define AL_MIDI_FX1_CTRL 0x5B
 
 #define ALFxRef void*
 
@@ -360,12 +363,12 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_instrument_struct():
+def deploy_sequence_player_finale():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v130.0] DEPLOYING INSTRUMENT STRUCT ---")
+    print("--- [v131.0] DEPLOYING SEQUENCE PLAYER FINALE ---")
     
     bridge_path = include_dir / "n64_types.h"
     bridge_path.write_text(BRIDGE_CONTENT)
@@ -378,7 +381,7 @@ def deploy_instrument_struct():
     for h in toxic:
         p = include_dir / h
         if p.exists():
-            p.write_text("/* Terminated by v130.0 */\n")
+            p.write_text("/* Terminated by v131.0 */\n")
     
     clash_types = [
         "MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", 
@@ -386,7 +389,7 @@ def deploy_instrument_struct():
         "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig",
         "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState",
         "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope",
-        "ALInstrument"
+        "ALInstrument", "ALTempoEvent"
     ]
 
     for path in decomp.rglob("*.[ch]"):
@@ -408,7 +411,7 @@ def deploy_instrument_struct():
                 path.write_text(content)
         except: continue
         
-    print("--- Instrument Struct Deployed. Executing. ---")
+    print("--- Sequence Player Finale Deployed. ---")
 
 if __name__ == "__main__":
-    deploy_instrument_struct()
+    deploy_sequence_player_finale()
