@@ -100,14 +100,15 @@ typedef struct {
     u32 validTracks; u32 lastTicks; u32 lastDeltaTicks; u8 *curLoc[16]; u8 *curBUPtr[16]; u32 curBULen[16]; u8 lastStatus[16]; u32 evtDeltaTicks[16];
 } ALCSeqMarker;
 
-// Forward declare ALVoiceState for the event union
 struct ALVoiceState_s;
 
-// FIXED: Added osc event payload for LFO updates
+// FIXED: Added ALMIDIEvent struct type and sppriority for voice stealing
+typedef struct { u8 status, byte1, byte2, duration; s32 ticks; } ALMIDIEvent;
+
 typedef struct {
     s16 type; s32 ticks;
     union {
-        struct { u8 status, byte1, byte2, duration; s32 ticks; } midi;
+        ALMIDIEvent midi;
         struct { u8 status, type, byte1, byte2, byte3; s32 ticks; } tempo;
         struct { void *seq; } spseq;
         struct { void *bank; } spbank;
@@ -115,6 +116,7 @@ typedef struct {
         struct { s16 vol; void* voice; s32 delta; } vol;
         struct { void* voice; } note;
         struct { struct ALVoiceState_s *vs; void* oscState; u8 chan; } osc;
+        struct { u8 chan; u8 priority; } sppriority;
         struct { void *data; u32 unk0, unk4; } unk18;
         s32 i;
     } msg;
@@ -130,18 +132,15 @@ typedef struct {
     OSMesgQueue msgQ; OSMesg msg;
 } ALEventQueue;
 
-// FIXED: Added pitchBend to channel state
 typedef struct { u16 vol; u8 pan; u8 priority; u8 fxmix; u8 unkA; u8 unkB; f32 pitchBend; u16 pad; } ALChanState;
 typedef ALChanState N_ALChanState;
 
-// FIXED: Extracted ALVoice ahead of VoiceState
 typedef struct ALVoice_s {
     ALLink node; struct PVoice_s *pvoice; ALWaveTable *table; void *clientPrivate;
     s16 state; s16 priority; s16 fxBus; s16 pan;
 } ALVoice;
 typedef ALVoice N_ALVoice;
 
-// FIXED: Added tremelo, vibrato, and pitch f32 trackers
 typedef struct ALVoiceState_s {
     struct ALVoiceState_s *next;
     ALVoice voice; ALWaveTable *table; void *clientPrivate;
@@ -149,6 +148,7 @@ typedef struct ALVoiceState_s {
     u8 flags; u8 envPhase; ALMicroTime envEndTime; s16 envGain;
     u8 tremelo; f32 vibrato; f32 pitch;
 } ALVoiceState;
+typedef ALVoiceState N_ALVoiceState; // FIXED: Added N_ALVoiceState alias
 
 typedef struct ALFilter_s {
     struct ALFilter_s *source;
@@ -185,7 +185,6 @@ typedef struct {
     uint8_t pad[256];
 } N_ALSynth;
 
-// FIXED: Restored actual executable function pointers to config
 typedef struct {
     s32 maxVoices; s32 maxEvents; u8 maxChannels; u8 debugFlags; ALHeap *heap;
     void* (*initOsc)(void**, f32*, u8, u8, u8, u8);
@@ -195,7 +194,6 @@ typedef struct {
 
 typedef struct { s16 maxVVoices; s16 maxPVoices; s16 maxUpdates; s16 maxFXbusses; void* dmaproc; ALHeap* heap; s32 fxType; s32 outputRate; void* params; } ALSynConfig;
 
-// FIXED: Restored executable function pointers to Sequence Player
 typedef struct {
     ALLink node; ALEvent nextEvent; void *evtq; ALChanState *chanState; 
     ALCSeq *target; ALMicroTime uspt; void *bank; ALSynth *drvr;
@@ -253,8 +251,11 @@ extern ALGlobals_t *alGlobals;
 #define AL_AUX_L_OUT 0
 #define AL_AUX_R_OUT 0
 
+// FIXED: Sequence Player stop/playing states
 #define AL_STOPPED 0
 #define AL_PLAYING 1
+#define AL_STOPPING 2
+
 #define AL_FX_SMALLROOM 0
 #define AL_FX_BIGROOM 1
 #define AL_FX_ECHO 2
@@ -262,6 +263,7 @@ extern ALGlobals_t *alGlobals;
 #define AL_FX_FLANGE 4
 #define AL_FX_CUSTOM 5
 
+// FIXED: Added missing event constants
 #define AL_SEQ_MIDI_EVT 1
 #define AL_SEQP_MIDI_EVT 2
 #define AL_TEMPO_EVT 5
@@ -281,11 +283,16 @@ extern ALGlobals_t *alGlobals;
 #define AL_SEQP_ENV_EVT 19
 #define AL_TREM_OSC_EVT 20
 #define AL_VIB_OSC_EVT 21
+#define AL_SEQP_STOP_EVT 22
+#define AL_CSP_NOTEOFF_EVT 23
+#define AL_SEQP_PRIORITY_EVT 24
 
 #define AL_CMIDI_BLOCK_CODE 0xFE
 #define AL_CMIDI_LOOPSTART_CODE 0x2E
 #define AL_CMIDI_LOOPEND_CODE 0x2D
 
+// FIXED: Missing MIDI masks/commands
+#define AL_MIDI_StatusMask 0x80
 #define AL_MIDI_NoteOff 0x80
 #define AL_MIDI_NoteOn 0x90
 #define AL_MIDI_PolyKeyPressure 0xA0
@@ -295,6 +302,9 @@ extern ALGlobals_t *alGlobals;
 #define AL_MIDI_ChannelPressure 0xD0
 #define AL_MIDI_PitchBendChange 0xE0
 #define AL_MIDI_Meta 0xFF
+
+// Missing FX Reference macro hook
+#define ALFxRef void*
 
 #define AL_TRACK_END 0x2F
 #define AL_MIDI_META_TEMPO 0x51
@@ -306,12 +316,12 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_lfo_modulator():
+def deploy_midi_director():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v127.0] DEPLOYING LFO MODULATOR ---")
+    print("--- [v128.0] DEPLOYING MIDI DIRECTOR ---")
     
     bridge_path = include_dir / "n64_types.h"
     bridge_path.write_text(BRIDGE_CONTENT)
@@ -324,14 +334,14 @@ def deploy_lfo_modulator():
     for h in toxic:
         p = include_dir / h
         if p.exists():
-            p.write_text("/* Terminated by v127.0 */\n")
+            p.write_text("/* Terminated by v128.0 */\n")
     
     clash_types = [
         "MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", 
         "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", 
         "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig",
         "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState",
-        "N_ALFilter", "N_ALMainBus", "N_ALSynth"
+        "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState"
     ]
 
     for path in decomp.rglob("*.[ch]"):
@@ -353,7 +363,7 @@ def deploy_lfo_modulator():
                 path.write_text(content)
         except: continue
         
-    print("--- LFO Modulator Deployed. The Sequence Player is complete. ---")
+    print("--- MIDI Director Deployed. Executing. ---")
 
 if __name__ == "__main__":
-    deploy_lfo_modulator()
+    deploy_midi_director()
