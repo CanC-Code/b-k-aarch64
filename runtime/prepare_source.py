@@ -121,7 +121,6 @@ typedef struct {
     OSMesgQueue msgQ; OSMesg msg;
 } ALEventQueue;
 
-// FIXED: Channel State includes Rare's unkA
 typedef struct { u16 vol; u8 pan; u8 priority; u8 fxmix; u8 unkA; u8 pad[2]; } ALChanState;
 
 typedef struct ALVoiceState_s {
@@ -130,14 +129,21 @@ typedef struct ALVoiceState_s {
     s16 state; s16 priority; s16 fxBus; s16 pan; ALSound *sound; 
 } ALVoiceState;
 
-// FIXED: 5-Argument ALFilter DSP Handler
+// FIXED: DSP Filter Parameters & Functions
 typedef struct ALFilter_s {
     struct ALFilter_s *source;
     void* (*handler)(void *filter, s16 *outp, s32 outLen, s32 sampleOffset, void *p);
+    void  (*setParam)(struct ALFilter_s *filter, s32 paramID, void *param);
     s16 type; s16 inp; s16 outp; s32 count;
 } ALFilter;
 
-typedef struct { ALFilter filter; } ALMainBus;
+// FIXED: Main Bus source tracking
+typedef struct { 
+    ALFilter filter;
+    s32 sourceCount;
+    s32 maxSources;
+    ALFilter **sources;
+} ALMainBus;
 
 // Configs and Synth setup
 typedef struct {
@@ -214,6 +220,17 @@ extern ALGlobals_t *alGlobals;
 #define AL_RAW16_WAVE 1
 #define UNITY_PITCH 0x8000
 
+// Filter Update IDs
+#define AL_FILTER_START 1
+#define AL_FILTER_STOP 2
+#define AL_FILTER_FREE 3
+#define AL_FILTER_SET_WAVETABLE 4
+#define AL_FILTER_SET_PITCH 5
+#define AL_FILTER_SET_VOL 6
+#define AL_FILTER_SET_PAN 7
+#define AL_FILTER_SET_FXAMT 8
+#define AL_FILTER_RESET 9
+
 // RSP ABI Audio Commands
 #define A_INIT 1
 #define A_CONTINUE 0
@@ -288,12 +305,12 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_final_polish():
+def deploy_filter_bridge():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v122.0] DEPLOYING FINAL POLISH ---")
+    print("--- [v123.0] DEPLOYING THE FINAL FILTER BRIDGE ---")
     
     bridge_path = include_dir / "n64_types.h"
     bridge_path.write_text(BRIDGE_CONTENT)
@@ -306,7 +323,7 @@ def deploy_final_polish():
     for h in toxic:
         p = include_dir / h
         if p.exists():
-            p.write_text("/* Terminated by v122.0 */\n")
+            p.write_text("/* Terminated by v123.0 */\n")
     
     clash_types = [
         "MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", 
@@ -336,7 +353,7 @@ def deploy_final_polish():
                 path.write_text(content)
         except: continue
         
-    print("--- Final Polish Deployed. Executing Build Sequence. ---")
+    print("--- Filter Bridge Deployed. Executing Build Sequence. ---")
 
 if __name__ == "__main__":
-    deploy_final_polish()
+    deploy_filter_bridge()
