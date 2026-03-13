@@ -23,7 +23,7 @@ typedef uint8_t  uchar; typedef volatile uint32_t vu32;
   #define FALSE 0
 #endif
 
-// 2. Hardware Structs (Only the absolute bare minimum 64-bit hardware patches)
+// 2. Hardware Structs (64-bit safe overrides)
 typedef uint64_t Gfx;
 typedef struct { int32_t m[4][4]; } Mtx;
 typedef struct { float m[4][4]; } MtxF;
@@ -68,18 +68,51 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif // _N64_TYPES_H_
 """
 
+def scrub_types_ast(content, type_names):
+    pattern = re.compile(r'typedef\s+(struct|union)\s*([a-zA-Z0-9_]+\s*)?\{')
+    pos = 0
+    while True:
+        match = pattern.search(content, pos)
+        if not match: break
+        start_idx = match.start()
+        brace_count = 0
+        in_struct = False
+        end_brace_idx = -1
+        for i in range(match.end() - 1, len(content)):
+            if content[i] == '{':
+                brace_count += 1
+                in_struct = True
+            elif content[i] == '}':
+                brace_count -= 1
+                if in_struct and brace_count == 0:
+                    end_brace_idx = i
+                    break
+        if end_brace_idx != -1:
+            after_brace = content[end_brace_idx+1 : end_brace_idx+150]
+            m = re.match(r'\s*([^;]+);', after_brace)
+            if m:
+                decl = m.group(1)
+                tokens = [t.strip().lstrip('*') for t in decl.split(',')]
+                if any(t in type_names for t in tokens):
+                    full_match_end = end_brace_idx + 1 + m.end()
+                    content = content[:start_idx] + "/* Scrubbed block by AST parser */\n" + content[full_match_end:]
+                    pos = start_idx
+                    continue
+        pos = match.end()
+    for name in type_names:
+        content = re.sub(r'typedef\s+(struct|union)\s+[a-zA-Z0-9_]+\s+' + name + r'\s*;', f'/* Scrubbed fwd {name} */\n', content)
+    return content
+
 def deploy_dynamic_patch():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     pr_folder = include_dir / "2.0L" / "PR"
     
-    print("--- [v163.0] RUNNING DYNAMIC INJECTION SCRUBBER ---")
+    print("--- [v164.0] RUNNING HARDWARE SCRUBBER ---")
     
-    # 1. Write the slimmed down bridge
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT)
 
-    # 2. Unblock standard C libraries, but keep them empty so we use Android's
     for sh in ["string.h", "math.h", "stdarg.h", "time.h", "basic_types.h"]:
         p = include_dir / sh
         if p.exists(): p.unlink()
@@ -88,62 +121,55 @@ def deploy_dynamic_patch():
     if sched_p.exists():
         sched_p.unlink()
 
-    # 3. Dynamic Source Code Patching
-    # Instead of defining the structs, we fix the specific 64-bit bugs in the original source
+    # The hardware types we MUST override for 64-bit safety
+    clash_types = {"Gfx", "Acmd", "OSTask_t", "MtxF", "Mtx", "Vtx", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad"}
+
     for path in decomp.rglob("*.[ch]"):
         if path.name == "n64_types.h": continue
         try:
             content = path.read_text(errors='ignore')
             original = content
             
-            # Unconditionally inject the bridge
             if '#include "n64_types.h"' not in content:
                 content = '#include "n64_types.h"\n' + content
                 
-            # Scrub standard library collisions
             if path.name in ["mem.h", "functions.h", "synthInternals.h"]:
                 content = re.sub(r'void\s+memcpy\s*\([^;]+;', '/* Scrubbed memcpy */;', content)
                 content = re.sub(r'void\s+memmove\s*\([^;]+;', '/* Scrubbed memmove */;', content)
                 content = re.sub(r'void\s*\*\s*malloc\s*\([^;]+;', '/* Scrubbed malloc */;', content)
                 content = re.sub(r'void\s*\*\s*realloc\s*\([^;]+;', '/* Scrubbed realloc */;', content)
                 
-            # --- THE DYNAMIC FIXES ---
-            # 1. Fix ALLowPass redefinition collision directly in synthInternals.h
             if path.name == "synthInternals.h":
                  content = re.sub(r'typedef\s+struct\s*ALLowPass_s\s*\{[^}]*\}\s*ALLowPass\s*;', '/* Scrubbed ALLowPass_s */', content)
 
-            # 2. Fix the ALDelay rsdelta array index bug directly in synthInternals.h
             if "rsdelta" in content and "ALDelay" in content:
                 content = content.replace("f32 rsdelta;", "s32 rsdelta; // 64-bit int fix")
 
-            # 3. Fix standard struct sizes colliding with 64-bit pointers
-            # The only hardware structs we MUST block are the ones we define in n64_types.h
-            hardware_types = ["MtxF", "Mtx", "Vtx", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad"]
-            for ct in hardware_types:
-                content = re.sub(r'typedef\s+struct\s*(?:[a-zA-Z0-9_]+\s*)?\{[^{}]*\}\s*' + ct + r'\s*;', f'/* Terminated {ct} */', content)
-                content = re.sub(r'typedef\s+union\s*(?:[a-zA-Z0-9_]+\s*)?\{[^{}]*\}\s*' + ct + r'\s*;', f'/* Terminated {ct} */', content)
-                content = re.sub(r'typedef\s+(struct|union)\s+[a-zA-Z0-9_]+\s+' + ct + r'\s*;', f'/* Scrubbed fwd {ct} */', content)
+            # Scrub structs via AST
+            content = scrub_types_ast(content, clash_types)
+            
+            # Scrub function pointer typedefs
+            content = re.sub(r'typedef\s+.*?\(\*ALDMANew\).*?;', '/* Scrubbed ALDMANew */', content)
+            content = re.sub(r'typedef\s+.*?\(\*OSErrorHandler\).*?;', '/* Scrubbed OSErrorHandler */', content)
 
             if content != original:
                 path.write_text(content)
         except Exception:
             continue
 
-    # 4. Patch Android Wrappers
     android_cpp_dir = root / "Android" / "app" / "src" / "main" / "cpp"
     for path in android_cpp_dir.rglob("*.cpp"):
         try:
             content = path.read_text(errors='ignore')
             original = content
             content = content.replace('#include "tools/rare_decompression.h"', '#include "rare_decompression.h"')
-            for ct in hardware_types:
-                 content = re.sub(r'typedef\s+struct\s*(?:[a-zA-Z0-9_]+\s*)?\{[^{}]*\}\s*' + ct + r'\s*;', f'/* Scrubbed {ct} */', content)
+            content = scrub_types_ast(content, clash_types)
             if content != original:
                 path.write_text(content)
         except Exception:
             pass
 
-    print("--- Dynamic Scrubber Complete. Run Ninja! ---")
+    print("--- Hardware Scrubber Complete. Run Ninja! ---")
 
 if __name__ == "__main__":
     deploy_dynamic_patch()
