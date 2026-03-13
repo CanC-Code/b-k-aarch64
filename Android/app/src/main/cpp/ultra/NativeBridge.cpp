@@ -6,17 +6,19 @@
 #include <stdlib.h>
 #include <string.h>
 
-// 1. Include our 64-bit safe bridge first
+// 1. Include our 64-bit safe bridge
 #include "n64_types.h"
 
-// 2. Trick the N64 headers into thinking these types are already handled
-// These macros are often used as guards in the original SDK headers
-#define _GBI_H_      // Blocks gbi.h redefinitions
-#define _ABI_H_      // Blocks abi.h redefinitions
-#define _OSTASK_H_   // Blocks sptask.h redefinitions
+// 2. Define the types libaudio.h is missing before we include it
+typedef int16_t ADPCM_STATE[16];
+typedef int16_t RESAMPLE_STATE[16];
+
+// Trick the N64 headers into skipping redefinitions of hardware types
+#define _GBI_H_      
+#define _ABI_H_      
+#define _OSTASK_H_   
 
 extern "C" {
-    // We only want the audio function declarations, not the base types
     #include <PR/libaudio.h>
 }
 
@@ -26,9 +28,6 @@ extern "C" {
 extern "C" {
     void mainLoop(void);
     void ResourceMgr_Init(const char* otrPath, uint8_t* manifestBuf, uint32_t manifestSize);
-    
-    // The engine's global audio pointer
-    extern void* alGlobals;
 }
 
 extern "C" {
@@ -38,9 +37,10 @@ Java_com_bkawrapper_NativeBridge_nativeGameBoot(JNIEnv* env, jclass clazz, jstri
     LOGI("Starting Banjo-Kazooie Native Boot Sequence...");
 
     // 1. Initialize N64 Audio Globals
+    // alGlobals is declared as ALGlobals* in libaudio.h
     if (alGlobals == nullptr) {
-        alGlobals = malloc(4096); 
-        memset(alGlobals, 0, 4096);
+        alGlobals = (ALGlobals*)malloc(8192); // 8KB for safety
+        memset(alGlobals, 0, 8192);
         LOGI("Audio Globals Initialized.");
     }
 
