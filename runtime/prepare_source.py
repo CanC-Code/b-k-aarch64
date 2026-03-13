@@ -23,7 +23,7 @@ typedef u32 OSIntMask;
   #define FALSE 0
 #endif
 
-// Block legacy headers
+// Block legacy headers from being used
 #define _GBI_H_
 #define _ABI_H_
 #define _MBI_H_
@@ -37,31 +37,32 @@ typedef u32 OSIntMask;
 #define _BOOL_H_
 #define _SPTASK_H_
 
+// Math & Basic Gfx
 typedef uint64_t Gfx;
 typedef struct { int32_t m[4][4]; } Mtx;
 typedef struct { float m[4][4]; } MtxF;
 typedef struct { uint8_t d[16]; } Vtx;
 
-// NEW: Animation & OS Stubs
+// Animation & Gameplay Scaffolding
 typedef struct { float d[16]; } BoneTransform;
 typedef struct { BoneTransform *transforms; int count; } BoneTransformList;
 typedef void* VLA;
 typedef void* FLA;
+
+// OS & System Stubs
 typedef struct { u32 t[16]; } OSTask_t;
 typedef void (*OSErrorHandler)(void);
 typedef struct { u32 d[16]; } OSLog;
-
 typedef void* OSMesg;
 typedef struct { void* mt; void* full; int count; } OSMesgQueue;
 typedef struct { uint8_t d[256]; } OSThread;
 typedef struct { uint8_t d[64];  } OSContPad;
 
+// Audio Hardware (RSP/ABI)
 typedef struct { unsigned int w0, w1; } Acmd_words;
 typedef union { Acmd_words words; long long force_align; } Acmd;
-
 typedef s32 (*ALDMAproc)(s32 addr, s32 len, void *state);
 typedef ALDMAproc (*ALDMANew)(void **state);
-
 typedef struct { u8 *base; u8 *cur; u32 len; s32 count; } ALHeap;
 typedef s32 ALMicroTime;
 typedef s32 ALPan;
@@ -193,16 +194,20 @@ typedef ALEvent N_ALEvent;
 typedef struct { N_ALSynth drvr; } ALGlobals;
 extern ALGlobals *alGlobals;
 
-// FIX: Guarded macros for synthInternals
+// Harmony guards for internal enums
 #ifndef _SYNTHINTERNALS_H_
   #define AL_FILTER_ADD_SOURCE 1
   #define AL_RESAMPLE 1
   #define AL_ADPCM 2
 #endif
 
+// Constants for Audio Loading
 #define AL_ADPCM_WAVE 0
 #define AL_RAW16_WAVE 1
 #define AL_BANK_VERSION 0x424c
+#define ERR_ALBNKFNEW 0
+
+// MIDI & Events
 #define AL_SEQP_MIDI_EVT 2
 #define AL_UNK18_EVT 18
 #define AL_MIDI_ControlChange 0xB0
@@ -226,18 +231,18 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_jni_harbinger():
+def deploy_scaffolding_master():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v136.0] DEPLOYING JNI HARBINGER ---")
+    print("--- [v137.0] DEPLOYING SCAFFOLDING MASTER ---")
     
-    # 1. Update Bridge
+    # Write updated Bridge
     bridge_path = include_dir / "n64_types.h"
     bridge_path.write_text(BRIDGE_CONTENT)
 
-    # 2. Terminate legacy headers with Binary write to prevent trailing char issues
+    # List of files to terminate/stub out
     toxic = [
         "2.0L/PR/os.h", "2.0L/PR/gbi.h", "2.0L/PR/abi.h", "2.0L/PR/mbi.h", 
         "2.0L/PR/gu.h", "2.0L/PR/sp.h", "2.0L/PR/ultratypes.h", 
@@ -245,22 +250,25 @@ def deploy_jni_harbinger():
         "2.0L/PR/ultraerror.h", "2.0L/PR/ultralog.h", "2.0L/PR/rmon.h",
         "2.0L/PR/R4300.h", "bool.h"
     ]
+    
     for h in toxic:
         p = include_dir / h
         if p.exists():
+            # USE BINARY MODE TO PREVENT NEWLINE CORRUPTION
             with open(p, "wb") as f:
-                f.write(b"/* Terminated */\\n")
+                f.write(b"/* Terminated by v137.0 */\\n")
     
-    # 3. Aggressive Header scrubbing for synthInternals
+    # Handle synthInternals.h specifically
     synth_int = include_dir / "synthInternals.h"
     if synth_int.exists():
         content = synth_int.read_text(errors='ignore')
+        # Ensure it has include guards and no duplicate ALFx
         if "#ifndef _SYNTHINTERNALS_H_" not in content:
-            content = "#ifndef _SYNTHINTERNALS_H_\\n#define _SYNTHINTERNALS_H_\\n" + content + "\\n#endif"
+            content = "#ifndef _SYNTHINTERNALS_H_\\n#define _SYNTHINTERNALS_H_\\n\\n" + content + "\\n\\n#endif"
         content = re.sub(r'typedef\s+struct\s*ALFx_s\s*\{[^}]*\}\s*ALFx\s*;', '/* Scrubbed */', content)
         synth_int.write_text(content)
 
-    # 4. Source cleanup
+    # Clean up all C/H files to point to the bridge and handle union/struct logic
     clash_types = ["MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler"]
 
     for path in decomp.rglob("*.[ch]"):
@@ -271,12 +279,14 @@ def deploy_jni_harbinger():
             for ct in clash_types:
                 content = re.sub(r'typedef\s+struct\s*[a-zA-Z0-9_]*\s*\{[^}]*\}\s*' + ct + r'\s*;', f'/* Terminated {ct} */', content)
             
+            # Map MIDI status access correctly
             content = content.replace("evt.midi", "evt.msg.midi")
+            
             if content != original:
                 path.write_text(content)
         except: continue
         
-    print("--- JNI Harbinger Deployed. ---")
+    print("--- Scaffolding Master Deployed. Triggering Ninja. ---")
 
 if __name__ == "__main__":
-    deploy_jni_harbinger()
+    deploy_scaffolding_master()
