@@ -6,22 +6,19 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Include our N64 bridge to get the 64-bit safe types
+// 1. Include our 64-bit safe bridge first
 #include "n64_types.h"
 
-// MACRO SHIELD: Prevent C++ from choking on N64 header redefinitions
-#define Gfx __Gfx_ignore
-#define Acmd __Acmd_ignore
-#define ALDMANew __ALDMANew_ignore
+// 2. Trick the N64 headers into thinking these types are already handled
+// These macros are often used as guards in the original SDK headers
+#define _GBI_H_      // Blocks gbi.h redefinitions
+#define _ABI_H_      // Blocks abi.h redefinitions
+#define _OSTASK_H_   // Blocks sptask.h redefinitions
 
 extern "C" {
+    // We only want the audio function declarations, not the base types
     #include <PR/libaudio.h>
 }
-
-// Remove the shield so we can use the 64-bit types normally
-#undef Gfx
-#undef Acmd
-#undef ALDMANew
 
 #define LOG_TAG "BKA_NATIVE"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -29,6 +26,9 @@ extern "C" {
 extern "C" {
     void mainLoop(void);
     void ResourceMgr_Init(const char* otrPath, uint8_t* manifestBuf, uint32_t manifestSize);
+    
+    // The engine's global audio pointer
+    extern void* alGlobals;
 }
 
 extern "C" {
@@ -37,10 +37,9 @@ JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_nativeGameBoot(JNIEnv* env, jclass clazz, jstring otrPath, jobject assetManager) {
     LOGI("Starting Banjo-Kazooie Native Boot Sequence...");
 
-    // 1. Initialize N64 Audio Globals using a raw block of memory
+    // 1. Initialize N64 Audio Globals
     if (alGlobals == nullptr) {
-        // C++ requires an explicit cast from malloc's void* return type
-        alGlobals = (ALGlobals*)malloc(4096); 
+        alGlobals = malloc(4096); 
         memset(alGlobals, 0, 4096);
         LOGI("Audio Globals Initialized.");
     }
@@ -57,8 +56,7 @@ Java_com_bkawrapper_NativeBridge_nativeGameBoot(JNIEnv* env, jclass clazz, jstri
         AAsset_close(asset);
     }
 
-    // 2. Start the game. 
-    // mainLoop usually never returns in N64 games (it's the infinite game loop)
+    // 2. Start the game loop
     LOGI("Executing mainLoop...");
     mainLoop();
 
