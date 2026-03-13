@@ -121,8 +121,8 @@ typedef struct {
     OSMesgQueue msgQ; OSMesg msg;
 } ALEventQueue;
 
-// FIXED: Channel & Voice States
-typedef struct { u16 vol; u8 pan; u8 priority; u8 fxmix; u8 pad[3]; } ALChanState;
+// FIXED: Channel State includes Rare's unkA
+typedef struct { u16 vol; u8 pan; u8 priority; u8 fxmix; u8 unkA; u8 pad[2]; } ALChanState;
 
 typedef struct ALVoiceState_s {
     struct ALVoiceState_s *next;
@@ -130,10 +130,10 @@ typedef struct ALVoiceState_s {
     s16 state; s16 priority; s16 fxBus; s16 pan; ALSound *sound; 
 } ALVoiceState;
 
-// FIXED: DSP Filter and Bus Structures
+// FIXED: 5-Argument ALFilter DSP Handler
 typedef struct ALFilter_s {
     struct ALFilter_s *source;
-    void* (*handler)(s32, void*);
+    void* (*handler)(void *filter, s16 *outp, s32 outLen, s32 sampleOffset, void *p);
     s16 type; s16 inp; s16 outp; s32 count;
 } ALFilter;
 
@@ -155,7 +155,7 @@ typedef struct {
     uint8_t pad[256];
 } ALSynth;
 
-// FIXED: Completely Mapped Sequence Player
+// Sequence Player
 typedef struct {
     ALLink node;
     ALEvent nextEvent;
@@ -214,7 +214,7 @@ extern ALGlobals_t *alGlobals;
 #define AL_RAW16_WAVE 1
 #define UNITY_PITCH 0x8000
 
-// RSP ABI Audio Commands (EXPANDED)
+// RSP ABI Audio Commands
 #define A_INIT 1
 #define A_CONTINUE 0
 #define A_RATE 0
@@ -245,7 +245,7 @@ extern ALGlobals_t *alGlobals;
 #define AL_FX_FLANGE 4
 #define AL_FX_CUSTOM 5
 
-// Core Engine Event IDs (EXPANDED)
+// Core Engine Event IDs
 #define AL_SEQ_MIDI_EVT 1
 #define AL_SEQP_MIDI_EVT 2
 #define AL_TEMPO_EVT 5
@@ -288,12 +288,12 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_dsp_microcode_bridge():
+def deploy_final_polish():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v121.0] DEPLOYING DSP MICROCODE BRIDGE ---")
+    print("--- [v122.0] DEPLOYING FINAL POLISH ---")
     
     bridge_path = include_dir / "n64_types.h"
     bridge_path.write_text(BRIDGE_CONTENT)
@@ -306,7 +306,7 @@ def deploy_dsp_microcode_bridge():
     for h in toxic:
         p = include_dir / h
         if p.exists():
-            p.write_text("/* Terminated by v121.0 */\n")
+            p.write_text("/* Terminated by v122.0 */\n")
     
     clash_types = [
         "MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", 
@@ -336,7 +336,7 @@ def deploy_dsp_microcode_bridge():
                 path.write_text(content)
         except: continue
         
-    print("--- DSP Microcode Bridge Deployed. Executing Build Sequence. ---")
+    print("--- Final Polish Deployed. Executing Build Sequence. ---")
 
 if __name__ == "__main__":
-    deploy_dsp_microcode_bridge()
+    deploy_final_polish()
