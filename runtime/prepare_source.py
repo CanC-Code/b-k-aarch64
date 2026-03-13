@@ -2,54 +2,47 @@ import os
 import re
 from pathlib import Path
 
-def logic_gated_harmonization():
+def dynamic_requirement_injection():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v97.0] COMMENCING LOOP-PROOF HARMONIZATION ---")
+    print("--- [v98.0] Starting Advanced Autoinfill & Loop-Proofing ---")
 
-    # 1. Total Eclipse: Neutralize legacy SDK headers
-    # We replace them with a simple comment to prevent redefinitions.
+    # 1. Total SDK Lockdown (Eclipsing)
     sdk_path = include_dir / "2.0L" / "PR"
-    toxic = [
-        "gbi.h", "abi.h", "mbi.h", "ultratypes.h", "os_thread.h", 
-        "os_message.h", "os_cont.h", "sp.h", "os.h", "libaudio.h"
-    ]
-    
-    for name in toxic:
-        p = sdk_path / name
+    toxic = ["os.h", "gbi.h", "abi.h", "libaudio.h", "n_libaudio.h", "ultratypes.h", "sp.h"]
+    for header in toxic:
+        p = sdk_path / header
         if p.exists():
-            p.write_text("// Eclipsed to prevent redefinition conflicts.\n")
+            p.write_text("// Total Eclipse: See n64_types.h for definitions.\n")
 
-    # 2. Source Surgery and Identifier Injection
-    # We identify files that need n64_types.h but don't have it.
+    # 2. Requirement Scan & Infill
+    # This dictionary maps specific words to the bridge inclusion
+    REQUIREMENTS = ["s8", "u8", "s32", "u32", "Gfx", "ALPan", "ALHeap", "ALLink"]
+
     for path in decomp.rglob("*.[ch]"):
-        # SKIP the bridge itself to prevent infinite nesting
-        if path.name == "n64_types.h":
-            continue
-            
+        if path.name == "n64_types.h": continue
         try:
             content = path.read_text(errors='ignore')
             original = content
 
-            # Remove conflicting bool and type definitions
-            content = content.replace("typedef int bool;", "/* DELETED */")
-            content = content.replace("typedef char bool;", "/* DELETED */")
-            
-            # Fix 64-bit pointer truncation (MIPS 32-bit addresses -> ARM64)
+            # Fix 64-bit pointer truncation (Critical for Android NDK)
             content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
+            
+            # Remove legacy bool conflict
+            content = content.replace("typedef int bool;", "/* ALIGNED */")
 
-            # Check if file uses N64 types but doesn't include the bridge
-            # If so, we prepended it (only if not already there)
-            if ("u8" in content or "s32" in content or "Gfx" in content) and "n64_types.h" not in content:
+            # Check if file needs the bridge and doesn't have it
+            needs_bridge = any(req in content for req in REQUIREMENTS)
+            if needs_bridge and "n64_types.h" not in content:
                 content = "#include <n64_types.h>\n" + content
 
             if content != original:
                 path.write_text(content)
         except: continue
 
-    print("--- Harmonization v97.0 Complete. ---")
+    print("--- Harmonization Complete. ---")
 
 if __name__ == "__main__":
-    logic_gated_harmonization()
+    dynamic_requirement_injection()
