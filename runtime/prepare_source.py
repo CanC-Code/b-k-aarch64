@@ -92,9 +92,11 @@ typedef ALVoice N_ALVoice;
 typedef struct ALVoiceState_s { struct ALVoiceState_s *next; ALVoice voice; ALWaveTable *table; void *clientPrivate; s16 state; s16 priority; s16 fxBus; s16 pan; ALSound *sound; u8 flags; u8 envPhase; u8 phase; u8 channel; u8 velocity; ALMicroTime envEndTime; s16 envGain; u8 tremelo; f32 vibrato; f32 pitch; } ALVoiceState;
 typedef ALVoiceState N_ALVoiceState;
 
-typedef struct ALResampler_s { RESAMPLE_STATE *state; f32 delta; s32 first; } ALResampler;
-typedef struct ALLowPass_s { POLEF_STATE *fstate; s16 fc; } ALLowPass;
+// EXPANDED: DSP Structs with Custom BK Engine Fields
+typedef struct ALResampler_s { RESAMPLE_STATE *state; f32 delta; s32 first; s16 motion; f32 ratio; s32 upitch; void* ctrlList; void* ctrlTail; } ALResampler;
+typedef struct ALLowPass_s { POLEF_STATE *fstate; s16 fc; s16 fgain; s16 first; struct { s16 fccoef[16]; } fcvec; } ALLowPass;
 typedef struct { s32 input; s32 output; s16 fbcoef; s16 ffcoef; s16 gain; f32 mute; f32 vol; f32 rsinc; f32 rsgain; f32 rsval; f32 rsdelta; ALResampler *rs; ALLowPass *lp; } ALDelay;
+
 typedef s32 (*ALSetFXParam)(void *filter, s32 paramID, void *param);
 typedef struct ALFilter_s { struct ALFilter_s *source; void* (*handler)(struct ALFilter_s *filter, s16 *outp, s32 outLen, s32 sampleOffset, void *p); void (*setParam)(struct ALFilter_s *filter, s32 paramID, void *param); s16 type; s16 inp; s16 outp; s32 count; ALSetFXParam paramHdl; u8 section_count; u32 length; ALDelay *delay; s16 *base; s16 *input; } ALFilter;
 typedef ALFilter ALFx;
@@ -222,7 +224,6 @@ def harvest_n64_macros(pr_dir: Path):
     return output
 
 def scrub_types_ast(content, type_names):
-    """AST-style parser to securely scrub typedef structs regardless of format"""
     pattern = re.compile(r'typedef\s+(struct|union)\s*([a-zA-Z0-9_]+\s*)?\{')
     pos = 0
     while True:
@@ -235,7 +236,6 @@ def scrub_types_ast(content, type_names):
         in_struct = False
         end_brace_idx = -1
         
-        # Count braces to find the true end of the struct
         for i in range(match.end() - 1, len(content)):
             if content[i] == '{':
                 brace_count += 1
@@ -246,7 +246,6 @@ def scrub_types_ast(content, type_names):
                     end_brace_idx = i
                     break
                     
-        # Check if the text immediately following the closing brace assigns it to a target type
         if end_brace_idx != -1:
             after_brace = content[end_brace_idx+1 : end_brace_idx+150]
             m = re.match(r'\s*([^;]+);', after_brace)
@@ -261,7 +260,6 @@ def scrub_types_ast(content, type_names):
                     
         pos = match.end()
         
-    # Final pass to catch single-line opaque pointer declarations (e.g. typedef struct Foo_s Foo;)
     for name in type_names:
         content = re.sub(r'typedef\s+(struct|union)\s+[a-zA-Z0-9_]+\s+' + name + r'\s*;', f'/* Scrubbed fwd {name} */\n', content)
         
@@ -273,7 +271,7 @@ def deploy_dynamic_patch():
     include_dir = decomp / "include"
     pr_folder = include_dir / "2.0L" / "PR"
     
-    print("--- [v158.0] RUNNING AST SCRUBBER ---")
+    print("--- [v159.0] RUNNING EXTENDED DSP AST SCRUBBER ---")
     
     dynamic_macros = harvest_n64_macros(pr_folder)
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT + dynamic_macros)
@@ -298,18 +296,25 @@ def deploy_dynamic_patch():
 
     clash_types = {"MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad", "ALDelay", "ALResampler", "ALLowPass"}
 
-    # Pass 1: Handle C files and global scrubber
+    for path in decomp.rglob("*.h"):
+        if path.name in ["mem.h", "functions.h", "synthInternals.h"]:
+            content = path.read_text(errors='ignore')
+            content = re.sub(r'void\s+memcpy\s*\([^;]+;', '/* Scrubbed memcpy */;', content)
+            content = re.sub(r'void\s+memmove\s*\([^;]+;', '/* Scrubbed memmove */;', content)
+            content = re.sub(r'void\s*\*\s*malloc\s*\([^;]+;', '/* Scrubbed malloc */;', content)
+            content = re.sub(r'void\s*\*\s*realloc\s*\([^;]+;', '/* Scrubbed realloc */;', content)
+            content = re.sub(r'typedef\s+s32\s*\(\s*\*\s*ALSetFXParam\s*\)\s*\([^;]+;', '/* Scrubbed ALSetFXParam */', content)
+            path.write_text(content)
+
     for path in decomp.rglob("*.[ch]"):
         if path.name == "n64_types.h": continue
         try:
             content = path.read_text(errors='ignore')
             original = content
             
-            # Unconditionally inject the bridge
             if '#include "n64_types.h"' not in content:
                 content = '#include "n64_types.h"\n' + content
                 
-            # Function pointer edge cases
             if path.name in ["mem.h", "functions.h", "synthInternals.h"]:
                 content = re.sub(r'void\s+memcpy\s*\([^;]+;', '/* Scrubbed memcpy */;', content)
                 content = re.sub(r'void\s+memmove\s*\([^;]+;', '/* Scrubbed memmove */;', content)
@@ -317,7 +322,6 @@ def deploy_dynamic_patch():
                 content = re.sub(r'void\s*\*\s*realloc\s*\([^;]+;', '/* Scrubbed realloc */;', content)
                 content = re.sub(r'typedef\s+s32\s*\(\s*\*\s*ALSetFXParam\s*\)\s*\([^;]+;', '/* Scrubbed ALSetFXParam */', content)
 
-            # Apply AST Struct Scrubber
             content = scrub_types_ast(content, clash_types)
             
             if content != original:
@@ -325,7 +329,6 @@ def deploy_dynamic_patch():
         except Exception:
             continue
 
-    # Pass 2: Apply to Android Wrapper C++ Files
     android_cpp_dir = root / "Android" / "app" / "src" / "main" / "cpp"
     for path in android_cpp_dir.rglob("*.cpp"):
         try:
@@ -338,7 +341,7 @@ def deploy_dynamic_patch():
         except Exception:
             pass
 
-    print("--- AST Scrubber Complete. Run Ninja! ---")
+    print("--- Extended DSP Scrubber Complete. Run Ninja! ---")
 
 if __name__ == "__main__":
     deploy_dynamic_patch()
