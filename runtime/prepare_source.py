@@ -2,14 +2,14 @@ import os
 import re
 from pathlib import Path
 
-def project_mirroring():
+def atomic_debridement():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v107.0] Mirroring Project Structures ---")
+    print("--- [v108.0] COMMENCING ATOMIC DEBRIDEMENT ---")
 
-    # 1. SDK Eclipsing
+    # 1. Neutralize SDK Headers physically
     sdk_path = include_dir / "2.0L/PR"
     toxic = ["os.h", "gbi.h", "abi.h", "mbi.h", "gu.h", "sp.h", "ultratypes.h", "libaudio.h", "n_libaudio.h"]
     for header in toxic:
@@ -17,31 +17,35 @@ def project_mirroring():
         if p.exists():
             p.write_text("#include <n64_types.h>\n")
 
-    # 2. Source Surgery
+    # 2. Source-Level Redefinition Removal
+    # This prevents the "typedef redefinition" error by commenting out local versions.
     for path in decomp.rglob("*.[ch]"):
-        # CRITICAL: Do not modify n64_types.h itself or it loops
         if path.name == "n64_types.h": continue
-        
         try:
             content = path.read_text(errors='ignore')
             original = content
 
-            # Map direct access back to our union layout
+            # Force include bridge at the top
+            if "n64_types.h" not in content:
+                content = "#include <n64_types.h>\n" + content
+
+            # Nuke the specific structs.h redefinitions causing the current errors
+            content = re.sub(r'typedef\s+struct\s*\{[^}]*\}\s*MtxF\s*;', '/* CLASH REMOVED */', content)
+            content = re.sub(r'typedef\s+struct\s*\{[^}]*\}\s*Mtx\s*;', '/* CLASH REMOVED */', content)
+            content = content.replace("typedef int bool;", "/* CLASH REMOVED */")
+
+            # Map Rare-specific ALEvent calls to our bridge union
             content = content.replace("evt.midi", "evt.msg.midi")
             content = content.replace("evt.unk18", "evt.msg.unk18")
             
-            # 64-bit Pointer alignment
+            # Pointer safety
             content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
-            
-            # Wipe local clashing types
-            content = content.replace("typedef int bool;", "// Removed")
-            content = content.replace("typedef struct { float m[4][4]; } MtxF;", "// Removed")
 
             if content != original:
                 path.write_text(content)
         except: continue
 
-    print("--- Mirroring Complete. ---")
+    print("--- Debridement Complete. Triggering Build. ---")
 
 if __name__ == "__main__":
-    project_mirroring()
+    atomic_debridement()
