@@ -107,31 +107,14 @@ def deploy_dynamic_patch():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
-    pr_folder = include_dir / "2.0L" / "PR"
     
-    print("--- [v165.0] RUNNING DYNAMIC BOOLEAN SCRUBBER ---")
+    print("--- [v166.0] FIXING PATHS AND THREAD REDEFINITIONS ---")
     
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT)
 
-    for sh in ["string.h", "math.h", "stdarg.h", "time.h", "basic_types.h"]:
-        p = include_dir / sh
-        if p.exists(): p.unlink()
-            
-    # CRITICAL: If bool.h exists, kill the redefinition
-    bool_h = include_dir / "bool.h"
-    if bool_h.exists():
-        print(f"Found {bool_h.name}, scrubbing legacy typedefs...")
-        content = bool_h.read_text(errors='ignore')
-        content = content.replace("typedef int bool;", "/* Handled by stdbool.h */")
-        content = content.replace("typedef int32_t bool;", "/* Handled by stdbool.h */")
-        bool_h.write_text(content)
+    clash_types = {"Gfx", "Acmd", "OSTask_t", "MtxF", "Mtx", "Vtx", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad", "OSThread_s"}
 
-    sched_p = pr_folder / "sched.h"
-    if sched_p.exists():
-        sched_p.unlink()
-
-    clash_types = {"Gfx", "Acmd", "OSTask_t", "MtxF", "Mtx", "Vtx", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad"}
-
+    # 1. Patch decomp-files
     for path in decomp.rglob("*.[ch]"):
         if path.name == "n64_types.h": continue
         try:
@@ -141,31 +124,31 @@ def deploy_dynamic_patch():
             if '#include "n64_types.h"' not in content:
                 content = '#include "n64_types.h"\n' + content
                 
-            # Inline boolean scrubber for headers/sources
             content = content.replace("typedef int bool;", "/* Scrubbed bool */")
-                
-            if path.name in ["mem.h", "functions.h", "synthInternals.h"]:
-                content = re.sub(r'void\s+memcpy\s*\([^;]+;', '/* Scrubbed memcpy */;', content)
-                content = re.sub(r'void\s+memmove\s*\([^;]+;', '/* Scrubbed memmove */;', content)
-                content = re.sub(r'void\s*\*\s*malloc\s*\([^;]+;', '/* Scrubbed malloc */;', content)
-                content = re.sub(r'void\s*\*\s*realloc\s*\([^;]+;', '/* Scrubbed realloc */;', content)
-                
-            if path.name == "synthInternals.h":
-                 content = re.sub(r'typedef\s+struct\s*ALLowPass_s\s*\{[^}]*\}\s*ALLowPass\s*;', '/* Scrubbed ALLowPass_s */', content)
-
-            if "rsdelta" in content and "ALDelay" in content:
-                content = content.replace("f32 rsdelta;", "s32 rsdelta; // 64-bit int fix")
-
             content = scrub_types_ast(content, clash_types)
-            content = re.sub(r'typedef\s+.*?\(\*ALDMANew\).*?;', '/* Scrubbed ALDMANew */', content)
-            content = re.sub(r'typedef\s+.*?\(\*OSErrorHandler\).*?;', '/* Scrubbed OSErrorHandler */', content)
-
+            
             if content != original:
                 path.write_text(content)
-        except Exception:
-            continue
+        except Exception: continue
 
-    print("--- Boolean Scrubber Complete. Run Ninja! ---")
+    # 2. Patch Android C++ Wrappers (The critical path fix)
+    android_cpp_dir = root / "Android" / "app" / "src" / "main" / "cpp"
+    for path in android_cpp_dir.rglob("*.[ch]pp"):
+        try:
+            content = path.read_text(errors='ignore')
+            original = content
+            
+            # FIX: rare_decompression pathing
+            content = content.replace('#include "tools/rare_decompression.h"', '#include "rare_decompression.h"')
+            
+            # FIX: OSThread_s redefinition in exceptasm.cpp and others
+            content = scrub_types_ast(content, clash_types)
+            
+            if content != original:
+                path.write_text(content)
+        except Exception: pass
+
+    print("--- Patch Complete. Re-run Ninja! ---")
 
 if __name__ == "__main__":
     deploy_dynamic_patch()
