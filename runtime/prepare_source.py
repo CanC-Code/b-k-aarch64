@@ -188,7 +188,6 @@ extern "C" int sched_yield(void);
 // 5. Memory Mapper
 #define K0_TO_PHYS(x) ((u32)(uintptr_t)(x))
 static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t)vaddr; }
-
 """
 
 def harvest_n64_macros(pr_dir: Path):
@@ -222,13 +221,59 @@ def harvest_n64_macros(pr_dir: Path):
     output += "\n#endif // _N64_TYPES_H_\n"
     return output
 
+def scrub_types_ast(content, type_names):
+    """AST-style parser to securely scrub typedef structs regardless of format"""
+    pattern = re.compile(r'typedef\s+(struct|union)\s*([a-zA-Z0-9_]+\s*)?\{')
+    pos = 0
+    while True:
+        match = pattern.search(content, pos)
+        if not match:
+            break
+        
+        start_idx = match.start()
+        brace_count = 0
+        in_struct = False
+        end_brace_idx = -1
+        
+        # Count braces to find the true end of the struct
+        for i in range(match.end() - 1, len(content)):
+            if content[i] == '{':
+                brace_count += 1
+                in_struct = True
+            elif content[i] == '}':
+                brace_count -= 1
+                if in_struct and brace_count == 0:
+                    end_brace_idx = i
+                    break
+                    
+        # Check if the text immediately following the closing brace assigns it to a target type
+        if end_brace_idx != -1:
+            after_brace = content[end_brace_idx+1 : end_brace_idx+150]
+            m = re.match(r'\s*([^;]+);', after_brace)
+            if m:
+                decl = m.group(1)
+                tokens = [t.strip().lstrip('*') for t in decl.split(',')]
+                if any(t in type_names for t in tokens):
+                    full_match_end = end_brace_idx + 1 + m.end()
+                    content = content[:start_idx] + "/* Scrubbed block by AST parser */\n" + content[full_match_end:]
+                    pos = start_idx
+                    continue
+                    
+        pos = match.end()
+        
+    # Final pass to catch single-line opaque pointer declarations (e.g. typedef struct Foo_s Foo;)
+    for name in type_names:
+        content = re.sub(r'typedef\s+(struct|union)\s+[a-zA-Z0-9_]+\s+' + name + r'\s*;', f'/* Scrubbed fwd {name} */\n', content)
+        
+    return content
+
 def deploy_dynamic_patch():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     pr_folder = include_dir / "2.0L" / "PR"
     
-    print("--- [v157.0] RUNNING FOOLPROOF SCRUBBER ---")
+    print("--- [v158.0] RUNNING AST SCRUBBER ---")
     
     dynamic_macros = harvest_n64_macros(pr_folder)
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT + dynamic_macros)
@@ -251,53 +296,49 @@ def deploy_dynamic_patch():
         if p.exists():
             p.write_text("/* Blocked */\n")
 
-    clash_types = ["MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad", "ALDelay", "ALResampler", "ALLowPass"]
+    clash_types = {"MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad", "ALDelay", "ALResampler", "ALLowPass"}
 
-    # 1. First Pass: Scrub custom game memory functions globally
-    for path in decomp.rglob("*.h"):
-        if path.name in ["mem.h", "functions.h", "synthInternals.h"]:
-            content = path.read_text(errors='ignore')
-            content = re.sub(r'void\s+memcpy\s*\([^;]+;', '/* Scrubbed memcpy */;', content)
-            content = re.sub(r'void\s+memmove\s*\([^;]+;', '/* Scrubbed memmove */;', content)
-            content = re.sub(r'void\s*\*\s*malloc\s*\([^;]+;', '/* Scrubbed malloc */;', content)
-            content = re.sub(r'void\s*\*\s*realloc\s*\([^;]+;', '/* Scrubbed realloc */;', content)
-            content = re.sub(r'typedef\s+s32\s*\(\s*\*\s*ALSetFXParam\s*\)\s*\([^;]+;', '/* Scrubbed ALSetFXParam */', content)
-            path.write_text(content)
-
-    # 2. Second Pass: Foolproof Struct Scrubber (Allows any whitespace formatting without touching nested braces)
+    # Pass 1: Handle C files and global scrubber
     for path in decomp.rglob("*.[ch]"):
         if path.name == "n64_types.h": continue
         try:
             content = path.read_text(errors='ignore')
             original = content
             
-            # UNCONDITIONAL INJECTION: Every C/C++ file gets the bridge!
-            if 'n64_types.h' not in content:
+            # Unconditionally inject the bridge
+            if '#include "n64_types.h"' not in content:
                 content = '#include "n64_types.h"\n' + content
                 
-            for ct in clash_types:
-                # [^{}]* ensures it only matches simple structs without nested braces, making it 100% safe
-                content = re.sub(r'typedef\s+struct\s*(?:[a-zA-Z0-9_]+\s*)?\{[^{}]*\}\s*' + ct + r'\s*;', f'/* Terminated {ct} */', content)
-                content = re.sub(r'typedef\s+union\s*(?:[a-zA-Z0-9_]+\s*)?\{[^{}]*\}\s*' + ct + r'\s*;', f'/* Terminated {ct} */', content)
-                
+            # Function pointer edge cases
+            if path.name in ["mem.h", "functions.h", "synthInternals.h"]:
+                content = re.sub(r'void\s+memcpy\s*\([^;]+;', '/* Scrubbed memcpy */;', content)
+                content = re.sub(r'void\s+memmove\s*\([^;]+;', '/* Scrubbed memmove */;', content)
+                content = re.sub(r'void\s*\*\s*malloc\s*\([^;]+;', '/* Scrubbed malloc */;', content)
+                content = re.sub(r'void\s*\*\s*realloc\s*\([^;]+;', '/* Scrubbed realloc */;', content)
+                content = re.sub(r'typedef\s+s32\s*\(\s*\*\s*ALSetFXParam\s*\)\s*\([^;]+;', '/* Scrubbed ALSetFXParam */', content)
+
+            # Apply AST Struct Scrubber
+            content = scrub_types_ast(content, clash_types)
+            
             if content != original:
                 path.write_text(content)
-        except: continue
+        except Exception:
+            continue
 
-    # 3. Apply to Android Wrapper Files
+    # Pass 2: Apply to Android Wrapper C++ Files
     android_cpp_dir = root / "Android" / "app" / "src" / "main" / "cpp"
     for path in android_cpp_dir.rglob("*.cpp"):
         try:
             content = path.read_text(errors='ignore')
             original = content
             content = content.replace('#include "tools/rare_decompression.h"', '#include "rare_decompression.h"')
-            for ct in clash_types:
-                content = re.sub(r'typedef\s+struct\s*(?:[a-zA-Z0-9_]+\s*)?\{[^{}]*\}\s*' + ct + r'\s*;', f'/* Scrubbed {ct} */', content)
+            content = scrub_types_ast(content, clash_types)
             if content != original:
                 path.write_text(content)
-        except: pass
+        except Exception:
+            pass
 
-    print("--- Foolproof Scrubber Complete. Run Ninja! ---")
+    print("--- AST Scrubber Complete. Run Ninja! ---")
 
 if __name__ == "__main__":
     deploy_dynamic_patch()
