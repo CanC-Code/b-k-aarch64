@@ -79,8 +79,31 @@ typedef struct ALWaveTable_s {
     u8 *base; u32 len; u8 type, flags;
 } ALWaveTable;
 
-typedef struct { uint8_t d[32]; } ALEnvelope;
-typedef struct { uint8_t d[32]; } ALKeyMap;
+// FIXED: Fully mapped ALEnvelope
+typedef struct {
+    ALMicroTime attackTime;
+    ALMicroTime decayTime;
+    ALMicroTime releaseTime;
+    u8 attackVolume;
+    u8 decayVolume;
+} ALEnvelope;
+
+// FIXED: Fully mapped ALKeyMap
+typedef struct {
+    u8 velocityMin;
+    u8 velocityMax;
+    u8 keyMin;
+    u8 keyMax;
+    u8 keyBase;
+    s8 detune;
+} ALKeyMap;
+
+// FIXED: Added ALVoiceConfig for hardware allocation
+typedef struct {
+    s16 priority;
+    s16 fxBus;
+    u8 unityPitch;
+} ALVoiceConfig;
 
 typedef struct { ALWaveTable *wavetable; u8 flags; ALEnvelope *envelope; ALKeyMap *keyMap; } ALSound;
 typedef struct { s16 soundCount; u8 flags; ALSound *soundArray[1]; } ALInstrument;
@@ -102,7 +125,6 @@ typedef struct {
 
 struct ALVoiceState_s;
 
-// FIXED: Added ALMIDIEvent struct type and sppriority for voice stealing
 typedef struct { u8 status, byte1, byte2, duration; s32 ticks; } ALMIDIEvent;
 
 typedef struct {
@@ -132,7 +154,8 @@ typedef struct {
     OSMesgQueue msgQ; OSMesg msg;
 } ALEventQueue;
 
-typedef struct { u16 vol; u8 pan; u8 priority; u8 fxmix; u8 unkA; u8 unkB; f32 pitchBend; u16 pad; } ALChanState;
+// FIXED: Added sustain property
+typedef struct { u16 vol; u8 pan; u8 priority; u8 fxmix; u8 sustain; u8 unkA; u8 unkB; f32 pitchBend; u16 pad; } ALChanState;
 typedef ALChanState N_ALChanState;
 
 typedef struct ALVoice_s {
@@ -141,14 +164,15 @@ typedef struct ALVoice_s {
 } ALVoice;
 typedef ALVoice N_ALVoice;
 
+// FIXED: Added channel and phase state trackers
 typedef struct ALVoiceState_s {
     struct ALVoiceState_s *next;
     ALVoice voice; ALWaveTable *table; void *clientPrivate;
     s16 state; s16 priority; s16 fxBus; s16 pan; ALSound *sound; 
-    u8 flags; u8 envPhase; ALMicroTime envEndTime; s16 envGain;
+    u8 flags; u8 envPhase; u8 phase; u8 channel; ALMicroTime envEndTime; s16 envGain;
     u8 tremelo; f32 vibrato; f32 pitch;
 } ALVoiceState;
-typedef ALVoiceState N_ALVoiceState; // FIXED: Added N_ALVoiceState alias
+typedef ALVoiceState N_ALVoiceState;
 
 typedef struct ALFilter_s {
     struct ALFilter_s *source;
@@ -228,8 +252,16 @@ extern ALGlobals_t *alGlobals;
 #define AL_RAW16_WAVE 1
 #define UNITY_PITCH 0x8000
 
+// FIXED: Added remaining ADSR phases and macros
 #define AL_PHASE_ATTACK 0
 #define AL_PHASE_DECAY 1
+#define AL_PHASE_SUSTAIN 2
+#define AL_PHASE_RELEASE 3
+#define AL_PHASE_NOTEON 4
+
+#define AL_SUSTAIN 63
+#define NO_SOUND_ERR_MASK 0x01
+#define NO_VOICE_ERR_MASK 0x02
 
 #define A_INIT 1
 #define A_CONTINUE 0
@@ -251,7 +283,6 @@ extern ALGlobals_t *alGlobals;
 #define AL_AUX_L_OUT 0
 #define AL_AUX_R_OUT 0
 
-// FIXED: Sequence Player stop/playing states
 #define AL_STOPPED 0
 #define AL_PLAYING 1
 #define AL_STOPPING 2
@@ -263,7 +294,6 @@ extern ALGlobals_t *alGlobals;
 #define AL_FX_FLANGE 4
 #define AL_FX_CUSTOM 5
 
-// FIXED: Added missing event constants
 #define AL_SEQ_MIDI_EVT 1
 #define AL_SEQP_MIDI_EVT 2
 #define AL_TEMPO_EVT 5
@@ -291,8 +321,9 @@ extern ALGlobals_t *alGlobals;
 #define AL_CMIDI_LOOPSTART_CODE 0x2E
 #define AL_CMIDI_LOOPEND_CODE 0x2D
 
-// FIXED: Missing MIDI masks/commands
+// FIXED: Added AL_MIDI_ChannelMask
 #define AL_MIDI_StatusMask 0x80
+#define AL_MIDI_ChannelMask 0x0F
 #define AL_MIDI_NoteOff 0x80
 #define AL_MIDI_NoteOn 0x90
 #define AL_MIDI_PolyKeyPressure 0xA0
@@ -303,7 +334,6 @@ extern ALGlobals_t *alGlobals;
 #define AL_MIDI_PitchBendChange 0xE0
 #define AL_MIDI_Meta 0xFF
 
-// Missing FX Reference macro hook
 #define ALFxRef void*
 
 #define AL_TRACK_END 0x2F
@@ -316,12 +346,12 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_midi_director():
+def deploy_midi_note_allocator():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v128.0] DEPLOYING MIDI DIRECTOR ---")
+    print("--- [v129.0] DEPLOYING MIDI NOTE ALLOCATOR ---")
     
     bridge_path = include_dir / "n64_types.h"
     bridge_path.write_text(BRIDGE_CONTENT)
@@ -334,14 +364,14 @@ def deploy_midi_director():
     for h in toxic:
         p = include_dir / h
         if p.exists():
-            p.write_text("/* Terminated by v128.0 */\n")
+            p.write_text("/* Terminated by v129.0 */\n")
     
     clash_types = [
         "MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", 
         "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", 
         "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig",
         "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState",
-        "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState"
+        "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope"
     ]
 
     for path in decomp.rglob("*.[ch]"):
@@ -363,7 +393,7 @@ def deploy_midi_director():
                 path.write_text(content)
         except: continue
         
-    print("--- MIDI Director Deployed. Executing. ---")
+    print("--- MIDI Note Allocator Deployed. Executing. ---")
 
 if __name__ == "__main__":
-    deploy_midi_director()
+    deploy_midi_note_allocator()
