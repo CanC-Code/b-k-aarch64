@@ -206,15 +206,13 @@ def harvest_n64_macros(pr_dir: Path):
     for h_file in pr_dir.glob("*.h"):
         try:
             content = h_file.read_text(errors='ignore')
-            # Extract anything that looks like a define, but we already have the core ones protected above
             matches = re.findall(r'^\s*#define\s+([A-Za-z0-9_]+)\s+([^\\\n]+)$', content, re.MULTILINE)
-            
             for name, val in matches:
                 if name.startswith('_') or "SCHED" in name or name in harvested or name in bad_macros or val.strip().startswith('N_'):
                     continue
                 harvested.add(name)
                 output += f"#define {name} {val.strip()}\n"
-        except Exception as e:
+        except Exception:
             pass
             
     output += "\n// --- BLOCKING SDK MACROS ---\n"
@@ -230,7 +228,7 @@ def deploy_dynamic_patch():
     include_dir = decomp / "include"
     pr_folder = include_dir / "2.0L" / "PR"
     
-    print("--- [v156.0] RUNNING BULLETPROOF HARVESTER ---")
+    print("--- [v157.0] RUNNING FOOLPROOF SCRUBBER ---")
     
     dynamic_macros = harvest_n64_macros(pr_folder)
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT + dynamic_macros)
@@ -253,41 +251,40 @@ def deploy_dynamic_patch():
         if p.exists():
             p.write_text("/* Blocked */\n")
 
-    for f in ["core1/mem.h", "functions.h", "synthInternals.h"]:
-        p = include_dir / f
-        if p.exists():
-            content = p.read_text(errors='ignore')
+    clash_types = ["MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad", "ALDelay", "ALResampler", "ALLowPass"]
+
+    # 1. First Pass: Scrub custom game memory functions globally
+    for path in decomp.rglob("*.h"):
+        if path.name in ["mem.h", "functions.h", "synthInternals.h"]:
+            content = path.read_text(errors='ignore')
             content = re.sub(r'void\s+memcpy\s*\([^;]+;', '/* Scrubbed memcpy */;', content)
             content = re.sub(r'void\s+memmove\s*\([^;]+;', '/* Scrubbed memmove */;', content)
             content = re.sub(r'void\s*\*\s*malloc\s*\([^;]+;', '/* Scrubbed malloc */;', content)
             content = re.sub(r'void\s*\*\s*realloc\s*\([^;]+;', '/* Scrubbed realloc */;', content)
-            content = re.sub(r'typedef\s+struct\s*\{[^}]*\}\s*ALDelay\s*;', '/* Scrubbed ALDelay */', content)
             content = re.sub(r'typedef\s+s32\s*\(\s*\*\s*ALSetFXParam\s*\)\s*\([^;]+;', '/* Scrubbed ALSetFXParam */', content)
-            # NEW: Scrub ALLowPass variants
-            content = re.sub(r'typedef\s+struct\s*\{[^}]*\}\s*ALLowPass\s*;', '/* Scrubbed ALLowPass */', content)
-            content = re.sub(r'typedef\s+struct\s*ALLowPass_s\s*\{[^}]*\}\s*ALLowPass\s*;', '/* Scrubbed ALLowPass */', content)
-            p.write_text(content)
+            path.write_text(content)
 
-    clash_types = ["MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr", "ALFx", "OSTask_t", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSErrorHandler", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad", "ALDelay", "ALResampler", "ALLowPass"]
-
+    # 2. Second Pass: Foolproof Struct Scrubber (Allows any whitespace formatting without touching nested braces)
     for path in decomp.rglob("*.[ch]"):
         if path.name == "n64_types.h": continue
         try:
             content = path.read_text(errors='ignore')
             original = content
             
-            if "#include" in content and 'n64_types.h' not in content:
+            # UNCONDITIONAL INJECTION: Every C/C++ file gets the bridge!
+            if 'n64_types.h' not in content:
                 content = '#include "n64_types.h"\n' + content
                 
             for ct in clash_types:
-                content = re.sub(r'typedef\s+struct\s*[a-zA-Z0-9_]*\s*\{[^}]*\}\s*' + ct + r'\s*;', f'/* Terminated {ct} */', content)
-                content = re.sub(r'typedef\s+struct\s*' + ct + r'_s\s*\{[^}]*\}\s*' + ct + r'\s*;', f'/* Terminated {ct} */', content)
-                content = re.sub(r'typedef\s+union\s*[a-zA-Z0-9_]*\s*\{[^}]*\}\s*' + ct + r'\s*;', f'/* Terminated {ct} */', content)
+                # [^{}]* ensures it only matches simple structs without nested braces, making it 100% safe
+                content = re.sub(r'typedef\s+struct\s*(?:[a-zA-Z0-9_]+\s*)?\{[^{}]*\}\s*' + ct + r'\s*;', f'/* Terminated {ct} */', content)
+                content = re.sub(r'typedef\s+union\s*(?:[a-zA-Z0-9_]+\s*)?\{[^{}]*\}\s*' + ct + r'\s*;', f'/* Terminated {ct} */', content)
                 
             if content != original:
                 path.write_text(content)
         except: continue
 
+    # 3. Apply to Android Wrapper Files
     android_cpp_dir = root / "Android" / "app" / "src" / "main" / "cpp"
     for path in android_cpp_dir.rglob("*.cpp"):
         try:
@@ -295,12 +292,12 @@ def deploy_dynamic_patch():
             original = content
             content = content.replace('#include "tools/rare_decompression.h"', '#include "rare_decompression.h"')
             for ct in clash_types:
-                content = re.sub(r'typedef\s+struct\s*[a-zA-Z0-9_]*\s*\{[^}]*\}\s*' + ct + r'\s*;', f'/* Scrubbed {ct} */', content)
+                content = re.sub(r'typedef\s+struct\s*(?:[a-zA-Z0-9_]+\s*)?\{[^{}]*\}\s*' + ct + r'\s*;', f'/* Scrubbed {ct} */', content)
             if content != original:
                 path.write_text(content)
         except: pass
 
-    print("--- Bulletproof Harvester Complete. Run Ninja! ---")
+    print("--- Foolproof Scrubber Complete. Run Ninja! ---")
 
 if __name__ == "__main__":
     deploy_dynamic_patch()
