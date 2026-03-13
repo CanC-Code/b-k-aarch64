@@ -6,18 +6,17 @@ BASE_BRIDGE_CONTENT = """
 #ifndef _N64_TYPES_H_
 #define _N64_TYPES_H_
 
-// 1. Force Modern System Headers (Android NDK)
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+#include <sched.h>
 
-// 2. N64 Primitive Types (64-bit safe mapping)
+// 1. Primitive N64 Types
 typedef int8_t   s8;  typedef uint8_t  u8;
 typedef int16_t  s16; typedef uint16_t u16;
 typedef int32_t  s32; typedef uint32_t u32;
@@ -30,13 +29,22 @@ typedef u32 OSPri;
 typedef u64 OSTime;
 typedef int16_t ADPCM_STATE[16];
 typedef int16_t RESAMPLE_STATE[16];
+typedef int32_t POLEF_STATE[4];
+typedef int32_t ENVMIX_STATE[4];
 
 #ifndef TRUE
   #define TRUE 1
   #define FALSE 0
 #endif
 
-// 3. Hardware Structs (64-bit overrides)
+// 2. Missing Graphics Types for gu.h / gbi.h
+typedef struct { uint8_t d[64]; } LookAt;
+typedef struct { uint8_t d[64]; } Hilite;
+typedef struct { uint8_t d[32]; } Light;
+typedef struct { uint8_t d[32]; } PositionalLight;
+typedef struct { uint8_t d[128]; } uSprite;
+
+// 3. Hardware Structs (64-bit safe overrides)
 typedef uint64_t Gfx;
 typedef struct { int32_t m[4][4]; } Mtx;
 typedef struct { float m[4][4]; } MtxF;
@@ -67,7 +75,7 @@ typedef ALDMAproc (*ALDMANew)(void *state);
 
 typedef u32 OSIntMask;
 
-// 4. THE BLOCKADE - Shut down legacy SDK headers immediately
+// 4. BLOCKADE - Prevent legacy headers from clashing
 #define _ULTRATYPES_H_
 #define __OS_H__
 #define _OS_THREAD_H_
@@ -86,6 +94,14 @@ typedef u32 OSIntMask;
 #define K0_TO_PHYS(x) ((u32)(uintptr_t)(x))
 static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t)vaddr; }
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+    static inline int sched_yield_compat(void) { return sched_yield(); }
+#if defined(__cplusplus)
+}
+#endif
+
 #endif // _N64_TYPES_H_
 """
 
@@ -95,47 +111,43 @@ def deploy_dynamic_patch():
     include_dir = decomp / "include"
     android_cpp_dir = root / "Android" / "app" / "src" / "main" / "cpp"
     
-    print("--- [v170.0] EXECUTING NUCLEAR HEADER REDIRECTION ---")
+    print("--- [v171.0] DEPLOYING ENGINE RESTORATION BRIDGE ---")
     
-    # 1. Write the Master Bridge
+    # 1. Write Bridge
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT)
 
-    # 2. DELETE local legacy headers that sabotage modern NDK builds
-    colliding_headers = [
-        "stdarg.h", "string.h", "math.h", "stdio.h", 
-        "stdlib.h", "time.h", "bool.h", "basic_types.h", "assert.h"
-    ]
-    for h in colliding_headers:
-        p = include_dir / h
-        if p.exists():
-            print(f"Purging: {h}")
-            p.unlink()
+    # 2. Fix the bool.h dependency
+    bool_h = include_dir / "bool.h"
+    bool_h.write_text("#ifndef _BOOL_H_\\n#define _BOOL_H_\\n#include <stdbool.h>\\n#endif\\n")
 
-    # 3. Global Code Patching (Redefinition Scrub)
-    clash_types = {"Gfx", "Acmd", "OSTask_t", "MtxF", "Mtx", "Vtx", "BoneTransform", "BoneTransformList", "VLA", "FLA", "OSLog", "OSRegion", "RamRomBuffer", "OSThread", "OSMesgQueue", "OSContPad", "OSThread_s", "OSPiHandle", "OSIoMesg"}
+    # 3. Patch VLA redefinition in vla.h
+    vla_h = include_dir / "core2" / "vla.h"
+    if vla_h.exists():
+        content = vla_h.read_text()
+        content = content.replace("typedef struct variable_length_array", "/* Redefined in bridge */ //")
+        vla_h.write_text(content)
 
-    search_dirs = [decomp, android_cpp_dir]
-    for d in search_dirs:
-        for path in d.rglob("*.[ch]*"):
-            if path.name == "n64_types.h": continue
-            try:
-                content = path.read_text(errors='ignore')
-                original = content
+    # 4. Global Redirection
+    for path in list(decomp.rglob("*.[ch]")) + list(android_cpp_dir.rglob("*.[ch]pp")):
+        if path.name == "n64_types.h": continue
+        try:
+            content = path.read_text(errors='ignore')
+            original = content
+            
+            # Inject bridge
+            if '#include "n64_types.h"' not in content:
+                content = '#include "n64_types.h"\\n' + content
                 
-                # Fix Decompression Path
-                if '#include "tools/rare_decompression.h"' in content:
-                    content = content.replace('#include "tools/rare_decompression.h"', '#include "rare_decompression.h"')
+            # Final touch fixes
+            content = content.replace("typedef int bool;", "//")
+            content = content.replace("sched_yield()", "sched_yield_compat()")
+            content = content.replace('#include "tools/rare_decompression.h"', '#include "rare_decompression.h"')
 
-                # Scrub legacy struct blocks via Regex
-                for ct in clash_types:
-                    content = re.sub(r'typedef\s+struct\s+' + ct + r'\s*\{[^}]*\}\s*' + ct + r'\s*;', f'/* Purged {ct} */', content)
-                    content = re.sub(r'typedef\s+struct\s+' + ct + r'_s\s*\{[^}]*\}\s*' + ct + r'\s*;', f'/* Purged {ct} */', content)
+            if content != original:
+                path.write_text(content)
+        except Exception: continue
 
-                if content != original:
-                    path.write_text(content)
-            except Exception: continue
-
-    print("--- System Sanitized. Run Ninja! ---")
+    print("--- Engine Restored. Run Ninja! ---")
 
 if __name__ == "__main__":
     deploy_dynamic_patch()
