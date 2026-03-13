@@ -92,14 +92,33 @@ typedef ALVoice N_ALVoice;
 typedef struct ALVoiceState_s { struct ALVoiceState_s *next; ALVoice voice; ALWaveTable *table; void *clientPrivate; s16 state; s16 priority; s16 fxBus; s16 pan; ALSound *sound; u8 flags; u8 envPhase; u8 phase; u8 channel; u8 velocity; ALMicroTime envEndTime; s16 envGain; u8 tremelo; f32 vibrato; f32 pitch; } ALVoiceState;
 typedef ALVoiceState N_ALVoiceState;
 
-// EXPANDED: DSP Structs with Custom BK Engine Fields
+// FIXED: DSP Structs
 typedef struct ALResampler_s { RESAMPLE_STATE *state; f32 delta; s32 first; s16 motion; f32 ratio; s32 upitch; void* ctrlList; void* ctrlTail; } ALResampler;
 typedef struct ALLowPass_s { POLEF_STATE *fstate; s16 fc; s16 fgain; s16 first; struct { s16 fccoef[16]; } fcvec; } ALLowPass;
-typedef struct { s32 input; s32 output; s16 fbcoef; s16 ffcoef; s16 gain; f32 mute; f32 vol; f32 rsinc; f32 rsgain; f32 rsval; f32 rsdelta; ALResampler *rs; ALLowPass *lp; } ALDelay;
+
+// rsdelta is now an s32 to allow array indexing
+typedef struct { s32 input; s32 output; s16 fbcoef; s16 ffcoef; s16 gain; f32 mute; f32 vol; f32 rsinc; f32 rsgain; f32 rsval; s32 rsdelta; ALResampler *rs; ALLowPass *lp; } ALDelay;
 
 typedef s32 (*ALSetFXParam)(void *filter, s32 paramID, void *param);
-typedef struct ALFilter_s { struct ALFilter_s *source; void* (*handler)(struct ALFilter_s *filter, s16 *outp, s32 outLen, s32 sampleOffset, void *p); void (*setParam)(struct ALFilter_s *filter, s32 paramID, void *param); s16 type; s16 inp; s16 outp; s32 count; ALSetFXParam paramHdl; u8 section_count; u32 length; ALDelay *delay; s16 *base; s16 *input; } ALFilter;
-typedef ALFilter ALFx;
+
+// Filter is decoupled from Fx
+typedef struct ALFilter_s { 
+    struct ALFilter_s *source; 
+    void* (*handler)(struct ALFilter_s *filter, s16 *outp, s32 outLen, s32 sampleOffset, void *p); 
+    void (*setParam)(struct ALFilter_s *filter, s32 paramID, void *param); 
+    s16 type; s16 inp; s16 outp; s32 count; 
+} ALFilter;
+
+// Fx is a struct containing a Filter
+typedef struct {
+    ALFilter filter;
+    ALSetFXParam paramHdl;
+    u8 section_count;
+    u32 length;
+    ALDelay *delay;
+    s16 *base;
+    s16 *input;
+} ALFx;
 
 typedef struct { ALFilter filter; s32 sourceCount; s32 maxSources; ALFilter **sources; } ALMainBus;
 typedef struct { ALFilter filter; s32 sourceCount; s32 maxSources; ALFilter **sources; ALFx *fx; } ALAuxBus;
@@ -124,7 +143,7 @@ typedef u32 OSIntMask;
 extern "C" int sched_yield(void);
 #endif
 
-// 4. Core Audio Constants (Bulletproofed)
+// 4. Core Audio Constants
 #define AL_ADPCM_WAVE 0
 #define AL_RAW16_WAVE 1
 #define AL_BANK_VERSION 0x424c
@@ -167,6 +186,20 @@ extern "C" int sched_yield(void);
 #define AL_SEQP_PROG_EVT 113
 #define AL_SEQP_META_EVT 114
 #define AL_SEQP_STOPPING_EVT 115
+
+// NEW: CSPlayer Enums
+#define AL_SEQP_API_EVT 120
+#define AL_SEQ_REF_EVT 121
+#define AL_NOTE_END_EVT 122
+#define AL_SEQP_ENV_EVT 123
+#define AL_TREM_OSC_EVT 124
+#define AL_VIB_OSC_EVT 125
+#define AL_CSP_NOTEOFF_EVT 126
+#define AL_SEQP_PRIORITY_EVT 127
+#define AL_MIDI_StatusMask 0xF0
+#define AL_MIDI_ChannelMask 0x0F
+typedef void* ALFxRef;
+
 #define AL_CMIDI_LOOPSTART_CODE 102
 #define AL_CMIDI_LOOPEND_CODE 103
 #define AL_CMIDI_BLOCK_CODE 104
@@ -198,7 +231,7 @@ def harvest_n64_macros(pr_dir: Path):
     
     bad_macros = {
         "ALGlobals", "ALSynth", "ALSeqPlayer", "ALVoice", "ALVoiceState", 
-        "ALEvent", "ALCSeq", "ALHeap", "ALWaveTable", "ALFilter", "ALMainBus"
+        "ALEvent", "ALCSeq", "ALHeap", "ALWaveTable", "ALFilter", "ALMainBus", "ALFx"
     }
     
     if not pr_dir.exists():
@@ -271,7 +304,7 @@ def deploy_dynamic_patch():
     include_dir = decomp / "include"
     pr_folder = include_dir / "2.0L" / "PR"
     
-    print("--- [v159.0] RUNNING EXTENDED DSP AST SCRUBBER ---")
+    print("--- [v160.0] RUNNING FINAL AUDIO SCRUBBER ---")
     
     dynamic_macros = harvest_n64_macros(pr_folder)
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT + dynamic_macros)
@@ -341,7 +374,7 @@ def deploy_dynamic_patch():
         except Exception:
             pass
 
-    print("--- Extended DSP Scrubber Complete. Run Ninja! ---")
+    print("--- Final Audio Scrubber Complete. Run Ninja! ---")
 
 if __name__ == "__main__":
     deploy_dynamic_patch()
