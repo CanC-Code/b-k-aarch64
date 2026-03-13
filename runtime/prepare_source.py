@@ -79,65 +79,34 @@ typedef struct ALWaveTable_s {
     u8 *base; u32 len; u8 type, flags;
 } ALWaveTable;
 
-typedef struct {
-    ALMicroTime attackTime;
-    ALMicroTime decayTime;
-    ALMicroTime releaseTime;
-    u8 attackVolume;
-    u8 decayVolume;
-} ALEnvelope;
-
-typedef struct {
-    u8 velocityMin;
-    u8 velocityMax;
-    u8 keyMin;
-    u8 keyMax;
-    u8 keyBase;
-    s8 detune;
-} ALKeyMap;
-
-typedef struct {
-    s16 priority;
-    s16 fxBus;
-    u8 unityPitch;
-} ALVoiceConfig;
+typedef struct { ALMicroTime attackTime; ALMicroTime decayTime; ALMicroTime releaseTime; u8 attackVolume; u8 decayVolume; } ALEnvelope;
+typedef struct { u8 velocityMin; u8 velocityMax; u8 keyMin; u8 keyMax; u8 keyBase; s8 detune; } ALKeyMap;
+typedef struct { s16 priority; s16 fxBus; u8 unityPitch; } ALVoiceConfig;
 
 typedef struct { ALWaveTable *wavetable; u8 flags; ALEnvelope *envelope; ALKeyMap *keyMap; } ALSound;
-
-typedef struct { 
-    s16 soundCount; 
-    u8 flags; 
-    u8 tremType; u8 tremRate; u8 tremDepth; u8 tremDelay;
-    u8 vibType; u8 vibRate; u8 vibDepth; u8 vibDelay;
-    ALSound *soundArray[1]; 
-} ALInstrument;
-
+typedef struct { s16 soundCount; u8 flags; u8 tremType; u8 tremRate; u8 tremDepth; u8 tremDelay; u8 vibType; u8 vibRate; u8 vibDepth; u8 vibDelay; ALSound *soundArray[1]; } ALInstrument;
 typedef struct { u8 flags; s32 instCount; ALInstrument *percussion; ALInstrument *instArray[1]; } ALBank;
 typedef struct { s16 revision; s32 bankCount; ALBank *bankArray[1]; } ALBankFile;
 
 typedef struct { u8 *offset; s32 len; } ALSeqData;
 typedef struct { s16 seqCount; ALSeqData seqArray[1]; } ALSeqFile;
 
-// FIXED: Added ALSeq wrapper for ALCSeq
+// FIXED: Moved ALCMidiHdr ABOVE ALCSeq to fix 'unknown type name' error
+typedef struct { u32 division; s32 trackOffset[16]; } ALCMidiHdr;
+
 typedef struct {
     ALCMidiHdr *base; u32 validTracks; u32 lastDeltaTicks; u32 lastTicks; u32 deltaFlag;
     f32 qnpt; u8 *curLoc[16]; u8 *curBUPtr[16]; u32 curBULen[16]; u8 lastStatus[16]; u32 evtDeltaTicks[16];
 } ALCSeq;
 typedef ALCSeq ALSeq;
 
-typedef struct {
-    u32 validTracks; u32 lastTicks; u32 lastDeltaTicks; u8 *curLoc[16]; u8 *curBUPtr[16]; u32 curBULen[16]; u8 lastStatus[16]; u32 evtDeltaTicks[16];
-} ALCSeqMarker;
+typedef struct { u32 validTracks; u32 lastTicks; u32 lastDeltaTicks; u8 *curLoc[16]; u8 *curBUPtr[16]; u32 curBULen[16]; u8 lastStatus[16]; u32 evtDeltaTicks[16]; } ALCSeqMarker;
 typedef ALCSeqMarker ALSeqMarker;
 
 struct ALVoiceState_s;
-
 typedef struct { u8 status, byte1, byte2, duration; s32 ticks; } ALMIDIEvent;
-
-// FIXED: Tempo event len member
 typedef struct { u8 status, type, byte1, byte2, byte3; s32 ticks; u32 len; } ALTempoEvent;
 
-// FIXED: Loop payload
 typedef struct {
     s16 type; s32 ticks;
     union {
@@ -156,24 +125,14 @@ typedef struct {
     } msg;
 } ALEvent;
 
-typedef struct ALEventListItem_s {
-    ALLink node; ALMicroTime delta; ALEvent evt;
-} ALEventListItem;
-typedef ALEventListItem N_ALEventListItem; // FIXED: N_ALEventListItem
+typedef struct ALEventListItem_s { ALLink node; ALMicroTime delta; ALEvent evt; } ALEventListItem;
+typedef ALEventListItem N_ALEventListItem;
 
-typedef struct {
-    ALLink allocList; ALLink freeList;
-    s32 eventCount; s32 maxEventCount; ALMicroTime curTime;
-    OSMesgQueue msgQ; OSMesg msg;
-} ALEventQueue;
-
+typedef struct { ALLink allocList; ALLink freeList; s32 eventCount; s32 maxEventCount; ALMicroTime curTime; OSMesgQueue msgQ; OSMesg msg; } ALEventQueue;
 typedef struct { ALInstrument *instrument; s16 bendRange; u16 vol; u8 pan; u8 priority; u8 fxmix; u8 sustain; u8 unkA; u8 unkB; f32 pitchBend; u16 pad; } ALChanState;
 typedef ALChanState N_ALChanState;
 
-typedef struct ALVoice_s {
-    ALLink node; struct PVoice_s *pvoice; ALWaveTable *table; void *clientPrivate;
-    s16 state; s16 priority; s16 fxBus; s16 pan;
-} ALVoice;
+typedef struct ALVoice_s { ALLink node; struct PVoice_s *pvoice; ALWaveTable *table; void *clientPrivate; s16 state; s16 priority; s16 fxBus; s16 pan; } ALVoice;
 typedef ALVoice N_ALVoice;
 
 typedef struct ALVoiceState_s {
@@ -185,7 +144,6 @@ typedef struct ALVoiceState_s {
 } ALVoiceState;
 typedef ALVoiceState N_ALVoiceState;
 
-// FIXED: FX filter system
 typedef struct ALFilter_s {
     struct ALFilter_s *source;
     void* (*handler)(struct ALFilter_s *filter, s16 *outp, s32 outLen, s32 sampleOffset, void *p);
@@ -193,51 +151,20 @@ typedef struct ALFilter_s {
     s16 type; s16 inp; s16 outp; s32 count;
 } ALFilter;
 
+// DEFINITION: Unified ALFx
 typedef ALFilter ALFx;
 
-typedef struct { 
-    ALFilter filter; s32 sourceCount; s32 maxSources; ALFilter **sources;
-} ALMainBus;
-
-// FIXED: AuxBus wrapper
+typedef struct { ALFilter filter; s32 sourceCount; s32 maxSources; ALFilter **sources; } ALMainBus;
 typedef struct { ALFilter filter; s32 sourceCount; s32 maxSources; ALFilter **sources; ALFx *fx; } ALAuxBus;
 
-typedef struct {
-    ALLink head; s16 numVoices; s16 curVol; s16 curPan; s16 curPitch;
-    ALAuxBus *auxBus; ALMainBus *mainBus; void *filterList;
-    void *pFreeList; void *pAllocList; void *pLameList; void *paramList;
-    uint8_t pad[256];
-} ALSynth;
+typedef struct { ALLink head; s16 numVoices; s16 curVol; s16 curPan; s16 curPitch; ALAuxBus *auxBus; ALMainBus *mainBus; void *filterList; void *pFreeList; void *pAllocList; void *pLameList; void *paramList; uint8_t pad[256]; } ALSynth;
+typedef struct N_ALFilter_s { struct N_ALFilter_s *source; void* (*handler)(s32 sampleOffset, struct N_ALFilter_s *filter); s16 type; s16 inp; s16 outp; s32 count; } N_ALFilter;
+typedef struct { N_ALFilter filter; s32 sourceCount; s32 maxSources; N_ALFilter **sources; } N_ALMainBus;
+typedef struct { ALLink head; s16 numVoices; s16 curVol; s16 curPan; s16 curPitch; ALAuxBus *auxBus; N_ALMainBus *mainBus; void *filterList; void *pFreeList; void *pAllocList; void *pLameList; void *paramList; s32 outputRate; void* sv_dramout; uint8_t pad[256]; } N_ALSynth;
 
-typedef struct N_ALFilter_s {
-    struct N_ALFilter_s *source;
-    void* (*handler)(s32 sampleOffset, struct N_ALFilter_s *filter);
-    s16 type; s16 inp; s16 outp; s32 count;
-} N_ALFilter;
-
-typedef struct { 
-    N_ALFilter filter; s32 sourceCount; s32 maxSources; N_ALFilter **sources;
-} N_ALMainBus;
-
-// FIXED: Added outputRate and sv_dramout
-typedef struct {
-    ALLink head; s16 numVoices; s16 curVol; s16 curPan; s16 curPitch;
-    ALAuxBus *auxBus; N_ALMainBus *mainBus; void *filterList;
-    void *pFreeList; void *pAllocList; void *pLameList; void *paramList;
-    s32 outputRate; void* sv_dramout;
-    uint8_t pad[256];
-} N_ALSynth;
-
-typedef struct {
-    s32 maxVoices; s32 maxEvents; u8 maxChannels; u8 debugFlags; ALHeap *heap;
-    void* (*initOsc)(void**, f32*, u8, u8, u8, u8);
-    ALMicroTime (*updateOsc)(void*, f32*);
-    void (*stopOsc)(void*);
-} ALSeqpConfig;
-
+typedef struct { s32 maxVoices; s32 maxEvents; u8 maxChannels; u8 debugFlags; ALHeap *heap; void* (*initOsc)(void**, f32*, u8, u8, u8, u8); ALMicroTime (*updateOsc)(void*, f32*); void (*stopOsc)(void*); } ALSeqpConfig;
 typedef struct { s16 maxVVoices; s16 maxPVoices; s16 maxUpdates; s16 maxFXbusses; void* dmaproc; ALHeap* heap; s32 fxType; s32 outputRate; void* params; } ALSynConfig;
 
-// FIXED: Added missing loop parameters
 typedef struct {
     ALLink node; ALEvent nextEvent; ALEventQueue evtq; ALChanState *chanState; 
     ALSeq *target; ALMicroTime uspt; ALBank *bank; ALSynth *drvr;
@@ -256,7 +183,6 @@ typedef ALCSPlayer N_ALSeqPlayer;
 typedef ALCSPlayer N_ALCSPlayer;
 typedef ALEvent N_ALEvent;
 
-// FIXED: Global pointer definition
 typedef struct { N_ALSynth drvr; } ALGlobals;
 extern ALGlobals *alGlobals;
 
@@ -264,7 +190,6 @@ extern ALGlobals *alGlobals;
 #define AL_EVTQ_END 0x7FFFFFFF
 #define AL_USEC_PER_FRAME 16667
 #define MAX_RATIO 1.99996f
-
 #define ADPCMFBYTES 9
 #define LFSAMPLES 4
 #define ADPCMFSIZE 16
@@ -273,21 +198,17 @@ extern ALGlobals *alGlobals;
 #define AL_ADPCM_WAVE 0
 #define AL_RAW16_WAVE 1
 #define UNITY_PITCH 0x8000
-
 #define AL_PHASE_ATTACK 0
 #define AL_PHASE_DECAY 1
 #define AL_PHASE_SUSTAIN 2
 #define AL_PHASE_RELEASE 3
 #define AL_PHASE_NOTEON 4
 #define AL_PHASE_SUSTREL 5
-
 #define AL_SUSTAIN 63
 #define NO_SOUND_ERR_MASK 0x01
 #define NO_VOICE_ERR_MASK 0x02
 #define NOTE_OFF_ERR_MASK 0x04
-
 #define AL_VOL_FULL 127
-
 #define A_INIT 1
 #define A_CONTINUE 0
 #define A_RATE 0
@@ -306,23 +227,19 @@ extern ALGlobals *alGlobals;
 #define A_SAVEBUFF 3
 #define A_LOADADPCM 2
 #define A_POLEF 4
-
 #define AL_MAIN_L_OUT 0
 #define AL_MAIN_R_OUT 0
 #define AL_AUX_L_OUT 0
 #define AL_AUX_R_OUT 0
-
 #define AL_STOPPED 0
 #define AL_PLAYING 1
 #define AL_STOPPING 2
-
 #define AL_FX_SMALLROOM 0
 #define AL_FX_BIGROOM 1
 #define AL_FX_ECHO 2
 #define AL_FX_CHORUS 3
 #define AL_FX_FLANGE 4
 #define AL_FX_CUSTOM 5
-
 #define AL_SEQ_MIDI_EVT 1
 #define AL_SEQP_MIDI_EVT 2
 #define AL_TEMPO_EVT 5
@@ -346,11 +263,9 @@ extern ALGlobals *alGlobals;
 #define AL_CSP_NOTEOFF_EVT 23
 #define AL_SEQP_PRIORITY_EVT 24
 #define AL_SEQP_LOOP_EVT 25
-
 #define AL_CMIDI_BLOCK_CODE 0xFE
 #define AL_CMIDI_LOOPSTART_CODE 0x2E
 #define AL_CMIDI_LOOPEND_CODE 0x2D
-
 #define AL_MIDI_StatusMask 0x80
 #define AL_MIDI_ChannelMask 0x0F
 #define AL_MIDI_NoteOff 0x80
@@ -362,7 +277,6 @@ extern ALGlobals *alGlobals;
 #define AL_MIDI_ChannelPressure 0xD0
 #define AL_MIDI_PitchBendChange 0xE0
 #define AL_MIDI_Meta 0xFF
-
 #define AL_MIDI_VOLUME_CTRL 0x07
 #define AL_MIDI_PAN_CTRL 0x0A
 #define AL_MIDI_PRIORITY_CTRL 0x10
@@ -374,9 +288,7 @@ extern ALGlobals *alGlobals;
 #define AL_MIDI_FX_CTRL_3 0x17
 #define AL_MIDI_FX_CTRL_4 0x18
 #define AL_MIDI_FX_CTRL_5 0x19
-
 #define ALFxRef void*
-
 #define AL_TRACK_END 0x2F
 #define AL_MIDI_META_TEMPO 0x51
 #define AL_MIDI_META_EOT 0x2F
@@ -387,55 +299,46 @@ static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t
 #endif
 """
 
-def deploy_audio_rsp_patch():
+def deploy_unified_truth():
     root = Path.cwd().resolve()
     decomp = root / "decomp-files"
     include_dir = decomp / "include"
     
-    print("--- [v132.0] DEPLOYING AUDIO RSP PATCH ---")
+    print("--- [v133.0] DEPLOYING UNIFIED TRUTH ---")
     
     bridge_path = include_dir / "n64_types.h"
     bridge_path.write_text(BRIDGE_CONTENT)
 
-    toxic = [
-        "2.0L/PR/os.h", "2.0L/PR/gbi.h", "2.0L/PR/abi.h", "2.0L/PR/mbi.h", 
-        "2.0L/PR/gu.h", "2.0L/PR/sp.h", "2.0L/PR/ultratypes.h", 
-        "2.0L/PR/libaudio.h", "2.0L/PR/n_libaudio.h", "2.0L/PR/R4300.h", "bool.h"
-    ]
+    # Toxic header termination
+    toxic = ["2.0L/PR/os.h", "2.0L/PR/gbi.h", "2.0L/PR/abi.h", "2.0L/PR/mbi.h", "2.0L/PR/gu.h", "2.0L/PR/sp.h", "2.0L/PR/ultratypes.h", "2.0L/PR/libaudio.h", "2.0L/PR/n_libaudio.h", "2.0L/PR/R4300.h", "bool.h"]
     for h in toxic:
         p = include_dir / h
-        if p.exists():
-            p.write_text("/* Terminated by v132.0 */\n")
+        if p.exists(): p.write_text("/* Terminated by v133.0 */\\n")
     
-    clash_types = [
-        "MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", 
-        "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", 
-        "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig",
-        "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState",
-        "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope",
-        "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus"
-    ]
+    # NEW: Actively scrubbing synthInternals.h to prevent ALFx conflict
+    synth_int = include_dir / "synthInternals.h"
+    if synth_int.exists():
+        content = synth_int.read_text(errors='ignore')
+        # Scrub original ALFx typedef
+        content = re.sub(r'typedef\s+struct\s*ALFx_s\s*\{[^}]*\}\s*ALFx\s*;', '/* Scrubbed ALFx */', content)
+        synth_int.write_text(content)
+
+    clash_types = ["MtxF", "Mtx", "Vtx", "ALEvent", "ALCSeq", "ALCSPlayer", "ALCSeqMarker", "ALHeap", "ALWaveTable", "ALSynth", "ALEventQueue", "ALEventListItem", "ALVoice", "ALVoiceState", "ALSeqPlayer", "ALADPCMBook", "ALSeqpConfig", "N_ALEvent", "N_ALVoice", "ALFilter", "ALMainBus", "ALChanState", "N_ALChanState", "N_ALFilter", "N_ALMainBus", "N_ALSynth", "N_ALVoiceState", "ALKeyMap", "ALEnvelope", "ALInstrument", "ALTempoEvent", "ALSeq", "ALSeqMarker", "N_ALEventListItem", "ALAuxBus", "ALCMidiHdr"]
 
     for path in decomp.rglob("*.[ch]"):
         if path.name == "n64_types.h": continue
         try:
             content = path.read_text(errors='ignore')
             original = content
-
             for ct in clash_types:
                 content = re.sub(r'typedef\s+struct\s*[a-zA-Z0-9_]*\s*\{[^}]*\}\s*' + ct + r'\s*;', f'/* Terminated {ct} */', content)
-
             content = content.replace("typedef int bool;", "/* Terminated */")
-            content = content.replace("typedef char bool;", "/* Terminated */")
             content = content.replace("evt.midi", "evt.msg.midi")
-            content = content.replace("evt.unk18", "evt.msg.unk18")
             content = re.sub(r'\(u32\)\s*(&?\w+(?:->|\.)?\w*)', r'(u32)(uintptr_t)\1', content)
-
-            if content != original:
-                path.write_text(content)
+            if content != original: path.write_text(content)
         except: continue
         
-    print("--- Audio RSP Patch Deployed. Executing. ---")
+    print("--- Unified Truth Deployed. Triggering Build. ---")
 
 if __name__ == "__main__":
-    deploy_audio_rsp_patch()
+    deploy_unified_truth()
