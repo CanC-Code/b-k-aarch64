@@ -2,7 +2,7 @@ import os
 import re
 from pathlib import Path
 
-# THE ATOMIC BRIDGE: The absolute source of truth
+# THE ATOMIC BRIDGE: Define everything at the absolute top
 BASE_BRIDGE_CONTENT = r"""
 #ifndef _N64_TYPES_H_
 #define _N64_TYPES_H_
@@ -18,11 +18,12 @@ typedef int64_t  s64; typedef uint64_t u64;
 typedef float    f32; typedef double   f64;
 typedef uint8_t  uchar; typedef volatile uint32_t vu32;
 
-typedef uint64_t Gfx;
-typedef struct { int32_t m[4][4]; } Mtx;
-typedef struct { float m[4][4]; } MtxF;
-typedef struct { int16_t ob[3]; uint16_t flag; int16_t tc[2]; uint8_t cn[4]; } Vtx_t;
-typedef union { Vtx_t v; long long force_align; } Vtx;
+typedef s32 OSPri;
+typedef s32 OSId;
+typedef void* OSTask;
+typedef void* ALHeap;
+typedef void* OSMesg;
+typedef struct { void* mt; void* full; int32_t count; } OSMesgQueue;
 
 typedef struct { uint32_t status; uint32_t pc; uint64_t regs[32]; } OSContext;
 typedef struct OSThread_s {
@@ -32,10 +33,13 @@ typedef struct OSThread_s {
     uint8_t           stack_padding[128];
 } OSThread;
 
-typedef void* OSMesg;
-typedef struct { void* mt; void* full; int32_t count; } OSMesgQueue;
+typedef uint64_t Gfx;
+typedef struct { int32_t m[4][4]; } Mtx;
+typedef struct { float m[4][4]; } MtxF;
+typedef struct { int16_t ob[3]; uint16_t flag; int16_t tc[2]; uint8_t cn[4]; } Vtx_t;
+typedef union { Vtx_t v; long long force_align; } Vtx;
 
-/** 2. SYSTEM INCLUDES - Forced first **/
+/** 2. SYSTEM INCLUDES - Load these SECOND **/
 #ifdef __cplusplus
   #include <cstring>
   #include <cstdlib>
@@ -50,9 +54,8 @@ typedef struct { void* mt; void* full; int32_t count; } OSMesgQueue;
   #include <time.h>
   #include <sched.h>
 #endif
-    static inline int sched_yield_compat(void) { return sched_yield(); }
 
-// Redirect bcopy to memmove to fix the Android macro conflict
+// Redirect bcopy to fix Android macro conflict
 #undef bcopy
 #define bcopy(src, dst, n) memmove(dst, src, n)
 
@@ -65,10 +68,7 @@ typedef struct { void* mt; void* full; int32_t count; } OSMesgQueue;
 #define _OS_MESSAGE_H_
 #define _OS_LIBC_H_
 #define _BOOL_H_
-
-typedef void* ALHeap;
-typedef void* OSTask;
-typedef struct ALGlobals_s { uint8_t d[1024]; } ALGlobals;
+#define _SCHED_H_
 
 #ifdef __cplusplus
   }
@@ -82,13 +82,13 @@ typedef struct ALGlobals_s { uint8_t d[1024]; } ALGlobals;
 #endif // _N64_TYPES_H_
 """
 
-def deploy_nuclear_neutralization():
+def deploy_surgical_isolation():
     root = Path.cwd().resolve()
     include_dir = root / "decomp-files" / "include"
     
-    print("--- [v195.0] DEPLOYING NUCLEAR NEUTRALIZATION ---")
+    print("--- [v196.0] DEPLOYING SURGICAL ISOLATION ---")
     
-    # 1. Physical Shadow Protection
+    # 1. Neutralize Clashing Headers (Shadowing protection)
     clashes = ["string.h", "bool.h", "time.h", "sched.h"]
     for c in clashes:
         p = include_dir / c
@@ -96,43 +96,27 @@ def deploy_nuclear_neutralization():
             new_p = include_dir / f"n64_sys_{c}"
             p.rename(new_p)
 
-    # 2. Deploy Bridge
+    # 2. Deploy updated bridge
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT)
 
-    # 3. SURGICAL PURGE: Neutralize the legacy SDK headers that cause loops
+    # 3. SURGICAL PURGE: Neutralize the legacy SDK headers causing redefinition loops
     legacy_pr = include_dir / "2.0L" / "PR"
-    neutralize_list = [
-        "os_thread.h", "os_message.h", "os_libc.h", "gbi.h", 
-        "mbi.h", "sptask.h", "libaudio.h", "ultra64.h"
-    ]
+    neutralize_list = ["os_thread.h", "os_message.h", "os_libc.h", "gbi.h", "ultra64.h", "sched.h"]
     
     for header in neutralize_list:
         p = legacy_pr / header
         if not p.exists(): p = include_dir / "2.0L" / header
         if p.exists():
-            print(f"Neutralizing legacy SDK: {p.name}")
             p.write_text("#include \"n64_types.h\"\n")
 
-    # 4. Source Surgery: exceptasm.cpp (Remove internal definition)
-    asm_cpp = root / "Android/app/src/main/cpp/ultra/exceptasm.cpp"
-    if asm_cpp.exists():
-        text = asm_cpp.read_text()
-        text = re.sub(r'typedef struct OSThread_s\s*\{.*?\}\s*OSThread\s*;', '/* Bridge Defined */', text, flags=re.DOTALL)
-        asm_cpp.write_text(text)
-
-    # 5. Fix NativeBridge alGlobals
-    nb_cpp = root / "Android/app/src/main/cpp/ultra/NativeBridge.cpp"
-    if nb_cpp.exists():
-        text = nb_cpp.read_text().replace('void *alGlobals = NULL;', 'ALGlobals *alGlobals = nullptr;')
-        nb_cpp.write_text(text)
-
-    # 6. Global sched_yield swap
+    # 4. Global Path Repair: Fixes decompression.h error
     for path in root.rglob("*.[ch]*"):
         try:
             content = path.read_text(errors='ignore')
-            if "sched_yield()" in content:
-                path.write_text(content.replace("sched_yield()", "sched_yield_compat()"))
+            new_content = content.replace('#include "tools/rare_decompression.h"', '#include "rare_decompression.h"')
+            if content != new_content:
+                path.write_text(new_content)
         except: continue
 
 if __name__ == "__main__":
-    deploy_nuclear_neutralization()
+    deploy_surgical_isolation()
