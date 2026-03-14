@@ -2,7 +2,7 @@ import os
 import re
 from pathlib import Path
 
-# THE ATOMIC BRIDGE: The single source of truth for N64 types on Android.
+# THE ATOMIC BRIDGE: The single source of truth.
 BASE_BRIDGE_CONTENT = r"""
 #ifndef _N64_TYPES_H_
 #define _N64_TYPES_H_
@@ -18,7 +18,7 @@ typedef int64_t  s64; typedef uint64_t u64;
 typedef float    f32; typedef double   f64;
 typedef uint8_t  uchar; typedef volatile uint32_t vu32;
 
-/** 2. ANATOMICAL MOCKS - Real members for the engine logic **/
+/** 2. ANATOMICAL MOCKS **/
 typedef struct { uint32_t status; uint32_t pc; uint64_t regs[32]; } OSContext;
 typedef struct OSThread_s {
     struct OSThread_s *next;
@@ -42,7 +42,19 @@ typedef union { Vtx_t v; long long force_align; } Vtx;
 #define TUPLE_PAIR(type, name) type name[2][3]
 #define FREE_LIST(type) struct { struct type *head; int32_t count; }
 
-/** 4. SYSTEM & BLOCKADE **/
+/** 4. THE BLOCKADE **/
+// This prevents the legacy NDK-clashing headers from ever being read
+#define _ULTRATYPES_H_
+#define _ULTRA64_H_
+#define _GBI_H_
+#define _OS_H_
+#define _OS_THREAD_H_
+#define _OS_MESSAGE_H_
+#define _OS_LIBC_H_
+#define _BOOL_H_
+#define _TIME_H_
+#define _SCHED_H_
+
 #ifdef __cplusplus
   #include <cstring>
   #include <cstdlib>
@@ -58,18 +70,6 @@ typedef union { Vtx_t v; long long force_align; } Vtx;
   #include <sched.h>
 #endif
     static inline int sched_yield_compat(void) { return sched_yield(); }
-
-// These macros prevent the legacy N64 SDK from loading its clashing versions
-#define _ULTRATYPES_H_
-#define _ULTRA64_H_
-#define _GBI_H_
-#define _OS_H_
-#define _OS_THREAD_H_
-#define _OS_MESSAGE_H_
-#define _OS_LIBC_H_
-#define _BOOL_H_
-#define _TIME_H_
-#define _SCHED_H_
 
 typedef void* ALHeap;
 typedef void* OSTask;
@@ -91,36 +91,43 @@ def deploy_isolation():
     root = Path.cwd().resolve()
     include_dir = root / "decomp-files" / "include"
     
-    print("--- [v187.0] DEPLOYING TOTAL ISOLATION ---")
+    print("--- [v188.0] DEPLOYING TOTAL ISOLATION ---")
     
-    # 1. Physically rename clashing headers to stop shadowing system libraries
+    # 1. Rename clashing headers to stop shadowing system libraries
     clashes = ["string.h", "bool.h", "time.h", "sched.h"]
     for c in clashes:
         p = include_dir / c
         if p.exists():
             new_p = include_dir / f"n64_sys_{c}"
-            print(f"Neutralizing {c} -> {new_p.name}")
             p.rename(new_p)
 
-    # 2. Deploy the isolated bridge
+    # 2. Deploy the new bridge
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT)
 
-    # 3. Patch NativeBridge.cpp (Fix lang linkage and nullptr)
-    nb_cpp = root / "Android/app/src/main/cpp/ultra/NativeBridge.cpp"
-    if nb_cpp.exists():
-        text = nb_cpp.read_text()
-        text = text.replace('ALGlobals *alGlobals = NULL;', 'ALGlobals *alGlobals = nullptr;')
-        nb_cpp.write_text(text)
+    # 3. Patch exceptasm.cpp (Remove redefinition and fix pointers)
+    asm_cpp = root / "Android/app/src/main/cpp/ultra/exceptasm.cpp"
+    if asm_cpp.exists():
+        text = asm_cpp.read_text()
+        text = re.sub(r'typedef struct OSThread_s\s*\{.*?\}\s*OSThread\s*;', '/* Bridge-defined */', text, flags=re.DOTALL)
+        text = text.replace('NULL', 'nullptr')
+        asm_cpp.write_text(text)
 
-    # 4. Global sched_yield swap
+    # 4. Global Cleanup
     for path in root.rglob("*.[ch]*"):
         if "n64_types.h" in str(path): continue
         try:
             content = path.read_text(errors='ignore')
+            changed = False
+            # Fix sched_yield
             if "sched_yield()" in content:
-                path.write_text(content.replace("sched_yield()", "sched_yield_compat()"))
+                content = content.replace("sched_yield()", "sched_yield_compat()")
+                changed = True
+            # Fix decompression path
             if 'tools/rare_decompression.h' in content:
-                path.write_text(content.replace('tools/rare_decompression.h', 'rare_decompression.h'))
+                content = content.replace('tools/rare_decompression.h', 'rare_decompression.h')
+                changed = True
+            if changed:
+                path.write_text(content)
         except: continue
 
 if __name__ == "__main__":
