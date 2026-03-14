@@ -2,7 +2,7 @@ import os
 import re
 from pathlib import Path
 
-# THE ANATOMICAL BRIDGE: Provides real members so logic doesn't break.
+# Updated Bridge with Macro Support and C++ safety
 BASE_BRIDGE_CONTENT = r"""
 #ifndef _N64_TYPES_H_
 #define _N64_TYPES_H_
@@ -10,7 +10,15 @@ BASE_BRIDGE_CONTENT = r"""
 #include <stdint.h>
 #include <stddef.h>
 
-/** 1. N64 PRIMITIVES **/
+/** 1. C++ BOOL SAFETY **/
+#ifdef __cplusplus
+  #include <stdbool.h>
+#else
+  typedef uint8_t bool;
+#endif
+#define _BOOL_H_ // Block project bool.h
+
+/** 2. N64 PRIMITIVES **/
 typedef int8_t   s8;  typedef uint8_t  u8;
 typedef int16_t  s16; typedef uint16_t u16;
 typedef int32_t  s32; typedef uint32_t u32;
@@ -18,53 +26,30 @@ typedef int64_t  s64; typedef uint64_t u64;
 typedef float    f32; typedef double   f64;
 typedef uint8_t  uchar; typedef volatile uint32_t vu32;
 
-/** 2. ANATOMICAL MOCKS - Replacing byte arrays with real members **/
+/** 3. PROJECT MACROS (The 'FREE_LIST' and 'PAIR' fixes) **/
+#define PAIR(type, name) type name[2]
+#define TUPLE(type, name) type name[3]
+#define TUPLE_PAIR(type, name) type name[2][3]
+#define FREE_LIST(type) struct { type *head; int32_t count; }
+
+/** 4. ANATOMICAL MOCKS **/
 typedef struct OSThread_s {
     struct OSThread_s *next;
     int32_t           priority;
-    struct {
-        uint32_t status;
-        uint32_t pc;
-        uint64_t regs[32];
-    } context;
-    uint8_t           stack_padding[128];
+    struct { uint32_t status; uint32_t pc; uint64_t regs[32]; } context;
 } OSThread;
 
 typedef void* OSMesg;
-typedef struct OSMesgQueue_s {
-    void* mt;
-    void* full;
-    int32_t count;
-} OSMesgQueue;
-
-typedef struct {
-    uint16_t button;
-    int8_t   stick_x;
-    int8_t   stick_y;
-    uint8_t  errno;
-} OSContPad;
-
-typedef uint32_t OSId;
-typedef uint32_t OSPri;
-typedef uint64_t OSTime;
+typedef struct { void* mt; void* full; int32_t count; } OSMesgQueue;
 typedef uint64_t Gfx;
 typedef struct { int32_t m[4][4]; } Mtx;
 typedef struct { float m[4][4]; } MtxF;
-typedef struct { int16_t ob[3]; uint16_t flag; int16_t tc[2]; uint8_t cn[4]; } Vtx_t;
-typedef union { Vtx_t v; long long force_align; } Vtx;
 
-/** 3. MACRO BLOCKADE - Add libaudio to the list **/
+/** 5. BLOCKADE **/
 #define _ULTRATYPES_H_
-#define __OS_H__
-#define _OS_H_
-#define _OS_THREAD_H_
-#define _OS_MESSAGE_H_
-#define _OS_CONT_H_
-#define _OS_LIBC_H_
-#define _GBI_H_
 #define _ULTRA64_H_
 #define _LIBAUDIO_H_
-#define _AL_H_
+#define _GBI_H_
 
 #ifndef TRUE
   #define TRUE 1
@@ -77,39 +62,38 @@ typedef void* OSTask;
 #endif // _N64_TYPES_H_
 """
 
-def deploy_anatomical_patch():
+def deploy_universal_glue():
     root = Path.cwd().resolve()
     include_dir = root / "decomp-files" / "include"
     
-    print("--- [v181.0] DEPLOYING ANATOMICAL MOCK PATCH ---")
+    print("--- [v182.0] DEPLOYING UNIVERSAL GLUE ---")
     
     # 1. Update the Bridge
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT)
 
-    # 2. SURGERY: exceptasm.cpp contains a local redefinition of OSThread
-    exceptasm = root / "Android/app/src/main/cpp/ultra/exceptasm.cpp"
-    if exceptasm.exists():
-        text = exceptasm.read_text()
-        # Remove local 'typedef struct OSThread_s' blocks to defer to the bridge
-        text = re.sub(r'typedef struct OSThread_s\s*\{.*?\}\s*OSThread\s*;', '/* Use bridge OSThread */', text, flags=re.DOTALL)
-        # Fix nullptr/NULL usage for C++
-        text = text.replace('NULL', 'nullptr')
-        exceptasm.write_text(text)
+    # 2. FIX: rare_decompression pathing
+    # The build looks for tools/rare_decompression.h but it's likely just rare_decompression.h
+    rare_cpp = root / "Android/app/src/main/cpp/tools/rare_decompression.cpp"
+    if rare_cpp.exists():
+        text = rare_cpp.read_text()
+        text = text.replace('#include "tools/rare_decompression.h"', '#include "rare_decompression.h"')
+        rare_cpp.write_text(text)
 
-    # 3. Suppress project headers that are now handled by the bridge
-    targets = ["structs.h", "model.h"]
-    for t in targets:
-        p = include_dir / t
-        if p.exists():
-            content = p.read_text(errors='ignore')
-            # Remove any line that defines Mtx, MtxF, or Vtx to avoid redefinitions
-            content = re.sub(r'typedef struct\s*\{.*?\}\s*(MtxF|Mtx)\s*;', '/* Defined in bridge */', content, flags=re.DOTALL)
-            p.write_text(content)
+    # 3. SURGERY: Kill the project's bool.h
+    bool_h = include_dir / "bool.h"
+    if bool_h.exists():
+        bool_h.write_text("// Nuked for C++ compatibility\n")
 
-    # 4. Total Wipe of libaudio.h to stop the audio redefinitions
-    libaudio = include_dir / "2.0L/PR/libaudio.h"
-    if libaudio.exists():
-        libaudio.write_text("#include \"n64_types.h\"\n/* Libaudio content moved to bridge mocks */\n")
+    # 4. Cleanup structs.h
+    structs_h = include_dir / "structs.h"
+    if structs_h.exists():
+        text = structs_h.read_text(errors='ignore')
+        # Ensure it doesn't redefine what we put in the bridge
+        text = re.sub(r'typedef struct\s*\{.*?\}\s*(MtxF|Mtx)\s*;', '/* Ref in bridge */', text, flags=re.DOTALL)
+        # Ensure it sees our bridge macros
+        if '#include "n64_types.h"' not in text:
+            text = '#include "n64_types.h"\n' + text
+        structs_h.write_text(text)
 
 if __name__ == "__main__":
-    deploy_anatomical_patch()
+    deploy_universal_glue()
