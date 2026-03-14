@@ -75,7 +75,7 @@ typedef ALDMAproc (*ALDMANew)(void *state);
 
 typedef u32 OSIntMask;
 
-// 4. PREEMPTIVE BLOCKADE - Guard macros
+// 4. BLOCKADE - Prevent legacy headers from clashing
 #define _ULTRATYPES_H_
 #define __OS_H__
 #define _OS_THREAD_H_
@@ -91,6 +91,7 @@ typedef u32 OSIntMask;
 #define _OS_PI_H_
 #define _RCP_H_
 #define _R4300_H_
+#define _REGION_H_
 
 // 5. Memory Translation
 #define K0_TO_PHYS(x) ((u32)(uintptr_t)(x))
@@ -112,26 +113,26 @@ def deploy_dynamic_patch():
     include_dir = root / "decomp-files" / "include"
     pr_folder = include_dir / "2.0L" / "PR"
     
-    print("--- [v172.0] GUTTING SDK HEADERS ---")
+    print("--- [v173.0] DEPLOYING UNIVERSAL HEADER INJECTION ---")
     
-    # 1. Write Bridge
+    # 1. Write the Bridge
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT)
 
-    # 2. GUT problematic headers (Replace content with a safe comment)
+    # 2. Force ultra64.h to use our bridge as the ONLY source of truth
+    ultra_h = include_dir / "2.0L" / "ultra64.h"
+    if ultra_h.exists():
+        ultra_h.write_text("#ifndef _ULTRA64_H_\\n#define _ULTRA64_H_\\n#include \\"n64_types.h\\"\\n#endif\\n")
+
+    # 3. GUT problematic headers
     gut_list = [
         "ultratypes.h", "rcp.h", "R4300.h", "os.h", "os_thread.h", 
-        "os_message.h", "os_libc.h", "os_pi.h", "os_convert.h", "os_cont.h"
+        "os_message.h", "os_libc.h", "os_pi.h", "os_convert.h", "os_cont.h", "region.h"
     ]
     
     for h in gut_list:
         p = pr_folder / h
         if p.exists():
-            print(f"Gutting: {h}")
-            p.write_text(f"/* Gutted by v172.0. Types handled by n64_types.h */\n")
-
-    # 3. Handle specific pathing and bool fixes
-    bool_h = include_dir / "bool.h"
-    bool_h.write_text("#ifndef _BOOL_H_\n#define _BOOL_H_\n#include <stdbool.h>\n#endif\n")
+            p.write_text(f"/* Handled by n64_types.h Injection */\\n")
 
     # 4. Global project sweep
     for path in root.rglob("*.[ch]*"):
@@ -140,17 +141,15 @@ def deploy_dynamic_patch():
             content = path.read_text(errors='ignore')
             original = content
             
-            if '#include "n64_types.h"' not in content:
-                content = '#include "n64_types.h"\n' + content
-            
+            # Remove direct bool.h and other legacy includes to force n64_types usage
+            content = content.replace('#include "bool.h"', '#include "n64_types.h"')
             content = content.replace("sched_yield()", "sched_yield_compat()")
-            content = content.replace('#include "tools/rare_decompression.h"', '#include "rare_decompression.h"')
 
             if content != original:
                 path.write_text(content)
         except Exception: continue
 
-    print("--- Cleanup complete. Run Ninja! ---")
+    print("--- Injection complete. Run Ninja! ---")
 
 if __name__ == "__main__":
     deploy_dynamic_patch()
