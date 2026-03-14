@@ -2,7 +2,7 @@ import os
 import re
 from pathlib import Path
 
-# THE ANATOMICAL BRIDGE: Provides the full structure the engine expects.
+# THE ATOMIC BRIDGE: The single source of truth for N64 types on Android.
 BASE_BRIDGE_CONTENT = r"""
 #ifndef _N64_TYPES_H_
 #define _N64_TYPES_H_
@@ -18,13 +18,8 @@ typedef int64_t  s64; typedef uint64_t u64;
 typedef float    f32; typedef double   f64;
 typedef uint8_t  uchar; typedef volatile uint32_t vu32;
 
-/** 2. ANATOMICAL MOCKS - Real members for exceptasm.cpp **/
-typedef struct {
-    uint32_t status;
-    uint32_t pc;
-    uint64_t regs[32];
-} OSContext;
-
+/** 2. ANATOMICAL MOCKS **/
+typedef struct { uint32_t status; uint32_t pc; uint64_t regs[32]; } OSContext;
 typedef struct OSThread_s {
     struct OSThread_s *next;
     int32_t           priority;
@@ -47,33 +42,41 @@ typedef union { Vtx_t v; long long force_align; } Vtx;
 #define TUPLE_PAIR(type, name) type name[2][3]
 #define FREE_LIST(type) struct { struct type *head; int32_t count; }
 
-/** 4. SYSTEM PROTECTION **/
+/** 4. SYSTEM & BLOCKADE **/
 #ifdef __cplusplus
   #include <cstring>
   #include <cstdlib>
   #include <cstdio>
   #include <ctime>
+  #include <sched.h>
   extern "C" {
+    static inline int sched_yield_compat(void) { return sched_yield(); }
 #else
   #include <string.h>
   #include <stdlib.h>
   #include <stdio.h>
   #include <time.h>
-#endif
-    // Shim for the problematic sched_yield call in NDK headers
-    #include <sched.h>
-#ifdef __cplusplus
-  }
+  #include <sched.h>
+  static inline int sched_yield_compat(void) { return sched_yield(); }
 #endif
 
 #define _ULTRATYPES_H_
 #define _ULTRA64_H_
+#define _GBI_H_
+#define _OS_H_
+#define _OS_THREAD_H_
+#define _OS_MESSAGE_H_
+#define _OS_LIBC_H_
 #define _BOOL_H_
 #define _TIME_H_
-#define _SCHED_H_
 
 typedef void* ALHeap;
 typedef void* OSTask;
+typedef struct ALGlobals_s { uint8_t d[1024]; } ALGlobals;
+
+#ifdef __cplusplus
+  }
+#endif
 
 #ifndef TRUE
   #define TRUE 1
@@ -83,39 +86,45 @@ typedef void* OSTask;
 #endif // _N64_TYPES_H_
 """
 
-def deploy_lockdown():
+def deploy_isolation():
     root = Path.cwd().resolve()
     include_dir = root / "decomp-files" / "include"
     
-    print("--- [v185.0] DEPLOYING TOTAL LOCKDOWN ---")
+    print("--- [v186.0] DEPLOYING TOTAL ISOLATION ---")
     
-    # 1. Neutralize Clashing Headers
-    # Rename to prevent the NDK from picking project versions of system headers
+    # 1. Rename clashing headers to stop shadowing system libraries
     clashes = ["string.h", "bool.h", "time.h", "sched.h"]
     for c in clashes:
         p = include_dir / c
         if p.exists():
             new_p = include_dir / f"n64_{c}"
-            print(f"Locking {c} -> {new_p.name}")
             p.rename(new_p)
 
-    # 2. Deploy anatomical bridge
+    # 2. Deploy the new bridge
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT)
 
-    # 3. SURGERY: Cleanup exceptasm.cpp
-    # Remove the local OSThread_s definition that's causing redefinition errors
+    # 3. Patch exceptasm.cpp (Remove redefinition)
     asm_cpp = root / "Android/app/src/main/cpp/ultra/exceptasm.cpp"
     if asm_cpp.exists():
         text = asm_cpp.read_text()
-        text = re.sub(r'typedef struct OSThread_s\s*\{.*?\}\s*OSThread\s*;', '/* Use bridge anatomy */', text, flags=re.DOTALL)
+        text = re.sub(r'typedef struct OSThread_s\s*\{.*?\}\s*OSThread\s*;', '/* Bridge-defined */', text, flags=re.DOTALL)
         asm_cpp.write_text(text)
 
-    # 4. Path Fix: resource_mgr.cpp
-    res_cpp = root / "Android/app/src/main/cpp/emulator/resource_mgr.cpp"
-    if res_cpp.exists():
-        text = res_cpp.read_text()
-        text = text.replace('#include "tools/rare_decompression.h"', '#include "rare_decompression.h"')
-        res_cpp.write_text(text)
+    # 4. Patch NativeBridge.cpp (Fix alGlobals conflict)
+    nb_cpp = root / "Android/app/src/main/cpp/ultra/NativeBridge.cpp"
+    if nb_cpp.exists():
+        text = nb_cpp.read_text()
+        text = text.replace('ALGlobals *alGlobals = NULL;', 'ALGlobals *alGlobals = nullptr;')
+        nb_cpp.write_text(text)
+
+    # 5. Global sched_yield swap
+    for path in root.rglob("*.[ch]*"):
+        if "n64_types.h" in str(path): continue
+        try:
+            content = path.read_text(errors='ignore')
+            if "sched_yield()" in content:
+                path.write_text(content.replace("sched_yield()", "sched_yield_compat()"))
+        except: continue
 
 if __name__ == "__main__":
-    deploy_lockdown()
+    deploy_isolation()
