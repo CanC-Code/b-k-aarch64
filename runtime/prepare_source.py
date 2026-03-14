@@ -2,7 +2,7 @@ import os
 import re
 from pathlib import Path
 
-# THE ATOMIC BRIDGE: The single source of truth for N64 types
+# THE ANATOMICAL BRIDGE: Provides the full structure the engine expects.
 BASE_BRIDGE_CONTENT = r"""
 #ifndef _N64_TYPES_H_
 #define _N64_TYPES_H_
@@ -18,40 +18,54 @@ typedef int64_t  s64; typedef uint64_t u64;
 typedef float    f32; typedef double   f64;
 typedef uint8_t  uchar; typedef volatile uint32_t vu32;
 
+/** 2. ANATOMICAL MOCKS - Real members for exceptasm.cpp **/
+typedef struct {
+    uint32_t status;
+    uint32_t pc;
+    uint64_t regs[32];
+} OSContext;
+
+typedef struct OSThread_s {
+    struct OSThread_s *next;
+    int32_t           priority;
+    OSContext         context;
+    uint8_t           stack_padding[128];
+} OSThread;
+
+typedef void* OSMesg;
+typedef struct { void* mt; void* full; int32_t count; } OSMesgQueue;
+
 typedef uint64_t Gfx;
 typedef struct { int32_t m[4][4]; } Mtx;
 typedef struct { float m[4][4]; } MtxF;
 typedef struct { int16_t ob[3]; uint16_t flag; int16_t tc[2]; uint8_t cn[4]; } Vtx_t;
 typedef union { Vtx_t v; long long force_align; } Vtx;
 
-/** 2. SYSTEM HEADERS - Forced first to prevent shadowing **/
+/** 3. SYSTEM INCLUDES - Must load before blockades **/
 #ifdef __cplusplus
   #include <cstring>
   #include <cstdlib>
   #include <cstdio>
   #include <ctime>
+  #include <sched.h>
   extern "C" {
 #else
   #include <string.h>
   #include <stdlib.h>
   #include <stdio.h>
   #include <time.h>
+  #include <sched.h>
 #endif
 
-typedef void* OSMesg;
-typedef struct { void* mt; void* full; int32_t count; } OSMesgQueue;
-typedef struct OSThread_s { struct OSThread_s *next; int32_t priority; uint8_t d[256]; } OSThread;
-typedef uint32_t OSId;
-typedef uint32_t OSPri;
-typedef uint64_t OSTime;
-
-/** 3. PROJECT BLOCKADE **/
+// Block the legacy SDK headers
 #define _ULTRATYPES_H_
 #define _ULTRA64_H_
 #define _GBI_H_
 #define _OS_H_
-#define _BOOL_H_ 
-#define _TIME_H_
+#define _OS_THREAD_H_
+#define _OS_MESSAGE_H_
+#define _OS_LIBC_H_
+#define _BOOL_H_
 
 typedef void* ALHeap;
 typedef void* OSTask;
@@ -68,38 +82,31 @@ typedef void* OSTask;
 #endif // _N64_TYPES_H_
 """
 
-def deploy_neutralization():
+def deploy_anatomical_patch():
     root = Path.cwd().resolve()
     include_dir = root / "decomp-files" / "include"
     
-    print("--- [v191.0] DEPLOYING SURGICAL NEUTRALIZATION ---")
+    print("--- [v192.0] DEPLOYING ANATOMICAL PATCH ---")
     
-    # 1. Neutralize Clashing Headers
-    # We rename them so the compiler CANNOT find them as "string.h"
-    clash_list = ["string.h", "bool.h", "time.h", "sched.h"]
-    for header in clash_list:
-        p = include_dir / header
-        if p.exists():
-            print(f"Neutralizing {header}...")
-            # We rename to .bak so they are out of the include path
-            p.rename(p.with_suffix('.h.bak'))
-
-    # 2. Update the Bridge
+    # 1. Update the Bridge
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT)
 
-    # 3. Patch structs.h and model.h to stop redefinitions
-    # These files often try to redefine Mtx/Vtx
-    for target in ["structs.h", "model.h"]:
-        p = include_dir / target
-        if p.exists():
-            content = p.read_text(errors='ignore')
-            # Remove MtxF, Mtx, Vtx, and ALHeap redefinitions
-            content = re.sub(r'typedef struct\s*\{.*?\}\s*(MtxF|Mtx|Vtx_t|ALHeap)\s*;', '/* Ref Bridge */', content, flags=re.DOTALL)
-            content = re.sub(r'typedef union\s*\{.*?\}\s*Vtx\s*;', '/* Ref Bridge */', content, flags=re.DOTALL)
-            # Ensure n64_types.h is included
-            if '#include "n64_types.h"' not in content:
-                content = '#include "n64_types.h"\n' + content
-            p.write_text(content)
+    # 2. SURGERY: exceptasm.cpp contains a local redefinition of OSThread
+    asm_cpp = root / "Android/app/src/main/cpp/ultra/exceptasm.cpp"
+    if asm_cpp.exists():
+        text = asm_cpp.read_text()
+        # Kill the local struct definition so it uses the bridge's version
+        text = re.sub(r'typedef struct OSThread_s\s*\{.*?\}\s*OSThread\s*;', '/* Use Bridge */', text, flags=re.DOTALL)
+        asm_cpp.write_text(text)
+
+    # 3. GLOBAL PATH FIX: Fix the rare_decompression pathing in all files
+    for path in root.rglob("*.[ch]*"):
+        try:
+            content = path.read_text(errors='ignore')
+            if 'tools/rare_decompression.h' in content:
+                print(f"Fixing path in {path.name}")
+                path.write_text(content.replace('tools/rare_decompression.h', 'rare_decompression.h'))
+        except: continue
 
 if __name__ == "__main__":
-    deploy_neutralization()
+    deploy_anatomical_patch()
