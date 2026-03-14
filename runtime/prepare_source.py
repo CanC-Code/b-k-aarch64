@@ -46,26 +46,41 @@ typedef union { Vtx_t v; long long force_align; } Vtx;
 typedef struct { uint8_t d[64]; } LookAt;
 typedef struct { uint8_t d[64]; } Hilite;
 typedef struct { uint8_t d[32]; } Light;
+typedef struct { uint8_t d[32]; } PositionalLight;
+typedef struct { uint8_t d[128]; } uSprite;
 
 // 3. Threading & OS Overrides
 typedef struct OSThread_s {
     struct OSThread_s *next; u32 priority;
-    uint8_t d[512]; 
+    uint8_t d[1024]; 
 } OSThread;
 
 typedef struct { u32 t[16]; } OSTask_t;
 typedef void* OSMesg;
 typedef struct { void* mt; void* full; int count; } OSMesgQueue;
+typedef struct { void* handle; u32 type; u32 base; } OSPiHandle;
+typedef struct { u32 hdr; void* buf; u32 len; OSMesgQueue* ret; } OSIoMesg;
+typedef struct { uint8_t d[64]; } OSContPad;
 
-// 4. BLOCKADE - Prevent legacy headers from loading
+// 4. BLOCKADE - Total silencing of legacy SDK headers
 #define _ULTRATYPES_H_
 #define __OS_H__
 #define _OS_THREAD_H_
 #define _OS_MESSAGE_H_
+#define _OS_CONT_H_
+#define _OS_LIBC_H_
 #define _GBI_H_
 #define _ABI_H_
+#define _SPTASK_H_
+#define _ULTRALOG_H_
+#define _ULTRAERROR_H_
+#define _OS_CONVERT_H_
+#define _OS_PI_H_
+#define _RCP_H_
+#define _R4300_H_
 #define _REGION_H_
 #define _ULTRA64_H_
+#define _SCHED_H_
 
 #if defined(__cplusplus)
 extern "C" {
@@ -78,26 +93,30 @@ extern "C" {
 #endif // _N64_TYPES_H_
 """
 
-def deploy_global_anchor():
+def deploy_fortress_bridge():
     root = Path.cwd().resolve()
     include_dir = root / "decomp-files" / "include"
+    pr_folder = include_dir / "2.0L" / "PR"
     
-    print("--- [v174.0] DEPLOYING GLOBAL ANCHOR ---")
+    print("--- [v175.0] DEPLOYING FORTRESS BRIDGE ---")
     
     # 1. Ensure bridge exists
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT)
 
-    # 2. Force Include - Prepend the bridge to critical root headers
-    # This ensures model.h and structs.h always see types
-    target_headers = ["structs.h", "model.h", "2.0L/ultra64.h"]
-    for target in target_headers:
+    # 2. THE TOTAL GUT - Silence every file in the PR directory
+    if pr_folder.exists():
+        for header in pr_folder.glob("*.h"):
+            header.write_text(f"/* Silenced by Fortress Bridge v175.0 */\n#include \"n64_types.h\"\n")
+
+    # 3. Patch foundational headers
+    for target in ["structs.h", "model.h", "2.0L/ultra64.h", "bool.h"]:
         p = include_dir / target
         if p.exists():
             original = p.read_text(errors='ignore')
             if 'include "n64_types.h"' not in original:
                 p.write_text('#include "n64_types.h"\n' + original)
 
-    # 3. Clean up broken calls in the source
+    # 4. Global source correction
     for path in root.rglob("*.[ch]*"):
         if "venv" in str(path) or path.name == "n64_types.h": continue
         try:
@@ -108,4 +127,4 @@ def deploy_global_anchor():
         except: continue
 
 if __name__ == "__main__":
-    deploy_global_anchor()
+    deploy_fortress_bridge()
