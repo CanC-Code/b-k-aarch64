@@ -2,7 +2,7 @@ import os
 import re
 from pathlib import Path
 
-BASE_BRIDGE_CONTENT = """
+BASE_BRIDGE_CONTENT = r"""
 #ifndef _N64_TYPES_H_
 #define _N64_TYPES_H_
 
@@ -16,7 +16,7 @@ BASE_BRIDGE_CONTENT = """
 #include <time.h>
 #include <sched.h>
 
-// 1. Primitive N64 Types (64-bit safe)
+// 1. Primitive N64 Types (64-bit safe mapping)
 typedef int8_t   s8;  typedef uint8_t  u8;
 typedef int16_t  s16; typedef uint16_t u16;
 typedef int32_t  s32; typedef uint32_t u32;
@@ -37,65 +37,35 @@ typedef int32_t ENVMIX_STATE[4];
   #define FALSE 0
 #endif
 
-// 2. Missing Graphics Types
-typedef struct { uint8_t d[64]; } LookAt;
-typedef struct { uint8_t d[64]; } Hilite;
-typedef struct { uint8_t d[32]; } Light;
-typedef struct { uint8_t d[32]; } PositionalLight;
-typedef struct { uint8_t d[128]; } uSprite;
-
-// 3. Hardware Structs (64-bit safe overrides)
+// 2. Hardware/Graphics Structs
 typedef uint64_t Gfx;
 typedef struct { int32_t m[4][4]; } Mtx;
 typedef struct { float m[4][4]; } MtxF;
-typedef struct { uint8_t d[16]; } Vtx;
-typedef struct { float d[16]; } BoneTransform;
-typedef struct { BoneTransform *transforms; int count; } BoneTransformList;
-typedef void* VLA; typedef void* FLA;
+typedef struct { int16_t ob[3]; uint16_t flag; int16_t tc[2]; uint8_t cn[4]; } Vtx_t;
+typedef union { Vtx_t v; long long force_align; } Vtx;
+typedef struct { uint8_t d[64]; } LookAt;
+typedef struct { uint8_t d[64]; } Hilite;
+typedef struct { uint8_t d[32]; } Light;
+
+// 3. Threading & OS Overrides
+typedef struct OSThread_s {
+    struct OSThread_s *next; u32 priority;
+    uint8_t d[512]; 
+} OSThread;
+
 typedef struct { u32 t[16]; } OSTask_t;
-typedef void (*OSErrorHandler)(void);
-typedef struct { u32 d[16]; } OSLog;
 typedef void* OSMesg;
 typedef struct { void* mt; void* full; int count; } OSMesgQueue;
 
-typedef struct { void* handle; u32 type; u32 base; } OSPiHandle;
-typedef struct { u32 hdr; void* buf; u32 len; OSMesgQueue* ret; } OSIoMesg;
-
-typedef struct OSThread_s {
-    struct OSThread_s *next; u32 priority;
-    struct { u32 status; u32 pc; u32 sp; u32 d[16]; } context;
-    uint8_t d[256]; 
-} OSThread;
-
-typedef struct { uint8_t d[64];  } OSContPad;
-typedef struct { unsigned int w0, w1; } Acmd_words;
-typedef union { Acmd_words words; long long force_align; } Acmd;
-typedef s32 (*ALDMAproc)(s32 addr, s32 len, void *state);
-typedef ALDMAproc (*ALDMANew)(void *state);
-
-typedef u32 OSIntMask;
-
-// 4. BLOCKADE - Prevent legacy headers from clashing
+// 4. BLOCKADE - Prevent legacy headers from loading
 #define _ULTRATYPES_H_
 #define __OS_H__
 #define _OS_THREAD_H_
 #define _OS_MESSAGE_H_
-#define _OS_CONT_H_
-#define _OS_LIBC_H_
 #define _GBI_H_
 #define _ABI_H_
-#define _SPTASK_H_
-#define _ULTRALOG_H_
-#define _ULTRAERROR_H_
-#define _OS_CONVERT_H_
-#define _OS_PI_H_
-#define _RCP_H_
-#define _R4300_H_
 #define _REGION_H_
-
-// 5. Memory Translation
-#define K0_TO_PHYS(x) ((u32)(uintptr_t)(x))
-static inline uint32_t osVirtualToPhysical(void* vaddr) { return (u32)(uintptr_t)vaddr; }
+#define _ULTRA64_H_
 
 #if defined(__cplusplus)
 extern "C" {
@@ -108,48 +78,34 @@ extern "C" {
 #endif // _N64_TYPES_H_
 """
 
-def deploy_dynamic_patch():
+def deploy_global_anchor():
     root = Path.cwd().resolve()
     include_dir = root / "decomp-files" / "include"
-    pr_folder = include_dir / "2.0L" / "PR"
     
-    print("--- [v173.0] DEPLOYING UNIVERSAL HEADER INJECTION ---")
+    print("--- [v174.0] DEPLOYING GLOBAL ANCHOR ---")
     
-    # 1. Write the Bridge
+    # 1. Ensure bridge exists
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT)
 
-    # 2. Force ultra64.h to use our bridge as the ONLY source of truth
-    ultra_h = include_dir / "2.0L" / "ultra64.h"
-    if ultra_h.exists():
-        ultra_h.write_text("#ifndef _ULTRA64_H_\\n#define _ULTRA64_H_\\n#include \\"n64_types.h\\"\\n#endif\\n")
-
-    # 3. GUT problematic headers
-    gut_list = [
-        "ultratypes.h", "rcp.h", "R4300.h", "os.h", "os_thread.h", 
-        "os_message.h", "os_libc.h", "os_pi.h", "os_convert.h", "os_cont.h", "region.h"
-    ]
-    
-    for h in gut_list:
-        p = pr_folder / h
+    # 2. Force Include - Prepend the bridge to critical root headers
+    # This ensures model.h and structs.h always see types
+    target_headers = ["structs.h", "model.h", "2.0L/ultra64.h"]
+    for target in target_headers:
+        p = include_dir / target
         if p.exists():
-            p.write_text(f"/* Handled by n64_types.h Injection */\\n")
+            original = p.read_text(errors='ignore')
+            if 'include "n64_types.h"' not in original:
+                p.write_text('#include "n64_types.h"\n' + original)
 
-    # 4. Global project sweep
+    # 3. Clean up broken calls in the source
     for path in root.rglob("*.[ch]*"):
-        if path.name == "n64_types.h" or "venv" in str(path): continue
+        if "venv" in str(path) or path.name == "n64_types.h": continue
         try:
             content = path.read_text(errors='ignore')
-            original = content
-            
-            # Remove direct bool.h and other legacy includes to force n64_types usage
-            content = content.replace('#include "bool.h"', '#include "n64_types.h"')
-            content = content.replace("sched_yield()", "sched_yield_compat()")
-
-            if content != original:
-                path.write_text(content)
-        except Exception: continue
-
-    print("--- Injection complete. Run Ninja! ---")
+            new_content = content.replace("sched_yield()", "sched_yield_compat()")
+            if content != new_content:
+                path.write_text(new_content)
+        except: continue
 
 if __name__ == "__main__":
-    deploy_dynamic_patch()
+    deploy_global_anchor()
