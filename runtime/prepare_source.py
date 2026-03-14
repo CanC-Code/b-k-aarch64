@@ -16,7 +16,7 @@ BASE_BRIDGE_CONTENT = """
 #include <time.h>
 #include <sched.h>
 
-// 1. Primitive N64 Types
+// 1. Primitive N64 Types (64-bit safe)
 typedef int8_t   s8;  typedef uint8_t  u8;
 typedef int16_t  s16; typedef uint16_t u16;
 typedef int32_t  s32; typedef uint32_t u32;
@@ -37,7 +37,7 @@ typedef int32_t ENVMIX_STATE[4];
   #define FALSE 0
 #endif
 
-// 2. Missing Graphics Types for gu.h / gbi.h
+// 2. Missing Graphics Types
 typedef struct { uint8_t d[64]; } LookAt;
 typedef struct { uint8_t d[64]; } Hilite;
 typedef struct { uint8_t d[32]; } Light;
@@ -75,7 +75,7 @@ typedef ALDMAproc (*ALDMANew)(void *state);
 
 typedef u32 OSIntMask;
 
-// 4. BLOCKADE - Prevent legacy headers from clashing
+// 4. PREEMPTIVE BLOCKADE - Guard macros
 #define _ULTRATYPES_H_
 #define __OS_H__
 #define _OS_THREAD_H_
@@ -89,6 +89,8 @@ typedef u32 OSIntMask;
 #define _ULTRAERROR_H_
 #define _OS_CONVERT_H_
 #define _OS_PI_H_
+#define _RCP_H_
+#define _R4300_H_
 
 // 5. Memory Translation
 #define K0_TO_PHYS(x) ((u32)(uintptr_t)(x))
@@ -107,39 +109,40 @@ extern "C" {
 
 def deploy_dynamic_patch():
     root = Path.cwd().resolve()
-    decomp = root / "decomp-files"
-    include_dir = decomp / "include"
-    android_cpp_dir = root / "Android" / "app" / "src" / "main" / "cpp"
+    include_dir = root / "decomp-files" / "include"
+    pr_folder = include_dir / "2.0L" / "PR"
     
-    print("--- [v171.0] DEPLOYING ENGINE RESTORATION BRIDGE ---")
+    print("--- [v172.0] GUTTING SDK HEADERS ---")
     
     # 1. Write Bridge
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT)
 
-    # 2. Fix the bool.h dependency
+    # 2. GUT problematic headers (Replace content with a safe comment)
+    gut_list = [
+        "ultratypes.h", "rcp.h", "R4300.h", "os.h", "os_thread.h", 
+        "os_message.h", "os_libc.h", "os_pi.h", "os_convert.h", "os_cont.h"
+    ]
+    
+    for h in gut_list:
+        p = pr_folder / h
+        if p.exists():
+            print(f"Gutting: {h}")
+            p.write_text(f"/* Gutted by v172.0. Types handled by n64_types.h */\n")
+
+    # 3. Handle specific pathing and bool fixes
     bool_h = include_dir / "bool.h"
-    bool_h.write_text("#ifndef _BOOL_H_\\n#define _BOOL_H_\\n#include <stdbool.h>\\n#endif\\n")
+    bool_h.write_text("#ifndef _BOOL_H_\n#define _BOOL_H_\n#include <stdbool.h>\n#endif\n")
 
-    # 3. Patch VLA redefinition in vla.h
-    vla_h = include_dir / "core2" / "vla.h"
-    if vla_h.exists():
-        content = vla_h.read_text()
-        content = content.replace("typedef struct variable_length_array", "/* Redefined in bridge */ //")
-        vla_h.write_text(content)
-
-    # 4. Global Redirection
-    for path in list(decomp.rglob("*.[ch]")) + list(android_cpp_dir.rglob("*.[ch]pp")):
-        if path.name == "n64_types.h": continue
+    # 4. Global project sweep
+    for path in root.rglob("*.[ch]*"):
+        if path.name == "n64_types.h" or "venv" in str(path): continue
         try:
             content = path.read_text(errors='ignore')
             original = content
             
-            # Inject bridge
             if '#include "n64_types.h"' not in content:
-                content = '#include "n64_types.h"\\n' + content
-                
-            # Final touch fixes
-            content = content.replace("typedef int bool;", "//")
+                content = '#include "n64_types.h"\n' + content
+            
             content = content.replace("sched_yield()", "sched_yield_compat()")
             content = content.replace('#include "tools/rare_decompression.h"', '#include "rare_decompression.h"')
 
@@ -147,7 +150,7 @@ def deploy_dynamic_patch():
                 path.write_text(content)
         except Exception: continue
 
-    print("--- Engine Restored. Run Ninja! ---")
+    print("--- Cleanup complete. Run Ninja! ---")
 
 if __name__ == "__main__":
     deploy_dynamic_patch()
