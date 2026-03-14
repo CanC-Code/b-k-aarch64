@@ -2,7 +2,7 @@ import os
 import re
 from pathlib import Path
 
-BASE_BRIDGE_CONTENT = r"""
+BASE_BRIDGE_CONTENT = """
 #ifndef _N64_TYPES_H_
 #define _N64_TYPES_H_
 
@@ -113,20 +113,15 @@ def deploy_dynamic_patch():
     include_dir = root / "decomp-files" / "include"
     pr_folder = include_dir / "2.0L" / "PR"
     
-    print("--- [v173.1] DEPLOYING FIXED UNIVERSAL INJECTION ---")
+    print("--- [v173.0] DEPLOYING UNIVERSAL HEADER INJECTION ---")
     
-    # 1. Write the Master Bridge
+    # 1. Write the Bridge
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT)
 
-    # 2. Force ultra64.h to use our bridge (using triple quotes to avoid escape hell)
+    # 2. Force ultra64.h to use our bridge as the ONLY source of truth
     ultra_h = include_dir / "2.0L" / "ultra64.h"
     if ultra_h.exists():
-        content = """#ifndef _ULTRA64_H_
-#define _ULTRA64_H_
-#include "n64_types.h"
-#endif
-"""
-        ultra_h.write_text(content)
+        ultra_h.write_text("#ifndef _ULTRA64_H_\\n#define _ULTRA64_H_\\n#include \\"n64_types.h\\"\\n#endif\\n")
 
     # 3. GUT problematic headers
     gut_list = [
@@ -137,7 +132,7 @@ def deploy_dynamic_patch():
     for h in gut_list:
         p = pr_folder / h
         if p.exists():
-            p.write_text("/* Handled by n64_types.h Injection */\n")
+            p.write_text(f"/* Handled by n64_types.h Injection */\\n")
 
     # 4. Global project sweep
     for path in root.rglob("*.[ch]*"):
@@ -146,7 +141,7 @@ def deploy_dynamic_patch():
             content = path.read_text(errors='ignore')
             original = content
             
-            # Use safer replacement to avoid breaking existing includes
+            # Remove direct bool.h and other legacy includes to force n64_types usage
             content = content.replace('#include "bool.h"', '#include "n64_types.h"')
             content = content.replace("sched_yield()", "sched_yield_compat()")
 
@@ -154,7 +149,7 @@ def deploy_dynamic_patch():
                 path.write_text(content)
         except Exception: continue
 
-    print("--- Injection complete. Try running Ninja now! ---")
+    print("--- Injection complete. Run Ninja! ---")
 
 if __name__ == "__main__":
     deploy_dynamic_patch()
