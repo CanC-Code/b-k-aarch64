@@ -2,7 +2,7 @@ import os
 import re
 from pathlib import Path
 
-# THE ATOMIC BRIDGE: Fixed include order and safe blockades
+# THE ATOMIC BRIDGE: Precise types and safe include order
 BASE_BRIDGE_CONTENT = r"""
 #ifndef _N64_TYPES_H_
 #define _N64_TYPES_H_
@@ -10,7 +10,7 @@ BASE_BRIDGE_CONTENT = r"""
 #include <stdint.h>
 #include <stddef.h>
 
-/** 1. N64 PRIMITIVES - MUST BE AT THE VERY TOP **/
+/** 1. N64 PRIMITIVES **/
 typedef int8_t   s8;  typedef uint8_t  u8;
 typedef int16_t  s16; typedef uint16_t u16;
 typedef int32_t  s32; typedef uint32_t u32;
@@ -24,13 +24,12 @@ typedef struct { float m[4][4]; } MtxF;
 typedef struct { int16_t ob[3]; uint16_t flag; int16_t tc[2]; uint8_t cn[4]; } Vtx_t;
 typedef union { Vtx_t v; long long force_align; } Vtx;
 
-typedef uint32_t OSId;
-typedef uint32_t OSPri;
-typedef uint64_t OSTime;
+// Match legacy SDK signed-ness exactly
+typedef s32 OSId;
+typedef s32 OSPri;
+typedef u64 OSTime;
 typedef void* OSMesg;
 typedef struct { void* mt; void* full; int32_t count; } OSMesgQueue;
-typedef void* OSTask;
-typedef void* ALHeap;
 
 typedef struct { uint32_t status; uint32_t pc; uint64_t regs[32]; } OSContext;
 typedef struct OSThread_s {
@@ -40,7 +39,7 @@ typedef struct OSThread_s {
     uint8_t           stack_padding[128];
 } OSThread;
 
-/** 2. SYSTEM INCLUDES - Load these BEFORE blocking anything **/
+/** 2. SYSTEM INCLUDES - Load these BEFORE any blockades **/
 #ifdef __cplusplus
   #include <cstring>
   #include <cstdlib>
@@ -58,18 +57,29 @@ typedef struct OSThread_s {
 #include <sched.h>
 #include <unistd.h>
 
-/** 3. N64 SDK BLOCKADE - Use ONLY guards unique to the N64 headers **/
-#define __OS_H__
-#define _OS_H_
+/** 3. PROJECT MACROS **/
+#define PAIR(type, name) type name[2]
+#define TUPLE(type, name) type name[3]
+#define TUPLE_PAIR(type, name) type name[2][3]
+#define FREE_LIST(type) struct { struct type *head; int32_t count; }
+
+// Redirect bcopy to memmove to avoid the Android macro explosion
+#define bcopy(src, dst, n) memmove(dst, src, n)
+
+/** 4. N64 SDK BLOCKADE **/
 #define _ULTRATYPES_H_
 #define _ULTRA64_H_
 #define _GBI_H_
+#define _OS_H_
 #define _OS_THREAD_H_
 #define _OS_MESSAGE_H_
-#define _OS_CONT_H_
 #define _OS_LIBC_H_
+#define _SPTASK_H_
 #define _LIBAUDIO_H_
-#define _SCHED_H_  /* N64's sched.h, hopefully doesn't clash with system <sched.h> */
+
+typedef void* ALHeap;
+typedef void* OSTask;
+typedef struct ALGlobals_s { uint8_t d[1024]; } ALGlobals;
 
 #ifndef TRUE
   #define TRUE 1
@@ -79,43 +89,40 @@ typedef struct OSThread_s {
 #ifdef __cplusplus
 }
 #endif
-
-#endif // _N64_TYPES_H_
+#endif 
 """
 
-def deploy_atomic_foundation():
+def perform_surgical_neutralization():
     root = Path.cwd().resolve()
     include_dir = root / "decomp-files" / "include"
+    pr_dir = include_dir / "2.0L" / "PR"
     
-    print("--- [v189.0] DEPLOYING ATOMIC FOUNDATION ---")
+    print("--- [v190.0] SURGICAL NEUTRALIZATION ---")
     
-    # 1. Rename only the most problematic project headers
-    # We'll leave time.h alone for a moment to see if order-fixing works
-    clashes = ["string.h", "bool.h", "sched.h"]
-    for c in clashes:
-        p = include_dir / c
-        if p.exists():
-            new_p = include_dir / f"n64_project_{c}"
-            p.rename(new_p)
-
-    # 2. Deploy updated bridge
+    # 1. Update the Bridge
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT)
 
-    # 3. Clean up exceptasm.cpp (Remove local redefinitions)
+    # 2. Physically neutralize legacy PR headers
+    # Instead of just blocking them, we empty them so they can't cause redefinitions.
+    legacy_headers = [
+        "os_thread.h", "os_message.h", "os_libc.h", 
+        "gbi.h", "sptask.h", "libaudio.h", "ultra64.h"
+    ]
+    
+    for h in legacy_headers:
+        p = pr_dir / h
+        if not p.exists(): p = include_dir / "2.0L" / h # Try parent if missing in PR
+        
+        if p.exists():
+            print(f"Neutralizing legacy SDK: {p.name}")
+            p.write_text("#include \"n64_types.h\"\n")
+
+    # 3. Patch exceptasm.cpp redefinition
     asm_cpp = root / "Android/app/src/main/cpp/ultra/exceptasm.cpp"
     if asm_cpp.exists():
         text = asm_cpp.read_text()
-        text = re.sub(r'typedef struct OSThread_s\s*\{.*?\}\s*OSThread\s*;', '/* Bridge-Defined */', text, flags=re.DOTALL)
-        text = text.replace('NULL', 'nullptr')
+        text = re.sub(r'typedef struct OSThread_s\s*\{.*?\}\s*OSThread\s*;', '/* Use Bridge */', text, flags=re.DOTALL)
         asm_cpp.write_text(text)
 
-    # 4. Fix rare_decompression pathing globally
-    for path in root.rglob("*.[ch]*"):
-        try:
-            content = path.read_text(errors='ignore')
-            if 'tools/rare_decompression.h' in content:
-                path.write_text(content.replace('tools/rare_decompression.h', 'rare_decompression.h'))
-        except: continue
-
 if __name__ == "__main__":
-    deploy_atomic_foundation()
+    perform_surgical_neutralization()
