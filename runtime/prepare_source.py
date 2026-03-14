@@ -2,7 +2,6 @@ import os
 import re
 from pathlib import Path
 
-# Bridge with defensive definitions
 BASE_BRIDGE_CONTENT = r"""
 #ifndef _N64_TYPES_H_
 #define _N64_TYPES_H_
@@ -17,39 +16,57 @@ BASE_BRIDGE_CONTENT = r"""
 #include <time.h>
 #include <sched.h>
 
-// 1. Primitive Types (Shielded)
-#ifndef _ULTRATYPES_H_
+/** 1. MANDATORY MACRO BLOCKADE **/
+// This poisons the guards so the compiler skips the legacy SDK headers entirely
 #define _ULTRATYPES_H_
+#define __OS_H__
+#define _OS_H_
+#define _OS_THREAD_H_
+#define _OS_MESSAGE_H_
+#define _OS_CONT_H_
+#define _OS_LIBC_H_
+#define _GBI_H_
+#define _ABI_H_
+#define _SPTASK_H_
+#define _ULTRA64_H_
+#define _REGION_H_
+#define _SCHED_H_
+#define _OS_PI_H_
+
+/** 2. N64 PRIMITIVES (64-bit Safe) **/
 typedef int8_t   s8;  typedef uint8_t  u8;
 typedef int16_t  s16; typedef uint16_t u16;
 typedef int32_t  s32; typedef uint32_t u32;
 typedef int64_t  s64; typedef uint64_t u64;
 typedef float    f32; typedef double   f64;
 typedef uint8_t  uchar; typedef volatile uint32_t vu32;
-#endif
-
-// 2. Fundamental Structs (Defining as the "Source of Truth")
-#ifndef _N64_STRUCTS_DEFINED_
-#define _N64_STRUCTS_DEFINED_
-typedef uint64_t Gfx;
-typedef struct { int32_t m[4][4]; } Mtx;
-typedef struct { float m[4][4]; } MtxF;
-typedef struct { int16_t ob[3]; uint16_t flag; int16_t tc[2]; uint8_t cn[4]; } Vtx_t;
-typedef union { Vtx_t v; long long force_align; } Vtx;
-#endif
 
 #ifndef TRUE
   #define TRUE 1
   #define FALSE 0
 #endif
 
-typedef void* ALHeap;
-typedef void* OSTask;
+/** 3. ENGINE STRUCTS **/
+typedef uint64_t Gfx;
+typedef struct { int32_t m[4][4]; } Mtx;
+typedef struct { float m[4][4]; } MtxF;
+typedef struct { int16_t ob[3]; uint16_t flag; int16_t tc[2]; uint8_t cn[4]; } Vtx_t;
+typedef union { Vtx_t v; long long force_align; } Vtx;
+
 typedef uint32_t OSId;
 typedef uint32_t OSPri;
 typedef uint64_t OSTime;
 typedef void* OSMesg;
 typedef struct { void* mt; void* full; int count; } OSMesgQueue;
+
+typedef struct OSThread_s {
+    struct OSThread_s *next;
+    uint32_t priority;
+    uint8_t d[1024]; 
+} OSThread;
+
+typedef void* ALHeap;
+typedef void* OSTask;
 
 #if defined(__cplusplus)
 extern "C" {
@@ -62,41 +79,42 @@ extern "C" {
 #endif // _N64_TYPES_H_
 """
 
-def deploy_surgical_patch():
+def deploy_absolute_suppression():
     root = Path.cwd().resolve()
     include_dir = root / "decomp-files" / "include"
     
-    print("--- [v177.0] DEPLOYING SURGICAL COLLISION FIX ---")
+    print("--- [v178.1] DEPLOYING ABSOLUTE SUPPRESSION ---")
     
-    # 1. Update Bridge
+    # 1. Write the Shielded Bridge
     (include_dir / "n64_types.h").write_text(BASE_BRIDGE_CONTENT)
 
-    # 2. SURGERY: Remove conflicting types from structs.h
+    # 2. SURGERY: Force structs.h to be compliant
     structs_h = include_dir / "structs.h"
     if structs_h.exists():
-        content = structs_h.read_text(errors='ignore')
-        # Remove the Mtx/MtxF definitions that clash with n64_types.h
-        content = re.sub(r'typedef struct\s*\{.*?\}\s*MtxF\s*;', '/* MtxF in n64_types.h */', content, flags=re.DOTALL)
-        content = re.sub(r'typedef struct\s*\{.*?\}\s*Mtx\s*;', '/* Mtx in n64_types.h */', content, flags=re.DOTALL)
-        # Fix the ALHeap error
-        content = content.replace('ALHeap', 'void* /* ALHeap */')
-        structs_h.write_text(content)
+        text = structs_h.read_text(errors='ignore')
+        # Wipe out clashing definitions that would error on redefinition
+        text = re.sub(r'typedef struct\s*\{.*?\}\s*MtxF\s*;', '/* Ref in bridge */', text, flags=re.DOTALL)
+        text = re.sub(r'typedef struct\s*\{.*?\}\s*Mtx\s*;', '/* Ref in bridge */', text, flags=re.DOTALL)
+        text = text.replace('ALHeap', 'void*')
+        # Stop the inclusion cascade
+        text = text.replace('#include "2.0L/ultra64.h"', '/* Suppressed */')
+        text = text.replace('#include "ultra64.h"', '/* Suppressed */')
+        structs_h.write_text(text)
 
-    # 3. FIX: rare_decompression.h path collision
-    rare_decomp_cpp = root / "Android/app/src/main/cpp/tools/rare_decompression.cpp"
-    if rare_decomp_cpp.exists():
-        text = rare_decomp_cpp.read_text()
-        text = text.replace('#include "tools/rare_decompression.h"', '#include "rare_decompression.h"')
-        rare_decomp_cpp.write_text(text)
+    # 3. Suppress the PR folder content physically
+    pr_path = include_dir / "2.0L" / "PR"
+    if pr_path.exists():
+        for h_file in pr_path.glob("*.h"):
+            h_file.write_text("#include \"n64_types.h\"\n")
 
-    # 4. FIX: NativeBridge.cpp Namespace/Inclusion issues
+    # 4. Final Sweep for NativeBridge.cpp
     bridge_cpp = root / "Android/app/src/main/cpp/ultra/NativeBridge.cpp"
     if bridge_cpp.exists():
         text = bridge_cpp.read_text()
-        # Ensure system headers are physically at the very top for C++
-        if '#include <string.h>' not in text:
-            text = "#include <string.h>\n#include <stdlib.h>\n#include <stdio.h>\n" + text
+        # Fix sched_yield calls specifically for Android compatibility
+        if 'sched_yield()' in text:
+            text = text.replace('sched_yield()', 'sched_yield_compat()')
         bridge_cpp.write_text(text)
 
 if __name__ == "__main__":
-    deploy_surgical_patch()
+    deploy_absolute_suppression()
