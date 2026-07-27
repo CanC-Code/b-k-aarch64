@@ -2,7 +2,7 @@
 #include "functions.h"
 #include "variables.h"
 
-void func_8025F510(ALCSPlayer *seqp, u8 chan, u8 arg2)
+void func_8025F510(ALCSPlayer *seqp, u8 chan, u8 tempo)
 {
     ALEvent       evt;
 
@@ -10,7 +10,7 @@ void func_8025F510(ALCSPlayer *seqp, u8 chan, u8 arg2)
     evt.msg.midi.ticks  = 0;
     evt.msg.midi.status = AL_MIDI_ControlChange | chan;
     evt.msg.midi.byte1  = 0x7D;
-    evt.msg.midi.byte2  = arg2;
+    evt.msg.midi.byte2  = tempo;
                     
     alEvtqPostEvent(&seqp->evtq, &evt, 0);
 }

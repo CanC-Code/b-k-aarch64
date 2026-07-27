@@ -43,18 +43,18 @@ void func_80243070(Struct87s *arg0) {
     ALEvent sp40;
     u32 var_s0;
 
-    D_802758CC->maxSounds = (s32) arg0->unk8;
+    D_802758CC->maxSounds = arg0->max_sounds;
     D_802758CC->target = NULL;
     D_802758CC->frameTime = 33000;
-    D_802758CC->sndState = alHeapDBAlloc(NULL, 0, arg0->unkC, 1, arg0->unk0 * sizeof(N_AL_Struct81s));
-    alEvtqNew(&D_802758CC->evtq, alHeapDBAlloc(NULL, 0, arg0->unkC, 1, arg0->unk4 * 0x1C), arg0->unk4);
+    D_802758CC->sndState = alHeapAlloc(arg0->heap, 1, arg0->unk0 * sizeof(N_AL_Struct81s));
+    alEvtqNew(&D_802758CC->evtq, alHeapAlloc(arg0->heap, 1, arg0->unk4 * 0x1C), arg0->unk4);
     D_802758C0.unk8 = D_802758CC->sndState;
     for(var_s0 = 1; var_s0 < arg0->unk0; var_s0++){
         var_v0 =  (N_AL_Struct81s *)D_802758CC->sndState;
         temp_a0 = var_s0 + var_v0;
         alLink((ALLink *)temp_a0, (ALLink*)(temp_a0 - 1));
     }
-    D_8027EF14 = alHeapDBAlloc(NULL, 0, arg0->unkC, 2, (s32) arg0->unk10);
+    D_8027EF14 = alHeapAlloc(arg0->heap, 2, (s32) arg0->unk10);
     for(var_s0 = 0; var_s0 < arg0->unk10; var_s0++){
         D_8027EF14[var_s0] = 0x7FFF;
     }

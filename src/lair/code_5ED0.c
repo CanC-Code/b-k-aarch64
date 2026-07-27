@@ -776,7 +776,7 @@ void func_8038D16C(s32 music_id, u16 a1)
 {
     coMusicPlayer_playMusic(music_id, 0);
     comusic_8025AB44(music_id, 28000, 500);
-    func_80250530(func_8025ADD4(music_id), a1, 0);
+    musicSlot_stepToChannelMask(comusic_getTrackPosition(music_id), a1, 0);
 }
 
 void func_8038D1BC(void)
@@ -988,7 +988,7 @@ void ff_setState(enum FF_Action next_state) {
                         timedFunc_set_0(1.5f, func_8038D1BC);
                         break;
                     case FFPA_1_UNK: //L8038D870
-                         if (func_8025AD7C(FF_SoundQuestionTable[ffStorage->questionTypeTableIndex].soundId)) {
+                         if (comusic_isTrackQueued(FF_SoundQuestionTable[ffStorage->questionTypeTableIndex].soundId)) {
                             comusic_8025AB44(FF_SoundQuestionTable[ffStorage->questionTypeTableIndex].soundId, 0, 0x1F4);
                             timedFunc_set_0(1.5f, func_8038D1BC);
                         } else {
@@ -1382,7 +1382,7 @@ void lair_func_8038E0B0(void) {
                 break;
 
             case 9://L8038E738
-                if (!func_8025AD7C(0x78)) {
+                if (!comusic_isTrackQueued(0x78)) {
                     mapSpecificFlags_set(6, TRUE);
                     ff_setState(FFA_0_NIL);
                 }
