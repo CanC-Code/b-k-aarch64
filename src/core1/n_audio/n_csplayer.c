@@ -739,7 +739,7 @@ static void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, ALEvent *event)
                 case 0x75:                          /* switch 2 */
                 case 0x76:                          /* switch 2 */
                 case 0x77:                          /* switch 2 */
-                    func_80250104(seqp->target, byte1, chan);
+                    musicSlot_func_80250104(seqp->target, byte1, chan);
                     break;
 /*                case (AL_MIDI_FX_CTRL_0):
                 case (AL_MIDI_FX_CTRL_1):

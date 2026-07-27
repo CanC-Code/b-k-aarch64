@@ -216,7 +216,7 @@ void baMotor_80250D94(f32, f32, f32);
 
 void coMusicPlayer_playMusic(enum comusic_e, s32);
 void comusic_playTrack(enum comusic_e);
-void comusic_8025AB44(enum comusic_e comusic_id, s32 arg1, s32 arg2);
+void comusic_8025AB44(enum comusic_e track_id, s32 arg1, s32 arg2);
 
 f32  cosf(f32);
 
