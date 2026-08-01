@@ -1,17 +1,3 @@
-/* Microcode renames to remove boot_ prefix */
-n_aspMainTextStart = boot_n_aspMainTextStart;
-n_aspMainTextEnd = boot_n_aspMainTextEnd;
-gspF3DEX_fifoTextStart = boot_gspF3DEX_fifoTextStart;
-gspF3DEX_fifoTextEnd = boot_gspF3DEX_fifoTextEnd;
-gspL3DEX_fifoTextStart = boot_gspL3DEX_fifoTextStart;
-gspL3DEX_fifoTextEnd = boot_gspL3DEX_fifoTextEnd;
-n_aspMainDataStart = boot_n_aspMainDataStart;
-n_aspMainDataEnd = boot_n_aspMainDataEnd;
-gspF3DEX_fifoDataStart = boot_gspF3DEX_fifoDataStart;
-gspF3DEX_fifoDataEnd = boot_gspF3DEX_fifoDataEnd;
-gspL3DEX_fifoDataStart = boot_gspL3DEX_fifoDataStart;
-gspL3DEX_fifoDataEnd = boot_gspL3DEX_fifoDataEnd;
-
 /* Fixed-address buffers */
 D_8000E800 = 0x8000E800;
 gHeapBase = 0x8002D500;
