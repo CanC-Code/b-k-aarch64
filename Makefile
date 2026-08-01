@@ -83,7 +83,7 @@ NEW_C_SRCS := $(filter-out $(C_SRCS), $(YAML_C_SRCS))
 NEW_ASM_SRCS := $(filter-out $(ALL_ASM_SRCS), $(YAML_ASM_SRCS))
 NEW_BINS := $(filter-out $(ALL_BINS), $(YAML_BINS))
 NEW_FILES := $(NEW_C_SRCS) $(NEW_ASM_SRCS) $(NEW_BINS)
-BOOT_ASM_SRCS := $(filter-out asm/core1/%,$(NEW_ASM_SRCS) $(ALL_ASM_SRCS))
+BOOT_ASM_SRCS := $(filter-out asm/core1/% asm/data/core1/%,$(NEW_ASM_SRCS) $(ALL_ASM_SRCS))
 # Any source files that have GLOBAL_ASM in them or do not exist before splitting
 GLOBAL_ASM_C_SRCS := $(shell $(GREP) GLOBAL_ASM $(SRC_ROOT) </dev/null) $(NEW_C_SRCS)
 
@@ -118,9 +118,6 @@ BIN_OBJS             := $(filter-out $(ASSET_OBJS),$(BIN_OBJS))
 ALL_OBJS             := $(C_OBJS) $(ASM_OBJS) $(BIN_OBJS)
 SYMBOL_ADDRS         := symbol_addrs.$(VERSION).txt
 SYMBOL_ADDR_FILES    := $(filter-out $(SYMBOL_ADDRS), $(wildcard symbol_addrs.*.$(VERSION).txt))
-MIPS3_OBJS           := $(BUILD_DIR)/$(SRC_ROOT)/core1/ultra/libc/ll.c.o $(BUILD_DIR)/$(SRC_ROOT)/core1/ultra/libc/llcvt.c.o
-BOOT_MIPS3_OBJS      := $(BUILD_DIR)/$(SRC_ROOT)/boot/ultra/libc/ll.c.o
-BOOT_C_OBJS          := $(filter-out $(BOOT_MIPS3_OBJS),$(BOOT_C_OBJS))
 COMPRESSED_SYMBOLS   := $(BUILD_DIR)/compressed_symbols.txt
 
 # Progress files
@@ -251,33 +248,18 @@ $(BUILD_DIR)/%.c.o : %.c | $(C_BUILD_DIRS)
 	$(call print2,Compiling:,$<,$@)
 	@$(CC) $(CFLAGS) $(CPPFLAGS) $(INCLUDE_CFLAGS) $(OPT_FLAGS) $(MIPSBIT) -o $@ $<
 
-# .c -> .o (mips3)
-$(MIPS3_OBJS) : $(BUILD_DIR)/%.c.o : %.c | $(C_BUILD_DIRS)
-	$(call print2,Compiling:,$<,$@)
-	@$(CC) -c -32 $(CFLAGS) $(CPPFLAGS) $(INCLUDE_CFLAGS) $(OPT_FLAGS) $(LOOP_UNROLL) $(MIPSBIT) -o $@ $<
-	@tools/set_o32abi_bit.py $@
-
 # .c -> .o with asm processor
 $(GLOBAL_ASM_C_OBJS) : $(BUILD_DIR)/%.c.o : %.c | $(C_BUILD_DIRS)
 	$(call print2,Compiling (with ASM Processor):,$<,$@)
 	@$(ASM_PROCESSOR) $(OPT_FLAGS) $< > $(BUILD_DIR)/$<
 	@$(CC) -32 $(CFLAGS) $(CPPFLAGS) $(INCLUDE_CFLAGS) $(OPT_FLAGS) $(MIPSBIT) -o $@ $(BUILD_DIR)/$<
-	@$(ASM_PROCESSOR) $(OPT_FLAGS) $< --post-process $@ \
-		--assembler "$(AS) $(ASFLAGS)" --asm-prelude include/prelude.s
+	@$(ASM_PROCESSOR) $(OPT_FLAGS) $< --post-process $@ --assembler "$(AS) $(ASFLAGS)" --asm-prelude include/prelude.s
 
 # .c -> .o (boot)
 $(BOOT_C_OBJS) : $(BUILD_DIR)/%.c.o : %.c | $(C_BUILD_DIRS)
 	$(call print2,Compiling:,$<,$@)
 	@$(CC) $(CFLAGS) $(CPPFLAGS) $(INCLUDE_CFLAGS) $(OPT_FLAGS) $(MIPSBIT) -o $@ $<
 	@mips-linux-gnu-strip $@ -N asdasdasasdasd
-	@$(OBJCOPY) --prefix-symbols=boot_ $@
-	@$(OBJCOPY) --strip-unneeded $@
-
-# .c -> .o (mips3, boot)
-$(BOOT_MIPS3_OBJS) : $(BUILD_DIR)/%.c.o : %.c | $(C_BUILD_DIRS)
-	$(call print2,Compiling:,$<,$@)
-	@$(CC) -c -32 $(CFLAGS) $(CPPFLAGS) $(INCLUDE_CFLAGS) $(OPT_FLAGS) $(LOOP_UNROLL) $(MIPSBIT) -o $@ $<
-	@tools/set_o32abi_bit.py $@
 	@$(OBJCOPY) --prefix-symbols=boot_ $@
 	@$(OBJCOPY) --strip-unneeded $@
 
@@ -392,7 +374,6 @@ clean:
 # Per-file flag definitions
 build/$(VERSION)/src/core1/ultra/audio/%.c.o: OPT_FLAGS = -O3
 build/$(VERSION)/src/core1/n_audio/%.c.o: OPT_FLAGS = -O3
-build/$(VERSION)/src/core1/ultra/gu/%.c.o: OPT_FLAGS := -O3
 
 # Disable implicit rules
 MAKEFLAGS += -r
