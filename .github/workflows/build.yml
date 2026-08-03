@@ -1,0 +1,70 @@
+name: Build & Verify
+
+on:
+  push:
+    branches: [android-port, android-*]
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.2'
+
+      - name: Clean previous build
+        run: |
+          rm -rf Android/app/.cxx
+          rm -rf Android/app/build
+
+      - name: Build APK
+        id: build
+        run: |
+          cd Android
+          gradle assembleDebug \
+            -Pandroid.externalNativeBuild.cmake.arguments="-DEXCLUDE_GAME_SRC=OFF" \
+            --stacktrace 2>&1 | tee ../build.log
+          echo "EXIT_CODE=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+
+      - name: Build Succeeded
+        if: steps.build.outputs.EXIT_CODE == '0'
+        run: |
+          echo "### Build Passed!" >> $GITHUB_STEP_SUMMARY
+
+      - name: Build Failed — Show Errors
+        if: steps.build.outputs.EXIT_CODE != '0'
+        run: |
+          echo "### Build Failed" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          grep -E "^[^[]*error:|^.*FAILED:|BUILD FAILED" build.log | tail -n 60 >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Build Log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+
+      - name: Upload APK
+        if: steps.build.outputs.EXIT_CODE == '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bka-debug-apk
+          path: Android/app/build/outputs/apk/debug/*.apk
