@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.22.1)
 project(bkawrapper)
 
 set(REPO_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../../../..)
-set(TARGET_VERSION "us.v10")
 
 # ============================================================
 # 1. C++ Bridge Sources
@@ -27,7 +26,7 @@ set(CPP_BRIDGE_SOURCES
 )
 
 # ============================================================
-# 2. C Bridge/Utility Sources (compiled as C)
+# 2. C Bridge/Utility Sources
 # ============================================================
 set(C_BRIDGE_SOURCES
     ultra/zlib/adler32.c
@@ -47,23 +46,16 @@ set(C_BRIDGE_SOURCES
 # ============================================================
 # 3. Game Source Files (C only)
 # ============================================================
-option(EXCLUDE_GAME_SRC "Skip compiling the recompiled game source tree" OFF)
-
+option(EXCLUDE_GAME_SRC "Skip" OFF)
 set(GAME_SOURCES "")
 if(NOT EXCLUDE_GAME_SRC)
-    file(GLOB_RECURSE ALL_GAME_FILES
-        "${REPO_ROOT}/src/*.c"
-    )
-
+    file(GLOB_RECURSE ALL_GAME_FILES "${REPO_ROOT}/src/*.c")
     set(EXCLUSION_LIST
         "createthread.c" "startthread.c" "stopthread.c" "destroythread.c"
         "yieldthread.c" "settreadpri.c" "getthreadpri.c"
         "createmesgqueue.c" "seteventmesg.c"
         "recvmesg.c" "sendmesg.c" "jammesg.c"
-        "visetmode.c" "visetevent.c"
-        "inflate.c"
-    )
-
+        "visetmode.c" "visetevent.c" "inflate.c")
     foreach(FILE_PATH ${ALL_GAME_FILES})
         get_filename_component(FILENAME ${FILE_PATH} NAME)
         if(NOT FILENAME IN_LIST EXCLUSION_LIST)
@@ -73,7 +65,7 @@ if(NOT EXCLUDE_GAME_SRC)
 endif()
 
 # ============================================================
-# 4. Add Library with separate C and C++ sources
+# 4. Add Library
 # ============================================================
 add_library(bkawrapper SHARED
     ${CPP_BRIDGE_SOURCES}
@@ -88,31 +80,24 @@ target_link_options(bkawrapper PRIVATE
 )
 
 # ============================================================
-# 5. Include Directories
+# 5. Include Directories - separate C and C++
 # ============================================================
+# Common includes (safe for both)
 target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/ultra
     ${CMAKE_CURRENT_SOURCE_DIR}/emulator
     ${CMAKE_CURRENT_SOURCE_DIR}/tools
-    ${REPO_ROOT}/include
-    ${REPO_ROOT}/include/n_audio/PR
-    ${REPO_ROOT}/lib/ultralib/include
-    ${REPO_ROOT}/lib/ultralib/include/PR
-    ${REPO_ROOT}/src
 )
 
-# ============================================================
-# 6. Compile Options — per-language
-# ============================================================
-# C++ bridge: C++17, no forced include
-set_source_files_properties(${CPP_BRIDGE_SOURCES} PROPERTIES
-    COMPILE_FLAGS "-std=c++17 -w -fpermissive -O0 -g3"
-)
-
-# C bridge + game files: gnu11, forced include n64_types.h
+# C-only includes (N64 headers that conflict with C++ stdlib)
 set_source_files_properties(${C_BRIDGE_SOURCES} ${GAME_SOURCES} PROPERTIES
-    COMPILE_FLAGS "-std=gnu11 -w -O0 -g3 -include ${CMAKE_CURRENT_SOURCE_DIR}/ultra/n64_types.h"
+    COMPILE_FLAGS "-std=gnu11 -w -O0 -g3 -include ${CMAKE_CURRENT_SOURCE_DIR}/ultra/n64_types.h -I${REPO_ROOT}/include -I${REPO_ROOT}/include/n_audio/PR -I${REPO_ROOT}/lib/ultralib/include -I${REPO_ROOT}/lib/ultralib/include/PR -I${REPO_ROOT}/src"
+)
+
+# C++ includes (safe, no N64 PR headers)
+set_source_files_properties(${CPP_BRIDGE_SOURCES} PROPERTIES
+    COMPILE_FLAGS "-std=c++17 -w -fpermissive -O0 -g3 -I${REPO_ROOT}/include -I${REPO_ROOT}/src"
 )
 
 target_compile_definitions(bkawrapper PRIVATE
@@ -120,7 +105,7 @@ target_compile_definitions(bkawrapper PRIVATE
 )
 
 # ============================================================
-# 7. Libraries
+# 6. Libraries
 # ============================================================
 find_library(log-lib log)
 find_library(android-lib android)
@@ -129,10 +114,6 @@ find_library(gles3-lib GLESv3)
 find_library(gles2-lib GLESv2)
 
 target_link_libraries(bkawrapper
-    ${log-lib}
-    ${android-lib}
-    ${egl-lib}
-    ${gles3-lib}
-    ${gles2-lib}
+    ${log-lib} ${android-lib} ${egl-lib} ${gles3-lib} ${gles2-lib}
     atomic m
 )
