@@ -5,9 +5,9 @@ set(REPO_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../../../..)
 set(TARGET_VERSION "us.v10")
 
 # ============================================================
-# 1. Bridge Sources (C++)
+# 1. C++ Bridge Sources
 # ============================================================
-set(BRIDGE_SOURCES
+set(CPP_BRIDGE_SOURCES
     ultra/NativeBridge.cpp
     ultra/otr_builder.cpp
     ultra/parameters.cpp
@@ -23,6 +23,13 @@ set(BRIDGE_SOURCES
     emulator/resource_mgr.cpp
     emulator/gfx_interpreter.cpp
     tools/rare_decompression.cpp
+    ultra/HardwareRegs.cpp
+)
+
+# ============================================================
+# 2. C Bridge/Utility Sources (compiled as C)
+# ============================================================
+set(C_BRIDGE_SOURCES
     ultra/zlib/adler32.c
     ultra/zlib/compress.c
     ultra/zlib/crc32.c
@@ -35,11 +42,10 @@ set(BRIDGE_SOURCES
     ultra/zlib/uncompr.c
     ultra/zlib/zutil.c
     ultra/missing_stubs.c
-    ultra/HardwareRegs.cpp
 )
 
 # ============================================================
-# 2. Game Source Files (C only)
+# 3. Game Source Files (C only)
 # ============================================================
 option(EXCLUDE_GAME_SRC "Skip compiling the recompiled game source tree" OFF)
 
@@ -67,10 +73,11 @@ if(NOT EXCLUDE_GAME_SRC)
 endif()
 
 # ============================================================
-# 3. Add Library
+# 4. Add Library with separate C and C++ sources
 # ============================================================
 add_library(bkawrapper SHARED
-    ${BRIDGE_SOURCES}
+    ${CPP_BRIDGE_SOURCES}
+    ${C_BRIDGE_SOURCES}
     ${GAME_SOURCES}
 )
 
@@ -81,7 +88,7 @@ target_link_options(bkawrapper PRIVATE
 )
 
 # ============================================================
-# 4. Include Directories
+# 5. Include Directories
 # ============================================================
 target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -96,15 +103,15 @@ target_include_directories(bkawrapper PRIVATE
 )
 
 # ============================================================
-# 5. Compile Options
+# 6. Compile Options — per-language
 # ============================================================
-# C++ bridge files: C++17, use C++-safe types (no ultra64.h)
-set_source_files_properties(${BRIDGE_SOURCES} PROPERTIES
-    COMPILE_FLAGS "-std=c++17 -w -fpermissive -O0 -g3 -include ${CMAKE_CURRENT_SOURCE_DIR}/ultra/n64_types_cpp.h"
+# C++ bridge: C++17, no forced include
+set_source_files_properties(${CPP_BRIDGE_SOURCES} PROPERTIES
+    COMPILE_FLAGS "-std=c++17 -w -fpermissive -O0 -g3"
 )
 
-# C game files: gnu11, use full N64 types (with ultra64.h)
-set_source_files_properties(${GAME_SOURCES} PROPERTIES
+# C bridge + game files: gnu11, forced include n64_types.h
+set_source_files_properties(${C_BRIDGE_SOURCES} ${GAME_SOURCES} PROPERTIES
     COMPILE_FLAGS "-std=gnu11 -w -O0 -g3 -include ${CMAKE_CURRENT_SOURCE_DIR}/ultra/n64_types.h"
 )
 
@@ -113,7 +120,7 @@ target_compile_definitions(bkawrapper PRIVATE
 )
 
 # ============================================================
-# 6. Libraries
+# 7. Libraries
 # ============================================================
 find_library(log-lib log)
 find_library(android-lib android)
