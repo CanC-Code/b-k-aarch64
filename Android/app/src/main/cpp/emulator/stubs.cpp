@@ -16,7 +16,6 @@
 #include <condition_variable>
 #include <memory>
 #include <thread>
-
 #include "n64_os_types_cpp.h"
 #include "bka_safe_base.h"
 #include "rarezip.h"

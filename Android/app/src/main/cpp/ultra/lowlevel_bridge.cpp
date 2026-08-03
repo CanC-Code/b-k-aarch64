@@ -1,3 +1,4 @@
+#include "n64_os_types_cpp.h"
 // File: Android/app/src/main/cpp/ultra/lowlevel_bridge.cpp
 
 #include <sys/mman.h>

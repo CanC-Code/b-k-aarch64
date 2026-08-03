@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <android/log.h>
-#include "n64_types.h"
+#include "n64_os_types_cpp.h"
 
 #define LOG_TAG "BKA_PI"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)

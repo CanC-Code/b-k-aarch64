@@ -28,7 +28,7 @@ set(C_BRIDGE_SOURCES
 option(EXCLUDE_GAME_SRC "Skip" OFF)
 set(GAME_SOURCES "")
 if(NOT EXCLUDE_GAME_SRC)
-    file(GLOB_RECURSE ALL_GAME_FILES "${REPO_ROOT}/src/*.c")
+    file(GLOB_RECURSE ALL_GAME_FILES "${REPO_ROOT}/src ${REPO_ROOT}/include/boot ${REPO_ROOT}/include/core1/*.c")
     set(EXCLUDE_LIST createthread.c startthread.c stopthread.c destroythread.c
         yieldthread.c settreadpri.c getthreadpri.c createmesgqueue.c
         seteventmesg.c recvmesg.c sendmesg.c jammesg.c visetmode.c
@@ -53,7 +53,7 @@ target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/ultra
     ${CMAKE_CURRENT_SOURCE_DIR}/emulator
     ${CMAKE_CURRENT_SOURCE_DIR}/tools
-    ${REPO_ROOT}/src
+    ${REPO_ROOT}/src ${REPO_ROOT}/include/boot ${REPO_ROOT}/include/core1
 )
 
 # N64 SDK headers ONLY for C files
