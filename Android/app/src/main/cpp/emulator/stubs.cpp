@@ -18,7 +18,7 @@
 #include <thread>
 #include "n64_os_types_cpp.h"
 #include "bka_safe_base.h"
-#include "rarezip.h"
+#include "rarezip_stub_cpp.h"
 extern OSMesgQueue D_8027FBC8;
 #include "gfx_interpreter.h"   // <-- ADDED: F3DEX display list → framebuffer rasterizer
 

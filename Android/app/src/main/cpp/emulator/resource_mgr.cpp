@@ -12,7 +12,7 @@
 
 #include "bka_safe_base.h"
 #include "rare_decompression.h"
-#include "rarezip.h" // For D_80007284, D_80007290, inbuf, etc.
+#include "rarezip_stub_cpp.h" // For D_80007284, D_80007290, inbuf, etc.
 
 #define LOG_TAG "NativeBridge"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
