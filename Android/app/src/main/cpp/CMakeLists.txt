@@ -107,7 +107,7 @@ target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/emulator
     ${CMAKE_CURRENT_SOURCE_DIR}/tools
     ${REPO_ROOT}/include
-    ${REPO_ROOT}/include/2.0L
+    ${REPO_ROOT}/lib/ultralib/include ${REPO_ROOT}/lib/ultralib/include/PR
     ${REPO_ROOT}/src
 )
 
