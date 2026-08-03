@@ -1,5 +1,5 @@
 #pragma once
-#include <PR/sptask.h>
+#include "n64_os_types_cpp.h"
 #include <stdint.h>
 
 // =======================================================================

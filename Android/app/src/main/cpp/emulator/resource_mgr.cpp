@@ -1,4 +1,4 @@
-#include <PR/sched.h>
+#include "n64_os_types_cpp.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>

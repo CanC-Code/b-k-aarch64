@@ -8,8 +8,8 @@
 #include <unistd.h>
 #include <time.h>
 #include <pthread.h>
-#include <PR/sched.h>
-#include <PR/os_vi.h>
+#include "n64_os_types_cpp.h"
+// os_vi stubs in n64_os_types_cpp.h
 #include <unordered_map>
 #include <mutex>
 #include <deque>
@@ -100,12 +100,12 @@ static void PreemptiveYield(NativeThread* nt) {
 
 extern "C" {
 // Recompiled OS headers
-#include <PR/os_pi.h>
-#include <PR/os_thread.h>
-#include <PR/os_message.h>
-#include <PR/sptask.h>
-#include <PR/os_ai.h>
-#include <PR/os_eeprom.h>
+// os_pi types in n64_os_types_cpp.h
+// os_thread types in n64_os_types_cpp.h
+// os_message types in n64_os_types_cpp.h
+// sptask types in n64_os_types_cpp.h
+// os_ai stubs
+// os_eeprom stubs
 
 #define LOG_TAG "BKA_STUBS"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
