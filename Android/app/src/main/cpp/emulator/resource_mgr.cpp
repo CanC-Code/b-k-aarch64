@@ -69,7 +69,7 @@ static bool InitializeDecompressionBuffers(const char* romPath) {
     }
 
     // Allocate Huffman pool
-    D_80007290 = (struct huft *)malloc(HUFT_POOL_CAPACITY * 512);
+    D_80007290 = (u8 *)malloc(HUFT_POOL_CAPACITY * 512);
     if (!D_80007290) {
         LOGE("InitializeDecompressionBuffers: Failed to allocate Huffman pool!");
         return false;
