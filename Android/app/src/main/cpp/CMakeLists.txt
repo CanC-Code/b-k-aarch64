@@ -28,7 +28,7 @@ set(C_BRIDGE_SOURCES
 option(EXCLUDE_GAME_SRC "Skip" OFF)
 set(GAME_SOURCES "")
 if(NOT EXCLUDE_GAME_SRC)
-    file(GLOB_RECURSE ALL_GAME_FILES "${REPO_ROOT}/src ${REPO_ROOT}/include/boot ${REPO_ROOT}/include/core1/*.c")
+    file(GLOB_RECURSE ALL_GAME_FILES "${REPO_ROOT}/src/*.c")
     set(EXCLUDE_LIST createthread.c startthread.c stopthread.c destroythread.c
         yieldthread.c settreadpri.c getthreadpri.c createmesgqueue.c
         seteventmesg.c recvmesg.c sendmesg.c jammesg.c visetmode.c
@@ -47,13 +47,15 @@ target_link_options(bkawrapper PRIVATE "-Wl,--allow-multiple-definition" "-Wl,--
 # ============================================================
 # Include Directories
 # ============================================================
-# Common (safe for both C and C++)
+# Common (safe for both C and C++) - includes boot/core1 for rarezip.h
 target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/ultra
     ${CMAKE_CURRENT_SOURCE_DIR}/emulator
     ${CMAKE_CURRENT_SOURCE_DIR}/tools
-    ${REPO_ROOT}/src ${REPO_ROOT}/include/boot ${REPO_ROOT}/include/core1
+    ${REPO_ROOT}/src
+    ${REPO_ROOT}/include/boot
+    ${REPO_ROOT}/include/core1
 )
 
 # N64 SDK headers ONLY for C files
@@ -67,12 +69,9 @@ target_include_directories(bkawrapper PRIVATE
 # ============================================================
 # Compile Options
 # ============================================================
-# C++: C++17, no forced include
 set_source_files_properties(${CPP_BRIDGE_SOURCES} PROPERTIES
     COMPILE_FLAGS "-std=c++17 -w -fpermissive -O0 -g3"
 )
-
-# C: gnu11, forced include n64_types.h
 set_source_files_properties(${C_BRIDGE_SOURCES} ${GAME_SOURCES} PROPERTIES
     COMPILE_FLAGS "-std=gnu11 -w -O0 -g3 -include ${CMAKE_CURRENT_SOURCE_DIR}/ultra/n64_types.h"
 )
