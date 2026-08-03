@@ -96,16 +96,14 @@ target_include_directories(bkawrapper PRIVATE
 )
 
 # ============================================================
-# 5. Compile Options
+# 5. Compile Options — forced include n64_types.h for ALL sources
 # ============================================================
-# C++ bridge files: C++17, no forced include (n64_types included explicitly)
-# C game files: gnu11, forced include n64_types.h
-set_source_files_properties(${GAME_SOURCES} PROPERTIES
-    COMPILE_FLAGS "-std=gnu11 -w -O0 -g3 -include ${CMAKE_CURRENT_SOURCE_DIR}/ultra/n64_types.h"
-)
-
-set_source_files_properties(${BRIDGE_SOURCES} PROPERTIES
-    COMPILE_FLAGS "-std=c++17 -w -fpermissive -O0 -g3"
+target_compile_options(bkawrapper PRIVATE
+    "-include${CMAKE_CURRENT_SOURCE_DIR}/ultra/n64_types.h"
+    -w -fpermissive
+    -O0 -g3
+    $<$<COMPILE_LANGUAGE:CXX>:-std=c++17>
+    $<$<COMPILE_LANGUAGE:C>:-std=gnu11>
 )
 
 target_compile_definitions(bkawrapper PRIVATE
