@@ -63,6 +63,7 @@ target_include_directories(bkawrapper PRIVATE
     $<$<COMPILE_LANGUAGE:C>:${REPO_ROOT}/include/n_audio/PR>
     $<$<COMPILE_LANGUAGE:C>:${REPO_ROOT}/lib/ultralib/include>
     $<$<COMPILE_LANGUAGE:C>:${REPO_ROOT}/lib/ultralib/include/PR>
+    $<$<COMPILE_LANGUAGE:C>:${REPO_ROOT}/lib/ultralib/src/audio>
 )
 
 # ============================================================
