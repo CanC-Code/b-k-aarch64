@@ -55,6 +55,7 @@ target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/tools
     ${REPO_ROOT}/src
     ${REPO_ROOT}/include/boot
+    ${REPO_ROOT}/lib/ultralib/include
     ${REPO_ROOT}/include/core1
 )
 
