@@ -5,23 +5,23 @@ set(REPO_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../../../..)
 set(TARGET_VERSION "us.v10")
 
 # ============================================================
-# 1. Bridge Sources
+# 1. Bridge Sources (C++)
 # ============================================================
 set(BRIDGE_SOURCES
     ultra/NativeBridge.cpp
     ultra/otr_builder.cpp
     ultra/parameters.cpp
-    ultra/libm_vals.cpp          
-    ultra/exceptasm.cpp          
-    ultra/LinkerSymbols.cpp      
-    ultra/setintmask.cpp         
+    ultra/libm_vals.cpp
+    ultra/exceptasm.cpp
+    ultra/LinkerSymbols.cpp
+    ultra/setintmask.cpp
     ultra/math_bridge.cpp
     ultra/audio_bridge.cpp
     ultra/lowlevel_bridge.cpp
     emulator/stubs.cpp
     emulator/pi_hle.cpp
     emulator/resource_mgr.cpp
-    emulator/gfx_interpreter.cpp     # <-- ADDED: F3DEX display list → software rasterizer
+    emulator/gfx_interpreter.cpp
     tools/rare_decompression.cpp
     ultra/zlib/adler32.c
     ultra/zlib/compress.c
@@ -35,40 +35,26 @@ set(BRIDGE_SOURCES
     ultra/zlib/uncompr.c
     ultra/zlib/zutil.c
     ultra/missing_stubs.c
+    ultra/HardwareRegs.cpp
 )
 
 # ============================================================
-# 2. Game Source Files
+# 2. Game Source Files (C)
 # ============================================================
 option(EXCLUDE_GAME_SRC "Skip compiling the recompiled game source tree" OFF)
 
 set(GAME_SOURCES "")
 if(NOT EXCLUDE_GAME_SRC)
-    file(GLOB_RECURSE ALL_GAME_FILES 
+    file(GLOB_RECURSE ALL_GAME_FILES
         "${REPO_ROOT}/src/*.c"
-        "${REPO_ROOT}/src/*.cpp"
     )
 
-    # Filter out the raw MIPS threading and message queue implementations.
-    # The linker will now automatically utilize the POSIX HLE wrappers in stubs.cpp.
     set(EXCLUSION_LIST
-        # Low-Level OS Threading
-        "createthread.c" "startthread.c" "stopthread.c" "destroythread.c" 
+        "createthread.c" "startthread.c" "stopthread.c" "destroythread.c"
         "yieldthread.c" "settreadpri.c" "getthreadpri.c"
-
-        # Message Queues & Events
-        "createmesgqueue.c" "seteventmesg.c" 
+        "createmesgqueue.c" "seteventmesg.c"
         "recvmesg.c" "sendmesg.c" "jammesg.c"
-
-        # VI — relies on N64 data structures that don't exist on Android.
-        # Safe no‑op stubs are provided in missing_stubs.c.
-        "visetmode.c"
-        "visetevent.c"
-
-        # Original N64 inflate — we have a complete, safe replacement in
-        # src/done/rarezip.c that properly resolves N64 addresses and skips
-        # the 6‑byte BK compressed header.  The original inflate writes
-        # directly to N64 addresses and will crash.
+        "visetmode.c" "visetevent.c"
         "inflate.c"
     )
 
@@ -76,8 +62,6 @@ if(NOT EXCLUDE_GAME_SRC)
         get_filename_component(FILENAME ${FILE_PATH} NAME)
         if(NOT FILENAME IN_LIST EXCLUSION_LIST)
             list(APPEND GAME_SOURCES ${FILE_PATH})
-        else()
-            message(STATUS "BKA-BUILD: Routing to HLE stub, excluding: ${FILENAME}")
         endif()
     endforeach()
 endif()
@@ -88,18 +72,16 @@ endif()
 add_library(bkawrapper SHARED
     ${BRIDGE_SOURCES}
     ${GAME_SOURCES}
+)
 
-    ultra/HardwareRegs.cpp)
-
-# Linked wrapper added here to intercept OS initialization
-target_link_options(bkawrapper PRIVATE 
+target_link_options(bkawrapper PRIVATE
     "-Wl,--allow-multiple-definition"
     "-Wl,--export-dynamic"
     "-Wl,--wrap=__osInitialize_common"
 )
 
 # ============================================================
-# 4. Include Directories & Compile Flags
+# 4. Include Directories
 # ============================================================
 target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -107,23 +89,22 @@ target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/emulator
     ${CMAKE_CURRENT_SOURCE_DIR}/tools
     ${REPO_ROOT}/include
-    ${REPO_ROOT}/lib/ultralib/include ${REPO_ROOT}/lib/ultralib/include/PR
+    ${REPO_ROOT}/lib/ultralib/include
+    ${REPO_ROOT}/lib/ultralib/include/PR
     ${REPO_ROOT}/src
 )
 
-# Added -O0 or -Og during development is recommended to prevent 
-# compiler optimizations from hiding your crash-site line numbers.
-target_compile_options(bkawrapper PRIVATE
-    "-include${CMAKE_CURRENT_SOURCE_DIR}/ultra/n64_types.h"
-    -w -fpermissive
-    -O0 -g3
-    -Wno-error=implicit-int
-    -Wno-error=int-conversion
-    -Wno-error=implicit-function-declaration
-    -Wno-error=incompatible-pointer-types
-    -Wno-error=unused-function
-    $<$<COMPILE_LANGUAGE:CXX>:-std=c++17>
-    $<$<COMPILE_LANGUAGE:C>:-std=gnu11>
+# ============================================================
+# 5. Compile Flags — separate C and C++
+# ============================================================
+# C++ flags: standard C++17, no forced include
+set_source_files_properties(${BRIDGE_SOURCES} PROPERTIES
+    COMPILE_FLAGS "-std=c++17 -w -fpermissive -O0 -g3"
+)
+
+# C flags: gnu11, forced include n64_types for game sources
+set_source_files_properties(${GAME_SOURCES} PROPERTIES
+    COMPILE_FLAGS "-std=gnu11 -w -O0 -g3 -include ${CMAKE_CURRENT_SOURCE_DIR}/ultra/n64_types.h"
 )
 
 target_compile_definitions(bkawrapper PRIVATE
@@ -131,7 +112,7 @@ target_compile_definitions(bkawrapper PRIVATE
 )
 
 # ============================================================
-# 5. Libraries (Link 'log' and 'EGL' libraries here)
+# 6. Libraries
 # ============================================================
 find_library(log-lib log)
 find_library(android-lib android)
@@ -140,11 +121,10 @@ find_library(gles3-lib GLESv3)
 find_library(gles2-lib GLESv2)
 
 target_link_libraries(bkawrapper
-    ${log-lib} 
-    ${android-lib} 
+    ${log-lib}
+    ${android-lib}
     ${egl-lib}
-    ${gles3-lib} 
-    ${gles2-lib} 
-
+    ${gles3-lib}
+    ${gles2-lib}
     atomic m
 )
