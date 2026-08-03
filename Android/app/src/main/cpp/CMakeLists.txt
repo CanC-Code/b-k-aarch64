@@ -39,7 +39,7 @@ set(BRIDGE_SOURCES
 )
 
 # ============================================================
-# 2. Game Source Files (C)
+# 2. Game Source Files (C only)
 # ============================================================
 option(EXCLUDE_GAME_SRC "Skip compiling the recompiled game source tree" OFF)
 
@@ -89,20 +89,23 @@ target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/emulator
     ${CMAKE_CURRENT_SOURCE_DIR}/tools
     ${REPO_ROOT}/include
+    ${REPO_ROOT}/include/n_audio/PR
     ${REPO_ROOT}/lib/ultralib/include
     ${REPO_ROOT}/lib/ultralib/include/PR
     ${REPO_ROOT}/src
 )
 
 # ============================================================
-# 5. Compile Options — forced include for ALL sources
+# 5. Compile Options
 # ============================================================
-target_compile_options(bkawrapper PRIVATE
-    "-include${CMAKE_CURRENT_SOURCE_DIR}/ultra/n64_types.h"
-    -w -fpermissive
-    -O0 -g3
-    $<$<COMPILE_LANGUAGE:CXX>:-std=c++17>
-    $<$<COMPILE_LANGUAGE:C>:-std=gnu11>
+# C++ bridge files: C++17, no forced include (n64_types included explicitly)
+# C game files: gnu11, forced include n64_types.h
+set_source_files_properties(${GAME_SOURCES} PROPERTIES
+    COMPILE_FLAGS "-std=gnu11 -w -O0 -g3 -include ${CMAKE_CURRENT_SOURCE_DIR}/ultra/n64_types.h"
+)
+
+set_source_files_properties(${BRIDGE_SOURCES} PROPERTIES
+    COMPILE_FLAGS "-std=c++17 -w -fpermissive -O0 -g3"
 )
 
 target_compile_definitions(bkawrapper PRIVATE
