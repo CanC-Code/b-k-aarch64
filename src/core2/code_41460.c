@@ -293,7 +293,7 @@ void func_802C8C5C(Actor *actor) {
     f32 sp84[3];
     Struct25s *temp_s2 = (Struct25s*)actor->unk40;
     Struct24s *phi_s0;
-    s32 sp70[3] = D_80366418;
+    s32 sp70[3]; memcpy(sp70, D_80366418, sizeof(sp70));
 
     for(phi_s0 = temp_s2->begin; phi_s0 < temp_s2->current; phi_s0++){
         if (phi_s0->unk0 == 2) {

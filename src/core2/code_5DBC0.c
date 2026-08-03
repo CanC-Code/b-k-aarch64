@@ -59,7 +59,7 @@ void func_802E6820(s32 arg0);
 
 /* .code */
 struct5DBC0s *func_802E4B50(void){
-    u8 sp24[3] = D_80368830;
+    u8 sp24[3]; memcpy(sp24, D_80368830, sizeof(sp24));
     D_8037E900 = (struct5DBC0s *)malloc(sizeof(struct5DBC0s));
     D_8037E900->unk0 = (struct5DBC0_1s *) malloc(sizeof(struct5DBC0_1s));
     D_8037E900->unkC = 0;
@@ -349,7 +349,7 @@ void func_802E5F68(void){
 
 void func_802E5F88(s32 arg0, s32 arg1, char *arg2) {
     s32 sp24;
-    u8 sp20[3] = D_80368834;
+    u8 sp20[3]; memcpy(sp20, D_80368834, sizeof(sp20));
     
     sp24 =  func_802E4E54(0);
     func_802E502C(arg0, arg1, sp24, arg2, sp20);
@@ -357,7 +357,7 @@ void func_802E5F88(s32 arg0, s32 arg1, char *arg2) {
 
 void func_802E5FE4(s32 arg0, s32 arg1, char *arg2) {
     s32 sp24;
-    u8 sp20[3] = D_80368838;
+    u8 sp20[3]; memcpy(sp20, D_80368838, sizeof(sp20));
     
     sp24 =  func_802E4E54(0);
     func_802E502C(arg0, arg1, sp24, arg2, sp20);
@@ -365,7 +365,7 @@ void func_802E5FE4(s32 arg0, s32 arg1, char *arg2) {
 
 void func_802E6040(s32 arg0, s32 arg1, char *arg2) {
     s32 sp2C;
-    u8 sp28[3] = D_8036883C;
+    u8 sp28[3]; memcpy(sp28, D_8036883C, sizeof(sp28));
 
     sp2C = func_802E4E54(0);
     arg0 *= D_8037E900->unk4[sp2C].half_width;
@@ -399,8 +399,8 @@ void func_802E60D4(s32 arg0, s32 arg1, s32 arg2, char *arg3, u8 arg4[3], u8 arg5
 
 void func_802E6270(s32 arg0, s32 arg1, char *arg2, s32 arg3) {
     s32 temp_v0;
-    u8 sp30[3] = D_80368840;
-    u8 sp2C[3] = D_80368844;
+    u8 sp30[3]; memcpy(sp30, D_80368840, sizeof(sp30));
+    u8 sp2C[3]; memcpy(sp2C, D_80368844, sizeof(sp2C));
 
     temp_v0 = func_802E4E54(0);
     arg0 *= D_8037E900->unk4[temp_v0].half_width;
@@ -477,7 +477,7 @@ void func_802E65E8(char *str){
 
 void func_802E6628(s32 arg0, char *arg1) {
     s32 sp2C;
-    u8 sp28[3] = D_80368848;
+    u8 sp28[3]; memcpy(sp28, D_80368848, sizeof(sp28));
 
     sp2C = func_802E4E54(0);
     arg0 *= D_8037E900->unk4[sp2C].height;

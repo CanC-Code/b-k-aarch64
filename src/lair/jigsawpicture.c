@@ -535,7 +535,7 @@ void updateJigsawPictureActor(Actor *this) {
         }
 
         if (this->marker->unk14_21) {
-            s32 sp58[3] = D_80394824;
+            s32 sp58[3]; memcpy(sp58, D_80394824, sizeof(sp58));
             ParticleEmitter *sp54;
             sp54 = partEmitMgr_newEmitter(6);
             particleEmitter_setSprite(sp54, ASSET_710_SPRITE_SPARKLE_PURPLE);

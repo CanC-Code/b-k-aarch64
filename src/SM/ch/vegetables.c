@@ -151,7 +151,7 @@ static ParticleSettingsVelocityAccelerationPosition sD_8038AF0C = {
 
 /* .code */
 static void __chVegetables_setSpriteDustParticles(ParticleEmitter *emitter, f32 *position, s32 emit_count) {
-    s32 sp24[3] = sChVegetablesParticleRGB;
+    s32 sp24[3]; memcpy(sp24, sChVegetablesParticleRGB, sizeof(sp24));
     particleEmitter_setRGB(emitter, sp24);
     particleEmitter_setSprite(emitter, ASSET_700_SPRITE_DUST);
     particleEmitter_setStartingFrameRange(emitter, 0, 7);
