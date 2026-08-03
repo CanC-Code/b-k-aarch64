@@ -1,0 +1,140 @@
+package com.bkawrapper;
+
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.Service;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
+import android.os.IBinder;
+import android.os.ParcelFileDescriptor;
+import android.util.Log;
+
+import androidx.core.app.NotificationCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
+public class OtrService extends Service {
+
+    private static final String TAG             = "OtrService";
+    private static final String CHANNEL_ID      = "OtrServiceChannel";
+    private static final int    NOTIFICATION_ID = 1;
+
+    private static final String SENTINEL_FILENAME = "extraction_complete";
+
+    public static final String ACTION_OTR_PROGRESS = "OTR_PROGRESS";
+    public static final String ACTION_OTR_COMPLETE = "OTR_COMPLETE";
+    public static final String ACTION_OTR_ERROR    = "OTR_ERROR";
+
+    private long lastNotificationTime = 0;
+
+    static {
+        System.loadLibrary("bkawrapper");
+    }
+
+    private native void runNativeOtrGeneration(Object callback, int romFd, String outDir, String manifestPath);
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        createNotificationChannel();
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent == null) return START_NOT_STICKY;
+
+        String uriString = intent.getStringExtra("uri");
+        String outDir    = intent.getStringExtra("outDir");
+        // Pull version from intent, default to "us" if not specified
+        String version   = intent.getStringExtra("version");
+        if (version == null) version = "us";
+        
+        // CORRECTION: Update to match the exact YAML asset filename pattern in assets directory
+        final String manifestFilename = "decompressed." + version + ".v10.yaml";
+
+        startForeground(NOTIFICATION_ID,
+            new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("Preparing Banjo-Kazooie Assets")
+                .setSmallIcon(android.R.drawable.stat_sys_download)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .build());
+
+        new Thread(() -> {
+            try (ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(Uri.parse(uriString), "r")) {
+                if (pfd == null) throw new Exception("Could not open ROM file descriptor.");
+
+                // 1. Extract the manifest from Assets to FilesDir so C++ can fopen() it
+                File internalManifest = new File(getFilesDir(), manifestFilename);
+                copyAssetToDisk(manifestFilename, internalManifest);
+
+                // 2. Run native extraction using the validated manifest path
+                runNativeOtrGeneration(this, pfd.getFd(), outDir, internalManifest.getAbsolutePath());
+
+                writeSentinel(outDir);
+                LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(ACTION_OTR_COMPLETE));
+
+            } catch (Exception e) {
+                Log.e(TAG, "Extraction failed", e);
+                File sentinel = new File(outDir, SENTINEL_FILENAME);
+                if (sentinel.exists()) sentinel.delete();
+                Intent err = new Intent(ACTION_OTR_ERROR);
+                err.putExtra("message", e.getMessage());
+                LocalBroadcastManager.getInstance(this).sendBroadcast(err);
+            } finally {
+                stopForeground(true);
+                stopSelf();
+            }
+        }, "BKA-ExtractionThread").start();
+
+        return START_NOT_STICKY;
+    }
+
+    private void copyAssetToDisk(String assetName, File outFile) throws IOException {
+        try (InputStream in = getAssets().open(assetName);
+             OutputStream out = new FileOutputStream(outFile)) {
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
+        }
+    }
+
+    public void onProgressUpdate(int percent, String status) {
+        if (status != null && status.startsWith("ERROR")) {
+            throw new RuntimeException("C++ Pipeline Abort: " + status);
+        }
+        updateOtrProgress(percent, status);
+    }
+
+    public void updateOtrProgress(int percent, String status) {
+        Intent intent = new Intent(ACTION_OTR_PROGRESS);
+        intent.putExtra("percent", percent);
+        intent.putExtra("status",  status);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
+
+    private void writeSentinel(String outDir) {
+        try {
+            File sentinel = new File(outDir, SENTINEL_FILENAME);
+            if (!sentinel.exists()) sentinel.createNewFile();
+        } catch (Exception e) { Log.w(TAG, "Could not write sentinel: " + e.getMessage()); }
+    }
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                CHANNEL_ID, "Asset Extraction Service", NotificationManager.IMPORTANCE_LOW);
+            NotificationManager mgr = getSystemService(NotificationManager.class);
+            if (mgr != null) mgr.createNotificationChannel(channel);
+        }
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) { return null; }
+}
