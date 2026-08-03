@@ -22,6 +22,8 @@
 extern OSMesgQueue D_8027FBC8;
 #include "gfx_interpreter.h"   // <-- ADDED: F3DEX display list → framebuffer rasterizer
 
+extern s32 osSendMesg(OSMesgQueue *mq, OSMesg msg, s32 flag);
+
 // -------------------------------------------------------------------------
 // HIGH-LEVEL EMULATION NATIVE STRUCTURES
 // -------------------------------------------------------------------------

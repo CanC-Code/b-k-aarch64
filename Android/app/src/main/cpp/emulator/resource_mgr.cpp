@@ -30,7 +30,7 @@ extern "C" {
     u8 *D_80007284;          // Output buffer (decompressed data)
     u32 inptr;               // Current read position in inbuf
     u32 wp;                  // Current write position in D_80007284
-    struct huft *D_80007290; // Huffman table pool
+    u8 *D_80007290; // Huffman table pool
     u32 bb;                  // Bit buffer
     u32 bk;                  // Bit count
     u32 crc1;                // CRC1
