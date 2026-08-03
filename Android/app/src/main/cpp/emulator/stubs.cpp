@@ -107,6 +107,11 @@ extern "C" {
 // os_ai stubs
 // os_eeprom stubs
 
+/* Forward declarations for HLE message queue functions */
+s32 osSendMesg(OSMesgQueue *mq, OSMesg msg, s32 flag);
+s32 osJamMesg(OSMesgQueue *mq, OSMesg msg, s32 flag);
+s32 osRecvMesg(OSMesgQueue *mq, OSMesg *msg, s32 flag);
+
 #define LOG_TAG "BKA_STUBS"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
