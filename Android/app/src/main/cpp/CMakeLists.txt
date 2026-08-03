@@ -95,16 +95,14 @@ target_include_directories(bkawrapper PRIVATE
 )
 
 # ============================================================
-# 5. Compile Flags — separate C and C++
+# 5. Compile Options — forced include for ALL sources
 # ============================================================
-# C++ flags: standard C++17, no forced include
-set_source_files_properties(${BRIDGE_SOURCES} PROPERTIES
-    COMPILE_FLAGS "-std=c++17 -w -fpermissive -O0 -g3"
-)
-
-# C flags: gnu11, forced include n64_types for game sources
-set_source_files_properties(${GAME_SOURCES} PROPERTIES
-    COMPILE_FLAGS "-std=gnu11 -w -O0 -g3 -include ${CMAKE_CURRENT_SOURCE_DIR}/ultra/n64_types.h"
+target_compile_options(bkawrapper PRIVATE
+    "-include${CMAKE_CURRENT_SOURCE_DIR}/ultra/n64_types.h"
+    -w -fpermissive
+    -O0 -g3
+    $<$<COMPILE_LANGUAGE:CXX>:-std=c++17>
+    $<$<COMPILE_LANGUAGE:C>:-std=gnu11>
 )
 
 target_compile_definitions(bkawrapper PRIVATE
