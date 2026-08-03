@@ -1,6 +1,6 @@
 #include <cstdint>
 #include <cstring>
-#include "n64_types.h"
+#include "n64_types_cpp.h"
 
 /**
  * CPUState Definition

@@ -97,7 +97,7 @@ set_source_files_properties(${C_BRIDGE_SOURCES} ${GAME_SOURCES} PROPERTIES
 
 # C++ includes (safe, no N64 PR headers)
 set_source_files_properties(${CPP_BRIDGE_SOURCES} PROPERTIES
-    COMPILE_FLAGS "-std=c++17 -w -fpermissive -O0 -g3 -I${REPO_ROOT}/include -I${REPO_ROOT}/src"
+    COMPILE_FLAGS "-std=c++17 -w -fpermissive -O0 -g3 -I${REPO_ROOT}/src"
 )
 
 target_compile_definitions(bkawrapper PRIVATE
