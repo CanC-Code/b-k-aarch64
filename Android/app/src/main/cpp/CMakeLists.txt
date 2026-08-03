@@ -71,8 +71,12 @@ set_source_files_properties(${CPP_BRIDGE_SOURCES} PROPERTIES
 
 target_compile_definitions(bkawrapper PRIVATE F3DEX_GBI N64_RECOMP VERSION=0 __ANDROID__)
 
-find_library(log-lib log)  find_library(android-lib android)
-find_library(egl-lib EGL)  find_library(gles3-lib GLESv3)
+find_library(log-lib log)
+find_library(android-lib android)
+find_library(egl-lib EGL)
+find_library(gles3-lib GLESv3)
 find_library(gles2-lib GLESv2)
 
-target_link_libraries(bkawrapper ${log-lib} ${android-lib} ${egl-lib} ${gles3-lib} ${gles2-lib} atomic m)
+target_link_libraries(bkawrapper
+    ${log-lib} ${android-lib} ${egl-lib} ${gles3-lib} ${gles2-lib} atomic m
+)
