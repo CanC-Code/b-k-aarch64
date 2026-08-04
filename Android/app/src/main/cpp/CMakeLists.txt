@@ -33,7 +33,7 @@ if(NOT EXCLUDE_GAME_SRC)
     set(EXCLUDE_LIST createthread.c startthread.c stopthread.c destroythread.c
         yieldthread.c settreadpri.c getthreadpri.c createmesgqueue.c
         seteventmesg.c recvmesg.c sendmesg.c jammesg.c visetmode.c
-        visetevent.c inflate.c overlaymanager.c)
+        visetevent.c inflate.c overlaymanager.c memory.c)
     foreach(F ${ALL_GAME_FILES})
         get_filename_component(N ${F} NAME)
         if(NOT N IN_LIST EXCLUDE_LIST)
@@ -43,7 +43,7 @@ if(NOT EXCLUDE_GAME_SRC)
 endif()
 
 add_library(bkawrapper SHARED ${CPP_BRIDGE_SOURCES} ${C_BRIDGE_SOURCES} ${GAME_SOURCES})
-target_link_options(bkawrapper PRIVATE "-Wl,--allow-multiple-definition" "-Wl,--export-dynamic" "-Wl,--wrap=__osInitialize_common" "-Wl,--wrap=n64_malloc" "-Wl,--wrap=n64_free" "-Wl,--wrap=n64_realloc")
+target_link_options(bkawrapper PRIVATE "-Wl,--allow-multiple-definition" "-Wl,--export-dynamic" "-Wl,--wrap=__osInitialize_common" )
 
 # ============================================================
 # Include Directories

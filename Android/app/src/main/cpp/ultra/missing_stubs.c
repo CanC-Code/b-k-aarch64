@@ -402,6 +402,21 @@ f32 alCents2Ratio(s32 cents) { (void)cents; return 1.0f; }
 // Memory allocator wrappers — redirect N64 heap to system malloc
 // =======================================================================
 #include <stdlib.h>
-void *__wrap_n64_malloc(size_t size) { return malloc(size); }
-void __wrap_n64_free(void *ptr) { free(ptr); }
-void *__wrap_n64_realloc(void *ptr, size_t size) { return realloc(ptr, size); }
+
+// =======================================================================
+// N64 Memory Allocator — redirect to system malloc
+// =======================================================================
+#include <stdlib.h>
+#include <string.h>
+
+void *n64_malloc(size_t size) {
+    void *ptr = malloc(size);
+    if (ptr) memset(ptr, 0, size);
+    return ptr;
+}
+void n64_free(void *ptr) { free(ptr); }
+void *n64_realloc(void *ptr, size_t size) { return realloc(ptr, size); }
+
+// heap_init is a no-op - the system malloc doesn't need initialization
+void heap_init(void) {}
+void func_802546FC(void) {}
