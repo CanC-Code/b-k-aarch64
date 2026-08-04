@@ -378,7 +378,8 @@ void *inflate_huft;
 u32 inflate_wp, inflate_inptr;
 
 // N64 globals
-static unsigned char s_heap_buffer[0x211120]; void *gHeapBase = s_heap_buffer;
+// Real N64 heap buffer - game code accesses as EmptyHeapBlock array
+unsigned char gHeapBase[0x211120];
 struct { u32 text_checksum1, text_checksum2, data_checksum1, data_checksum2; } gChecksumsCore1;
 OSMesgQueue D_8027FBC8;
 
@@ -396,7 +397,3 @@ f32 alCents2Ratio(s32 cents) { (void)cents; return 1.0f; }
 // =======================================================================
 
 // Minimal heap initialization - called before first n64_malloc
-__attribute__((constructor)) static void init_heap_stub(void) {
-    // Zero the entire heap buffer
-    memset(s_heap_buffer, 0, sizeof(s_heap_buffer));
-}
