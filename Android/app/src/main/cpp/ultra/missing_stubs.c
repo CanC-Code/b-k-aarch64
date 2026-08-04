@@ -450,3 +450,6 @@ void func_80255888(void) {}
 void sns_find_and_parse_payload(void) {}
 void sns_write_payload_over_heap(void) {}
 void sns_init_base_payloads(void) {}
+void snspayload_append_key_to_outgoing_payload(void *payload, s32 key) {}
+void snspayload_rewind_outgoing(void) {}
+void snspayload_finalise_outgoing_payload(void *payload) {}
