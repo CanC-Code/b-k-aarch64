@@ -36,3 +36,27 @@ u32  osVirtualToPhysical(void *vaddr) { return (u32)(unsigned long)vaddr; }
 // Graphics
 void guMtxIdentF(void *mf) {}
 void guMtxF2L(void *mf, void *m) {}
+
+// Additional stubs
+void osStopTimer(void *t) {}
+s32  osSetTimer(void *t, u64 countdown, u64 interval, void *mq, void *msg) { return 0; }
+u32  osClockRate(void) { return 0; }
+u32  bkGetSR(void) { return 0; }
+void bkmemcpy64(void *dst, void *src, u32 size) {}
+void alEvtqFlushType(void *evtq, s32 type) {}
+s32  __alCSeqNextDelta(void *seq, void *state) { return 0; }
+void init_lpfilter(void *filter) {}
+void alCopy(void *src, void *dst, s32 len) {}
+s32  _doModFunc(s32 val, s32 mod, s32 rate) { return 0; }
+s32  __alSeqNextDelta(void *seq, void *state) { return 0; }
+void alEvtqPostEvent(void *evtq, void *item) {}
+void alEvtqNextEvent(void *evtq, void *item) {}
+void osDpSetStatus(u32 status) {}
+void osDpGetStatus(void) { return 0; }
+void *osViGetCurrentFramebuffer(void) { return 0; }
+
+// Microcode globals
+unsigned long long gspF3DEX_fifoTextStart[1];
+unsigned long long gspF3DEX_fifoDataStart[1];
+unsigned long long gspL3DEX_fifoTextStart[1];
+unsigned long long gspL3DEX_fifoDataStart[1];
