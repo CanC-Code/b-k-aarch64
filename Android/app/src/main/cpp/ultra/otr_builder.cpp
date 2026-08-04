@@ -291,6 +291,10 @@ Java_com_bkawrapper_OtrService_runNativeOtrGeneration(
 
     (void)thiz;
 
+    // Initialize the N64 heap before extraction uses n64_malloc
+    extern void heap_init(void);
+    heap_init();
+
     off_t romSizeOff = 0;
     size_t romSize = 0;
     uint8_t* romData = nullptr;

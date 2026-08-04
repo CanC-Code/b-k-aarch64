@@ -379,7 +379,7 @@ u32 inflate_wp, inflate_inptr;
 
 // N64 globals
 // Real N64 heap buffer - game code accesses as EmptyHeapBlock array
-unsigned char gHeapBase[0x211120]
+unsigned char gHeapBase[0x211120];
 struct { u32 text_checksum1, text_checksum2, data_checksum1, data_checksum2; } gChecksumsCore1;
 OSMesgQueue D_8027FBC8;
 
