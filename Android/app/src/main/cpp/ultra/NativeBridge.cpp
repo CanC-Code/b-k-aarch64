@@ -107,22 +107,28 @@ extern "C" {
     extern int getActiveFramebuffer(void);
 
     void BKA_FrameSyncHook(void) {
+    void BKA_FrameSyncHook(void) {
         pthread_mutex_lock(&g_vblankMutex);
         g_vblankRequested = true;
-
         BKA_DropEngineLock();
-
-    // Safety: prevent 100% CPU spin if vblank never requested
-    usleep(16000);
+        
+        struct timespec ts;
+        clock_gettime(CLOCK_REALTIME, &ts);
+        ts.tv_nsec += 16000000; /* 16ms timeout */
+        if (ts.tv_nsec >= 1000000000) { ts.tv_sec++; ts.tv_nsec -= 1000000000; }
+        
+        int ret = pthread_cond_timedwait(&g_vblankCond, &g_vblankMutex, &ts);
+        if (ret == ETIMEDOUT) {
+            /* Simulate vblank if GL thread is stuck (e.g. ANR dialog open) */
+            g_vblankRequested = false;
+            pthread_mutex_unlock(&g_vblankMutex);
+            N64_TriggerVirtualVBlankInterrupt();
+            pthread_mutex_lock(&g_vblankMutex);
+        }
         while (g_vblankRequested) {
             pthread_cond_wait(&g_vblankCond, &g_vblankMutex);
         }
-
-        // Relinquish the VBlank mutex before attempting to reclaim the Engine Lock 
-        // to prevent lock-order inversion and hard deadlocks against the render thread.
         pthread_mutex_unlock(&g_vblankMutex);
-
-        // --- Surface State Engine Pause ---
         // Suspend the engine natively until Android provides a valid drawing surface.
         // Prevents runaway CPU usage and deadlocks when the Activity is paused (e.g. DocumentsUI).
         pthread_mutex_lock(&g_windowMutex);
