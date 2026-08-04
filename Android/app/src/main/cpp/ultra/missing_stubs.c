@@ -420,3 +420,25 @@ void *n64_realloc(void *ptr, s32 size) { return realloc(ptr, (size_t)size); }
 // heap_init is a no-op
 void heap_init(void) {}
 void func_802546FC(void) {}
+
+// Memory management stubs (from excluded memory.c)
+void defrag(void) {}
+void *defrag_asset(void *ptr) { return ptr; }
+s32 heap_get_size(void) { return 0x211120; }
+s32 heap_get_occupied_size(void) { return 0; }
+void func_80255198(void) {}
+void func_80255524(void) {}
+void func_80255ACC(void) {}
+void func_8025484C(void) {}
+void func_80254898(void) {}
+void func_80254BD0(void) {}
+void func_802559A0(void) {}
+void func_80254BC4(void) {}
+void func_802555C4(void) {}
+void func_802555D0(void) {}
+void func_80255B08(void) {}
+s32 func_8025498C(s32 size) { (void)size; return 1; }
+void func_80254C98(void) {}
+void func_80255170(void) {}
+void func_80255A14(void) {}
+void func_80255A04(void) {}
