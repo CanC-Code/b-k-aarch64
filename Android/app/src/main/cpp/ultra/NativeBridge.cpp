@@ -112,6 +112,8 @@ extern "C" {
 
         BKA_DropEngineLock();
 
+    // Safety: prevent 100% CPU spin if vblank never requested
+    usleep(16000);
         while (g_vblankRequested) {
             pthread_cond_wait(&g_vblankCond, &g_vblankMutex);
         }

@@ -130,6 +130,8 @@ void globalTimer_decTimer(void) {
 }
 
 void mainLoop(void){
+    static int loopCount = 0;
+    if (++loopCount <= 5) LOGI("BKA_CODE0: mainLoop iteration %d, state=%d", loopCount, D_8027A130);
     s32 x, y;
     s32 r, g, b, a;
     u16 tmp;
