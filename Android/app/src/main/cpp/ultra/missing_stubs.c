@@ -442,3 +442,6 @@ void func_80254C98(void) {}
 void func_80255170(void) {}
 void func_80255A14(void) {}
 void func_80255A04(void) {}
+void func_802546E4(void) {}
+void func_80255AE4(void) {}
+void func_80255888(void) {}
