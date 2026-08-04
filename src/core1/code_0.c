@@ -33,7 +33,7 @@ static u64 sDebugVar_8027BEF0; // never used
 extern u8 core2_TEXT_START[];
 
 void core1_main(s32 arg0){ 
-    if (core2_TEXT_START && core2_TEXT_START > (u8*)&D_8027A130) { bzero(&D_8027A130, core2_TEXT_START - (u8*)&D_8027A130); }
+    bzero(&D_8027A130, core2_TEXT_START - (u8*)&D_8027A130);
     osWritebackDCacheAll();
     sns_find_and_parse_payload();
     osInitialize();
@@ -130,8 +130,6 @@ void globalTimer_decTimer(void) {
 }
 
 void mainLoop(void){
-    static int loopCount = 0;
-    if (++loopCount <= 5) LOGI("BKA_CODE0: mainLoop iteration %d, state=%d", loopCount, D_8027A130);
     s32 x, y;
     s32 r, g, b, a;
     u16 tmp;
