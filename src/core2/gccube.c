@@ -2419,7 +2419,7 @@ void __code7AF80_addCubeIndexToD_80382150(s32 cube_idx){
     D_8036ABD4++;
 }
 
-static void __code7AF80_func_80308984(void) {
+void __code7AF80_func_80308984(void) {
     Cube *iCube;
     s16 temp_s4;
     s32 unk8_range_min;
@@ -2512,7 +2512,7 @@ void func_80308EC8(void){
     }
 }
 
-static void __code7AF80_func_80308F0C(Cube *cube) {
+void __code7AF80_func_80308F0C(Cube *cube) {
     s32 indx;
 
     indx = cube - sCubeList.cubes;
