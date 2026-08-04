@@ -60,3 +60,22 @@ unsigned long long gspF3DEX_fifoTextStart[1];
 unsigned long long gspF3DEX_fifoDataStart[1];
 unsigned long long gspL3DEX_fifoTextStart[1];
 unsigned long long gspL3DEX_fifoDataStart[1];
+
+// Final remaining stubs
+s32  alSeqGetTicks(void *seq) { return 0; }
+void alSeqSetLoc(void *seq, s32 loc) {}
+void rmonPrintf(const char *fmt, ...) {}
+s32  osContGetReadData(void *pad) { return 0; }
+s32  osContInit(void *mq, void *status, void *pad) { return 0; }
+s32  osContSetCh(u8 ch) { return 0; }
+s32  osContStartReadData(void *mq) { return 0; }
+s32  osPiReadIo(u32 devAddr, u32 *data) { *data = 0; return 0; }
+void guOrtho(void *m) {}
+void guTranslate(void *m, f32 x, f32 y, f32 z) {}
+void guRotate(void *m, f32 a, f32 x, f32 y, f32 z) {}
+void bkmemset64(void *dst, u32 val, u32 size) {}
+void *osViGetNextFramebuffer(void) { return 0; }
+void osViBlack(u8 active) {}
+s32  overlayManager_getLoadedID(void) { return 0; }
+void overlayManager_load(s32 id) {}
+void osSyncPrintf(const char *fmt, ...) {}
