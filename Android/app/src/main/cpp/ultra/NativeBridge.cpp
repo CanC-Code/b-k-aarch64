@@ -112,6 +112,7 @@ extern "C" {
 
         BKA_DropEngineLock();
 
+
         // 16ms timeout prevents ANR if GL thread is blocked
         struct timespec ts;
         clock_gettime(CLOCK_REALTIME, &ts);
@@ -137,7 +138,10 @@ extern "C" {
         pthread_mutex_unlock(&g_windowMutex);
 
         BKA_ClaimEngineLock();
+
+        BKA_ClaimEngineLock();
     }
+}
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
     g_jvm = vm;
