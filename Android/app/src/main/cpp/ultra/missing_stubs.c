@@ -394,33 +394,3 @@ int bkboot_inflate_unlocked(void) { return 0; }
 f32 alCents2Ratio(s32 cents) { (void)cents; return 1.0f; }
 
 // =======================================================================
-// Audio library stubs (al*)
-// =======================================================================
-void alBnkfNew(void *f, u8 *table) { (void)f; (void)table; }
-void alCSPSetBank(void *seqp, void *b) { (void)seqp; (void)b; }
-void alCSPStop(void *seqp) { (void)seqp; }
-void alCSPSetSeq(void *seqp, void *seq) { (void)seqp; (void)seq; }
-void alCSPPlay(void *seqp) { (void)seqp; }
-void alCSPSetVol(void *seqp, s16 vol) { (void)seqp; (void)vol; }
-void alCSPSetTempo(void *seqp, s32 tempo) { (void)seqp; (void)tempo; }
-s32 alCSeqGetTicks(void *seq) { (void)seq; return 0; }
-s32 alCSPGetTempo(void *seqp) { (void)seqp; return 0; }
-void alHeapInit(void *hp, u8 *base, s32 len) { (void)hp; (void)base; (void)len; }
-void *alHeapDBAlloc(u8 *file, s32 line, void *hp, s32 num, s32 size) { (void)file; (void)line; (void)hp; (void)num; (void)size; return NULL; }
-void alLink(void *element, void *after) { (void)element; (void)after; }
-void alUnlink(void *element) { (void)element; }
-void alEvtqNew(void *evtq, void *items, s32 itemCount) { (void)evtq; (void)items; (void)itemCount; }
-
-// =======================================================================
-// OS stubs
-// =======================================================================
-void osInitialize(void) {}
-OSTime osGetTime(void) { return 0; }
-u32 osViClock(void) { return 0; }
-u32 osVirtualToPhysical(void *vaddr) { return (u32)(uintptr_t)vaddr; }
-
-// =======================================================================
-// Graphics utility stubs (gu*)
-// =======================================================================
-void guMtxIdentF(float mf[4][4]) { (void)mf; }
-void guMtxF2L(float mf[4][4], void *m) { (void)mf; (void)m; }
