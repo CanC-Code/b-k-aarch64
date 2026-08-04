@@ -71,7 +71,7 @@ struct {
 
     s16 currentTextId;
     s8 yPositionModifierIndex;
-    u8 pad133[0x1];
+    unsigned char pad133[0x1];
     ActorMarker *caller;
     s32 unk138;
     void (* currentCallback)(ActorMarker *, s32, s32);
