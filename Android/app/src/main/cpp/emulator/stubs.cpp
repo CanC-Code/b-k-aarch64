@@ -519,7 +519,7 @@ void BKA_StartEngine(void) {
 
     LOGI("BKA-STUBS: ROM verification successful. RDRAM=%p ROM=%p", gN64_RDRAM, gN64_ROM_Base);
 
-    s_n64_gil.lock();
+    // GIL already held by NativeThreadWrapper
 
     LOGI("BKA-STUBS: Launching engine entry func_80000450.");
     func_80000450(0);
