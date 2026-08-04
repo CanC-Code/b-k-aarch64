@@ -13,6 +13,7 @@ set(CPP_BRIDGE_SOURCES
     ultra/lowlevel_bridge.cpp emulator/stubs.cpp emulator/pi_hle.cpp
     emulator/resource_mgr.cpp emulator/gfx_interpreter.cpp
     tools/rare_decompression.cpp ultra/HardwareRegs.cpp
+    ultra/linker_stubs.c
 )
 
 # ============================================================
@@ -23,7 +24,6 @@ set(C_BRIDGE_SOURCES
     ultra/zlib/deflate.c ultra/zlib/infback.c ultra/zlib/inffast.c
     ultra/zlib/inflate.c ultra/zlib/inftrees.c ultra/zlib/trees.c
     ultra/zlib/uncompr.c ultra/zlib/zutil.c ultra/missing_stubs.c
-    ultra/linker_stubs.c
 )
 
 option(EXCLUDE_GAME_SRC "Skip" OFF)
@@ -86,3 +86,7 @@ find_library(gles3-lib GLESv3)
 find_library(gles2-lib GLESv2)
 
 target_link_libraries(bkawrapper ${log-lib} ${android-lib} ${egl-lib} ${gles3-lib} ${gles2-lib} atomic m)
+
+# linker_stubs.c must compile without N64 headers
+set_source_files_properties(ultra/linker_stubs.c PROPERTIES
+    COMPILE_FLAGS "-std=gnu11 -w -O0 -g3")
