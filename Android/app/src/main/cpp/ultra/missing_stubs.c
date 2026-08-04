@@ -379,7 +379,7 @@ u32 inflate_wp, inflate_inptr;
 
 // N64 globals
 // Real N64 heap buffer - game code accesses as EmptyHeapBlock array
-unsigned char gHeapBase[0x211120];
+// gHeapBase redirected via linker wrap - see __wrap_n64_malloc
 struct { u32 text_checksum1, text_checksum2, data_checksum1, data_checksum2; } gChecksumsCore1;
 OSMesgQueue D_8027FBC8;
 
@@ -397,3 +397,11 @@ f32 alCents2Ratio(s32 cents) { (void)cents; return 1.0f; }
 // =======================================================================
 
 // Minimal heap initialization - called before first n64_malloc
+
+// =======================================================================
+// Memory allocator wrappers — redirect N64 heap to system malloc
+// =======================================================================
+#include <stdlib.h>
+void *__wrap_n64_malloc(size_t size) { return malloc(size); }
+void __wrap_n64_free(void *ptr) { free(ptr); }
+void *__wrap_n64_realloc(void *ptr, size_t size) { return realloc(ptr, size); }

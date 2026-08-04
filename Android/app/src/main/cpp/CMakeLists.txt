@@ -43,7 +43,7 @@ if(NOT EXCLUDE_GAME_SRC)
 endif()
 
 add_library(bkawrapper SHARED ${CPP_BRIDGE_SOURCES} ${C_BRIDGE_SOURCES} ${GAME_SOURCES})
-target_link_options(bkawrapper PRIVATE "-Wl,--allow-multiple-definition" "-Wl,--export-dynamic" "-Wl,--wrap=__osInitialize_common")
+target_link_options(bkawrapper PRIVATE "-Wl,--allow-multiple-definition" "-Wl,--export-dynamic" "-Wl,--wrap=__osInitialize_common" "-Wl,--wrap=n64_malloc" "-Wl,--wrap=n64_free" "-Wl,--wrap=n64_realloc")
 
 # ============================================================
 # Include Directories
