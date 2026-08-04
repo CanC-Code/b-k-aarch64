@@ -18,6 +18,7 @@ extern "C" {
     // ------------------------------------------------------------
     RECOMP_SYMBOL uint32_t __libm_qnan_f = 0x7FC00000;
     RECOMP_SYMBOL uintptr_t core1_VRAM           = 0x80001000;
+    RECOMP_SYMBOL uintptr_t core2_TEXT_START     = 0x00000000;
     RECOMP_SYMBOL uintptr_t gOverlayTable        = 0x01200000;
 
     // ------------------------------------------------------------
