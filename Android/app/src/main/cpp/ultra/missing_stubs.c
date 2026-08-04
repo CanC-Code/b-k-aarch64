@@ -298,15 +298,6 @@ void func_8031B62C(void) {}
 void defragManager_init(void) {}
 void animCache_init(void) {}
 void rand_reset(void) {}
-void scissorBox_setDefault(void) {}
-void func_80253FE8(void) {}
-void time_reset(void) {}
-void func_8033DC04(void) {}
-void clearScoreStates(void) {}
-void savedata_init(void) {}
-void func_802E3854(void) {}
-void func_802E3800(void) {}
-void func_8033DC10(void) {}
 void func_80324C58(void) {}
 void picturebox_init(void) {}
 void picturebox_free(void) {}
@@ -466,14 +457,3 @@ void gctransition_init(void) {}
 void ucode_load(void) {}
 void allocUnusedBlock(void) {}
 void dummy_func_8025AFB0(void) {}
-void scissorBox_setDefault(void) {}
-void viewport_reset(void) {}
-void viewport_setNearAndFar(f32 near, f32 far) { (void)near; (void)far; }
-void rand_reset(void) {}
-void time_reset(void) {}
-void clearScoreStates(void) {}
-void func_80253FE8(void) {}
-void func_8033DC04(void) {}
-void func_802E3854(void) {}
-void func_802E3800(void) {}
-void func_8033DC10(void) {}
