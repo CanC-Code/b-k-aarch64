@@ -445,3 +445,8 @@ void func_80255A04(void) {}
 void func_802546E4(void) {}
 void func_80255AE4(void) {}
 void func_80255888(void) {}
+
+// SNS (Save/Notify System) stubs — not needed for rendering
+void sns_find_and_parse_payload(void) {}
+void sns_write_payload_over_heap(void) {}
+void sns_init_base_payloads(void) {}
