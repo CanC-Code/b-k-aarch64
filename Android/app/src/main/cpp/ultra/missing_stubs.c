@@ -92,9 +92,6 @@ uint8_t D_8000E800[0x100000] __attribute__((aligned(16)));
 uint64_t D_803FFE10[15] __attribute__((aligned(8)));
 uint8_t D_803FBE00[0x2000] __attribute__((aligned(16)));
 
-void *n64_malloc(s32 size)   { return malloc(size); }
-void *n64_realloc(void *ptr, s32 size) { return realloc(ptr, size); }
-void n64_free(void *ptr)     { free(ptr); }
 
 // -----------------------------------------------------------------------
 // ROM symbols
@@ -379,7 +376,7 @@ u32 inflate_wp, inflate_inptr;
 
 // N64 globals
 // Real N64 heap buffer - game code accesses as EmptyHeapBlock array
-unsigned char gHeapBase[0x211120];
+unsigned char gHeapBase[0x211120]
 struct { u32 text_checksum1, text_checksum2, data_checksum1, data_checksum2; } gChecksumsCore1;
 OSMesgQueue D_8027FBC8;
 
@@ -409,14 +406,17 @@ f32 alCents2Ratio(s32 cents) { (void)cents; return 1.0f; }
 #include <stdlib.h>
 #include <string.h>
 
-void *n64_malloc(size_t size) {
-    void *ptr = malloc(size);
-    if (ptr) memset(ptr, 0, size);
+unsigned char gHeapBase[0x211120];
+
+void *n64_malloc(s32 size) {
+    (void)size;
+    void *ptr = malloc((size_t)size);
+    if (ptr) memset(ptr, 0, (size_t)size);
     return ptr;
 }
 void n64_free(void *ptr) { free(ptr); }
-void *n64_realloc(void *ptr, size_t size) { return realloc(ptr, size); }
+void *n64_realloc(void *ptr, s32 size) { return realloc(ptr, (size_t)size); }
 
-// heap_init is a no-op - the system malloc doesn't need initialization
+// heap_init is a no-op
 void heap_init(void) {}
 void func_802546FC(void) {}
