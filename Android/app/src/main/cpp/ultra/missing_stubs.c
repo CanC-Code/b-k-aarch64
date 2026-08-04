@@ -453,3 +453,27 @@ void sns_init_base_payloads(void) {}
 void snspayload_append_key_to_outgoing_payload(void *payload, s32 key) {}
 void snspayload_rewind_outgoing(void) {}
 void snspayload_finalise_outgoing_payload(void *payload) {}
+
+// =======================================================================
+// Hardware init stubs — prevent hangs waiting for N64 hardware
+// =======================================================================
+void pfsManager_init(void) {}
+void audioManager_init(void) {}
+void baMotor_init(void) {}
+void ml_init(void) {}
+void gctransition_reset(void) {}
+void gctransition_init(void) {}
+void ucode_load(void) {}
+void allocUnusedBlock(void) {}
+void dummy_func_8025AFB0(void) {}
+void scissorBox_setDefault(void) {}
+void viewport_reset(void) {}
+void viewport_setNearAndFar(f32 near, f32 far) { (void)near; (void)far; }
+void rand_reset(void) {}
+void time_reset(void) {}
+void clearScoreStates(void) {}
+void func_80253FE8(void) {}
+void func_8033DC04(void) {}
+void func_802E3854(void) {}
+void func_802E3800(void) {}
+void func_8033DC10(void) {}
