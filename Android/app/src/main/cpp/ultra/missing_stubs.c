@@ -360,12 +360,11 @@ void *freelist_new(size_t size) {
     return NULL;
 }
 
-
 // =======================================================================
 // Stubs for symbols from excluded inflate.c and N64 hardware functions
 // =======================================================================
 
-// Huffman table definition (incomplete struct is fine, just need the symbol)
+// Huffman table definition
 struct huft_s { unsigned char e, b; unsigned short n; };
 struct huft_s gGlobalHuffTable[1];
 
@@ -380,7 +379,7 @@ void *gHeapBase;
 struct { u32 text_checksum1, text_checksum2, data_checksum1, data_checksum2; } gChecksumsCore1;
 OSMesgQueue D_8027FBC8;
 
-// N64 SDK functions with correct signatures
+// N64 SDK functions with correct return types
 s32 osMotorInit(OSMesgQueue *mq, OSPfs *pfs, int channel) { (void)mq; (void)pfs; (void)channel; return 0; }
 s32 osMotorStart(OSPfs *pfs) { (void)pfs; return 0; }
 s32 osMotorStop(OSPfs *pfs) { (void)pfs; return 0; }
