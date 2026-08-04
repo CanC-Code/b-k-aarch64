@@ -1,14 +1,5 @@
-#include <stdint.h>
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef int32_t s32;
-typedef float f32;
 #include "n64_types.h"
 #include <ultra64.h>
-#ifndef u8
-typedef unsigned char u8;
-#endif
 #include "core1/core1.h"
 #include "functions.h"
 #include "variables.h"

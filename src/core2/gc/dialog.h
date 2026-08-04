@@ -1,11 +1,3 @@
-#include <stdint.h>
-#ifndef u8
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef int32_t s32;
-typedef float f32;
-#endif
 enum {
     DIALOG_BOTTOM = 0,
     DIALOG_TOP = 1
