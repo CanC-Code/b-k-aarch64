@@ -359,3 +359,29 @@ void *freelist_new(size_t size) {
     (void)size;
     return NULL;
 }
+
+/* --- Linker symbols from excluded inflate.c --- */
+u32 inflate_crc1;
+u32 inflate_crc2;
+u8 *inflate_inbuf;
+u8 *inflate_slide;
+void *inflate_huft;
+u32 inflate_wp;
+u32 inflate_inptr;
+
+/* --- Other N64 globals --- */
+struct huft_s gGlobalHuffTable[1];
+OSMesgQueue D_8027FBC8;
+void *gHeapBase;
+struct { u32 text_checksum1; u32 text_checksum2; u32 data_checksum1; u32 data_checksum2; } gChecksumsCore1;
+
+/* --- Missing N64 SDK functions --- */
+void osMotorStart(void *a) { (void)a; }
+void osMotorStop(void *a) { (void)a; }
+void osMotorInit(void *a, void *b, int c) { (void)a; (void)b; (void)c; }
+void osPfsInit(void *a, void *b, int c) { (void)a; (void)b; (void)c; }
+void osWritebackDCacheAll(void) {}
+void overlayManager_loadCore2(void) {}
+void overlayManagerloadCore2(void) {}
+int bkboot_inflate_unlocked(void) { return 0; }
+int alCents2Ratio(int a) { (void)a; return 0; }
