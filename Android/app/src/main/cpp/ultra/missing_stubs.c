@@ -362,3 +362,33 @@ void *freelist_new(size_t size) {
 
 // =======================================================================
 // Stubs for symbols from excluded inflate.c and N64 hardware functions
+
+// =======================================================================
+// Stubs for symbols from excluded inflate.c and N64 hardware functions
+// =======================================================================
+
+// Huffman table
+struct huft_s { unsigned char e, b; unsigned short n; };
+struct huft_s gGlobalHuffTable[1];
+
+// Inflate globals
+u32 inflate_crc1, inflate_crc2;
+u8 *inflate_inbuf, *inflate_slide;
+void *inflate_huft;
+u32 inflate_wp, inflate_inptr;
+
+// N64 globals
+void *gHeapBase;
+struct { u32 text_checksum1, text_checksum2, data_checksum1, data_checksum2; } gChecksumsCore1;
+OSMesgQueue D_8027FBC8;
+
+// N64 SDK functions
+s32 osMotorInit(OSMesgQueue *mq, OSPfs *pfs, int channel) { (void)mq; (void)pfs; (void)channel; return 0; }
+s32 osMotorStart(OSPfs *pfs) { (void)pfs; return 0; }
+s32 osMotorStop(OSPfs *pfs) { (void)pfs; return 0; }
+s32 osPfsInit(OSMesgQueue *mq, OSPfs *pfs, int channel) { (void)mq; (void)pfs; (void)channel; return 0; }
+void osWritebackDCacheAll(void) {}
+void overlayManager_loadCore2(void) {}
+void overlayManagerloadCore2(void) {}
+int bkboot_inflate_unlocked(void) { return 0; }
+f32 alCents2Ratio(s32 cents) { (void)cents; return 1.0f; }
