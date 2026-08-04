@@ -105,7 +105,8 @@ extern "C" {
     extern uint16_t gFramebuffers[2][292 * 216];
     extern uint32_t g_active_fb_offset;
     extern int getActiveFramebuffer(void);
-void BKA_FrameSyncHook(void) {
+
+    void BKA_FrameSyncHook(void) {
         pthread_mutex_lock(&g_vblankMutex);
         g_vblankRequested = true;
 
@@ -137,8 +138,6 @@ void BKA_FrameSyncHook(void) {
 
         BKA_ClaimEngineLock();
     }
-    }
-}
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
     g_jvm = vm;
