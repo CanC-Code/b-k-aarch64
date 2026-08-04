@@ -376,7 +376,7 @@ u32 inflate_wp, inflate_inptr;
 
 // N64 globals
 // Real N64 heap buffer - game code accesses as EmptyHeapBlock array
-unsigned char gHeapBase[0x211120]
+unsigned char gHeapBase[0x211120];
 struct { u32 text_checksum1, text_checksum2, data_checksum1, data_checksum2; } gChecksumsCore1;
 OSMesgQueue D_8027FBC8;
 
@@ -406,7 +406,7 @@ f32 alCents2Ratio(s32 cents) { (void)cents; return 1.0f; }
 #include <stdlib.h>
 #include <string.h>
 
-unsigned char gHeapBase[0x211120];
+unsigned char gHeapBase[0x211120];;
 
 void *n64_malloc(s32 size) {
     (void)size;
