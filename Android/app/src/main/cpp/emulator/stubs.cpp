@@ -440,7 +440,7 @@ void osSpTaskLoad(OSTask *tp) {}
 
 // MODIFIED: Route GFX tasks through the software RDP before signaling completion
 void osSpTaskStartGo(OSTask *tp) {
-    LOGI("BKA-RDP: osSpTaskStartGo type=%d data=%p size=%u", tp->t.type, tp->t.data_ptr, tp->t.data_size);
+    LOGI("BKA-RDP: osSpTaskStartGo type=%d", tp->t.type);
     if (tp == nullptr) return;
     if (tp->t.type == M_GFXTASK) {
         // Process the F3DEX display list and rasterize to gFramebuffers

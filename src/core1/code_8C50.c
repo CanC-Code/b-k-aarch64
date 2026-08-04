@@ -464,7 +464,6 @@ void thread5_checkAndExecutePreNMI(void) {
 }
 
 void thread5_entry(void *arg) {
-    static int entryCount = 0; if (++entryCount <= 3) LOGI("BKA-RDP: Thread5 entry loop iteration %d", entryCount);
     OSMesg msg = NULL;
 
     while (TRUE) {
