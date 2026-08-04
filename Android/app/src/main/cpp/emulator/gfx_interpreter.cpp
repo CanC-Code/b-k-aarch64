@@ -1,21 +1,13 @@
-// File: Banjo-android-realignment/Android/app/src/main/cpp/emulator/gfx_interpreter.cpp
-
 #include "gfx_interpreter.h"
 #include <android/log.h>
 #include <cstring>
 #include <cstdlib>
+#include <cmath>
 #include <algorithm>
 
 #define LOG_TAG "BKA_GFX"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
-
-typedef struct { uint32_t w0; uint32_t w1; } GfxCommand;
-#define GFX_OPCODE(cmd) (((cmd).w0 >> 24) & 0xFF)
-
-#define TMEM_SIZE 4096
-#define FB_WIDTH  292
-#define FB_HEIGHT 216
 
 extern "C" {
     uint16_t gFramebuffers[2][FB_WIDTH * FB_HEIGHT];
@@ -23,45 +15,95 @@ extern "C" {
     uint8_t* gN64_RDRAM;
 }
 
-struct RDPState {
-    uint32_t otherModeL, otherModeH, combineMode;
-    uint8_t primR, primG, primB, primA;
-    uint8_t envR, envG, envB, envA;
-    uint8_t fillR, fillG, fillB, fillA;
-    uint8_t blendR, blendG, blendB, blendA;
-    uint8_t fogR, fogG, fogB, fogA;
-    bool textureEnabled;
-    struct {
-        uint32_t format, size, line, tmemAddr, palette;
-        uint32_t clampT, mirrorT, maskT, shiftT;
-        uint32_t clampS, mirrorS, maskS, shiftS;
-        uint32_t sl, tl, sh, th;
-    } tiles[8];
-    uint8_t* texAddr;
-    uint32_t texWidth, texFmt, texSize;
-    int activeTile;
-    uint8_t tmem[TMEM_SIZE];
-};
-
 static RDPState s_rdp;
+static int s_frameCount = 0;
+
+// =======================================================================
+// Helpers
+// =======================================================================
 
 static inline uint32_t RDP_BPP(uint32_t size) {
     static const uint32_t bpp[] = {0, 1, 2, 2};
     return bpp[size & 3];
 }
 
-static inline void RDP_FetchTexel(int tile, uint32_t s, uint32_t t, uint8_t* outRGBA) {
+static inline uint16_t RGBA8_TO_RGB565(uint8_t r, uint8_t g, uint8_t b) {
+    return ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
+}
+
+static inline int16_t read_int16(const uint8_t* ptr) {
+    return (int16_t)((ptr[0] << 8) | ptr[1]);
+}
+
+// =======================================================================
+// RDP State Management
+// =======================================================================
+
+static void RDP_InitState() {
+    memset(&s_rdp, 0, sizeof(s_rdp));
+    s_rdp.primR = s_rdp.primG = s_rdp.primB = s_rdp.primA = 255;
+    s_rdp.envR = s_rdp.envG = s_rdp.envB = s_rdp.envA = 255;
+    s_rdp.blendR = s_rdp.blendG = s_rdp.blendB = 255; s_rdp.blendA = 255;
+    s_rdp.fogR = s_rdp.fogG = s_rdp.fogB = 255; s_rdp.fogA = 255;
+    s_rdp.activeTile = 0;
+    s_rdp.textureEnabled = false;
+    s_rdp.matrixMode = 0;
+    s_rdp.dmemVertexCount = 0;
+    
+    // Initialize matrices to identity
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 4; j++)
+            s_rdp.projection[i][j] = s_rdp.modelview[i][j] = (i == j) ? 1.0f : 0.0f;
+}
+
+// =======================================================================
+// Matrix Operations
+// =======================================================================
+
+static void Matrix_Identity(BKMatrix m) {
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 4; j++)
+            m[i][j] = (i == j) ? 1.0f : 0.0f;
+}
+
+static void Matrix_MultVec(const BKMatrix m, float x, float y, float z, float w,
+                           float* ox, float* oy, float* oz, float* ow) {
+    *ox = m[0][0]*x + m[0][1]*y + m[0][2]*z + m[0][3]*w;
+    *oy = m[1][0]*x + m[1][1]*y + m[1][2]*z + m[1][3]*w;
+    *oz = m[2][0]*x + m[2][1]*y + m[2][2]*z + m[2][3]*w;
+    *ow = m[3][0]*x + m[3][1]*y + m[3][2]*z + m[3][3]*w;
+}
+
+// Load N64 fixed-point matrix (int16_t[4][4] with 32-bit integer parts)
+static void Matrix_LoadFromN64(BKMatrix dst, const void* src) {
+    const int16_t* m = (const int16_t*)src;
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            // N64 matrix: int16[4][4] where each row is 8 bytes
+            int32_t val = (int32_t)((m[(i*4+j)*2] << 16) | (uint16_t)m[(i*4+j)*2+1]);
+            dst[i][j] = (float)val / 65536.0f;
+        }
+    }
+}
+
+// =======================================================================
+// Texture Fetch from TMEM
+// =======================================================================
+
+static void RDP_FetchTexel(int tile, uint32_t s, uint32_t t, uint8_t* outRGBA) {
     uint32_t u = s >> 5, v = t >> 5;
     auto& tdesc = s_rdp.tiles[tile];
     uint32_t bpp = RDP_BPP(tdesc.size);
     uint32_t texW = (tdesc.sh >> 2) + 1, texH = (tdesc.th >> 2) + 1;
+    
     if (tdesc.clampS) { if (u >= texW) u = texW - 1; } else { u &= (texW - 1); }
     if (tdesc.clampT) { if (v >= texH) v = texH - 1; } else { v &= (texH - 1); }
+    
     uint32_t tmemBase = tdesc.tmemAddr * 8, lineBytes = tdesc.line * 8;
     
     if (bpp == 2) {
         uint32_t offset = tmemBase + v * lineBytes + u * 2;
-        if (offset + 1 < TMEM_SIZE) {
+        if (offset + 1 < 4096) {
             uint16_t pixel = (s_rdp.tmem[offset] << 8) | s_rdp.tmem[offset + 1];
             if (tdesc.format == 0) {
                 outRGBA[0] = ((pixel >> 11) & 0x1F) << 3;
@@ -71,34 +113,126 @@ static inline void RDP_FetchTexel(int tile, uint32_t s, uint32_t t, uint8_t* out
             } else if (tdesc.format == 5) {
                 outRGBA[0] = outRGBA[1] = outRGBA[2] = (pixel >> 8) & 0xFF;
                 outRGBA[3] = pixel & 0xFF;
-            } else { outRGBA[0] = outRGBA[1] = outRGBA[2] = outRGBA[3] = 255; }
+            } else {
+                outRGBA[0] = outRGBA[1] = outRGBA[2] = outRGBA[3] = 255;
+            }
         } else { outRGBA[0] = outRGBA[1] = outRGBA[2] = outRGBA[3] = 0; }
     } else if (bpp == 1) {
         uint32_t offset = tmemBase + v * lineBytes + u;
-        if (offset < TMEM_SIZE) {
+        if (offset < 4096) {
             uint8_t pixel = s_rdp.tmem[offset];
             if (tdesc.format == 4) {
                 outRGBA[0] = outRGBA[1] = outRGBA[2] = (pixel & 0xF0);
                 outRGBA[3] = (pixel & 0x0F) << 4;
-            } else { outRGBA[0] = outRGBA[1] = outRGBA[2] = outRGBA[3] = pixel; }
+            } else {
+                outRGBA[0] = outRGBA[1] = outRGBA[2] = outRGBA[3] = pixel;
+            }
         } else { outRGBA[0] = outRGBA[1] = outRGBA[2] = outRGBA[3] = 0; }
-    } else { outRGBA[0] = outRGBA[1] = outRGBA[2] = outRGBA[3] = 255; }
-}
-
-static void RDP_InitState() {
-    memset(&s_rdp, 0, sizeof(s_rdp));
-    s_rdp.primR = s_rdp.primG = s_rdp.primB = s_rdp.primA = 255;
-    s_rdp.envR = s_rdp.envG = s_rdp.envB = s_rdp.envA = 255;
-    s_rdp.fillR = s_rdp.fillG = s_rdp.fillB = 255; s_rdp.fillA = 255;
-    s_rdp.activeTile = 0; s_rdp.textureEnabled = false;
-}
-
-static inline uint16_t RGBA8_TO_RGB565(uint8_t r, uint8_t g, uint8_t b) {
-    return ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
+    } else {
+        outRGBA[0] = outRGBA[1] = outRGBA[2] = outRGBA[3] = 255;
+    }
 }
 
 // =======================================================================
-// Command Handlers (using gSPScisFillRectangle / gSPScisTextureRectangle encoding)
+// Triangle Rasterizer (flat shaded, no Z-buffer yet)
+// =======================================================================
+
+static void RasterizeTriangle(
+    float x0, float y0, float x1, float y1, float x2, float y2,
+    uint8_t r0, uint8_t g0, uint8_t b0, uint8_t a0,
+    uint8_t r1, uint8_t g1, uint8_t b1, uint8_t a1,
+    uint8_t r2, uint8_t g2, uint8_t b2, uint8_t a2)
+{
+    // Sort vertices by Y (y0 <= y1 <= y2)
+    if (y0 > y1) { std::swap(x0, x1); std::swap(y0, y1); std::swap(r0, r1); std::swap(g0, g1); std::swap(b0, b1); std::swap(a0, a1); }
+    if (y1 > y2) { std::swap(x1, x2); std::swap(y1, y2); std::swap(r1, r2); std::swap(g1, g2); std::swap(b1, b2); std::swap(a1, a2); }
+    if (y0 > y1) { std::swap(x0, x1); std::swap(y0, y1); std::swap(r0, r1); std::swap(g0, g1); std::swap(b0, b1); std::swap(a0, a1); }
+
+    int iy0 = (int)ceilf(y0), iy1 = (int)ceilf(y1), iy2 = (int)ceilf(y2);
+    if (iy0 < 0) iy0 = 0; if (iy2 > FB_HEIGHT) iy2 = FB_HEIGHT;
+    if (iy0 >= iy2) return;
+
+    int activeFb = getActiveFramebuffer();
+    uint16_t* fb = gFramebuffers[activeFb];
+
+    float dy10 = y1 - y0, dy21 = y2 - y1, dy20 = y2 - y0;
+    float dx10 = x1 - x0, dx21 = x2 - x1, dx20 = x2 - x0;
+    if (dy10 <= 0.0f && dy20 <= 0.0f) return;
+
+    // Top half (y0 to y1)
+    if (dy10 > 0.0f) {
+        for (int y = iy0; y < iy1 && y < FB_HEIGHT; y++) {
+            float fy = (float)y + 0.5f;
+            float t0 = (fy - y0) / dy20;
+            float t1 = (fy - y0) / dy10;
+            
+            float lx = x0 + t0 * dx20;
+            float rx = x0 + t1 * dx10;
+            if (lx > rx) std::swap(lx, rx);
+            
+            int ilx = (int)ceilf(lx), irx = (int)ceilf(rx);
+            if (ilx < 0) ilx = 0; if (irx > FB_WIDTH) irx = FB_WIDTH;
+            
+            for (int x = ilx; x < irx; x++) {
+                // Flat shading - use average color
+                uint8_t r = (uint8_t)(((int)r0 + r1 + r2) / 3);
+                uint8_t g = (uint8_t)(((int)g0 + g1 + g2) / 3);
+                uint8_t b = (uint8_t)(((int)b0 + b1 + b2) / 3);
+                fb[y * FB_WIDTH + x] = RGBA8_TO_RGB565(r, g, b);
+            }
+        }
+    }
+    
+    // Bottom half (y1 to y2)
+    if (dy21 > 0.0f) {
+        for (int y = iy1; y < iy2 && y < FB_HEIGHT; y++) {
+            float fy = (float)y + 0.5f;
+            float t0 = (fy - y0) / dy20;
+            float t1 = (fy - y1) / dy21;
+            
+            float lx = x0 + t0 * dx20;
+            float rx = x1 + t1 * dx21;
+            if (lx > rx) std::swap(lx, rx);
+            
+            int ilx = (int)ceilf(lx), irx = (int)ceilf(rx);
+            if (ilx < 0) ilx = 0; if (irx > FB_WIDTH) irx = FB_WIDTH;
+            
+            for (int x = ilx; x < irx; x++) {
+                uint8_t r = (uint8_t)(((int)r0 + r1 + r2) / 3);
+                uint8_t g = (uint8_t)(((int)g0 + g1 + g2) / 3);
+                uint8_t b = (uint8_t)(((int)b0 + b1 + b2) / 3);
+                fb[y * FB_WIDTH + x] = RGBA8_TO_RGB565(r, g, b);
+            }
+        }
+    }
+}
+
+// =======================================================================
+// Vertex Transform: apply combined matrix + viewport
+// =======================================================================
+
+static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
+    float x = (float)v->x, y = (float)v->y, z = (float)v->z;
+    
+    // Apply modelview
+    float ox, oy, oz, ow;
+    Matrix_MultVec(s_rdp.modelview, x, y, z, 1.0f, &ox, &oy, &oz, &ow);
+    
+    // Apply projection
+    Matrix_MultVec(s_rdp.projection, ox, oy, oz, ow, &ox, &oy, &oz, &ow);
+    
+    // Perspective divide
+    if (fabsf(ow) > 0.0001f) {
+        ox /= ow; oy /= ow;
+    }
+    
+    // Viewport transform: NDC [-1,1] → screen [0,FB_WIDTH/HEIGHT]
+    *sx = (ox + 1.0f) * 0.5f * (float)FB_WIDTH;
+    *sy = (1.0f - oy) * 0.5f * (float)FB_HEIGHT;
+}
+
+// =======================================================================
+// Command Handlers
 // =======================================================================
 
 static void Cmd_SetPrimColor(GfxCommand cmd) {
@@ -187,13 +321,13 @@ static void Cmd_LoadTile(GfxCommand cmd) {
     uint32_t texSize = texWidth * texHeight * bpp;
     uint32_t lineWords = (texWidth * bpp + 7) / 8;
     
-    if (s_rdp.texAddr && texSize <= TMEM_SIZE) {
+    if (s_rdp.texAddr && texSize <= 4096) {
         uint32_t tmemBase = t.tmemAddr * 8;
         uint32_t srcLineStride = s_rdp.texWidth * bpp;
         for (uint32_t row = 0; row < texHeight; row++) {
             uint32_t srcOffset = (tl + row) * srcLineStride + sl * bpp;
             uint32_t dstOffset = tmemBase + row * lineWords * 8;
-            if (dstOffset + lineWords * 8 <= TMEM_SIZE)
+            if (dstOffset + lineWords * 8 <= 4096)
                 memcpy(s_rdp.tmem + dstOffset, s_rdp.texAddr + srcOffset, lineWords * 8);
         }
         t.line = lineWords;
@@ -214,46 +348,190 @@ static void Cmd_LoadBlock(GfxCommand cmd) {
     uint32_t texSize = texWidth * texHeight * bpp;
     uint32_t lineWords = (texWidth * bpp + 7) / 8;
     
-    if (s_rdp.texAddr && texSize <= TMEM_SIZE) {
+    if (s_rdp.texAddr && texSize <= 4096) {
         uint32_t tmemBase = t.tmemAddr * 8;
         for (uint32_t row = 0; row < texHeight; row++) {
             uint32_t srcOffset = row * lineWords * 8;
             uint32_t dstOffset = tmemBase + row * lineWords * 8;
-            if (dstOffset + lineWords * 8 <= TMEM_SIZE)
+            if (dstOffset + lineWords * 8 <= 4096)
                 memcpy(s_rdp.tmem + dstOffset, s_rdp.texAddr + srcOffset, lineWords * 8);
         }
         t.line = lineWords;
     }
 }
 
-// FIXED: gDPScisFillRectangle encoding
-// w0 = [opcode:8][lrx:10][lry:10][:4]
-// w1 = [ulx:10][uly:10][:12]
+// =======================================================================
+// G_VTX - Load vertices into DMEM (F3DEX_GBI format)
+// w0 = [G_VTX:8][v0:8][n:6][length:10]
+// w1 = address of Vtx data in RDRAM
+// =======================================================================
+static void Cmd_Vtx(GfxCommand cmd) {
+    uint32_t v0 = (cmd.w0 >> 12) & 0xFF;      // Base vertex index in DMEM
+    uint32_t n  = (cmd.w0 >> 10) & 0x3F;       // Number of vertices - 1
+    uint32_t length = cmd.w0 & 0x3FF;           // Data length
+    uint32_t addr = cmd.w1 & 0x0FFFFFFF;        // Source address in RDRAM
+    
+    n++; // Convert from n-1 to actual count
+    
+    if (v0 + n > DMEM_VERTEX_COUNT || !gN64_RDRAM) {
+        LOGW("Cmd_Vtx: v0=%u n=%u exceeds DMEM limit", v0, n);
+        return;
+    }
+    
+    uint8_t* src = gN64_RDRAM + addr;
+    for (uint32_t i = 0; i < n; i++) {
+        BKVertex* v = &s_rdp.dmem[v0 + i];
+        // N64 Vtx format (16 bytes): ob[3](6 bytes), flag(2), tc[2](4), cn[4](4)
+        v->x = read_int16(src + 0);
+        v->y = read_int16(src + 2);
+        v->z = read_int16(src + 4);
+        v->flag = (src[6] << 8) | src[7];
+        v->s = read_int16(src + 8);
+        v->t = read_int16(src + 10);
+        v->r = src[12];
+        v->g = src[13];
+        v->b = src[14];
+        v->a = src[15];
+        src += 16;
+    }
+    
+    if (v0 + n > (uint32_t)s_rdp.dmemVertexCount)
+        s_rdp.dmemVertexCount = v0 + n;
+}
+
+// =======================================================================
+// G_TRI1 - Draw 1 triangle
+// w0 = [G_TRI1:8][v2:8][v1:8][v0:8]
+// w1 = [flag:24][00000000]
+// =======================================================================
+static void Cmd_Tri1(GfxCommand cmd) {
+    uint32_t v0 = (cmd.w0 >> 16) & 0xFF;
+    uint32_t v1 = (cmd.w0 >> 8) & 0xFF;
+    uint32_t v2 = cmd.w0 & 0xFF;
+    
+    if (v0 >= (uint32_t)s_rdp.dmemVertexCount || 
+        v1 >= (uint32_t)s_rdp.dmemVertexCount || 
+        v2 >= (uint32_t)s_rdp.dmemVertexCount) {
+        LOGW("Cmd_Tri1: invalid vertex indices %u,%u,%u (count=%d)", v0, v1, v2, s_rdp.dmemVertexCount);
+        return;
+    }
+    
+    BKVertex* vert0 = &s_rdp.dmem[v0];
+    BKVertex* vert1 = &s_rdp.dmem[v1];
+    BKVertex* vert2 = &s_rdp.dmem[v2];
+    
+    float sx0, sy0, sx1, sy1, sx2, sy2;
+    TransformVertex(vert0, &sx0, &sy0);
+    TransformVertex(vert1, &sx1, &sy1);
+    TransformVertex(vert2, &sx2, &sy2);
+    
+    RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
+        vert0->r, vert0->g, vert0->b, vert0->a,
+        vert1->r, vert1->g, vert1->b, vert1->a,
+        vert2->r, vert2->g, vert2->b, vert2->a);
+}
+
+// =======================================================================
+// G_TRI2 - Draw 2 triangles (4 vertices)
+// w0 = [G_TRI2:8][v2:8][v1:8][v0:8]  -- triangle 1 uses v0,v1,v2
+// w1 = [flag2:8][v4:8][v3:8][flag1:8]  -- triangle 2 uses v1,v2,v3
+// =======================================================================
+static void Cmd_Tri2(GfxCommand cmd) {
+    uint32_t v0 = (cmd.w0 >> 16) & 0xFF;
+    uint32_t v1 = (cmd.w0 >> 8) & 0xFF;
+    uint32_t v2 = cmd.w0 & 0xFF;
+    uint32_t v3 = (cmd.w1 >> 8) & 0xFF;
+    
+    if (v0 >= (uint32_t)s_rdp.dmemVertexCount || 
+        v1 >= (uint32_t)s_rdp.dmemVertexCount || 
+        v2 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v3 >= (uint32_t)s_rdp.dmemVertexCount) {
+        LOGW("Cmd_Tri2: invalid vertex indices %u,%u,%u,%u", v0, v1, v2, v3);
+        return;
+    }
+    
+    // Triangle 1: v0, v1, v2
+    {
+        BKVertex* vt0 = &s_rdp.dmem[v0];
+        BKVertex* vt1 = &s_rdp.dmem[v1];
+        BKVertex* vt2 = &s_rdp.dmem[v2];
+        float sx0, sy0, sx1, sy1, sx2, sy2;
+        TransformVertex(vt0, &sx0, &sy0);
+        TransformVertex(vt1, &sx1, &sy1);
+        TransformVertex(vt2, &sx2, &sy2);
+        RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
+            vt0->r, vt0->g, vt0->b, vt0->a,
+            vt1->r, vt1->g, vt1->b, vt1->a,
+            vt2->r, vt2->g, vt2->b, vt2->a);
+    }
+    
+    // Triangle 2: v1, v2, v3 (using v1,v2 from above, v3 new)
+    {
+        BKVertex* vt0 = &s_rdp.dmem[v1];
+        BKVertex* vt1 = &s_rdp.dmem[v2];
+        BKVertex* vt2 = &s_rdp.dmem[v3];
+        float sx0, sy0, sx1, sy1, sx2, sy2;
+        TransformVertex(vt0, &sx0, &sy0);
+        TransformVertex(vt1, &sx1, &sy1);
+        TransformVertex(vt2, &sx2, &sy2);
+        RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
+            vt0->r, vt0->g, vt0->b, vt0->a,
+            vt1->r, vt1->g, vt1->b, vt1->a,
+            vt2->r, vt2->g, vt2->b, vt2->a);
+    }
+}
+
+// =======================================================================
+// G_MOVEMEM - Load matrix (opcode 0xDC)
+// w0 = [opcode:8][length:8][offset:8][index:8]
+// w1 = address of data in RDRAM
+// =======================================================================
+static void Cmd_MoveMem(GfxCommand cmd) {
+    uint32_t length = (cmd.w0 >> 16) & 0xFF;
+    uint32_t offset = (cmd.w0 >> 8) & 0xFF;
+    uint32_t index  = cmd.w0 & 0xFF;
+    uint32_t addr   = cmd.w1 & 0x0FFFFFFF;
+    
+    if (!gN64_RDRAM) return;
+    
+    // Matrix load: index 0x0E = G_MTX_MODELVIEW, 0x00 = G_MTX_PROJECTION
+    // offset 0 = projection, offset 0 = modelview (upper bits differ)
+    if (length == 8 && (index == 0x0E || index == 0x00)) {
+        BKMatrix* target;
+        if (index == 0x00) {
+            target = &s_rdp.projection;
+        } else {
+            target = &s_rdp.modelview;
+        }
+        Matrix_LoadFromN64(*target, gN64_RDRAM + addr);
+    }
+}
+
+// =======================================================================
+// G_FILLRECT - Solid color rectangle fill
+// =======================================================================
 static void Cmd_FillRect(GfxCommand cmd) {
-    int32_t ulx = (int32_t)((cmd.w1 >> 14) & 0x3FF);  // bits 14-23 of w1
-    int32_t uly = (int32_t)((cmd.w1 >> 2) & 0x3FF);    // bits 2-11 of w1
-    int32_t lrx = (int32_t)((cmd.w0 >> 14) & 0x3FF);   // bits 14-23 of w0
-    int32_t lry = (int32_t)((cmd.w0 >> 2) & 0x3FF);     // bits 2-11 of w0
+    int32_t ulx = (int32_t)((cmd.w1 >> 14) & 0x3FF);
+    int32_t uly = (int32_t)((cmd.w1 >> 2) & 0x3FF);
+    int32_t lrx = (int32_t)((cmd.w0 >> 14) & 0x3FF);
+    int32_t lry = (int32_t)((cmd.w0 >> 2) & 0x3FF);
     
-    // Convert from 10.2 fixed point to integer
     ulx >>= 2; uly >>= 2; lrx >>= 2; lry >>= 2;
-    
     ulx = std::max(0, ulx); uly = std::max(0, uly);
     lrx = std::min(lrx, FB_WIDTH); lry = std::min(lry, FB_HEIGHT);
     if (ulx >= lrx || uly >= lry) return;
     
-    uint16_t color = RGBA8_TO_RGB565(s_rdp.fillR, s_rdp.fillG, s_rdp.fillB);
+    uint16_t color = RGBA8_TO_RGB565(s_rdp.blendR, s_rdp.blendG, s_rdp.blendB);
     int activeFb = getActiveFramebuffer();
     uint16_t* fb = gFramebuffers[activeFb];
-    
     for (int32_t y = uly; y < lry; y++)
         for (int32_t x = ulx; x < lrx; x++)
             fb[y * FB_WIDTH + x] = color;
 }
 
-// FIXED: gSPScisTextureRectangle encoding
-// w0 = [opcode:8][xh:12][yh:12]
-// w1 = [tile:3][xl:12][yl:12][:5]
+// =======================================================================
+// G_TEXRECT - Textured rectangle
+// =======================================================================
 static void Cmd_TexRect(GfxCommand cmd) {
     int32_t xh = (int32_t)((cmd.w0 >> 12) & 0xFFF);
     int32_t yh = (int32_t)(cmd.w0 & 0xFFF);
@@ -285,7 +563,6 @@ static void Cmd_TexRect(GfxCommand cmd) {
             int32_t t = tBase + (dy * texH) / rectH;
             RDP_FetchTexel(tile, s << 5, t << 5, texel);
             
-            // Apply color combine: TEXEL0 * PRIM + ENV*0 (simplified)
             uint8_t r = (uint8_t)(((uint16_t)texel[0] * s_rdp.primR) / 255);
             uint8_t g = (uint8_t)(((uint16_t)texel[1] * s_rdp.primG) / 255);
             uint8_t b = (uint8_t)(((uint16_t)texel[2] * s_rdp.primB) / 255);
@@ -299,6 +576,9 @@ static void Cmd_TexRect(GfxCommand cmd) {
     }
 }
 
+// =======================================================================
+// G_DL - Jump to display list
+// =======================================================================
 static void Cmd_DL(GfxCommand cmd, GfxCommand** outCmd, size_t* outRemaining) {
     uint32_t addr = cmd.w1;
     *outCmd = (GfxCommand*)(gN64_RDRAM + (addr & 0x0FFFFFFF));
@@ -318,15 +598,16 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     GfxCommand* cmd = (GfxCommand*)tp->t.data_ptr;
     size_t cmdCount = tp->t.data_size / sizeof(GfxCommand);
     size_t remaining = cmdCount;
+    s_frameCount++;
+    bool logFrame = (s_frameCount <= 10);
     
-    static int frameCount = 0; frameCount++;
-    bool logFrame = (frameCount <= 10);
+    if (logFrame) LOGI("BKA_GFX: Frame %d — %zu commands", s_frameCount, cmdCount);
     
     while (remaining > 0) {
         GfxCommand c = *cmd;
         uint8_t opcode = GFX_OPCODE(c);
         
-        if (logFrame)
+        if (logFrame && s_frameCount <= 2)
             LOGI("BKA_GFX: cmd[%zu] op=0x%02X w0=0x%08X w1=0x%08X",
                  cmdCount - remaining, opcode, c.w0, c.w1);
         
@@ -336,27 +617,42 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xE7: // G_RDPPIPESYNC
             case 0xE6: // G_RDPLOADSYNC
                 break;
-            case 0xFA: Cmd_SetPrimColor(c); break;     // G_SETPRIMCOLOR
-            case 0xFB: Cmd_SetEnvColor(c); break;       // G_SETENVCOLOR
-            case 0xE2: Cmd_SetOtherModeL(c); break;     // G_SETOTHERMODE_L
-            case 0xE3: Cmd_SetOtherModeH(c); break;     // G_SETOTHERMODE_H
-            case 0xFC: Cmd_SetCombine(c); break;         // G_SETCOMBINE
-            case 0xD7: Cmd_Texture(c); break;            // G_TEXTURE
-            case 0xF5: Cmd_SetTile(c); break;            // G_SETTILE
-            case 0xF2: Cmd_SetTileSize(c); break;        // G_SETTILESIZE
-            case 0xFD: Cmd_SetTImg(c); break;            // G_SETTIMG
-            case 0xF3: Cmd_LoadBlock(c); break;          // G_LOADBLOCK
-            case 0xF4: Cmd_LoadTile(c); break;           // G_LOADTILE
-            case 0xF6: Cmd_FillRect(c); break;           // G_FILLRECT (gDPScisFillRectangle)
-            case 0xE4: case 0xE5: Cmd_TexRect(c); break; // G_TEXRECT (gSPScisTextureRectangle)
+            
+            case 0xFA: Cmd_SetPrimColor(c); break;
+            case 0xFB: Cmd_SetEnvColor(c); break;
+            case 0xE2: Cmd_SetOtherModeL(c); break;
+            case 0xE3: Cmd_SetOtherModeH(c); break;
+            case 0xFC: Cmd_SetCombine(c); break;
+            case 0xD7: Cmd_Texture(c); break;
+            case 0xF5: Cmd_SetTile(c); break;
+            case 0xF2: Cmd_SetTileSize(c); break;
+            case 0xFD: Cmd_SetTImg(c); break;
+            case 0xF3: Cmd_LoadBlock(c); break;
+            case 0xF4: Cmd_LoadTile(c); break;
+            case 0xF6: Cmd_FillRect(c); break;
+            case 0xE4: case 0xE5: Cmd_TexRect(c); break;
+            
+            // NEW: 3D commands
+            case 0x01: Cmd_Vtx(c); break;           // G_VTX
+            case 0xBF: Cmd_Tri1(c); break;          // G_TRI1 (F3DEX)
+            case 0xB1: Cmd_Tri2(c); break;          // G_TRI2 (F3DEX)
+            case 0xDC: Cmd_MoveMem(c); break;       // G_MOVEMEM
+            
             case 0xDE: Cmd_DL(c, &cmd, &remaining); continue; // G_DL
             case 0xDF: // G_ENDDL
-                if (logFrame) LOGI("BKA_GFX: ENDDL — %zu cmds", cmdCount - remaining);
+                if (logFrame) LOGI("BKA_GFX: ENDDL — %zu cmds, %d vertices", 
+                                   cmdCount - remaining, s_rdp.dmemVertexCount);
                 return;
-            case 0xE1: case 0xF1: break; // G_RDPHALF_1/2 (S/T coords for TEXRECT — stored as state)
+            
+            case 0xE1: case 0xF1: break; // G_RDPHALF_1/2
             case 0xF0: break; // G_LOADTLUT
+            case 0x02: break; // G_MODIFYVTX (stub)
+            case 0xDB: break; // G_MOVEWORD (stub)
+            case 0xDA: break; // G_POPMTX (stub)
+            
             default:
-                if (logFrame) LOGW("BKA_GFX: Unhandled 0x%02X at %zu", opcode, cmdCount - remaining);
+                if (logFrame && s_frameCount <= 3)
+                    LOGW("BKA_GFX: Unhandled op=0x%02X at cmd %zu", opcode, cmdCount - remaining);
                 break;
         }
         cmd++; remaining--;
