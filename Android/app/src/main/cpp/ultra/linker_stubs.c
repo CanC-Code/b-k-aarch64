@@ -52,7 +52,7 @@ s32  __alSeqNextDelta(void *seq, void *state) { return 0; }
 void alEvtqPostEvent(void *evtq, void *item) {}
 void alEvtqNextEvent(void *evtq, void *item) {}
 void osDpSetStatus(u32 status) {}
-void osDpGetStatus(void) { return 0; }
+u32 osDpGetStatus(void) { return 0; }
 void *osViGetCurrentFramebuffer(void) { return 0; }
 
 // Microcode globals
