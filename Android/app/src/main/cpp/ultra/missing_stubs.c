@@ -554,3 +554,4 @@ void func_8024E5E8(void) {}
 int gctransition_active = 0;
 int pfsManager_contErr = 0;
 void func_80254008(void) {}
+int func_802E4424(void) { return 1; }
