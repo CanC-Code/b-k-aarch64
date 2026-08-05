@@ -463,3 +463,37 @@ void gsworld_free(void) {}
 void gsworld_draw(Gfx** gfx, Mtx** mtx, Vtx** vtx) { (void)gfx; (void)mtx; (void)vtx; }
 void *file_openMap(s32 map_id) { (void)map_id; return NULL; }
 void file_close(void *f) { (void)f; }
+
+// =======================================================================
+// gsworld.c stubs
+// =======================================================================
+void gsworld_set(s32 map, s32 arg1, s32 arg2) { (void)map; (void)arg1; (void)arg2; }
+void gsworld_load(s32 map_id) { (void)map_id; }
+void gsworld_free(void) {}
+void gsworld_draw(void *gfx, void *mtx, void *vtx) { (void)gfx; (void)mtx; (void)vtx; }
+void gsworld_setUnk0(s32 val) { (void)val; }
+void gsworld_update(void) {}
+s32 gsworld_getUnk0(void) { return 0; }
+s32 gsworld_getMap(void) { return 0; }
+s32 gsworld_getExit(void) { return 0; }
+
+// =======================================================================
+// file.c stubs
+// =======================================================================
+void *file_openMap(s32 map_id) { (void)map_id; return NULL; }
+void *file_open(s32 id) { (void)id; return NULL; }
+void *file_openWithBaseIndex(s32 indx, s32 base_indx) { (void)indx; (void)base_indx; return NULL; }
+void *file_openFromMem(void *ptr, s32 size) { (void)ptr; (void)size; return NULL; }
+void file_close(void *f) { (void)f; }
+s32 file_isNextByteExpected(void *f, s32 expected) { (void)f; (void)expected; return 0; }
+s32 file_getByte_ifExpected(void *f, s32 expected, void *dst) { (void)f; (void)expected; (void)dst; return 0; }
+s32 file_getShort_ifExpected(void *f, s32 expected, void *dst) { (void)f; (void)expected; (void)dst; return 0; }
+s32 file_getWord_ifExpected(void *f, s32 expected, void *dst) { (void)f; (void)expected; (void)dst; return 0; }
+s32 file_getNBytes_ifExpected(void *f, s32 expected, void *dst, s32 n) { (void)f; (void)expected; (void)dst; (void)n; return 0; }
+s32 file_getNWords_ifExpected(void *f, s32 expected, void *dst, s32 n) { (void)f; (void)expected; (void)dst; (void)n; return 0; }
+s32 file_getNWords(void *f, void *dst, s32 n) { (void)f; (void)dst; (void)n; return 0; }
+s32 file_getNFloats_ifExpected(void *f, s32 expected, void *dst, s32 n) { (void)f; (void)expected; (void)dst; (void)n; return 0; }
+f32 file_getFloat(void *f) { (void)f; return 0.0f; }
+void file_getByte(void *f, void *dst) { (void)f; (void)dst; }
+void file_getShort(void *f, void *dst) { (void)f; (void)dst; }
+void file_getWord(void *f, void *dst) { (void)f; (void)dst; }
