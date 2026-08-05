@@ -492,3 +492,16 @@ void mlAbsF(void) {}
 void ml_map_f(void) {}
 void controller_getJoystick(void) {}
 void controller_copyFaceButtons(void) {}
+
+// Additional stubs for excluded files
+void gctransition_reset(void) {}
+void pfsManager_update(void) {}
+void baMotor_80250C08(void) {}
+void audioManager_getExtraDMAMesg(void) {}
+void *audioManager_getDMANotifyMesgQueue(void) { return NULL; }
+void *audioManager_getALHeapInfo(void) { return NULL; }
+void audioManager_setupSeqp(void *a, void *b, void *c, void *d) {}
+void viMgr_setActiveFramebuffer(int a) {}
+void ml_vec3f_set_length_copy(void *a, void *b, float c) {}
+void ml_vec3f_diff(void *a, void *b, void *c) {}
+float ml_vec3f_dot_product(void *a, void *b) { return 0.0f; }
