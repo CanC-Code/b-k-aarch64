@@ -33,7 +33,6 @@ static u64 sDebugVar_8027BEF0; // never used
 extern u8 core2_TEXT_START[];
 
 void core1_main(s32 arg0){ 
-    *(volatile int *)0 = 1; // trace: core1_main entry
     bzero(&D_8027A130, 0x100); /* capped to 256 bytes for Android */
     osWritebackDCacheAll();
     sns_find_and_parse_payload();
@@ -97,7 +96,6 @@ void func_8023DBDC(void){
 }
 
 void core1_init(void) {
-    *(volatile int *)0 = 2; // trace: core1_init entry
 #if VERSION == VERSION_PAL
      osTvType = 0;
 #endif
@@ -119,10 +117,8 @@ void core1_init(void) {
     ml_init();
     gctransition_reset();
     D_8027A130 = 0;
-    *(volatile int *)0 = 4; // trace: core1_init state reset
     gGlobalTimer = 0;
     func_8023DA9C(3);
-    *(volatile int *)0 = 3; // trace: func_8023DA9C called
 }
 
 void globalTimer_incTimer(void) {
