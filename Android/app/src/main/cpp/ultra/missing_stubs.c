@@ -505,3 +505,16 @@ void viMgr_setActiveFramebuffer(int a) {}
 void ml_vec3f_set_length_copy(void *a, void *b, float c) {}
 void ml_vec3f_diff(void *a, void *b, void *c) {}
 float ml_vec3f_dot_product(void *a, void *b) { return 0.0f; }
+
+// More stubs from excluded files
+void ml_vec3f_normalize_copy(void *a, void *b) {}
+void viMgr_func_8024BFAC(void) {}
+void *audioManager_getFrameMesgQueue(void) { return NULL; }
+void baMotor_80250FC0(void) {}
+void pfsManager_getStartReadData(void) {}
+void viMgr_registerSignalMesg(void *a, void *b) {}
+int ml_vec3w_inside_box_w(void *a, void *b, void *c) { return 0; }
+void func_8024F35C(void) {}
+void *pfsManager_getFrameReplyQ(void) { return NULL; }
+float ml_sin_deg(float a) { return 0.0f; }
+float ml_cos_deg(float a) { return 0.0f; }
