@@ -298,6 +298,15 @@ void func_8031B62C(void) {}
 void defragManager_init(void) {}
 void animCache_init(void) {}
 void rand_reset(void) {}
+void scissorBox_setDefault(void) {}
+void func_80253FE8(void) {}
+void time_reset(void) {}
+void func_8033DC04(void) {}
+void clearScoreStates(void) {}
+void savedata_init(void) {}
+void func_802E3854(void) {}
+void func_802E3800(void) {}
+void func_8033DC10(void) {}
 void func_80324C58(void) {}
 void picturebox_init(void) {}
 void picturebox_free(void) {}
@@ -446,26 +455,7 @@ void snspayload_rewind_outgoing(void) {}
 void snspayload_finalise_outgoing_payload(void *payload) {}
 
 // =======================================================================
-// Hardware init stubs — prevent hangs waiting for N64 hardware
-// =======================================================================
-void pfsManager_init(void) {}
-void audioManager_init(void) {}
-void baMotor_init(void) {}
-void ml_init(void) {}
-void gctransition_reset(void) {}
-void gctransition_init(void) {}
-void ucode_load(void) {}
-void allocUnusedBlock(void) {}
-void dummy_func_8025AFB0(void) {}
-void gsworld_set(s32 map, s32 arg1, s32 arg2) { (void)map; (void)arg1; (void)arg2; }
-void gsworld_load(s32 map_id) { (void)map_id; }
-void gsworld_free(void) {}
-void gsworld_draw(Gfx** gfx, Mtx** mtx, Vtx** vtx) { (void)gfx; (void)mtx; (void)vtx; }
-void *file_openMap(s32 map_id) { (void)map_id; return NULL; }
-void file_close(void *f) { (void)f; }
-
-// =======================================================================
-// gsworld.c stubs
+// gsworld.c stubs (excluded from build)
 // =======================================================================
 void gsworld_set(s32 map, s32 arg1, s32 arg2) { (void)map; (void)arg1; (void)arg2; }
 void gsworld_load(s32 map_id) { (void)map_id; }
@@ -478,11 +468,11 @@ s32 gsworld_getMap(void) { return 0; }
 s32 gsworld_getExit(void) { return 0; }
 
 // =======================================================================
-// file.c stubs
+// file.c stubs (excluded from build)
 // =======================================================================
 void *file_openMap(s32 map_id) { (void)map_id; return NULL; }
 void *file_open(s32 id) { (void)id; return NULL; }
-void *file_openWithBaseIndex(s32 indx, s32 base_indx) { (void)indx; (void)base_indx; return NULL; }
+void *file_openWithBaseIndex(s32 indx, s32 base) { (void)indx; (void)base; return NULL; }
 void *file_openFromMem(void *ptr, s32 size) { (void)ptr; (void)size; return NULL; }
 void file_close(void *f) { (void)f; }
 s32 file_isNextByteExpected(void *f, s32 expected) { (void)f; (void)expected; return 0; }
