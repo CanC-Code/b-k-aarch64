@@ -8,6 +8,12 @@
 
 extern "C" {
 
+// Synchronous ROM read — bypasses PI message queue hangs
+void piMgr_read(void *vaddr, s32 devaddr, s32 size) {
+    if (!vaddr || size <= 0) return;
+    ResourceMgr_HandleDma(vaddr, devaddr, size);
+}
+
 extern s32 osSendMesg(OSMesgQueue *mq, OSMesg msg, s32 flag);
 extern void ResourceMgr_HandleDma(void* dramAddr, u32 devAddr, u32 size);
 extern uint8_t* gN64_ROM_Base;
