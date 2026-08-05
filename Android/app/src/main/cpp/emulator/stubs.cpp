@@ -363,6 +363,7 @@ s32 osRecvMesg(OSMesgQueue *mq, OSMesg *msg, s32 flag) {
 
     if (msg != nullptr) *msg = nq->buffer.front();
     nq->buffer.pop_front();
+        static int recvCount = 0; if (++recvCount <= 10 || recvCount % 100 == 0) __android_log_print(ANDROID_LOG_INFO, "BKA-RDP", "osRecvMesg: message %d received", recvCount);
     mq->validCount = static_cast<s32>(nq->buffer.size());
     nq->cv_send.notify_one();
     return 0;
