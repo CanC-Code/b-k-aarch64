@@ -1,3 +1,4 @@
+extern void BKA_FrameSyncHook(void);
 #include <ultra64.h>
 #include "core1/core1.h"
 #include "functions.h"
@@ -118,7 +119,7 @@ void core1_init(void) {
     gctransition_reset();
     D_8027A130 = 0;
     gGlobalTimer = 0;
-    func_8023DA9C_stub(3); /* bypass world init for RDP testing */
+    func_8023DA9C(3);
 }
 
 void globalTimer_incTimer(void) {
