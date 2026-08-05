@@ -453,3 +453,9 @@ void sns_init_base_payloads(void) {}
 void snspayload_append_key_to_outgoing_payload(void *payload, s32 key) {}
 void snspayload_rewind_outgoing(void) {}
 void snspayload_finalise_outgoing_payload(void *payload) {}
+
+extern void ResourceMgr_HandleDma(void* dramAddr, u32 devAddr, u32 size);
+void piMgr_read(void *vaddr, s32 devaddr, s32 size) {
+    if (!vaddr || size <= 0) return;
+    ResourceMgr_HandleDma(vaddr, devaddr, size);
+}
