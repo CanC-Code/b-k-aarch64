@@ -14,25 +14,6 @@ extern uint8_t* gN64_ROM_Base;
 extern uint8_t* gN64_RDRAM;
 
 // -----------------------------------------------------------------------
-// Direct ROM-to-RDRAM transfer — no PI queues, no async DMA
-// -----------------------------------------------------------------------
-void piMgr_read(void *vaddr, s32 devaddr, s32 size) {
-    if (!vaddr || size <= 0) return;
-
-    // Convert N64 device address to ROM offset
-    u32 romOffset = devaddr & 0x0FFFFFFF;
-    if ((devaddr >> 24) == 0x10) romOffset = devaddr - 0x10000000;
-    if (devaddr < 0x10000000) romOffset = devaddr;
-
-    // First try the ResourceMgr path (handles asset file lookups)
-    ResourceMgr_HandleDma(vaddr, devaddr, size);
-
-    LOGI("piMgr_read: devAddr=0x%08X romOffset=0x%X size=%d dramAddr=%p", 
-         devaddr, romOffset, size, vaddr);
-}
-
-// -----------------------------------------------------------------------
-// Synchronous PI DMA — completes immediately
 // -----------------------------------------------------------------------
 s32 osPiRawStartDma(s32 direction, u32 devAddr, void *dramAddr, u32 size) {
     LOGI("osPiRawStartDma: dir=%d devAddr=0x%08X dramAddr=%p size=%u",
