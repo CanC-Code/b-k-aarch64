@@ -171,7 +171,7 @@ void func_80253FE8(void){
 }
 
 void core1_15B30_sendMesg3ToRenderThread(void) {
-    // Sync message handled synchronously in HLE
+    thread5_sendTaskToQueue((OSMesg) THREAD5_MESSAGE_EVENT_SYNC)
 }
 
 void core1_15B30_init(void) {

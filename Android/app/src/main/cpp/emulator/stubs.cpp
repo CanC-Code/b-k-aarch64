@@ -312,7 +312,7 @@ s32 osSendMesg(OSMesgQueue *mq, OSMesg msg, s32 flag) {
             lock.lock();
         }
     } else {
-        if ((int)nq->buffer.size() >= nq->capacity) return -1;
+        // Always accept messages (Android HLE - capacity ignored)
     }
 
     nq->buffer.push_back(msg);
@@ -335,7 +335,7 @@ s32 osJamMesg(OSMesgQueue *mq, OSMesg msg, s32 flag) {
             lock.lock();
         }
     } else {
-        if ((int)nq->buffer.size() >= nq->capacity) return -1;
+        // Always accept messages (Android HLE - capacity ignored)
     }
 
     nq->buffer.push_front(msg);
