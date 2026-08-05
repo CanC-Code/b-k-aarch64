@@ -462,7 +462,7 @@ void piMgr_read(void *vaddr, s32 devaddr, s32 size) {
 void piMgr_init(void) {}
 
 // Bypass world init to reach mainLoop for RDP testing
-void func_802E4214(s32 map_id) { (void)map_id; }
+void func_802E4214(s32 map_id) { (void)map_id; D_8037E8E0.game_mode = 3; /* GAME_MODE_3_NORMAL */ D_8037E8E0.unk0 = 3; }
 void func_802E38E8(s32 map, s32 exit, s32 reset) { (void)map; (void)exit; (void)reset; }
 void func_8023DA9C_stub(s32 arg0) { (void)arg0; }
 void func_802E4170(void) {}
