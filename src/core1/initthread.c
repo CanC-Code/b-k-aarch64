@@ -1,3 +1,4 @@
+extern void BKA_DropEngineLock(void);
 #include <ultra64.h>
 #include "core1/core1.h"
 #include "functions.h"
@@ -24,5 +25,6 @@ void initThread_entry(void *arg)
     piMgr_init();
     mainThread_create();
     osStartThread(mainThread_get());
+    BKA_DropEngineLock();
     while (1);
 }
