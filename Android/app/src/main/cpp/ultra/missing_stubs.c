@@ -471,3 +471,24 @@ void ucode_stub1(void) {}
 void ucode_stub3(void) {}
 void ucode_getPtrAndSize(void **ptr, u32 *size) { *ptr = NULL; *size = 0; }
 
+
+// Remaining stubs from excluded files (ml.c, bamotor.c, controller.c)
+void func_80258A4C(void) {}
+void func_80256E24(void) {}
+void func_8025715C(void) {}
+void func_80256AB4(void) {}
+void func_80256C60(void) {}
+void func_80257204(void) {}
+void func_80250E94(void) {}
+void func_80250D94(void) {}
+void ml_timer_update(void) {}
+void ml_vec3f_interpolate_fast(void *a, void *b, void *c, float d) {}
+void ml_vec3f_diff_copy(void *a, void *b, void *c) {}
+void ml_vec3f_pitch_rotate_copy(void *a, void *b, void *c, float d) {}
+void ml_vec3f_assign(void *a, void *b) {}
+void ml_vec3f_horizontal_distance_zero_likely(void) {}
+void ml_vec3f_distance(void) {}
+void mlAbsF(void) {}
+void ml_map_f(void) {}
+void controller_getJoystick(void) {}
+void controller_copyFaceButtons(void) {}
