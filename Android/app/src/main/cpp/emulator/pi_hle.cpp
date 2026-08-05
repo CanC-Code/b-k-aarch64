@@ -70,3 +70,4 @@ s32 osEPiStartDma(OSPiHandle *handle, OSIoMesg *mb, s32 direction) {
 }
 
 } // extern "C"
+s32 osPiGetStatus(void) { return 0; }  // Always idle - DMA completes synchronously
