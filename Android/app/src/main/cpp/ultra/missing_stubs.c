@@ -518,3 +518,13 @@ void func_8024F35C(void) {}
 void *pfsManager_getFrameReplyQ(void) { return NULL; }
 float ml_sin_deg(float a) { return 0.0f; }
 float ml_cos_deg(float a) { return 0.0f; }
+
+// Remaining stubs from excluded files (baMotor, viMgr, pfsManager, audioManager, ml)
+void baMotor_80250E94(void) {}
+void baMotor_80250D94(void) {}
+void viMgr_clearFramebuffers(void) {}
+void viMgr_init(void) {}
+void pfsManager_init(void) {}
+void baMotor_init(void) {}
+void audioManager_init(void) {}
+void ml_init(void) {}
