@@ -209,6 +209,7 @@ void mainThread_entry(void *arg) {
     sns_write_payload_over_heap();
 
     while (1) {
+        BKA_FrameSyncHook();
         mainLoop();
     }
 }
