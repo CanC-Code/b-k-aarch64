@@ -459,3 +459,4 @@ void piMgr_read(void *vaddr, s32 devaddr, s32 size) {
     if (!vaddr || size <= 0) return;
     ResourceMgr_HandleDma(vaddr, devaddr, size);
 }
+void piMgr_init(void) {}
