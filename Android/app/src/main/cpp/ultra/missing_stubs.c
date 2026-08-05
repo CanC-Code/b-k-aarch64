@@ -470,3 +470,22 @@ void ucode_load(void) {}
 void ucode_stub1(void) {}
 void ucode_stub3(void) {}
 void ucode_getPtrAndSize(void **ptr, u32 *size) { *ptr = NULL; *size = 0; }
+
+// Hardware init stubs (sources excluded from build)
+void viMgr_init(void) {}
+void viMgr_clearFramebuffers(void) {}
+void func_8024C1DC(void) {}
+void gctransition_init(void) {}
+void gctransition_draw(void *a, void *b, void *c) { (void)a; (void)b; (void)c; }
+void gctransition_update(void) {}
+int gctransition_done(void) { return 1; }
+void gctransition_8030BEA4(int a) { (void)a; }
+void gctransition_8030BD4C(void) {}
+void gctransition_8030BE60(void) {}
+int gctransition_8030BDC0(void) { return 0; }
+void gctransition_defrag(void) {}
+void picturebox_init(void) {}
+void picturebox_free(void) {}
+void mapSavestate_defrag_all(void) {}
+void mapSavestate_save(int a) { (void)a; }
+void mapSavestate_apply(int a) { (void)a; }
