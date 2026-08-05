@@ -527,7 +527,7 @@ void BKA_StartEngine(void) {
     func_80000450(0);
     LOGI("BKA-STUBS: Engine entry func_80000450 returned — game thread exited!");
 
-    s_n64_gil.unlock();
+    // s_n64_gil.unlock REMOVED — game threads manage GIL via BKA_FrameSyncHook();
 }
 
 void BKA_DropEngineLock(void)  { s_n64_gil.unlock(); }
@@ -538,7 +538,7 @@ void BKA_ClaimEngineLock(void) { s_n64_gil.lock(); }
 // -------------------------------------------------------------------------
 // C++ linkage stubs for functions called from recompiled code
 // -------------------------------------------------------------------------
-void mainLoop(void)                         {}
+// mainLoop stub REMOVED — real implementation in src/core1/code_0.c
 void core1_loadOTR(uint8_t* data, size_t size) {}
 int  func_80258A4C(void)                    { return 0; }
 void func_8025A123(void)                    {}

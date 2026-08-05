@@ -457,15 +457,15 @@ void piMgr_read(void *vaddr, s32 devaddr, s32 size) {
 }
 void piMgr_init(void) {}
 
-// Bypass world init to reach mainLoop for RDP testing
-extern struct { s32 unk0; s32 game_mode; } D_8037E8E0;
-void func_802E4214(s32 map_id) { 
-    extern void gsworld_set(s32 map, s32 arg1, s32 arg2);
-    gsworld_set(map_id, 0, 0);
-}
-void func_802E38E8(s32 map, s32 exit, s32 reset) { (void)map; (void)exit; (void)reset; }
+//// Bypass world init to reach mainLoop for RDP testing
+//extern struct { s32 unk0; s32 game_mode; } D_8037E8E0;
+//void func_802E4214(s32 map_id) { 
+//    extern void gsworld_set(s32 map, s32 arg1, s32 arg2);
+//    gsworld_set(map_id, 0, 0);
+//}
+//void func_802E38E8(s32 map, s32 exit, s32 reset) { (void)map; (void)exit; (void)reset; }
 void func_8023DA9C_stub(s32 arg0) { (void)arg0; }
-void func_802E4170(void) {}
+//void func_802E4170(void) {}
 void ucode_load(void) {}
 void ucode_stub1(void) {}
 void ucode_stub3(void) {}
@@ -554,4 +554,4 @@ void func_8024E5E8(void) {}
 int gctransition_active = 0;
 int pfsManager_contErr = 0;
 void func_80254008(void) {}
-int func_802E4424(void) { return 1; }
+//int func_802E4424(void) { return 1; }
