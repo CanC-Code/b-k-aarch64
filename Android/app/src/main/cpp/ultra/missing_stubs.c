@@ -554,10 +554,3 @@ void func_8024E5E8(void) {}
 int gctransition_active = 0;
 int pfsManager_contErr = 0;
 void func_80254008(void) {}
-void core1_15B30_sendMesg3ToRenderThread(void) {}
-void core1_15B30_init(void) {}
-void core1_15B30_addF3DEXTaskData(void *a, void *b, void *c) {}
-void core1_15B30_addF3DEXTaskData_0(void *a, void *b) {}
-void core1_15B30_addF3DEXTaskData_40000000(void *a, void *b) {}
-void thread5_create(void) {}
-void thread5_sendTaskToQueue(void *msg) {}
