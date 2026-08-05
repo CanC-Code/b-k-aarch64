@@ -73,7 +73,7 @@ u8 D_80383D18[8];
 void savedata_update_crc(s32 buffer, s32 size){
     u32 sp20[2];
     u32 sum;
-    glcrc_calc_checksum(buffer, buffer + size - 4, sp20);
+    glcrc_calcChecksum(buffer, buffer + size - 4, sp20);
     sum = sp20[0] ^ sp20[1];
     *(u32*)(buffer + size - 4) = sum;
 }
@@ -85,7 +85,7 @@ int _savedata_verify(SaveData *savedata, s32 size){
 
     crc_ptr = (u32*)((s32)savedata + size) - 1;
     expect_crc = *crc_ptr;
-    glcrc_calc_checksum(savedata, crc_ptr, result);
+    glcrc_calcChecksum(savedata, crc_ptr, result);
     *crc_ptr = expect_crc;
     if((result[0]^result[1]) != expect_crc) 
         return 0x6e382;

@@ -191,7 +191,7 @@ void chJinjo_update(Actor * this){
                     jiggy_position[1] += 50.0f;
                     jiggy_spawn(10 * level_get() - 9, jiggy_position);
                 }//L802CE0CC
-                core1_ce60_incOrDecCounter(FALSE);
+                midichannel_incOrDecCounter(FALSE);
                 func_8032BB88(this, 0, 4000);
                 if(local->unk4){
                     coMusicPlayer_playMusic(COMUSIC_30_5TH_JINJO_COLLECTED, 28000);
@@ -266,7 +266,7 @@ void chJinjo_update(Actor * this){
                     func_80326310(this);
                     if(local->unk4 == 0){
                         func_8032BB88(this, -1, 4000);
-                        core1_ce60_incOrDecCounter(TRUE);
+                        midichannel_incOrDecCounter(TRUE);
                     }
                 }//L802CE518
 
@@ -281,7 +281,7 @@ void chJinjo_update(Actor * this){
 
                 if(local->unk4 && actor_animationIsAt(this, 0.95f)){
                     func_8032BB88(this, -1, 4000);
-                    core1_ce60_incOrDecCounter(TRUE);
+                    midichannel_incOrDecCounter(TRUE);
                 }
             }//L802CE598
 

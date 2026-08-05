@@ -1,16 +1,13 @@
 #include <ultra64.h>
 #include "core1/core1.h"
 
-// transform seed (in mips3 file)
-u32 func_8025C29C(u32 *seed); // TODO: This function does not exist in source code, why does it work?
-
-void glcrc_calc_checksum(void *start, void *end, u32 checksum[2]) {
+void glcrc_calcChecksum(void *start, void *end, u32 checksum[2]) {
     u8 *p;
     u32 shift = 0;
     u64 seed = 0x8F809F473108B3C1;
     u32 crc1 = 0;
     u32 crc2 = 0;
-    u32 tmp;
+    s32 tmp;
 
     // CRC1: Iterate forwards over bytes
     for (p = start; (void *)p < end; p++) {

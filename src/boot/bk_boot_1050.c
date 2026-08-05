@@ -13,7 +13,7 @@ extern u8 core1_VRAM[];
 
 /// @brief Entry point of the game
 /// @param arg0 unused/unknown parameter
-void func_80000450(s32 arg0) {
+void func_80000450(void *arg) {
     u8 *in = gHeapBase;
     u8 *out = core1_VRAM;
     
@@ -34,5 +34,5 @@ void func_80000450(s32 arg0) {
 
     overlaytable_init();
 
-    (&core1_main)(arg0);
+    (&core1_main)(arg);
 }

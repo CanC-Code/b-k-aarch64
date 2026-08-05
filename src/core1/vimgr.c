@@ -1,10 +1,9 @@
 #include <ultra64.h>
+#include <PRinternal/macros.h>
 #include "core1/core1.h"
 #include "functions.h"
 #include "variables.h"
 #include "version.h"
-
-#define VIMANAGER_THREAD_STACK_SIZE 0x400
 
 // Used in US 1.0 NTSC 
 static OSViMode sViMode_US10_NTSC = {
@@ -84,7 +83,7 @@ static OSMesg sMesgBuffer3[FRAMERATE];
 volatile s32 D_802808D8;
 s32 D_802808DC;
 static OSThread sViManagerThread;
-static u8 sViManagerThreadStack[VIMANAGER_THREAD_STACK_SIZE];
+STACK(sViManagerThreadStack, 1024);
 
 u32 getOtherFramebuffer(void) {
     return NOT(sActiveFramebuffer);
@@ -145,7 +144,7 @@ void viMgr_init(void) {
     D_802808D8 = 0;
     viMgr_func_8024BF94(2);
 
-    osCreateThread(&sViManagerThread, 0, viMgr_entry, NULL, sViManagerThreadStack + VIMANAGER_THREAD_STACK_SIZE, 80);
+    osCreateThread(&sViManagerThread, VI_THREAD_ID, viMgr_entry, NULL, STACK_START(sViManagerThreadStack), VI_THREAD_PRI);
     osStartThread(&sViManagerThread);
 }
 
@@ -165,8 +164,8 @@ void viMgr_func_8024BFD8(s32 arg0){
     static s32 D_80280E90;
     
     osSetThreadPri(NULL, 0x7f);
-    defragManager_setPriority(DEFRAGMANAGER_THREAD_PRIORITY_HIGH);
-    defragManager_resume();
+    defragthread_setPriority(DEFRAGMANAGER_THREAD_PRI_HIGH);
+    defragthread_resume();
     if(arg0){
         osRecvMesg(&sMesgQueue2, NULL, OS_MESG_BLOCK);
     }
@@ -187,14 +186,14 @@ void viMgr_func_8024BFD8(s32 arg0){
     }//L8024C178
     D_80280724 = D_802808D8;
     D_802808D8 = 0;
-    defragManager_pause();
+    defragthread_pause();
     osSetThreadPri(NULL, 0x14);
-    defragManager_setPriority(DEFRAGMANAGER_THREAD_PRIORITY);
+    defragthread_setPriority(DEFRAGMANAGER_THREAD_PRI);
 }
 
 void viMgr_func_8024C1B4(void){
     viMgr_func_8024BFD8(0);
-    dummy_func_8025AFB8();
+    core1_1D590_func_8025AFB8();
 }
 
 void viMgr_func_8024C1DC(void){
@@ -217,7 +216,7 @@ void viMgr_setActiveFramebuffer(s32 fb_idx) {
     osViSwapBuffer(gFramebuffers[sActiveFramebuffer]);
 }
 
-void viMgr_entry(void *arg0){
+void viMgr_entry(void *arg){
     s32 i;
     OSMesg sp48;
     do{
@@ -226,7 +225,7 @@ void viMgr_entry(void *arg0){
         D_802808D8++;
         if(D_802808D8 == 420){
 #if VERSION == VERSION_USA_1_0
-            gcdebugText_isThreadLocked();
+            gcdebugtext_isThreadLocked();
 #endif
         }
         osSendMesg(&sMesgQueue3, NULL, OS_MESG_NOBLOCK);

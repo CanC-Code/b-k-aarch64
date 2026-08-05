@@ -601,16 +601,16 @@ void comusic_8025AB44(enum comusic_e track_id, s32 arg1, s32 arg2) {
     func_8025AC20(track_id, arg1, arg2, 0.0f, "comusic.c", VER_SELECT(926, 927, 0, 0));
 }
 
-void comusic_8025AB78(enum comusic_e track_id, s32 arg1, s32 arg2, s32 arg3) {
+void comusic_8025AB78(enum comusic_e track_id, s32 arg1, s32 arg2, s32 *arg3) {
     func_8025AC7C(track_id, arg1, arg2, 0.0f, arg3, "comusic.c", VER_SELECT(931, 932, 0, 0));
 }
 
 void func_8025ABB8(enum comusic_e track_id, s32 arg1, s32 arg2, s32 arg3) {
-    func_8025AC7C(track_id, arg1, arg2, 0.0f, (s32)&(comusic_findTrack(track_id)->unk1C[arg3]), "comusic.c", VER_SELECT(938, 939, 0, 0));
+    func_8025AC7C(track_id, arg1, arg2, 0.0f, &(comusic_findTrack(track_id)->unk1C[arg3]), "comusic.c", VER_SELECT(938, 939, 0, 0));
 }
 
 void func_8025AC20(enum comusic_e track_id, s32 arg1, s32 arg2, f32 arg3, char* arg4, s32 char5) {
-    func_8025AC7C(track_id, arg1, arg2, 0.0f, (s32) comusic_findTrack(track_id)->unk1C, "comusic.c", VER_SELECT(945, 946, 0, 0));
+    func_8025AC7C(track_id, arg1, arg2, 0.0f, comusic_findTrack(track_id)->unk1C, "comusic.c", VER_SELECT(945, 946, 0, 0));
 }
 
 void func_8025AC7C(enum comusic_e track_id, s32 arg1, s32 arg2, f32 arg3, s32 *arg4, const char *filename, s32 arg6){

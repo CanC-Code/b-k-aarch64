@@ -102,4 +102,8 @@ void playerPosition_getOffset(f32 offset[3]);
 void playerPosition_setOffset(f32 offset[3]);
 void playerPosition_applyOffset(void);
 
+s32 getGameMode(void);
+s16 *picturebox_getColorBuffer(void);
+BKSpriteTextureBlock *func_8033EFB0(Struct84s *arg0, s32 arg1);
+
 #endif

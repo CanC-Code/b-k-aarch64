@@ -142,7 +142,7 @@ s32 s_jiggylist_current_index;
 
 /* .code */
 void func_80332B90(void){
-    core1_ce60_incOrDecCounter(TRUE);
+    midichannel_incOrDecCounter(TRUE);
 }
 
 void func_80332BB0(void) {
@@ -245,7 +245,7 @@ void jiggy_spawn(enum jiggy_e jiggy_id, f32 pos[3]) {
         temp_v0->init(&temp_v0->unk10);
         jiggyscore_setSpawned(jiggy_id, TRUE);
         if (!jiggyscore_isCollected(jiggy_id) && (jiggy_id != JIGGY_3E_GV_GRABBA) && (jiggy_id != JIGGY_0B_TTC_JINJO)) {
-            core1_ce60_incOrDecCounter(FALSE);
+            midichannel_incOrDecCounter(FALSE);
             func_8025A55C(0, 4000, 5);
             coMusicPlayer_playMusic(COMUSIC_3D_JIGGY_SPAWN, 0x7FFF);
             timedFunc_set_0(3.5f, func_80332BB0);

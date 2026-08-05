@@ -525,7 +525,7 @@ void bspumpkin_die_update(void){
 
 void bspumpkin_die_end(void) {
     func_802B229C();
-    core1_ce60_incOrDecCounter(FALSE);
+    midichannel_incOrDecCounter(FALSE);
     baphysics_reset_gravity();
     pitch_setIdeal(0.0f);
     roll_setIdeal(0.0f);

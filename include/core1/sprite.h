@@ -6,6 +6,6 @@ u32 sprite_getUnkA(BKSprite *this);
 u32 sprite_getUnk6(BKSprite *this);
 u32 sprite_getUnk4(BKSprite *this);
 s32 sprite_getFrameCount(BKSprite *this);
-BKSpriteFrame *sprite_getFramePtr(BKSprite *this, u32 frame_id);
+BKSpriteFrame *sprite_getFramePtr(BKSprite *this, s32 frame_id);
 
 #endif
