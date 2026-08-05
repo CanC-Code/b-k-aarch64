@@ -461,3 +461,5 @@ void gsworld_set(s32 map, s32 arg1, s32 arg2) { (void)map; (void)arg1; (void)arg
 void gsworld_load(s32 map_id) { (void)map_id; }
 void gsworld_free(void) {}
 void gsworld_draw(Gfx** gfx, Mtx** mtx, Vtx** vtx) { (void)gfx; (void)mtx; (void)vtx; }
+void *file_openMap(s32 map_id) { (void)map_id; return NULL; }
+void file_close(void *f) { (void)f; }
