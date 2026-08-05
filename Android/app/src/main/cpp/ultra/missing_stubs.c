@@ -24,9 +24,7 @@ void func_802E5F10(void);
 
 // gsworld state getters/setters forward declarations
 
-void gsworld_setEnableUpdate(int value);
 
-void gsworld_setEnableDraw(int value);
 
 int gsworld_getEnableUpdate(void);
 
@@ -330,8 +328,6 @@ void func_8030AFD8(int a) { (void)a; }
 static int sEnableUpdate = 1;
 static int sEnableDraw = 1;
 
-void gsworld_setEnableUpdate(int value) { sEnableUpdate = value; }
-void gsworld_setEnableDraw(int value)   { sEnableDraw = value; }
 int gsworld_getEnableUpdate(void)       { return sEnableUpdate; }
 int gsworld_getEnableDraw(void)         { return sEnableDraw; }
 
