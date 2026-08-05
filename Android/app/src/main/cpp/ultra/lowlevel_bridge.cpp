@@ -223,3 +223,6 @@ extern "C" {
     }
 
 } // extern "C"
+int getActiveFramebuffer(void) {
+    return (g_active_fb_offset == 0x400000) ? 0 : 1;
+}
