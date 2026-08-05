@@ -107,6 +107,7 @@ extern "C" {
     extern int getActiveFramebuffer(void);
 
     void BKA_FrameSyncHook(void) {
+    static int hookCount = 0; if (++hookCount <= 3 || hookCount %% 60 == 0) LOGI("BKA-FrameSync: frame %d", hookCount);
         pthread_mutex_lock(&g_vblankMutex);
         g_vblankRequested = true;
 

@@ -443,6 +443,7 @@ void osSpTaskStartGo(OSTask *tp) {
     LOGI("BKA-RDP: osSpTaskStartGo type=%d data=%p size=%u", tp->t.type, tp->t.data_ptr, tp->t.data_size);
     if (tp == nullptr) return;
     if (tp->t.type == M_GFXTASK) {
+        LOGI("BKA-RDP: GFX task data=%p size=%u", tp->t.data_ptr, tp->t.data_size);
         // Process the F3DEX display list and rasterize to gFramebuffers
         RSP_ProcessGfxTask(tp);
         // Signal completion so Thread 5 continues
@@ -523,6 +524,7 @@ void BKA_StartEngine(void) {
 
     LOGI("BKA-STUBS: Launching engine entry func_80000450.");
     func_80000450(0);
+    LOGI("BKA-STUBS: Engine entry func_80000450 returned — game thread exited!");
 
     s_n64_gil.unlock();
 }
