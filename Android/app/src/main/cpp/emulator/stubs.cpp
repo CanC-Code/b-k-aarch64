@@ -272,7 +272,7 @@ void osCreateMesgQueue(OSMesgQueue *mq, OSMesg *msgBuf, s32 count) {
     std::lock_guard<std::mutex> lock(s_queueMutex);
     auto nq = std::make_shared<NativeQueue>();
     nq->capacity = count;
-    s_queueRegistry[mq] = nq;
+    s_queueRegistry[mq] = nq; __android_log_print(ANDROID_LOG_INFO, "BKA-RDP", "osCreateMesgQueue: mq=%p capacity=%d", (void*)mq, count);
 }
 
 void osSetEventMesg(OSEvent e, OSMesgQueue *mq, OSMesg msg) {
@@ -315,7 +315,7 @@ s32 osSendMesg(OSMesgQueue *mq, OSMesg msg, s32 flag) {
         // Always accept messages (Android HLE - capacity ignored)
     }
 
-    nq->buffer.push_back(msg);
+    nq->buffer.push_back(msg); static int sendCount = 0; if (++sendCount <= 10 || sendCount % 100 == 0) __android_log_print(ANDROID_LOG_INFO, "BKA-RDP", "osSendMesg: message %d sent to mq=%p", sendCount, (void*)mq);
     mq->validCount = static_cast<s32>(nq->buffer.size());
     nq->cv_recv.notify_one();
     return 0;
@@ -346,7 +346,7 @@ s32 osJamMesg(OSMesgQueue *mq, OSMesg msg, s32 flag) {
 
 s32 osRecvMesg(OSMesgQueue *mq, OSMesg *msg, s32 flag) {
     std::shared_ptr<NativeQueue> nq = GetNativeQueue(mq);
-    if (!nq) return -1;
+    if (!nq) { static int failCount = 0; if (++failCount <= 5 || failCount % 1000 == 0) __android_log_print(ANDROID_LOG_ERROR, "BKA-RDP", "osRecvMesg: QUEUE NOT FOUND mq=%p failCount=%d", (void*)mq, failCount); return -1; }
 
     std::unique_lock<std::mutex> lock(nq->mtx);
     if (flag == OS_MESG_BLOCK) {
