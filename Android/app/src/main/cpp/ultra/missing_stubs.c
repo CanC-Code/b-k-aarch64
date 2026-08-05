@@ -457,7 +457,7 @@ void gctransition_init(void) {}
 void ucode_load(void) {}
 void allocUnusedBlock(void) {}
 void dummy_func_8025AFB0(void) {}
-void gsworld_set(enum map_e map, s32 arg1, s32 arg2) { (void)map; (void)arg1; (void)arg2; }
-void gsworld_load(enum map_e map_id) { (void)map_id; }
+void gsworld_set(s32 map, s32 arg1, s32 arg2) { (void)map; (void)arg1; (void)arg2; }
+void gsworld_load(s32 map_id) { (void)map_id; }
 void gsworld_free(void) {}
 void gsworld_draw(Gfx** gfx, Mtx** mtx, Vtx** vtx) { (void)gfx; (void)mtx; (void)vtx; }
