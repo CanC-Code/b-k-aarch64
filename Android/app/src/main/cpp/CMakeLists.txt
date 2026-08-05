@@ -33,7 +33,7 @@ if(NOT EXCLUDE_GAME_SRC)
     set(EXCLUDE_LIST createthread.c startthread.c stopthread.c destroythread.c
         yieldthread.c settreadpri.c getthreadpri.c createmesgqueue.c
         seteventmesg.c recvmesg.c sendmesg.c jammesg.c visetmode.c
-        visetevent.c inflate.c overlaymanager.c pimanager.c ucode.c memory.c sns.c bamotor.c code_1D00.c ml.c pfsmanager.c vimgr.c transition.c)
+        visetevent.c inflate.c overlaymanager.c pimanager.c ucode.c memory.c sns.c bamotor.c code_1D00.c pfsmanager.c vimgr.c transition.c)
     foreach(F ${ALL_GAME_FILES})
         get_filename_component(N ${F} NAME)
         if(NOT N IN_LIST EXCLUDE_LIST)

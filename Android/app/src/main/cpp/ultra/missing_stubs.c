@@ -528,3 +528,11 @@ void pfsManager_init(void) {}
 void baMotor_init(void) {}
 void audioManager_init(void) {}
 void ml_init(void) {}
+
+// Remaining stubs from baMotor, controller, and misc
+void baMotor_80250E6C(void) {}
+void controller_copySideButtons(void) {}
+void func_8024E6E0(void) {}
+void func_80257F18(void) {}
+void func_80257A44(void) {}
+void ml_sub_delta_time(void) {}
