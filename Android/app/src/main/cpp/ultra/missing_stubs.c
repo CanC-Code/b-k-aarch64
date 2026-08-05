@@ -536,3 +536,20 @@ void func_8024E6E0(void) {}
 void func_80257F18(void) {}
 void func_80257A44(void) {}
 void ml_sub_delta_time(void) {}
+
+// Final remaining stubs
+int getOtherFramebuffer(void) { return 1; }
+void func_8024F3F4(void) {}
+void func_8024E420(void) {}
+void gctransition_8030BD88(void) {}
+void viMgr_func_8024C1B4(void) {}
+void viMgr_func_8024BF94(void) {}
+void viMgr_func_8024C1DC(void) {}
+void func_8024F180(void) {}
+void viMgr_func_8024BD94(void) {}
+void func_8024F224(void) {}
+void pfsManager_getFirstControllerFaceButtonState(void) {}
+void func_8024E640(void) {}
+void func_8024E5E8(void) {}
+int gctransition_active = 0;
+int pfsManager_contErr = 0;
