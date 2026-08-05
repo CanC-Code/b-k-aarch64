@@ -187,7 +187,7 @@ segments:
   - [0xF59F90, hasm, bkgetsr]
   - [0xF59FA0, c, code_1D5D0]
   - [0xF5AD30, c, sns]
-  - [0xF5B0B0, c, crccalc]
+  - [0xF5B0B0, c, glcrc]
   - [0xF5B1F0, hasm, code_1E820]
   - [0xF5B290, c, n_audio/n_sl]
   - [0xF5B320, c, n_audio/n_synthesizer]

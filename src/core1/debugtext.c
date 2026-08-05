@@ -1,8 +1,5 @@
 #include <ultra64.h>
 #include "core1/core1.h"
-#include "functions.h"
-#include "variables.h"
-
 #include "version.h"
 
 #if VERSION == VERSION_USA_1_0
@@ -85,19 +82,13 @@ s32 clearTime = 0;
 
 char CHARACTER_RANGE[] = { 'a','z','A','Z','0','9','.',':', '-', ' ' };
 
-/* .h */
-void gcdebugText_wrapToTop(void);
-void gcdebugText_printSpace(void);
-void gcdebugText_endLine(void);
-
-/* code */
-void setRGB(s32 r, s32 g, s32 b) {
+void gcdebugtext_setRGB(s32 r, s32 g, s32 b) {
     red = r;
     green = g;
     blue = b;
 }
 
-void setPixelInFrameBuffer(s32 x, s32 y) {
+void gcdebugtext_setPixelInFrameBuffer(s32 x, s32 y) {
     if (((x >= 0) && (x < gFramebufferWidth)) 
         && ((y >= 0) && (y < gFramebufferHeight))) {
 
@@ -107,13 +98,13 @@ void setPixelInFrameBuffer(s32 x, s32 y) {
 }
 
 // Starts the drawing of the pixel at the x and y coordinates, and continues drawing until the w and h coordinates
-void drawPixel(s32 x, s32 y, s32 w, s32 h) {
+void gcdebugtext_drawPixel(s32 x, s32 y, s32 w, s32 h) {
     s32 iy;
     s32 ix;
 
     for (ix = 0; ix < w; ix++) {
         for (iy = 0; iy < h; iy++) {
-            setPixelInFrameBuffer(x + ix, y + iy);
+            gcdebugtext_setPixelInFrameBuffer(x + ix, y + iy);
         }
     }
 
@@ -121,48 +112,48 @@ void drawPixel(s32 x, s32 y, s32 w, s32 h) {
 }
 
 // Sets the color and draws a square
-void drawSquare(s32 r, s32 g, s32 b) {
-    setRGB(r, g, b);
-    drawPixel((gFramebufferWidth - 128) / 2, (gFramebufferHeight - 100) / 2, 128, 100);
+void gcdebugtext_drawSquare(s32 r, s32 g, s32 b) {
+    gcdebugtext_setRGB(r, g, b);
+    gcdebugtext_drawPixel((gFramebufferWidth - 128) / 2, (gFramebufferHeight - 100) / 2, 128, 100);
 }
 
-void gcdebugText_empty(void) { }
+void gcdebugtext_stub1(void) {}
 
 // Wastes time, and doesn't trigger isThreadLocked
-void gcdebugText_stallOnThread(void) {
+void gcdebugtext_stallOnThread(void) {
     s32 i;
     for (i = 0; i < 2000000; i++) {
-        gcdebugText_empty();
+        gcdebugtext_stub1();
     }
 }
 
 // Flashes a colored square in the middle of the screen permanently
-void gcdebugText_flashSquare(s32 color) {
+void gcdebugtext_flashSquare(s32 color) {
     do {
-        drawSquare(RGB_VALUES[color][0], RGB_VALUES[color][1], RGB_VALUES[color][2]);
-        gcdebugText_stallOnThread();
-        drawSquare(0, 0, 0);
-        gcdebugText_stallOnThread();
+        gcdebugtext_drawSquare(RGB_VALUES[color][0], RGB_VALUES[color][1], RGB_VALUES[color][2]);
+        gcdebugtext_stallOnThread();
+        gcdebugtext_drawSquare(0, 0, 0);
+        gcdebugtext_stallOnThread();
     } while (TRUE);
 }
 
 // Draws a colored square in the middle of the screen and replaces it with black
-void gcdebugText_drawSquare(s32 color) {
-    drawSquare(RGB_VALUES[color][0], RGB_VALUES[color][1], RGB_VALUES[color][2]);
-    gcdebugText_stallOnThread();
-    drawSquare(0, 0, 0);
-    gcdebugText_stallOnThread();
+void gcdebugtext_drawSquare2(s32 color) {
+    gcdebugtext_drawSquare(RGB_VALUES[color][0], RGB_VALUES[color][1], RGB_VALUES[color][2]);
+    gcdebugtext_stallOnThread();
+    gcdebugtext_drawSquare(0, 0, 0);
+    gcdebugtext_stallOnThread();
 }
 
 // Draws a square, but doesn't replace with black and doesn't hold it on screen
-void gcdebugText_drawSquareOnly(s32 color) {
-    drawSquare(RGB_VALUES[color][0], RGB_VALUES[color][1], RGB_VALUES[color][2]);
+void gcdebugtext_drawSquareOnly(s32 color) {
+    gcdebugtext_drawSquare(RGB_VALUES[color][0], RGB_VALUES[color][1], RGB_VALUES[color][2]);
 }
 
 // Draws the character and the background. 
 // keepCursor: When true, does not advance to the next character and keeps an imaginary "cursor" in place before drawing the next
 // setBackgroundColorBlack: When true, sets the color to black for the background. Kind of just draws boxes otherwise
-void drawCharacter(s32 colorSelect, s32 displayCharacter, s32 fontSize, s32 keepCursor, bool setBackgroundColorBlack, s32 r, s32 g, s32 b) {
+void gcdebugtext_drawCharacter(s32 colorSelect, s32 displayCharacter, s32 fontSize, s32 keepCursor, bool setBackgroundColorBlack, s32 r, s32 g, s32 b) {
     s32 j;
     s32 i;
     u32 char_width;
@@ -180,17 +171,17 @@ void drawCharacter(s32 colorSelect, s32 displayCharacter, s32 fontSize, s32 keep
         for (j = 0; j != char_width; j++) {
             encoding_mask >>= 1; // Bitwise right shift 1
             if (encoding & encoding_mask) {
-                setRGB(r, g, b);
-                drawPixel((cursorPosition + fontSize * j) - keepCursor, 
+                gcdebugtext_setRGB(r, g, b);
+                gcdebugtext_drawPixel((cursorPosition + fontSize * j) - keepCursor, 
                     (startingYCoordinate + y_position) - keepCursor, 
                     (fontSize + keepCursor) + keepCursor, 
                     (fontSize + keepCursor) + keepCursor);
             } else {
                 if (setBackgroundColorBlack != 0) { // Set color to black for the background
-                    setRGB(0, 0, 0);
+                    gcdebugtext_setRGB(0, 0, 0);
                 }
 
-                drawPixel((cursorPosition + fontSize * j) - keepCursor, 
+                gcdebugtext_drawPixel((cursorPosition + fontSize * j) - keepCursor, 
                     (startingYCoordinate + y_position) - keepCursor, 
                     (fontSize + keepCursor) + keepCursor, 
                     (fontSize + keepCursor) + keepCursor);
@@ -205,7 +196,7 @@ void drawCharacter(s32 colorSelect, s32 displayCharacter, s32 fontSize, s32 keep
 }
 
 // Seems unneeded, since text is cleared anyway
-void gcdebugText_clearText(void) {
+void gcdebugtext_clearText(void) {
     s32 i;
 
     if (clearTime == 0) {
@@ -228,22 +219,22 @@ void gcdebugText_clearText(void) {
 }
 
 // Draw both the character and the background
-void printCharacter(s32 colorSelect, s32 displayCharacter, s32 fontSize) {
-    drawCharacter(colorSelect, displayCharacter, fontSize, TRUE, TRUE, 0, 0, 0);
-    drawCharacter(colorSelect, displayCharacter, fontSize, FALSE, TRUE, 
+void gcdebugtext_printCharacter(s32 colorSelect, s32 displayCharacter, s32 fontSize) {
+    gcdebugtext_drawCharacter(colorSelect, displayCharacter, fontSize, TRUE, TRUE, 0, 0, 0);
+    gcdebugtext_drawCharacter(colorSelect, displayCharacter, fontSize, FALSE, TRUE, 
         RGB_VALUES[COLOR_SELECTOR[colorSelect]][0], 
         RGB_VALUES[COLOR_SELECTOR[colorSelect]][1], 
         RGB_VALUES[COLOR_SELECTOR[colorSelect]][2]);
 }
 
-void printValue(s32 colorSelect, s32 displayValue, s32 fontSize) {
+void gcdebugtext_printValue(s32 colorSelect, s32 displayValue, s32 fontSize) {
     s32 j, i;
 
     cursorPosition = startingXCoordinate;
     currentFontSize = fontSize;
 
     if (displayValue < 0) {
-        printCharacter(colorSelect, 0x26, fontSize); // Print - character
+        gcdebugtext_printCharacter(colorSelect, 0x26, fontSize); // Print - character
         displayValue *= -1; // Convert to positive for the next calculation
     }
     
@@ -259,11 +250,11 @@ void printValue(s32 colorSelect, s32 displayValue, s32 fontSize) {
             displayValue -= i;
         }
 
-        printCharacter(colorSelect, j, fontSize);
+        gcdebugtext_printCharacter(colorSelect, j, fontSize);
     }
 
-    printCharacter(colorSelect, displayValue, fontSize);
-    gcdebugText_printSpace();
+    gcdebugtext_printCharacter(colorSelect, displayValue, fontSize);
+    gcdebugtext_printSpace();
 
     if (fontSize == 7) { // Corresponds to largeValue
         largeValueCursorPosition = cursorPosition;
@@ -275,30 +266,30 @@ void printValue(s32 colorSelect, s32 displayValue, s32 fontSize) {
 
 // Prints a value to the screen, but always in the same place in the upper left. 
 // Subsequent calls in the same frame will overwrite what's there
-void gcdebugText_showLargeValue(s32 colorSelect, s32 displayValue) {
+void gcdebugtext_showLargeValue(s32 colorSelect, s32 displayValue) {
     isThreadLocked = FALSE;
     currentColor = colorSelect;
     startingXCoordinate = 0xE;
     startingYCoordinate = 0xA;
-    printValue(colorSelect, displayValue, 7);
-    gcdebugText_wrapToTop();
+    gcdebugtext_printValue(colorSelect, displayValue, 7);
+    gcdebugtext_wrapToTop();
     largeYCoordinate = startingYCoordinate;
     longestLineLengthPosition = startingXCoordinate;
     shouldClearText = TRUE;
 }
 
-void gcdebugText_showValue(s32 displayValue) {
-        printValue(currentColor, displayValue, 2);
-        gcdebugText_wrapToTop();
+void gcdebugtext_showValue(s32 displayValue) {
+        gcdebugtext_printValue(currentColor, displayValue, 2);
+        gcdebugtext_wrapToTop();
 }
 
 // Given a value such as 0x0F64 will print on screen ":0F64"
-void gcdebugText_showHexValue(u32 displayValue) {
+void gcdebugtext_showHexValue(u32 displayValue) {
     s32 display_character;
 
     cursorPosition = startingXCoordinate;
     currentFontSize = 2;
-    printCharacter(currentColor, 0x25, 2); // Print :
+    gcdebugtext_printCharacter(currentColor, 0x25, 2); // Print :
     display_character = 
         (displayValue >= 0x01000000U) ? 0x1C
             : (displayValue >= 0x10000U) ? 0x14
@@ -306,16 +297,16 @@ void gcdebugText_showHexValue(u32 displayValue) {
 
     if (display_character >= 0) {
         do {
-            printCharacter(currentColor, ((s32) displayValue >> display_character) & 0xF, 2);
+            gcdebugtext_printCharacter(currentColor, ((s32) displayValue >> display_character) & 0xF, 2);
             display_character -= 4;
         } while (display_character >= 0);
     }
 
-    gcdebugText_endLine();
+    gcdebugtext_endLine();
 }
 
 // Possibly bugged
-void gcdebugText_showFloat(f32 displayValue) {
+void gcdebugtext_showFloat(f32 displayValue) {
     f32 display_position;
     s32 display_character;
 
@@ -324,7 +315,7 @@ void gcdebugText_showFloat(f32 displayValue) {
     
     // If a negative number, print the - symbol and convert the number to positive
     if (displayValue < 0.0f) {
-        printCharacter(currentColor, 0x26, 2);
+        gcdebugtext_printCharacter(currentColor, 0x26, 2);
         displayValue *= -1.0f;
     }
 
@@ -336,7 +327,7 @@ void gcdebugText_showFloat(f32 displayValue) {
 
     while (1e-09 <= display_position) {
         if ((0.09 < display_position) && (display_position < 0.11)) {
-            printCharacter(currentColor, 0x24, 2); // . character
+            gcdebugtext_printCharacter(currentColor, 0x24, 2); // . character
         }
         
         display_character = 0;
@@ -344,15 +335,15 @@ void gcdebugText_showFloat(f32 displayValue) {
             displayValue -= display_position;
             display_character += 1;
         }
-        printCharacter(currentColor, display_character, 2);
+        gcdebugtext_printCharacter(currentColor, display_character, 2);
         display_position /= 10.0f;
     }
 
-    gcdebugText_endLine();
+    gcdebugtext_endLine();
 }
 
 // Turns characters into the corresponding number for CHARACTER_ENCODING
-s32 encodeCharacter(s32 character) {
+s32 gcdebugtext_encodeCharacter(s32 character) {
 
     // Lowercase letters
     if ((character >= (s32) CHARACTER_RANGE[0]) && ((s32) CHARACTER_RANGE[1] >= character)) {
@@ -394,8 +385,8 @@ s32 encodeCharacter(s32 character) {
 
 // Prints text to the screen. Note that it uses the current color value and isn't set here. Example usage:
 // u8 str[] = " Banjo Kazooie";
-// gcdebugText_showText(str);
-void gcdebugText_showText(u8 *text) {
+// gcdebugtext_showText(str);
+void gcdebugtext_showText(u8 *text) {
     s32 i;
     s32 character;
 
@@ -404,21 +395,21 @@ void gcdebugText_showText(u8 *text) {
 
     for (i = 0; text[i] != 0; i++) {
         character = text[i];
-        printCharacter(currentColor, encodeCharacter(character), 2);
+        gcdebugtext_printCharacter(currentColor, gcdebugtext_encodeCharacter(character), 2);
     }
 
-    gcdebugText_endLine();
+    gcdebugtext_endLine();
 }
 
 // Lock up the thread and show what's on the screen permanently.
 // Likely used for showing a value and keeping it there.
-void gcdebugText_lockScreen(void) {
+void gcdebugtext_lockScreen(void) {
     isThreadLocked = TRUE;
     do { } while (1);
 }
 
 // Temporarily stop the thread, presumably to show the value
-void gcdebugText_pauseThread(void) {
+void gcdebugtext_pauseThread(void) {
     s32 i;
 
     isThreadLocked = TRUE;
@@ -428,7 +419,7 @@ void gcdebugText_pauseThread(void) {
     isThreadLocked = FALSE;
 }
 
-void gcdebugText_pauseThreadForTime(s32 time) {
+void gcdebugtext_pauseThreadForTime(s32 time) {
     s32 i;
 
     isThreadLocked = TRUE;
@@ -441,7 +432,7 @@ void gcdebugText_pauseThreadForTime(s32 time) {
     isThreadLocked = FALSE;
 }
 
-void checkYAndgcdebugText_wrapToTop(s32 lineHeight) {
+void gcdebugtext_checkYAndgcdebugtext_wrapToTop(s32 lineHeight) {
     startingYCoordinate += lineHeight;
 
     // Only continue if the y coordinate is about to go off screen
@@ -457,37 +448,37 @@ void checkYAndgcdebugText_wrapToTop(s32 lineHeight) {
 }
 
 // Calculate line height and wrap
-void gcdebugText_wrapToTop(void) {
-    checkYAndgcdebugText_wrapToTop(currentFontSize * 5 + 2);
+void gcdebugtext_wrapToTop(void) {
+    gcdebugtext_checkYAndgcdebugtext_wrapToTop(currentFontSize * 5 + 2);
 }
 
 // Unused, but possibly used for very tiny debugs
-void gcdebugText_wrapToTopSmall(void) {
-    checkYAndgcdebugText_wrapToTop(2);
+void gcdebugtext_wrapToTopSmall(void) {
+    gcdebugtext_checkYAndgcdebugtext_wrapToTop(2);
 }
 
-void gcdebugText_endLine(void) {
-    gcdebugText_printSpace();
+void gcdebugtext_endLine(void) {
+    gcdebugtext_printSpace();
 
     if (cursorPosition >= longestLineLengthPosition) {
         longestLineLengthPosition = cursorPosition;
     }
 
-    gcdebugText_wrapToTop();
+    gcdebugtext_wrapToTop();
 }
 
-void gcdebugText_printSpace(void) {
+void gcdebugtext_printSpace(void) {
     s16 tempCursorPosition;
 
     tempCursorPosition = cursorPosition--;
-    printCharacter(currentColor, 0x27, currentFontSize);
+    gcdebugtext_printCharacter(currentColor, 0x27, currentFontSize);
     cursorPosition = tempCursorPosition;
 }
 
-s32 gcdebugText_isThreadLocked(void) {
+bool gcdebugtext_isThreadLocked(void) {
     return isThreadLocked;
 }
 
-void gcdebugText_unused(s32 arg0) { }
+void gcdebugtext_stub2(s32 arg0) {}
 
 #endif

@@ -1,5 +1,6 @@
 #include <ultra64.h>
 #include "core1/core1.h"
+#include "core2/core2.h"
 
 static Gfx *sGfxStack[2] = { NULL, NULL };
 s32 gFramebufferWidth = DEFAULT_FRAMEBUFFER_WIDTH;

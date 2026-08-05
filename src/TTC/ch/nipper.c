@@ -213,13 +213,13 @@ static void __chNipper_updateFunc(Actor *this){
         if(0.0f == this->velocity_x && xVelocity){
             comusic_8025AB44(COMUSIC_12_TTC_NIPPER, -1, 5000);
             func_8032BB88(this, 0, 4000);
-            core1_ce60_incOrDecCounter(FALSE);
+            midichannel_incOrDecCounter(FALSE);
         }
         else if(!xVelocity && 0.0f != this->velocity_x){
             comusic_8025AB44(COMUSIC_12_TTC_NIPPER, 0, 300);
             func_8025AABC(COMUSIC_12_TTC_NIPPER);
             func_8032BB88(this, -1, 300);
-            core1_ce60_incOrDecCounter(TRUE);
+            midichannel_incOrDecCounter(TRUE);
         }
         this->velocity_x = xVelocity;
     }

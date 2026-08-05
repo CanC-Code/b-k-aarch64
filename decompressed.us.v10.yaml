@@ -188,7 +188,7 @@ segments:
   - [0xF36810, hasm, bkgetsr]
   - [0xF36820, c, code_1D5D0]
   - [0xF375B0, c, sns]
-  - [0xF37930, c, crccalc]
+  - [0xF37930, c, glcrc]
   - [0xF37A70, hasm, code_1E820]
   - [0xF37B10, c, n_audio/n_sl]
   - [0xF37BA0, c, n_audio/n_synthesizer]

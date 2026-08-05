@@ -212,8 +212,6 @@ void particleEmitter_setSpawnInterval(ParticleEmitter *, f32);
 OSContPad *func_8024F3F4(void);
 OSMesgQueue *pfsManager_getFrameReplyQ(void);
 
-void baMotor_80250D94(f32, f32, f32);
-
 void coMusicPlayer_playMusic(enum comusic_e, s32);
 void comusic_playTrack(enum comusic_e);
 void comusic_8025AB44(enum comusic_e track_id, s32 arg1, s32 arg2);
@@ -430,8 +428,6 @@ void timed_playSfx(f32, enum sfx_e, f32, s32);
 void timed_setStaticCameraToNode(f32, s32);
 void timed_exitStaticCamera(f32 time);
 int actor_animationIsAt(Actor*, f32);
-
-void baMotor_80250E94(f32, f32, f32, f32, f32, f32);
 
 
 void bundle_setYaw(f32);

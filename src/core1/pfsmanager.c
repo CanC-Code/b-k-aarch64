@@ -1,4 +1,5 @@
 #include <ultra64.h>
+#include <PRinternal/macros.h>
 #include "core1/core1.h"
 #include "functions.h"
 #include "variables.h"
@@ -6,9 +7,6 @@
 
 #include "version.h"
 #include "checksums.h"
-
-
-#define PFSMANAGER_THREAD_STACK_SIZE 0x200
 
 s32 D_80275D30 = VER_SELECT(0xC3A68832, 0xED7BCDB7, 0, 0); // CCW_DATA_CRC2
 s32 D_80275D34 = VER_SELECT(0xDDC3A724, 0xF82DC7AC, 0, 0); // FIGHT_DATA_CRC2
@@ -32,7 +30,7 @@ OSContStatus pfsManagerContStatus;
 u8 pad_D_80281320[0x8];
 volatile s32 pfsManagerBusy;
 OSThread sPfsManagerThread;
-u8 sPfsManagerThreadStack[PFSMANAGER_THREAD_STACK_SIZE];
+STACK(sPfsManagerThreadStack, 512);
 f32 D_802816E0;
 OSMesgQueue D_802816E8;
 OSMesg D_80281700[4];
@@ -255,7 +253,7 @@ void pfsManager_update(void) {
 }
 
 void pfsManager_readData(){
-    func_8024F35C(0);
+    controller_func_8024F35C(0);
     if(!pfsManagerContStatus.errno)
         osContGetReadData(pfsManagerContPadData);
 }
@@ -276,7 +274,7 @@ void pfsManager_entry(void *arg) {
 void pfsManager_init(void) {
     osCreateMesgQueue(&pfsManagerContPollingMsqQ, &pfsManagerContPollingMsqBuf, 1);
     osCreateMesgQueue(&pfsManagerContReplyMsgQ, &pfsManagerContReplyMsgBuf, 1);
-    osCreateThread(&sPfsManagerThread, 7, pfsManager_entry, NULL, sPfsManagerThreadStack + PFSMANAGER_THREAD_STACK_SIZE, 40);
+    osCreateThread(&sPfsManagerThread, CONTROLLER_THREAD_ID, pfsManager_entry, NULL, STACK_START(sPfsManagerThreadStack), CONTROLLER_THREAD_PRI);
     osSetEventMesg(OS_EVENT_SI, &pfsManagerContPollingMsqQ, &pfsManagerContPollingMsqBuf);
     osContInit(&pfsManagerContPollingMsqQ, &pfsManagerBitPattern, &pfsManagerContStatus);
     osContSetCh(1);
@@ -301,7 +299,7 @@ void func_8024F180(void){
 
 void pfsManager_getStartReadData(void){
     if(pfsManagerBusy == 0){
-        func_8024F35C(1);
+        controller_func_8024F35C(1);
         osContStartReadData(&pfsManagerContPollingMsqQ);
     }
 }
@@ -353,7 +351,7 @@ OSMesgQueue *pfsManager_getFrameMesgQ(void){
     return &pfsManagerContPollingMsqQ;
 }
 
-void func_8024F35C(s32 arg0) {
+void controller_func_8024F35C(s32 arg0) {
     if(!arg0)
         func_8024F4AC();
     else
@@ -379,7 +377,7 @@ OSContPad *func_8024F3F4(void){
 /* initilizes D_802816E8 message queue */
 void func_8024F400(void) {
     D_80275D38 = TRUE;
-    osCreateMesgQueue(&D_802816E8, &D_80281700, 5);
+    osCreateMesgQueue(&D_802816E8, D_80281700, 5);
     osSendMesg(&D_802816E8, 0, OS_MESG_NOBLOCK);
 }
 

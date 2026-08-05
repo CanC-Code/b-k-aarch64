@@ -219,7 +219,7 @@ void thread5_handleVIRetraceEvent(void) {
             osDpSetStatus(DPC_CLR_FREEZE);
 
             sUnkFlag2_Saved = sUnkFlag2;
-            dummy_func_8025AFB8();
+            core1_1D590_func_8025AFB8();
 
             if (sUnkFlag2_Saved & 0x01) {
                 sUnkCounter3 = 30;
@@ -449,7 +449,7 @@ void thread5_handlePreNMIEvent(void) {
 #elif VERSION == VERSION_PAL
         osViSetMode(&osViModePalLpn1);
 #endif
-        baMotor_80250FC0();
+        baMotor_forceStop();
 
         while (TRUE) {
             osDpSetStatus(DPC_STATUS_FLUSH);
@@ -537,7 +537,7 @@ void thread5_create(void) {
     for (yield_data_ptr = (u8 *) sYieldData; (u32) yield_data_ptr % 0x10; yield_data_ptr++);
     sGfxTask.t.yield_data_ptr = (u64 *) yield_data_ptr;
 
-    osCreateThread(&sThread5, THREAD5_ID,thread5_entry, NULL, STACK_START(sThread5Stack), THREAD5_PRI);
+    osCreateThread(&sThread5, THREAD5_ID, thread5_entry, NULL, STACK_START(sThread5Stack), THREAD5_PRI);
     osStartThread(&sThread5);
 }
 
