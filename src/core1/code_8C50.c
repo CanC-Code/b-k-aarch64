@@ -468,7 +468,6 @@ void thread5_entry(void *arg) {
 
     while (TRUE) {
         osRecvMesg(&sThread5MesgQueue, &msg, OS_MESG_BLOCK);
-        static int t5count = 0; if (++t5count <= 5) LOGI("BKA-RDP: Thread5 received message %d", t5count);
         thread5_checkAndExecutePreNMI();
 
         if (msg == (OSMesg) THREAD5_MESSAGE_EVENT_SYNC) {
