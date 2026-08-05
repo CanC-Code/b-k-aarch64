@@ -26,5 +26,5 @@ void initThread_entry(void *arg)
     mainThread_create();
     osStartThread(mainThread_get());
     BKA_DropEngineLock();
-    while (1);
+    // Idle thread exits after setting up main thread (Android HLE)
 }
