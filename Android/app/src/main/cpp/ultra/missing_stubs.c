@@ -314,6 +314,13 @@ int func_802E4A08(void) { return 1; }
 int func_8032056C(void) { return 1; }
 int func_8032190C(void) { return 0; }
 int levelSpecificFlags_validateCRC1(void) { return 1; }
+int levelSpecificFlags_get(s32 a) { return 0; }
+void _levelSpecificFlags_updateCRC1(void) {}
+void _levelSpecificFlags_updateCRC2(void) {}
+void levelSpecificFlags_clear(void) {}
+void levelSpecificFlags_set(s32 a, s32 b) {}
+void levelSpecificFlags_setN(s32 a, s32 b, s32 c) {}
+int levelSpecificFlags_validateCRC2(void) { return 1; }
 int dummy_func_80320248(void) { return 1; }
 int func_80320240(void) { return 1; }
 int map_getLevel(int a) { (void)a; return 0; }
