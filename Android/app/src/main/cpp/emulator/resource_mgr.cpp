@@ -427,6 +427,7 @@ void ResourceMgr_Init(const char* assetDir) {
  */
 void ResourceMgr_HandleDma(void* dramAddr, uint32_t devAddr, uint32_t size) {
     if (!dramAddr || size == 0) {
+    __android_log_print(ANDROID_LOG_INFO, "BKA_PI", "HandleDma: dramAddr=%p devAddr=0x%08X size=%u", dramAddr, devAddr, size);
         LOGE("ResourceMgr_HandleDma: Invalid parameters (dramAddr=%p, size=%u)", dramAddr, size);
         return;
     }
