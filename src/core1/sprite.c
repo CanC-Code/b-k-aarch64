@@ -23,6 +23,6 @@ s32 sprite_getFrameCount(BKSprite *this) {
 
 BKSpriteFrame *sprite_getFramePtr(BKSprite *this, u32 frame_id) {
     BKSpriteFrame *sprite_frame;
-    sprite_frame = (BKSpriteFrame *) (this->offsets[frame_id] + ((s32) ((*this).offsets + this->frameCnt)));
+    sprite_frame = (BKSpriteFrame *) (this->offsets[frame_id] + (((*this).offsets + this->frameCnt)));
     return sprite_frame;
 }
