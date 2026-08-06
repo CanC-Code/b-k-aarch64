@@ -310,7 +310,7 @@ void picturebox_init(void) {}
 void picturebox_free(void) {}
 void func_802FA508(void) {}
 void func_802E49E0(void) {}
-int func_802E4A08(void) { return 0; }
+int func_802E4A08(void) { return 1; }
 int func_8032056C(void) { return 1; }
 int func_8032190C(void) { return 0; }
 int levelSpecificFlags_validateCRC1(void) { return 1; }
