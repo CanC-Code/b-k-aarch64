@@ -19,7 +19,7 @@ s32 assetCacheCurrentSize = 0;
 
 
 /* .bss */
-s32 D_80383CB0;
+u8 D_80383CB0[16];
 u8 pad_80383CB8[0x8];
 AssetROMHead *assetSectionRomHeader;
 AssetFileMeta *assetSectionRomMetaList;
