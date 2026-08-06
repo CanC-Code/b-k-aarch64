@@ -258,7 +258,7 @@ void func_8024F764(int a) { (void)a; }
 void func_8024F7C4(int a) { (void)a; }
 void func_8024FB8C(void) {}
 int func_803226E8(int a) { (void)a; return 0; }
-int func_80322914(void) { return 0; }
+int func_80322914(void) { return 1; }
 void func_8025A430(int a, int b, int c) { (void)a; (void)b; (void)c; }
 void func_8025A2B0(void) {}
 int controller_getStartButton(int a) { (void)a; return 0; }
