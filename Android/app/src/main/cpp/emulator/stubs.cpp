@@ -350,7 +350,7 @@ s32 osRecvMesg(OSMesgQueue *mq, OSMesg *msg, s32 flag) {
 
     std::unique_lock<std::mutex> lock(nq->mtx);
     if (flag == OS_MESG_BLOCK) {
-        while (nq->buffer.empty()) {
+        while (nq->buffer.empty()) { static int waitCount = 0; if (++waitCount <= 3) __android_log_print(ANDROID_LOG_INFO, "BKA-RDP", "osRecvMesg: waiting on empty queue mq=%p waitCount=%d", (void*)mq, waitCount);
             s_n64_gil.unlock();
             nq->cv_recv.wait(lock);
             lock.unlock();
