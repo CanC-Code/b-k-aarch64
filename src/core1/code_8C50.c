@@ -534,7 +534,7 @@ void thread5_create(void) {
     sActiveAudioTaskDataID = 0;
     sSelectedAudioTaskDataID = 0;
 
-    for (yield_data_ptr = (u8 *) sYieldData; (u32) yield_data_ptr % 0x10; yield_data_ptr++);
+    for (yield_data_ptr = (u8 *) sYieldData; (uintptr_t) yield_data_ptr % 0x10; yield_data_ptr++);
     sGfxTask.t.yield_data_ptr = (u64 *) yield_data_ptr;
 
     osCreateThread(&sThread5, THREAD5_ID,thread5_entry, NULL, STACK_START(sThread5Stack), THREAD5_PRI);
