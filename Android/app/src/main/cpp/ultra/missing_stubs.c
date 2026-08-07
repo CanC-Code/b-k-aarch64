@@ -17,8 +17,8 @@
 //   the real implementations above when --allow-multiple-definition is set.
 
 // Forward declarations for print/font stubs
-void print_init(void);
-void print_getLettersFromFont(void* arg0, void* arg1);
+void print_init(void) {}
+void* print_getLettersFromFont(void* arg0, void* arg1) { return calloc(1, 256); }
 void func_802E5F38(void) {}
 void func_802E5F10(void);
 
