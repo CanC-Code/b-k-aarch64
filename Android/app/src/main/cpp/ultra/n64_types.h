@@ -58,3 +58,14 @@ typedef struct {
 #define NULL 0
 
 #endif // N64_TYPES_H
+
+/* Override N64 IO macros for Android - no hardware registers */
+#ifdef IO_READ
+#undef IO_READ
+#endif
+#define IO_READ(addr) (0)
+
+#ifdef IO_WRITE
+#undef IO_WRITE
+#endif
+#define IO_WRITE(addr,data) ((void)0)
