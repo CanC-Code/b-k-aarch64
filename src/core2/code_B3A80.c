@@ -391,7 +391,7 @@ void *assetcache_get(enum asset_e assetId) {
         if (func_8025498C((u32)comp_size + uncomp_size) && !sp28) {
             sp33 = 1;
             uncompressed_file = malloc((u32)comp_size + uncomp_size);
-            compressed_file = (void *)((s32) uncompressed_file + uncomp_size);
+            compressed_file = (void *)(uncompressed_file + uncomp_size);
         } else {
             sp33 = 2;
             if (sp28) {
@@ -514,11 +514,11 @@ s32 code_B3A80_func_8033BDAC(enum asset_e id, void *dst, s32 size) {
 
         if (size >= (comp_ptr + var_s0)) {
             sp2B = 1;
-            comp_ptr = (s32)dst + var_s0;
+            comp_ptr = (u8*)dst + var_s0;
         }
         else if(size >= var_s0) {
             sp2B = 2;
-            comp_ptr = (s32)malloc(comp_ptr);
+            comp_ptr = malloc(comp_ptr);
         }
         else{
             return 0;
@@ -530,7 +530,7 @@ s32 code_B3A80_func_8033BDAC(enum asset_e id, void *dst, s32 size) {
            var_s0 = (comp_ptr - (comp_ptr & (0x10 -1))) + 0x10;
         
         if(size >= comp_ptr){
-            comp_ptr = (s32)dst;
+            comp_ptr = (u8*)dst;
         }
         else{
             return 0;
