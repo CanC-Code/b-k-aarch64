@@ -314,6 +314,10 @@ int func_802E4A08(void) { return 1; }
 int func_8032056C(void) { return 1; }
 int func_8032190C(void) { return 0; }
 int levelSpecificFlags_validateCRC1(void) { return 1; }
+u32 func_80320250(void) { return 0; }
+void func_803202D0(void) {}
+s32 func_80320320(void) { return 0; }
+void func_803203A0(void) {}
 int levelSpecificFlags_get(s32 a) { return 0; }
 void _levelSpecificFlags_updateCRC1(void) {}
 void _levelSpecificFlags_updateCRC2(void) {}
