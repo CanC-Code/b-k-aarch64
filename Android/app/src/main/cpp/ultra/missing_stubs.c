@@ -117,9 +117,6 @@ int gSPL3DEX_fifoTextEnd     = 0;
 // -----------------------------------------------------------------------
 #define DEFINE_OVERLAY_VRAM(name, vram_start, vram_end) \
     u32 name##_VRAM        = vram_start; \
-    u32 name##_VRAM_END    = vram_end;   \
-int g_diag_assetId = 0;
-void* g_diag_cfile = NULL;
 int g_diag_csize = 0;
     u32 name##_ROM_START   = 0; \
     u32 name##_ROM_END     = 0; \
@@ -148,6 +145,9 @@ DEFINE_OVERLAY_VRAM(fight,     0x80386DD0, 0x80393390)
 
 u32 core1_VRAM     = 0x8023DA20;
 u32 core1_VRAM_END = 0x80286F90;
+int g_diag_assetId = 0;
+void* g_diag_cfile = NULL;
+int g_diag_csize = 0;
 
 // -----------------------------------------------------------------------
 // Audio/SFX stubs
