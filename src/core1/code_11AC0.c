@@ -265,6 +265,7 @@ ALBank *musicInstruments_getSoundBank(void) {
 }
 
 void musicTrack_load(enum comusic_e track_id) {
+    if (!sMIDIAssets) return;
     if (sMIDIAssets[track_id] == NULL) {
         assetcache_func_8033B788();
         sMIDIAssets[track_id] = assetcache_get(MUSIC_TRACK_ASSET_BASE_ID + track_id);
@@ -273,6 +274,7 @@ void musicTrack_load(enum comusic_e track_id) {
 
 void musicTrack_release(enum comusic_e track_id) {
     int i;
+    if (!sMIDIAssets) return;
 
     if (sMIDIAssets[track_id] != NULL) {
         for (i = 0; i < NUM_MUSIC_SLOTS; i++) {
@@ -286,6 +288,7 @@ void musicTrack_release(enum comusic_e track_id) {
 
 void musicTrack_releaseAll(void) {
     int i;
+    if (!sMIDIAssets) return;
 
     for (i = 0; i < sNumMIDIAssets; i++) {
         musicTrack_release(i);
