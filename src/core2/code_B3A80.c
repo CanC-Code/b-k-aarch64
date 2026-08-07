@@ -55,7 +55,7 @@ void animationFile_getBoneTransformList(AnimationFile *anim_file, f32 progress, 
     f32 sp54[3][3];
 
     tmp_f22 = func_8033ABA0(anim_file, progress);
-    tmp_s0 = (AnimationFileElement *)((s32)anim_file + sizeof(AnimationFile));
+    tmp_s0 = (AnimationFileElement *)((uintptr_t)anim_file + sizeof(AnimationFile));
     bone_id = 0;
     for(i = 0; i < anim_file->elem_cnt; i++){//L8033AAB8
         if(tmp_s0->unk0_15 != bone_id){
