@@ -390,7 +390,7 @@ void *assetcache_get(enum asset_e assetId) {
         
         if (func_8025498C((u32)comp_size + uncomp_size) && !sp28) {
             sp33 = 1;
-            uncompressed_file = malloc((u32)comp_size + uncomp_size);
+            uncompressed_file = malloc((u32)comp_size + uncomp_size + 64);
             compressed_file = (void *)(uncompressed_file + uncomp_size);
         } else {
             sp33 = 2;
@@ -401,7 +401,7 @@ void *assetcache_get(enum asset_e assetId) {
             compressed_file = malloc(comp_size);
         }
     } else { //uncompressed
-        uncompressed_file = malloc(comp_size);
+        uncompressed_file = malloc(comp_size + 64);
         compressed_file = uncompressed_file;
     }
     piMgr_read(compressed_file, assetSectionRomMetaList[assetId].offset + D_80383CCC, sp3C);
