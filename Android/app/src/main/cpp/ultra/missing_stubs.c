@@ -393,6 +393,7 @@ f32 alCents2Ratio(s32 cents) { (void)cents; return 1.0f; }
 void *n64_malloc(s32 size) {
 #include <stdlib.h>
     (void)size;
+    static size_t totalAlloc = 0; totalAlloc += size; if (size > 1048576) __android_log_print(ANDROID_LOG_WARN, "BKA_MEM", "n64_malloc: large alloc %d bytes, total=%zu", size, totalAlloc);
     void *ptr = malloc((size_t)size);
     if (ptr) memset(ptr, 0, (size_t)size);
     return ptr;
