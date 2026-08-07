@@ -115,6 +115,7 @@ void thread5_startAudioTask(struct ucode_task_data_s *task_data) {
 
 void thread5_startF3DEXTask(struct ucode_task_data_s *task_data) {
     ucode_getPtrAndSize((void **) &sGfxTask.t.ucode_boot, &sGfxTask.t.ucode_boot_size);
+    if (task_data == NULL) return;
     sGfxTask.t.ucode = (u64 *) gspF3DEX_fifoTextStart;
     sGfxTask.t.ucode_data = (u64 *) gspF3DEX_fifoDataStart;
     sGfxTask.t.data_ptr = task_data->data_ptr;
@@ -168,6 +169,7 @@ void thread5_handleAudioTaskMesg(struct ucode_task_data_s *task_data) {
 void thread5_handleF3DEXTaskMesg(struct ucode_task_data_s *task_data) {
    thread5_insertGfxTaskData(task_data);
     if (sUnkFlag1 == UNKFLAG1_NO_TASK && !sTask7Handled) {
+        if (sGfxTaskDataList[sActiveGfxTaskDataID] == NULL) return;
        thread5_startF3DEXTask(sGfxTaskDataList[sActiveGfxTaskDataID]);
         sActiveGfxTaskDataID = (sActiveGfxTaskDataID + 1) % 20;
     }
