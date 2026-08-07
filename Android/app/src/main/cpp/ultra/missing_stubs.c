@@ -390,12 +390,8 @@ f32 alCents2Ratio(s32 cents) { (void)cents; return 1.0f; }
 // =======================================================================
 // N64 Memory Allocator — redirect to system malloc
 // =======================================================================
-#include <stdlib.h>
-#include <string.h>
-
-unsigned char gHeapBase[0x211120];;
-
 void *n64_malloc(s32 size) {
+#include <stdlib.h>
     (void)size;
     void *ptr = malloc((size_t)size);
     if (ptr) memset(ptr, 0, (size_t)size);
