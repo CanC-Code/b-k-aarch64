@@ -69,7 +69,7 @@ uint32_t __osProbeTLB(void* a)         { (void)a; return 0; }
 uint32_t osPiGetStatus(void)           { return 0; }
 void osViSetSpecialFeatures(u32 func)                { (void)func; }
 void osViSwapBuffer(void *vaddr)                     { (void)vaddr; }
-s32 inflate(void) { return 0; }
+// s32 inflate(void) { return 0; } -- using real inflate.c
 
 // -----------------------------------------------------------------------
 // Misc functions
