@@ -171,6 +171,7 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
             vtx_ref = (BKModelVtxRef *) out_mesh->data;
             
             for (j = 0; j < in_mesh->vtx_count; j++) {
+                if (vtx_ref->vtx_id < 0 || vtx_ref->vtx_id >= bk_vtx_list->count) { vtx_ref->vtx_id = 0; }
                 vtx_ref->vtx_id = in_mesh->vertices[j];
                 memcpy(&vtx_ref->v, &bk_vtx_list->vertices[vtx_ref->vtx_id], sizeof(Vtx));
                 vtx_ref++;

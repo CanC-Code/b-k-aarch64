@@ -751,7 +751,7 @@ void modelRender_geoCmd_REFPOINT(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data
 
 void modelRender_geoCmd_SELECTOR(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data) {
     struct geo_cmd_selector_s *cmd = (struct geo_cmd_selector_s *) data;
-    s32 sub_cmd_addr;
+    uintptr_t sub_cmd_addr;
     s32 selection;
     int i;
     s32 s1;
@@ -768,7 +768,7 @@ void modelRender_geoCmd_SELECTOR(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data
     if (selection > 0) {
         if (selection <= cmd->branch_offset_count) {
             offset = cmd->branch_offsets;
-            sub_cmd_addr = (s32) cmd;
+            sub_cmd_addr = (uintptr_t) cmd;
             sub_cmd_addr += *(s32*)(offset + (selection - 1));
             modelRender_executeGeoCmds(gfx, mtx, (struct bk_geo_cmd_s* ) sub_cmd_addr);
         }
@@ -778,7 +778,7 @@ void modelRender_geoCmd_SELECTOR(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data
         for (i = 0; i < cmd->branch_offset_count; i++) {
             if (s1 & 0x01)
             {
-                sub_cmd_addr = (s32)cmd;
+                sub_cmd_addr = (uintptr_t)cmd;
                 sub_cmd_addr += *offset;
                 modelRender_executeGeoCmds(gfx, mtx, (struct bk_geo_cmd_s* ) sub_cmd_addr);
             }
