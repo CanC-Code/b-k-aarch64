@@ -258,7 +258,7 @@ void func_8024F764(int a) { (void)a; }
 void func_8024F7C4(int a) { (void)a; }
 void func_8024FB8C(void) {}
 int func_803226E8(int a) { (void)a; return 0; }
-int func_80322914(void) { return 1; }
+int func_80322914(void) { return 0; }
 void func_8025A430(int a, int b, int c) { (void)a; (void)b; (void)c; }
 void func_8025A2B0(void) {}
 int controller_getStartButton(int a) { (void)a; return 0; }
@@ -310,12 +310,10 @@ void picturebox_init(void) {}
 void picturebox_free(void) {}
 void func_802FA508(void) {}
 void func_802E49E0(void) {}
-int func_802E4A08(void) { return 1; }
+int func_802E4A08(void) { return 0; }
 int func_8032056C(void) { return 1; }
 int func_8032190C(void) { return 0; }
 int levelSpecificFlags_validateCRC1(void) { return 1; }
-void baAnim_init(void) {}
-void* func_802F2AEC(void) { void* p = malloc(8); if (p) memset(p, 0, 8); return p; }
 u32 func_80320250(void) { return 0; }
 void func_803202D0(void) {}
 s32 func_80320320(void) { return 0; }
