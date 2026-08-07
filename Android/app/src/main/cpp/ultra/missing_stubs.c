@@ -314,6 +314,8 @@ int func_802E4A08(void) { return 1; }
 int func_8032056C(void) { return 1; }
 int func_8032190C(void) { return 0; }
 int levelSpecificFlags_validateCRC1(void) { return 1; }
+void func_8030A078(void) {}
+void baAnim_init(void) {}
 void* func_802F2AEC(void) { void* p = malloc(8); if (p) memset(p, 0, 8); return p; }
 u32 func_80320250(void) { return 0; }
 void func_803202D0(void) {}
