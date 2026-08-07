@@ -403,7 +403,7 @@ void *assetcache_get(enum asset_e assetId) {
     } else { //uncompressed
         uncompressed_file = malloc(comp_size + 64);
         compressed_file = uncompressed_file;
-    __android_log_print(ANDROID_LOG_WARN, "BKA_DMA", "assetcache_get: asset=%d compressed_file=%p comp_size=%d sp3C=%d uncomp_size=%d", assetId, compressed_file, comp_size, sp3C, uncomp_size);
+    }
     extern int g_diag_assetId; extern void* g_diag_cfile; extern int g_diag_csize; g_diag_assetId = assetId; g_diag_cfile = compressed_file; g_diag_csize = comp_size;
     piMgr_read(compressed_file, assetSectionRomMetaList[assetId].offset + D_80383CCC, sp3C);
     if(assetSectionRomMetaList[assetId].compFlag & 0x0001){//decompress
