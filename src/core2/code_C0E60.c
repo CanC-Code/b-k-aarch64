@@ -190,7 +190,7 @@ void func_80348044(Gfx **gfx, BKSprite* sprite, s32 frame, s32 tmem, s32 rtile, 
 
     *width = (s32) texture_block->w;
     *height = (s32) texture_block->h;
-    for(timg = (s32)(texture_block + 1); timg % 8; timg++);
+    for(timg = (uintptr_t)(texture_block + 1); timg % 8; timg++);
 
     if (sp144 == 0) {
         D_8038608C = *width;

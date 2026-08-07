@@ -298,7 +298,7 @@ FontLetter *print_getLettersFromFont(BKSprite *alphaMask, BKSprite *textureSprit
             {//L802F4CA8 
                 chunkPtr = (BKSpriteTextureBlock *) (font + 1);
                 chunkDataPtr = (u8 *)chunkPtr;
-                while((s32)chunkDataPtr % 8)
+                while((uintptr_t)chunkDataPtr % 8)
                     chunkDataPtr++;
                 
                 palDataPtr = chunkDataPtr;
@@ -307,7 +307,7 @@ FontLetter *print_getLettersFromFont(BKSprite *alphaMask, BKSprite *textureSprit
                 for(i= 0; i < font->chunkCnt; i++){
                     
                     chunkDataPtr = (u8*)(chunkPtr + 1);
-                    while((s32)chunkDataPtr % 8)
+                    while((uintptr_t)chunkDataPtr % 8)
                         chunkDataPtr++;
 
                     letters[i].sprite = chunkPtr;
@@ -325,7 +325,7 @@ FontLetter *print_getLettersFromFont(BKSprite *alphaMask, BKSprite *textureSprit
                     letters[i].sprite = chunkPtr;
                     chunkSize = chunkPtr->w*chunkPtr->h;
                     chunkDataPtr = (u8*)(chunkPtr + 1);
-                    while((s32)chunkDataPtr % 8)
+                    while((uintptr_t)chunkDataPtr % 8)
                         chunkDataPtr++;
                     chunkPtr = (BKSpriteTextureBlock *) (chunkDataPtr + chunkSize*4);
                 }
@@ -338,7 +338,7 @@ FontLetter *print_getLettersFromFont(BKSprite *alphaMask, BKSprite *textureSprit
                     letters[i].sprite = chunkPtr;
                     chunkDataPtr = (u8*)(chunkPtr + 1);
                     chunkSize = chunkPtr->w*chunkPtr->h;
-                    while((s32)chunkDataPtr % 8)
+                    while((uintptr_t)chunkDataPtr % 8)
                         chunkDataPtr++;
                     chunkPtr = (BKSpriteTextureBlock *) (chunkDataPtr + chunkSize/2);
                 }
@@ -351,7 +351,7 @@ FontLetter *print_getLettersFromFont(BKSprite *alphaMask, BKSprite *textureSprit
                     chunkDataPtr = (u8*)(chunkPtr + 1);
                     letters[i].sprite = chunkPtr;
                     chunkSize = chunkPtr->w*chunkPtr->h;
-                    while((s32)chunkDataPtr % 8)
+                    while((uintptr_t)chunkDataPtr % 8)
                         chunkDataPtr++;
                     chunkPtr = (BKSpriteTextureBlock *)(chunkDataPtr + chunkSize);
                 }
