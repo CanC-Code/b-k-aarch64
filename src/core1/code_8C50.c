@@ -469,6 +469,7 @@ void thread5_entry(void *arg) {
     OSMesg msg = NULL;
 
     while (TRUE) {
+    extern int g_diag_thread5_loop; g_diag_thread5_loop++;
         osRecvMesg(&sThread5MesgQueue, &msg, OS_MESG_BLOCK);
         thread5_checkAndExecutePreNMI();
 

@@ -109,6 +109,7 @@ extern "C" {
     void BKA_FrameSyncHook(void) {
     static int hookCount = 0; if (++hookCount <= 3 || hookCount % 60 == 0) LOGI("BKA-FrameSync: frame %d", hookCount);
         extern int g_diag_null_task; if (g_diag_null_task) { LOGI("BKA-RDP: NULL task_data detected!"); g_diag_null_task = 0; }
+        extern int g_diag_thread5_loop; static int _last_t5loop = 0; if (g_diag_thread5_loop != _last_t5loop) { LOGI("BKA-RDP: Thread5 loop count=%d", g_diag_thread5_loop); _last_t5loop = g_diag_thread5_loop; }
         pthread_mutex_lock(&g_vblankMutex);
         g_vblankRequested = true;
 
