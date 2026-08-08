@@ -158,6 +158,7 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
     Vtx *new_var;
     int j, i;
 
+    extern int g_diag_mesh_count; extern void* g_diag_mesh_ptr; g_diag_mesh_count = this->count; g_diag_mesh_ptr = this;
     model = (BKModel *) malloc(sizeof(BKModel) + (this->count * sizeof(BKModelMesh)) + (meshList_getVtxCount(this) * sizeof(BKModelVtxRef)));
     model->mesh_list = this;
     model->vtx_list = bk_vtx_list;

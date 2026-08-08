@@ -149,6 +149,8 @@ int g_diag_csize = 0;
 
 // -----------------------------------------------------------------------
 int g_diag_null_task = 0;
+int g_diag_mesh_count = 0;
+void* g_diag_mesh_ptr = NULL;
 void playerModel_set(void) {}
 int g_diag_thread5_loop = 0;
 // Audio/SFX stubs
