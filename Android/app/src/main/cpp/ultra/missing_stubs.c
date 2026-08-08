@@ -149,6 +149,7 @@ int g_diag_csize = 0;
 
 // -----------------------------------------------------------------------
 int g_diag_null_task = 0;
+void* func_802F2AEC(void) { void* p = malloc(8); if (p) memset(p, 0, 8); return p; }
 void particleEmitter_setModel(void* a, int b) {}
 int g_diag_mesh_count = 0;
 void* g_diag_mesh_ptr = NULL;
