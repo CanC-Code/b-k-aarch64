@@ -449,6 +449,7 @@ void assetCache_init(void){
     piMgr_read(assetSectionRomHeader, D_80383CC8, sizeof(AssetROMHead));
     assetSectionRomMetaList = (AssetFileMeta *)malloc(assetSectionRomHeader->count*sizeof(AssetFileMeta));
     piMgr_read(assetSectionRomMetaList, D_80383CC8 + sizeof(AssetROMHead),assetSectionRomHeader->count*sizeof(AssetFileMeta));
+    { int _i; for (_i = 0; _i < (int)assetSectionRomHeader->count; _i++) { assetSectionRomMetaList[_i].compFlag = 0; } }
     D_80383CCC = D_80383CC8 + sizeof(AssetROMHead) + assetSectionRomHeader->count*sizeof(AssetFileMeta);
 }
 
