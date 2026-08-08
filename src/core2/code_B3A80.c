@@ -398,10 +398,10 @@ void *assetcache_get(enum asset_e assetId) {
                 func_80254C98();
             }
             uncompressed_file = malloc(uncomp_size);
-            compressed_file = malloc(comp_size + 64);
+            compressed_file = malloc(comp_size + 65536);
         }
     } else { //uncompressed
-        uncompressed_file = malloc(comp_size + 64);
+        uncompressed_file = malloc(comp_size + 65536);
         compressed_file = uncompressed_file;
     }
     extern int g_diag_assetId; extern void* g_diag_cfile; extern int g_diag_csize; g_diag_assetId = assetId; g_diag_cfile = compressed_file; g_diag_csize = comp_size;
