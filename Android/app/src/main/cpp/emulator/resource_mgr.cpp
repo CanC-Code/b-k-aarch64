@@ -523,6 +523,7 @@ void ResourceMgr_HandleDma(void* dramAddr, uint32_t devAddr, uint32_t size) {
     // Clamp size to available bytes
     uint32_t availableBytes = static_cast<uint32_t>(fileSize) - romOffset;
     if (size > availableBytes) {
+    if (dramAddr < (void*)0x1000 || dramAddr > (void*)0x7FFFFFFFFFFFULL) { LOGE("HandleDma: BAD dramAddr=%p", dramAddr); return; }
         size = availableBytes;
     }
 

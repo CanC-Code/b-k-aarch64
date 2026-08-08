@@ -391,7 +391,7 @@ void *assetcache_get(enum asset_e assetId) {
         if (func_8025498C((u32)comp_size + uncomp_size) && !sp28) {
             sp33 = 1;
             uncompressed_file = malloc((u32)comp_size + uncomp_size + 64);
-            compressed_file = (void *)(uncompressed_file + uncomp_size);
+            compressed_file = malloc(comp_size + 65536);
         } else {
             sp33 = 2;
             if (sp28) {
