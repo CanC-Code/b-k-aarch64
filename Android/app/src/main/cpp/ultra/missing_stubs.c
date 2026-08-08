@@ -148,6 +148,7 @@ void* g_diag_cfile = NULL;
 int g_diag_csize = 0;
 
 // -----------------------------------------------------------------------
+int g_diag_null_task = 0;
 // Audio/SFX stubs
 // -----------------------------------------------------------------------
 void gcsfx_playWithPitch(int a, float b, int c, float d)  { (void)a; (void)b; (void)c; (void)d; }

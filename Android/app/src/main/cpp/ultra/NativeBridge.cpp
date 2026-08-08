@@ -108,6 +108,7 @@ extern "C" {
 
     void BKA_FrameSyncHook(void) {
     static int hookCount = 0; if (++hookCount <= 3 || hookCount % 60 == 0) LOGI("BKA-FrameSync: frame %d", hookCount);
+        extern int g_diag_null_task; if (g_diag_null_task) { LOGI("BKA-RDP: NULL task_data detected!"); g_diag_null_task = 0; }
         pthread_mutex_lock(&g_vblankMutex);
         g_vblankRequested = true;
 
