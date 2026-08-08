@@ -401,9 +401,8 @@ Vec3fArray *func_803097A0(void){
 
 
 void mapModel_getCubeBounds(s32 min[3], s32 max[3]) {
-    if (!mapModel.model_bin_opa) { min[0] = min[1] = min[2] = -1; max[0] = max[1] = max[2] = 1; return; }
-    if (!mapModel.model_bin_opa) { min[0] = min[1] = min[2] = -1; max[0] = max[1] = max[2] = 1; return; }
     coords_scale(min, max, 1000);
+    if (!mapModel.model_bin_opa) { min[0] = min[1] = min[2] = -1; max[0] = max[1] = max[2] = 1; return; }
     min[0] = min[0] + mapModel.description->unk6[0];
     min[1] = min[1] + mapModel.description->unk6[1];
     min[2] = min[2] + mapModel.description->unk6[2];
@@ -414,22 +413,20 @@ void mapModel_getCubeBounds(s32 min[3], s32 max[3]) {
 
 void mapModel_getOpaBounds(s32 min[3], s32 max[3]) {
     s32 i;
-    if (!mapModel.model_bin_opa) { min[0] = min[1] = min[2] = -1; max[0] = max[1] = max[2] = 1; return; }
 
+    if (!mapModel.model_bin_opa) { min[0] = min[1] = min[2] = -1; max[0] = max[1] = max[2] = 1; return; }
     vtxList_getBounds_s32(modelbin_getVtxList(mapModel.model_bin_opa), min, max);
     for(i = 0; i < 3; i++){
         min[i] *= mapModel.scale;
         max[i] *= mapModel.scale;
     }
 }
-
-    if (!mapModel.model_bin_opa) { min[0] = min[1] = min[2] = -1; max[0] = max[1] = max[2] = 1; return; }
 void mapModel_getBounds(s32 min[3], s32 max[3]) {
-    if (!mapModel.model_bin_opa) { min[0] = min[1] = min[2] = -1; max[0] = max[1] = max[2] = 1; return; }
     s32 i, j;
     s32 xlu_min[3];
     s32 xlu_max[3];
 
+    if (!mapModel.model_bin_opa) { min[0] = min[1] = min[2] = -1; max[0] = max[1] = max[2] = 1; return; }
     vtxList_getBounds_s32(modelbin_getVtxList(mapModel.model_bin_opa), min, max);
     for(i = 0; i < 3; i++){
         min[i] *= mapModel.scale;
