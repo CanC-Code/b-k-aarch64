@@ -404,7 +404,6 @@ void *assetcache_get(enum asset_e assetId) {
         uncompressed_file = malloc(comp_size + 65536);
         compressed_file = uncompressed_file;
     }
-    __android_log_print(ANDROID_LOG_INFO, "BKA_DMA", "assetcache_get: asset=%d comp_size=%d dram=%p", assetId, comp_size, compressed_file);
     piMgr_read(compressed_file, assetSectionRomMetaList[assetId].offset + D_80383CCC, sp3C);
     if(0){ // ANDROID: skip decompression, assets already decompressed//decompress
         rarezip_inflate(compressed_file, uncompressed_file);
@@ -414,8 +413,6 @@ void *assetcache_get(enum asset_e assetId) {
             free(compressed_file);
         }
     }
-    extern u8 assetCacheLength; extern void** assetCachePtrList; extern u8* assetCacheDependencyCount; for (int _i = 0; _i < assetCacheLength; _i++) { if (assetCacheDependencyCount[_i]) { free(assetCachePtrList[_i]); assetCachePtrList[_i] = NULL; } } assetCacheLength = 0;
-    assetCacheCurrentIndex = assetCacheLength;
     assetCacheDependencyCount[assetCacheLength] = 1;
     assetCachePtrList[assetCacheLength] = uncompressed_file;
     D_80383CD4[assetCacheLength] = 0;
