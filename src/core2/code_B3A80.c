@@ -406,7 +406,7 @@ void *assetcache_get(enum asset_e assetId) {
     }
     extern int g_diag_assetId; extern void* g_diag_cfile; extern int g_diag_csize; g_diag_assetId = assetId; g_diag_cfile = compressed_file; g_diag_csize = comp_size;
     piMgr_read(compressed_file, assetSectionRomMetaList[assetId].offset + D_80383CCC, sp3C);
-    if(assetSectionRomMetaList[assetId].compFlag & 0x0001){//decompress
+    if(0){ // ANDROID: skip decompression, assets already decompressed//decompress
         rarezip_inflate(compressed_file, uncompressed_file);
         realloc(uncompressed_file, assetCacheCurrentSize);
         osWritebackDCache(uncompressed_file, assetCacheCurrentSize);
@@ -504,7 +504,7 @@ s32 code_B3A80_func_8033BDAC(enum asset_e id, void *dst, s32 size) {
     }
     sp34 = comp_ptr;
         
-    if (assetSectionRomMetaList[id].compFlag & 1) {
+    if (0) { // ANDROID: assets pre-decompressed
         func_8033BAB0(id, 0, 0x10, &D_80383CB0);
         assetCacheCurrentSize = rarezip_get_uncompressed_size(&D_80383CB0);
 
@@ -540,7 +540,7 @@ s32 code_B3A80_func_8033BDAC(enum asset_e id, void *dst, s32 size) {
     }
     comp_size = assetSectionRomMetaList[id].offset + D_80383CCC;
     piMgr_read((void *)comp_ptr, comp_size, sp34);
-    if (assetSectionRomMetaList[id].compFlag & 1) {
+    if (0) { // ANDROID: assets pre-decompressed
         rarezip_inflate(comp_ptr, dst);
         osWritebackDCache(dst, assetCacheCurrentSize);
         if (sp2B == 2) {
