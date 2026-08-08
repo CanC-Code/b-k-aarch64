@@ -448,11 +448,11 @@ void osSpTaskStartGo(OSTask *tp) {
         // Process the F3DEX display list and rasterize to gFramebuffers
         RSP_ProcessGfxTask(tp);
         // Signal completion so Thread 5 continues
-        HLE_TriggerN64Event(1); // OS_EVENT_SP
-        HLE_TriggerN64Event(3); // OS_EVENT_DP
+        HLE_TriggerN64Event(OS_EVENT_SP); // 4
+        HLE_TriggerN64Event(OS_EVENT_DP); // 9
         osSendMesg(&D_8027FBC8, NULL, OS_MESG_NOBLOCK);
     } else if (tp->t.type == M_AUDTASK) {
-        HLE_TriggerN64Event(1); // OS_EVENT_SP
+        HLE_TriggerN64Event(OS_EVENT_SP); // 4
     }
 }
 
