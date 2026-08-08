@@ -404,7 +404,7 @@ void *assetcache_get(enum asset_e assetId) {
         uncompressed_file = malloc(comp_size + 65536);
         compressed_file = uncompressed_file;
     }
-    extern int g_diag_assetId; extern void* g_diag_cfile; extern int g_diag_csize; g_diag_assetId = assetId; g_diag_cfile = compressed_file; g_diag_csize = comp_size;
+    __android_log_print(ANDROID_LOG_INFO, "BKA_DMA", "assetcache_get: asset=%d comp_size=%d dram=%p", assetId, comp_size, compressed_file);
     piMgr_read(compressed_file, assetSectionRomMetaList[assetId].offset + D_80383CCC, sp3C);
     if(0){ // ANDROID: skip decompression, assets already decompressed//decompress
         rarezip_inflate(compressed_file, uncompressed_file);
