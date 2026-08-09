@@ -379,6 +379,7 @@ void *assetcache_get(enum asset_e assetId) {
         comp_size++;
     sp3C = comp_size;
 
+    if(assetSectionRomMetaList[assetId].compFlag & 0x0001){//compressed
         func_8033BAB0(assetId, 0, 0x10, &D_80383CB0);
         assetCacheCurrentSize = rarezip_get_uncompressed_size(&D_80383CB0);
         uncomp_size = assetCacheCurrentSize;
@@ -389,7 +390,7 @@ void *assetcache_get(enum asset_e assetId) {
         
         if (func_8025498C((u32)comp_size + uncomp_size) && !sp28) {
             sp33 = 1;
-            uncompressed_file = malloc((u32)comp_size + uncomp_size);
+            uncompressed_file = malloc((u32)comp_size + uncomp_size + 64);
             compressed_file = (void *)(uncompressed_file + uncomp_size);
         } else {
             sp33 = 2;
@@ -397,11 +398,13 @@ void *assetcache_get(enum asset_e assetId) {
                 func_80254C98();
             }
             uncompressed_file = malloc(uncomp_size);
-            compressed_file = (void *)(uncompressed_file + uncomp_size);
+            compressed_file = malloc(comp_size);
         }
-    { u32 headerSize; piMgr_read(&headerSize, assetSectionRomMetaList[assetId].offset + D_80383CCC + 2, 4); sp3C = headerSize; }
+    } else { //uncompressed
+        uncompressed_file = malloc(comp_size + 64);
         compressed_file = uncompressed_file;
     }
+    extern int g_diag_assetId; extern void* g_diag_cfile; extern int g_diag_csize; g_diag_assetId = assetId; g_diag_cfile = compressed_file; g_diag_csize = comp_size;
     piMgr_read(compressed_file, assetSectionRomMetaList[assetId].offset + D_80383CCC, sp3C);
     if(assetSectionRomMetaList[assetId].compFlag & 0x0001){//decompress
         rarezip_inflate(compressed_file, uncompressed_file);
@@ -411,6 +414,8 @@ void *assetcache_get(enum asset_e assetId) {
             free(compressed_file);
         }
     }
+    extern u8 assetCacheLength; extern void** assetCachePtrList; extern u8* assetCacheDependencyCount; for (int _i = 0; _i < assetCacheLength; _i++) { if (assetCacheDependencyCount[_i]) { free(assetCachePtrList[_i]); assetCachePtrList[_i] = NULL; } } assetCacheLength = 0;
+    assetCacheCurrentIndex = assetCacheLength;
     assetCacheDependencyCount[assetCacheLength] = 1;
     assetCachePtrList[assetCacheLength] = uncompressed_file;
     D_80383CD4[assetCacheLength] = 0;
@@ -444,8 +449,8 @@ void assetCache_init(void){
     piMgr_read(assetSectionRomHeader, D_80383CC8, sizeof(AssetROMHead));
     assetSectionRomMetaList = (AssetFileMeta *)malloc(assetSectionRomHeader->count*sizeof(AssetFileMeta));
     piMgr_read(assetSectionRomMetaList, D_80383CC8 + sizeof(AssetROMHead),assetSectionRomHeader->count*sizeof(AssetFileMeta));
-    { int _i; for (_i = 0; _i < (int)assetSectionRomHeader->count; _i++) { assetSectionRomMetaList[_i].compFlag = 0; } }
     D_80383CCC = D_80383CC8 + sizeof(AssetROMHead) + assetSectionRomHeader->count*sizeof(AssetFileMeta);
+}
 
 s32 asset_getCompressedSize(enum asset_e arg0){
     return assetSectionRomMetaList[arg0+1].offset - assetSectionRomMetaList[arg0].offset;
@@ -499,7 +504,7 @@ s32 code_B3A80_func_8033BDAC(enum asset_e id, void *dst, s32 size) {
     }
     sp34 = comp_ptr;
         
-    if (0) { // ANDROID: assets pre-decompressed
+    if (assetSectionRomMetaList[id].compFlag & 1) {
         func_8033BAB0(id, 0, 0x10, &D_80383CB0);
         assetCacheCurrentSize = rarezip_get_uncompressed_size(&D_80383CB0);
 
@@ -535,7 +540,7 @@ s32 code_B3A80_func_8033BDAC(enum asset_e id, void *dst, s32 size) {
     }
     comp_size = assetSectionRomMetaList[id].offset + D_80383CCC;
     piMgr_read((void *)comp_ptr, comp_size, sp34);
-    if (0) { // ANDROID: assets pre-decompressed
+    if (assetSectionRomMetaList[id].compFlag & 1) {
         rarezip_inflate(comp_ptr, dst);
         osWritebackDCache(dst, assetCacheCurrentSize);
         if (sp2B == 2) {
