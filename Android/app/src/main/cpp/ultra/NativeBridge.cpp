@@ -252,7 +252,10 @@ Java_com_bkawrapper_NativeBridge_nativeGameBoot(JNIEnv* env, jclass clazz,
 
         pthread_t gameThread;
         LOGI("NativeBridge: Allocating background worker thread contexts...");
-        if (pthread_create(&gameThread, nullptr, game_thread_fn, nullptr) == 0) {
+        pthread_attr_t attr;
+        pthread_attr_init(&attr);
+        pthread_attr_setstacksize(&attr, 4 * 1024 * 1024); // 4MB stack
+        if (pthread_create(&gameThread, &attr, game_thread_fn, nullptr) == 0) {
             pthread_detach(gameThread);
             g_engineThreadActive = true;
             LOGI("NativeBridge: Engine thread spawned and bound to waiting sequence state.");
