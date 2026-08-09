@@ -379,8 +379,6 @@ void *assetcache_get(enum asset_e assetId) {
         comp_size++;
     sp3C = comp_size;
 
-    if(assetSectionRomMetaList[assetId].compFlag & 0x0001){//compressed
-    sp3C = comp_size + 65536;
         func_8033BAB0(assetId, 0, 0x10, &D_80383CB0);
         assetCacheCurrentSize = rarezip_get_uncompressed_size(&D_80383CB0);
         uncomp_size = assetCacheCurrentSize;
@@ -391,22 +389,21 @@ void *assetcache_get(enum asset_e assetId) {
         
         if (func_8025498C((u32)comp_size + uncomp_size) && !sp28) {
             sp33 = 1;
-            uncompressed_file = malloc((u32)comp_size + uncomp_size + 64);
-            compressed_file = malloc(comp_size + 65536);
+            uncompressed_file = malloc((u32)comp_size + uncomp_size);
+            compressed_file = (void *)(uncompressed_file + uncomp_size);
         } else {
             sp33 = 2;
             if (sp28) {
                 func_80254C98();
             }
             uncompressed_file = malloc(uncomp_size);
-            compressed_file = malloc(comp_size + 65536);
+            compressed_file = (void *)(uncompressed_file + uncomp_size);
         }
     { u32 headerSize; piMgr_read(&headerSize, assetSectionRomMetaList[assetId].offset + D_80383CCC + 2, 4); sp3C = headerSize; }
-        uncompressed_file = malloc(comp_size + 65536);
         compressed_file = uncompressed_file;
     }
     piMgr_read(compressed_file, assetSectionRomMetaList[assetId].offset + D_80383CCC, sp3C);
-    if(0){ // ANDROID: skip decompression, assets already decompressed//decompress
+    if(assetSectionRomMetaList[assetId].compFlag & 0x0001){//decompress
         rarezip_inflate(compressed_file, uncompressed_file);
         realloc(uncompressed_file, assetCacheCurrentSize);
         osWritebackDCache(uncompressed_file, assetCacheCurrentSize);
@@ -449,7 +446,6 @@ void assetCache_init(void){
     piMgr_read(assetSectionRomMetaList, D_80383CC8 + sizeof(AssetROMHead),assetSectionRomHeader->count*sizeof(AssetFileMeta));
     { int _i; for (_i = 0; _i < (int)assetSectionRomHeader->count; _i++) { assetSectionRomMetaList[_i].compFlag = 0; } }
     D_80383CCC = D_80383CC8 + sizeof(AssetROMHead) + assetSectionRomHeader->count*sizeof(AssetFileMeta);
-}
 
 s32 asset_getCompressedSize(enum asset_e arg0){
     return assetSectionRomMetaList[arg0+1].offset - assetSectionRomMetaList[arg0].offset;
