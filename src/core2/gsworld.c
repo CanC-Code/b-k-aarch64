@@ -1,3 +1,4 @@
+void assetcache_flush(void);
 #include <ultra64.h>
 #include "core1/core1.h"
 #include "functions.h"
@@ -192,10 +193,10 @@ void gsworld_free(void) {
 }
 
 void gsworld_set(enum map_e map, s32 exit, bool reload) {
-    sGsWorldData.unk0 = 3;
     sGsWorldData.map = map;
     sGsWorldData.exit = exit;
     leveloverlay_init();
+    assetcache_flush();
     gsworld_setEnableUpdate(TRUE);
     gsworld_setEnableDraw(TRUE);
     func_802D2CB8();
