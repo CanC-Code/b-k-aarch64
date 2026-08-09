@@ -16,9 +16,9 @@ extern void func_802E9118(BKCollisionList *, BKVertexList *, f32[3], s32, f32, s
 extern BKCollisionTriangle *func_802E9DD8(BKCollisionList *, BKVertexList *, f32[3], s32, f32, s32, f32, s32, s32);
 extern int func_80340020(s32, f32[3], s32, f32, s32, BKVertexList *, f32[3], f32[3]);
 
-extern void boneTransformList_getBoneScale(s32, s32, f32[3]);
-extern void boneTransformList_setBoneScale(s32, s32, f32[3]);
-extern void func_8033A9A8(s32, s32, f32[3]);
+extern void boneTransformList_getBoneScale(BoneTransformList *, s32, f32[3]);
+extern void boneTransformList_setBoneScale(BoneTransformList *, s32, f32[3]);
+extern void func_8033A9A8(BoneTransformList *, s32, f32[3]);
 extern void modelRender_setAppendageVisibility(s32, s32);
 extern void modelRender_setBoneTransformList(s32);
 extern void func_8028FAB0(f32[3]);
