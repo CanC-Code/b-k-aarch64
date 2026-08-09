@@ -380,6 +380,7 @@ void *assetcache_get(enum asset_e assetId) {
     sp3C = comp_size;
 
     if(assetSectionRomMetaList[assetId].compFlag & 0x0001){//compressed
+    sp3C = comp_size + 65536;
         func_8033BAB0(assetId, 0, 0x10, &D_80383CB0);
         assetCacheCurrentSize = rarezip_get_uncompressed_size(&D_80383CB0);
         uncomp_size = assetCacheCurrentSize;
@@ -400,7 +401,7 @@ void *assetcache_get(enum asset_e assetId) {
             uncompressed_file = malloc(uncomp_size);
             compressed_file = malloc(comp_size + 65536);
         }
-    } else { //uncompressed
+    { u32 headerSize; piMgr_read(&headerSize, assetSectionRomMetaList[assetId].offset + D_80383CCC + 2, 4); sp3C = headerSize; }
         uncompressed_file = malloc(comp_size + 65536);
         compressed_file = uncompressed_file;
     }
