@@ -508,22 +508,10 @@ Java_com_bkawrapper_OtrService_runNativeOtrGeneration(
                 }
 
                 if (isRareCompressed) {
-                    uint32_t written = 0;
-                    uint8_t* decompressedData = decompress_rare_asset(srcBuffer + 6, size - 6, &written);
-                    if (decompressedData && written > 0) {
-                        if (written <= size && false) {
-                            memcpy(destBuffer, decompressedData, written);
-                            extracted++;
-                            compressed++;
-                        } else {
-                            LOGE("Decompressed size exceeds buffer for segment %s", seg.name);
-                            failed++;
-                        }
-                        free(decompressedData);
-                    } else {
-                        LOGE("Decompression failed for segment %s", seg.name);
-                        failed++;
-                    }
+                    // Keep assets compressed: copy original RareZip data as-is
+                    memcpy(destBuffer, srcBuffer, size);
+                    extracted++;
+                    compressed++;
                 } else {
                     memcpy(destBuffer, srcBuffer, size);
                     extracted++;
