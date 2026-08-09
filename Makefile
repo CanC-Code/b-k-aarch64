@@ -20,6 +20,39 @@ ifeq ($(VERSION),jp)
 	C_VERSION=3
 endif
 
+### Utils ###
+
+# OS detection
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+
+ifeq ($(OS),Windows_NT)
+	$(error Native Windows is currently unsupported for building this repository, use WSL instead c:)
+else ifeq ($(UNAME_S),Linux)
+	ifneq ($(filter aarch%,$(UNAME_M)),)
+		DETECTED_OS := linux-arm
+	else
+		DETECTED_OS := linux
+	endif
+else ifeq ($(UNAME_S),Darwin)
+	DETECTED_OS := macos
+endif
+
+# Recomp configuration
+RECOMP_VERSION := v1.2
+RECOMP_FILE := ido-5.3-recomp-$(DETECTED_OS).tar.gz
+RECOMP_URL := https://github.com/decompals/ido-static-recomp/releases/download/$(RECOMP_VERSION)/$(RECOMP_FILE)
+RECOMP_DIR := tools/ido-recomp/$(DETECTED_OS)
+RECOMP_CC := $(RECOMP_DIR)/cc
+
+ifeq ($(wildcard $(RECOMP_CC)),)
+  $(info Fetching Recomp...)
+  $(shell mkdir -p $(RECOMP_DIR))
+  $(shell curl -L $(RECOMP_URL) -o $(RECOMP_FILE))
+  $(shell tar xf $(RECOMP_FILE) -C $(RECOMP_DIR))
+  $(shell rm $(RECOMP_FILE))
+endif
+
 ### Tools ###
 
 # System tools
@@ -32,7 +65,7 @@ DIFF := diff
 
 # Build tools
 CROSS   := mips-linux-gnu-
-CC      := ido/ido5.3_recomp/cc
+CC      := $(RECOMP_CC)
 CPP     := cpp
 GCC     := $(CROSS)gcc
 AS      := $(CROSS)as
@@ -339,7 +372,7 @@ $(FINAL_Z64) : $(UNCOMPRESSED_Z64) $(ELF) $(BK_ROM_COMPRESS)
 # Libultra files
 $(BUILD_DIR)/libultra_rom.a:
 	@$(MAKE) -C lib/ultralib VERSION=I TARGET=libultra_rom COMPARE=0 MODERN_LD=1 setup
-	@$(MAKE) -C lib/ultralib VERSION=I TARGET=libultra_rom COMPARE=0 MODERN_LD=1
+	@$(MAKE) -C lib/ultralib VERSION=I TARGET=libultra_rom COMPARE=0 MODERN_LD=1 CC="$(abspath $(RECOMP_CC))" AS="$(abspath $(RECOMP_CC))"
 	@$(CP) lib/ultralib/build/I/libultra_rom/libultra_rom.a $@
 
 $(BUILD_DIR)/libultra_rom_boot.a: $(BUILD_DIR)/libultra_rom.a
