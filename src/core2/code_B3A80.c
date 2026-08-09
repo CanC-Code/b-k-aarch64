@@ -408,7 +408,7 @@ void *assetcache_get(enum asset_e assetId) {
     piMgr_read(compressed_file, assetSectionRomMetaList[assetId].offset + D_80383CCC, sp3C);
     if(assetSectionRomMetaList[assetId].compFlag & 0x0001){//decompress
         rarezip_inflate(compressed_file, uncompressed_file);
-        realloc(uncompressed_file, assetCacheCurrentSize);
+        uncompressed_file = (void*)realloc(uncompressed_file, assetCacheCurrentSize);
         osWritebackDCache(uncompressed_file, assetCacheCurrentSize);
         if (sp33 == 2) {
             free(compressed_file);
