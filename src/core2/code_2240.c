@@ -7,8 +7,8 @@
 //function declarations
 void anim_setIndex(Animation *this, enum asset_e arg1);
 void anim_drawSetup(Animation *this);
-void animationFile_getBoneTransformList(s32, f32, s32);
-void boneTransformList_interpolate(s32, s32, s32, f32);
+void animationFile_getBoneTransformList(AnimationFile *, f32, BoneTransformList *);
+void boneTransformList_interpolate(BoneTransformList *, BoneTransformList *, BoneTransformList *, f32);
 
 //function definitions
 static void __anim_resetTransform(Animation *this, s32 arg1){
