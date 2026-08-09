@@ -527,13 +527,20 @@ void ResourceMgr_HandleDma(void* dramAddr, uint32_t devAddr, uint32_t size) {
         size = availableBytes;
     }
 
-    // Seek and read directly from the ROM file
+    // MTE-safe read: use temp buffer to avoid MTE tag violations
     fseek(f, romOffset, SEEK_SET);
-    size_t bytesRead = fread(dramAddr, 1, size, f);
-    fclose(f);
-
-    if (bytesRead < size) {
-        memset(static_cast<uint8_t*>(dramAddr) + bytesRead, 0, size - bytesRead);
+    uint8_t* tempBuf = (uint8_t*)malloc(size);
+    if (tempBuf) {
+        size_t bytesRead = fread(tempBuf, 1, size, f);
+        fclose(f);
+        memcpy(dramAddr, tempBuf, bytesRead);
+        if (bytesRead < size) {
+            memset(static_cast<uint8_t*>(dramAddr) + bytesRead, 0, size - bytesRead);
+        }
+        free(tempBuf);
+    } else {
+        fclose(f);
+        memset(dramAddr, 0, size);
     }
 
     sched_yield();
