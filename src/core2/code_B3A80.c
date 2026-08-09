@@ -416,22 +416,7 @@ void *assetcache_get(enum asset_e assetId) {
             free(compressed_file);
         }
     }
-    // Evict least-recently-used entry if cache is full
-    if (assetCacheLength >= 150) {
-        int evict_idx = 0;
-        for (int _i = 1; _i < assetCacheLength; _i++) {
-            if (assetCacheDependencyCount[_i] < assetCacheDependencyCount[evict_idx])
-                evict_idx = _i;
-        }
-        if (D_80383CD4[evict_idx])
-            func_803449DC(D_80383CD4[evict_idx]);
-        free(assetCachePtrList[evict_idx]);
-        assetCacheLength--;
-        assetCacheDependencyCount[evict_idx] = assetCacheDependencyCount[assetCacheLength];
-        assetCachePtrList[evict_idx] = assetCachePtrList[assetCacheLength];
-        D_80383CD4[evict_idx] = D_80383CD4[assetCacheLength];
-        assetCacheAssetIdList[evict_idx] = assetCacheAssetIdList[assetCacheLength];
-    }
+    extern u8 assetCacheLength; extern void** assetCachePtrList; extern u8* assetCacheDependencyCount; for (int _i = 0; _i < assetCacheLength; _i++) { if (assetCacheDependencyCount[_i]) { free(assetCachePtrList[_i]); assetCachePtrList[_i] = NULL; } } assetCacheLength = 0;
     assetCacheCurrentIndex = assetCacheLength;
     assetCacheDependencyCount[assetCacheLength] = 1;
     assetCachePtrList[assetCacheLength] = uncompressed_file;
