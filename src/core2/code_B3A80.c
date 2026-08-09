@@ -453,6 +453,16 @@ void assetCache_resizeAsset(void *assetPtr, s32 size){
     assetCachePtrList[i] = realloc(assetPtr, size);
 }
 
+void assetcache_flush(void) {
+    for (int _i = 0; _i < assetCacheLength; _i++) {
+        if (assetCacheDependencyCount[_i] && assetCachePtrList[_i]) {
+            free(assetCachePtrList[_i]);
+            assetCachePtrList[_i] = NULL;
+        }
+    }
+    assetCacheLength = 0;
+}
+
 void assetCache_init(void){
     D_80370A1C = FALSE;
     func_8033B180();
