@@ -1,3 +1,4 @@
+#include "../../Android/app/src/main/cpp/bka_safe_base.h"
 #include <ultra64.h>
 #include "functions.h"
 #include "variables.h"
@@ -48,6 +49,7 @@ f32 func_8033AA10(AnimationFile *this, s32 arg1){
 }
 
 void animationFile_getBoneTransformList(AnimationFile *anim_file, f32 progress, BoneTransformList *bone_transform_list){
+    anim_file = (AnimationFile*)BKA_TRANSLATE_ADDR(anim_file);
     s32 bone_id;
     int i;
     f32 tmp_f22;
