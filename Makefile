@@ -53,6 +53,23 @@ ifeq ($(wildcard $(RECOMP_CC)),)
   $(shell rm $(RECOMP_FILE))
 endif
 
+# MIPS toolchain detection
+find-command = $(shell which $(1) 2>/dev/null)
+find-mips-prefix = $(shell test -n "$(call find-command,$(1)-ld)" && test -n "$(call find-command,$(1)-gcc)" && echo $(1))
+
+MIPS_PREFIX_CANDIDATES := mips64-elf mips-n64 mips64 mips-linux-gnu mips64-linux-gnu mips64-none-elf mips mips-suse-linux
+define _find-mips-toolchain-internal
+$(eval DETECTED_PREFIX :=)
+$(eval _unused := $(foreach prefix,$(MIPS_PREFIX_CANDIDATES),\
+  $(if $(DETECTED_PREFIX),,\
+    $(if $(call find-mips-prefix,$(prefix)),\
+      $(eval DETECTED_PREFIX := $(prefix)-)))))
+$(if $(DETECTED_PREFIX),,$(error Unable to detect a suitable MIPS toolchain installed))
+$(DETECTED_PREFIX)
+endef
+
+find-mips-toolchain = $(strip $(call _find-mips-toolchain-internal))
+
 ### Tools ###
 
 # System tools
@@ -64,12 +81,12 @@ CAT := cat
 DIFF := diff
 
 # Build tools
-CROSS   := mips-linux-gnu-
+CROSS   := $(call find-mips-toolchain)
 CC      := $(RECOMP_CC)
 CPP     := cpp
 GCC     := $(CROSS)gcc
 AS      := $(CROSS)as
-LD      := $(CROSS)ld -b elf32-tradbigmips
+LD      := $(CROSS)ld
 OBJDUMP := $(CROSS)objdump
 OBJCOPY := $(CROSS)objcopy
 PYTHON  := .venv/bin/python3
@@ -194,12 +211,12 @@ CFLAGS         := -c -Wab,-r4300_mul -non_shared -G 0 -Xcpluscomm $(OPT_FLAGS) $
 CFLAGS         += -woff 649,654,838,807
 CPPFLAGS       := -D_FINALROM -DN_MICRO -DNDEBUG -DBUILD_VERSION=VERSION_I -DBKDIFFS
 INCLUDE_CFLAGS := -I . -I include -I lib/ultralib/include -I lib/ultralib/include/PR -I lib/ultralib/include/PRinternal -I lib/ultralib/include/compiler/ido -I include/n_audio/PR -I lib/ultralib/src/audio
-OPT_FLAGS      := -O2 
+OPT_FLAGS      := -O2
 MIPSBIT        := -mips2
 ASFLAGS        := -EB -mtune=vr4300 -march=vr4300 -mabi=32 -I include
-GCC_ASFLAGS    := -c -x assembler-with-cpp -mabi=32 -ffreestanding -mtune=vr4300 -march=vr4300 -mfix4300 -G 0 -O -mno-shared -fno-PIC -mno-abicalls
+GCC_ASFLAGS    := -c -x assembler-with-cpp -Wa,-Iinclude -mabi=32 -ffreestanding -mtune=vr4300 -march=vr4300 -mfix4300 -G 0 -O -mno-shared -fno-PIC -mno-abicalls
 LDFLAGS        := -T $(LD_SCRIPT) -Map $(ELF:.elf=.map) --no-check-sections --accept-unknown-input-arch -T manual_syms.$(VERSION).txt
-BINOFLAGS      := -I binary -O elf32-tradbigmips
+BINOFLAGS      := -r -b binary
 
 ### Rules ###
 
@@ -273,8 +290,8 @@ $(BOOT_ASM_OBJS) : $(BUILD_DIR)/%.s.o : %.s | $(ASM_BUILD_DIRS)
 
 # .bin -> .o
 $(BIN_OBJS) : $(BUILD_DIR)/%.bin.o : %.bin | $(BIN_BUILD_DIRS)
-	$(call print2,Objcopying:,$<,$@)
-	@$(OBJCOPY) $(BINOFLAGS) $< $@
+	$(call print2,Embedding:,$<,$@)
+	@$(LD) $(BINOFLAGS) -o $@ $<
 
 # .c -> .o
 $(BUILD_DIR)/%.c.o : %.c | $(C_BUILD_DIRS)
@@ -292,7 +309,7 @@ $(GLOBAL_ASM_C_OBJS) : $(BUILD_DIR)/%.c.o : %.c | $(C_BUILD_DIRS)
 $(BOOT_C_OBJS) : $(BUILD_DIR)/%.c.o : %.c | $(C_BUILD_DIRS)
 	$(call print2,Compiling:,$<,$@)
 	@$(CC) $(CFLAGS) $(CPPFLAGS) $(INCLUDE_CFLAGS) $(OPT_FLAGS) $(MIPSBIT) -o $@ $<
-	@mips-linux-gnu-strip $@ -N asdasdasasdasd
+	@$(CROSS)strip $@ -N asdasdasasdasd
 	@$(OBJCOPY) --prefix-symbols=boot_ $@
 	@$(OBJCOPY) --strip-unneeded $@
 
@@ -334,8 +351,8 @@ endif
 
 # .bin -> .o
 $(ASSET_OBJS): $(ASSET_BIN)
-	$(call print2,Objcopying:,$<,$@)
-	@$(OBJCOPY) $(BINOFLAGS) $< $@
+	$(call print2,Embedding:,$<,$@)
+	@$(LD) $(BINOFLAGS) -o $@ $<
 
 # decompress baserom
 $(DECOMPRESSED_BASEROM): $(BASEROM) $(BK_ROM_DECOMPRESS)
