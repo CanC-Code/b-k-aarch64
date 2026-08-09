@@ -1,3 +1,4 @@
+#include <sys/prctl.h>
 #include <jni.h>
 #include <android/asset_manager.h>
 #include <android/asset_manager_jni.h>
@@ -148,6 +149,8 @@ extern "C" {
 }
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
+    // Disable MTE synchronous tag checking to avoid SEGV_ACCERR crashes
+    prctl(PR_SET_TAGGED_ADDR_CTRL, PR_TAGGED_ADDR_ENABLE, 0, 0, 0);
     g_jvm = vm;
     LOGI("NativeBridge: JNI Link established securely.");
     return JNI_VERSION_1_6;
