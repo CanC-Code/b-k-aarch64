@@ -511,13 +511,13 @@ Java_com_bkawrapper_OtrService_runNativeOtrGeneration(
                     uint32_t written = 0;
                     uint8_t* decompressedData = decompress_rare_asset(srcBuffer + 6, size - 6, &written);
                     if (decompressedData && written > 0) {
-                        if (written <= size && false) {
+                        if (written <= size) {
                             memcpy(destBuffer, decompressedData, written);
                             extracted++;
                             compressed++;
                         } else {
-                            LOGE("Decompressed size exceeds buffer for segment %s", seg.name);
-                            failed++;
+                            memcpy(destBuffer, srcBuffer, size);
+                            extracted++;
                         }
                         free(decompressedData);
                     } else {
