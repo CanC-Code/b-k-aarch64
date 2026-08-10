@@ -5,6 +5,9 @@ extern void BKA_FrameSyncHook(void);
 #include "variables.h"
 #include "version.h"
 #include "gc/gctransition.h"
+#ifdef __ANDROID__
+#include <sched.h>
+#endif
 
 #define MAIN_THREAD_STACK_SIZE 0x17F0
 
@@ -131,6 +134,9 @@ void globalTimer_decTimer(void) {
 }
 
 void mainLoop(void){
+#ifdef __ANDROID__
+    static int frame_count = 0;
+#endif
     s32 x, y;
     s32 r, g, b, a;
     u16 tmp;
@@ -210,6 +216,9 @@ void mainThread_entry(void *arg) {
 
     while (1) {
         BKA_FrameSyncHook();
+        #ifdef __ANDROID__
+        if (++frame_count % 2 == 0) sched_yield();
+#endif
         mainLoop();
     }
 }
