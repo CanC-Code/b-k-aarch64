@@ -529,6 +529,7 @@ void ResourceMgr_HandleDma(void* dramAddr, uint32_t devAddr, uint32_t size) {
 
     // MTE-safe read: use temp buffer to avoid MTE tag violations
     fseek(f, romOffset, SEEK_SET);
+    if (size > 128 * 1024 * 1024) { LOGE("ResourceMgr_HandleDma: size too large: %u", size); fclose(f); memset(dramAddr, 0, size > 16*1024*1024 ? 16*1024*1024 : size); return; }
     uint8_t* tempBuf = (uint8_t*)malloc(size);
     if (tempBuf) {
         size_t bytesRead = fread(tempBuf, 1, size, f);
