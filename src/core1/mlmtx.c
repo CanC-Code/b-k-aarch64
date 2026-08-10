@@ -304,7 +304,8 @@ void mlMtxRotYaw(f32 arg0) {
     }
 }
 
-void mlMtxRotRoll(f32 arg0) {  
+void mlMtxRotRoll(f32 arg0) {
+    if (s_mtx_stack == NULL) s_mtx_stack = &D_80282810[0];  
     f32 cos;
     f32 sin;
     f32 var_f10;
