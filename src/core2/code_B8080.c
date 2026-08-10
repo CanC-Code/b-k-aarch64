@@ -152,8 +152,11 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
     // MTE workaround: read raw s16 at offset 0 for count, avoid struct access
     s16 raw_count;
     BKMeshList *orig_this = this;  // Save original pointer before overwriting
+    if (orig_this == NULL || bk_vtx_list == NULL) return NULL;
     __builtin_memcpy(&raw_count, orig_this, sizeof(s16));
+    if (raw_count <= 0 || raw_count > 10000) return NULL; // sanity check
     this = (BKMeshList*)malloc(sizeof(BKMeshList) + raw_count * sizeof(BKMesh));
+    if (this == NULL) return NULL;
     __builtin_memcpy(this, (void*)((uintptr_t)orig_this & 0xFFFFFFFFFFFFULL), sizeof(BKMeshList) + raw_count * sizeof(BKMesh));
     s32 temp_s1;
     BKModel *model;
