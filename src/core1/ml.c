@@ -403,15 +403,17 @@ void func_80256F44(f32 vec1[3], f32 vec2[3], f32 vec3[3], f32 dst[3])
 f32 ml_acosf(f32 x)
 {
     // Clamp input to valid range for acos
-    if (x > 1.0f) x = 1.0f;
-    if (x < -1.0f) x = -1.0f;
+    if (x > 0.9999f) x = 0.9999f;
+    if (x < -0.9999f) x = -0.9999f;
     u16 lowerIdx = 0;
     u16 upperIdx = 10000;
     u16 idx      = 10000;
 
     f32 x_abs = ((x >= 0) ? x : -x);
+    if (x_abs > 0.9999f) x_abs = 0.9999f;
 
-    u16 target = x_abs * 65535.0;
+    u16 target = (u16)(x_abs * 65535.0f);
+    if (target > 65534) target = 65534;
 
     while ((upperIdx - lowerIdx >= 2) && (target != D_80276CB8[idx])){
         idx = (upperIdx + lowerIdx) / 2;
