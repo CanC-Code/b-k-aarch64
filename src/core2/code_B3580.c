@@ -98,6 +98,7 @@ void boneTransformList_interpolate(BoneTransformList *this, BoneTransformList *s
 
 
 void func_8033A8F0(BoneTransformList *this, s32 bone_id, f32 arg2[4]){
+    this = (BoneTransformList *)((uintptr_t)this & 0xFFFFFFFFFFFFULL);
     vec4f_clone(&this->ptr[bone_id], arg2);
 }
 
