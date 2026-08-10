@@ -447,10 +447,14 @@ void ResourceMgr_HandleDma(void* dramAddr, uint32_t devAddr, uint32_t size) {
     }
 
     if (f) {
-        size_t bytesRead = fread(dramAddr, 1, size, f);
+        int fd1 = fileno(f);
+        ssize_t bytesRead = pread(fd1, dramAddr, size, 0);
         fclose(f);
-        if (bytesRead < size) {
-            memset(static_cast<uint8_t*>(dramAddr) + bytesRead, 0, size - bytesRead);
+        if (bytesRead > 0) {
+            if ((size_t)bytesRead < size)
+                memset((uint8_t*)dramAddr + bytesRead, 0, size - bytesRead);
+        } else {
+            memset(dramAddr, 0, size);
         }
         sched_yield();
         return;
