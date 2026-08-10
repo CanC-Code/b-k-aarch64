@@ -98,8 +98,12 @@ void boneTransformList_interpolate(BoneTransformList *this, BoneTransformList *s
 
 
 void func_8033A8F0(BoneTransformList *this, s32 bone_id, f32 arg2[4]){
+    if (this == NULL) return;
     this = (BoneTransformList *)((uintptr_t)this & 0xFFFFFFFFFFFFULL);
-    vec4f_clone(&this->ptr[bone_id], arg2);
+    if (this->ptr == NULL) return;
+    // MTE: strip tag from ptr before indexing
+    BoneTransform *bt = (BoneTransform *)((uintptr_t)this->ptr & 0xFFFFFFFFFFFFULL);
+    vec4f_clone(&bt[bone_id], arg2);
 }
 
 void boneTransformList_setBoneScale(BoneTransformList *this, s32 bone_id, f32 scale[3]) {
