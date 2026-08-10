@@ -149,19 +149,11 @@ void model_free(BKModel *this) {
 }
 
 BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
-    // MTE workaround: copy entire mesh list to avoid tag mismatch on decompressed ROM data
-    s32 count = 0;
-    memcpy(&count, &this->count, sizeof(s16));
-    s32 vtx_total = 0;
-    for (s32 m = 0; m < count; m++) {
-        BKMesh *mesh = (BKMesh*)((u8*)this->data);
-        for (s32 mm = 0; mm < m; mm++) mesh = (BKMesh*)((u8*)mesh + sizeof(BKMesh) + mesh->vtx_count * sizeof(s16));
-        vtx_total += mesh->vtx_count;
-    }
-    s32 safe_size = sizeof(BKMeshList) + count * sizeof(BKMesh) + vtx_total * sizeof(s16);
-    void *safe_this = malloc(safe_size);
-    memcpy(safe_this, this, sizeof(BKMeshList) + count * sizeof(BKMesh) + vtx_total * sizeof(s16));
-    this = (BKMeshList*)safe_this;
+    // MTE workaround: read raw s16 at offset 0 for count, avoid struct access
+    s16 raw_count;
+    __builtin_memcpy(&raw_count, this, sizeof(s16));
+    this = (BKMeshList*)malloc(sizeof(BKMeshList) + raw_count * sizeof(BKMesh));
+    __builtin_memcpy(this, (void*)((uintptr_t)this & 0xFFFFFFFFFFFFULL), sizeof(BKMeshList) + raw_count * sizeof(BKMesh));
     s32 temp_s1;
     BKModel *model;
     void *temp_v0;
