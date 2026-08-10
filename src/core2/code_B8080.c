@@ -166,7 +166,7 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
     model->mesh_list = this;
     model->vtx_list = bk_vtx_list;
 
-    src_mesh = (BKMesh *)((uint8_t*)this + sizeof(BKMeshList));
+    src_mesh = (BKMesh *)(((uintptr_t)this & 0xFFFFFFFFFFFFULL) + sizeof(BKMeshList));
     dst_mesh = (BKModelMesh *) model->data;
 
     for (i = 0; i < mesh_count; i++) {
