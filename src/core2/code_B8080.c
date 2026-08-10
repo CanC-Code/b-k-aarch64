@@ -150,7 +150,7 @@ void model_free(BKModel *this) {
 }
 
 BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
-    return NULL;
+    return NULL; // Stubbed: MTE tags on RDRAM source data
 }
 
 
