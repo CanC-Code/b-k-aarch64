@@ -101,8 +101,10 @@ void func_8033A8F0(BoneTransformList *this, s32 bone_id, f32 arg2[4]){
     if (this == NULL) return;
     this = (BoneTransformList *)((uintptr_t)this & 0xFFFFFFFFFFFFULL);
     if (this->ptr == NULL) return;
+    if (bone_id < 0 || bone_id >= 256) return; // sanity bounds check
     // MTE: strip tag from ptr before indexing
     BoneTransform *bt = (BoneTransform *)((uintptr_t)this->ptr & 0xFFFFFFFFFFFFULL);
+    if (bt == NULL) return;
     vec4f_clone(&bt[bone_id], arg2);
 }
 
