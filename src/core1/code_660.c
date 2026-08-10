@@ -88,8 +88,8 @@ void func_8023E0E8(void){
 }
 
 static int _rarezip_inflate(u8 * src, u8 * dst, struct huft * arg2){
-    D_8027BF10 = src;
-    D_8027BF14 = dst;
+    D_8027BF10 = (u8 *)((uintptr_t)src & 0xFFFFFFFFFFFFULL);
+    D_8027BF14 = (u8 *)((uintptr_t)dst & 0xFFFFFFFFFFFFULL);
     D_8027BF20 = arg2;
     D_8027BF10 += COMP_HEADER_SIZE;
     D_8027BF1C = 0;
