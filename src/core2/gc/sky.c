@@ -118,7 +118,9 @@ void sky_reset(void){
             gcSky.model_bins[i] = assetcache_get(gcSky.sky_info->sky_list[i].model_id);
             if(modelbin_getMeshList(gcSky.model_bins[i])){
                 gcSky.model[i] = meshList_createModel(modelbin_getMeshList(gcSky.model_bins[i]), modelbin_getVtxList( gcSky.model_bins[i]));
-                func_8034C6DC(gcSky.model[i]);
+                if (gcSky.model[i] != NULL) {
+                    func_8034C6DC(gcSky.model[i]);
+                }
             }
         }
     }
