@@ -416,6 +416,7 @@ void *assetcache_get(enum asset_e assetId) {
             free(compressed_file);
         }
     }
+    extern u8 assetCacheLength; extern void** assetCachePtrList; extern u8* assetCacheDependencyCount; for (int _i = 0; _i < assetCacheLength; _i++) { if (assetCacheDependencyCount[_i]) { free(assetCachePtrList[_i]); assetCachePtrList[_i] = NULL; } } assetCacheLength = 0;
     assetCacheCurrentIndex = assetCacheLength;
     assetCacheDependencyCount[assetCacheLength] = 1;
     assetCachePtrList[assetCacheLength] = uncompressed_file;
