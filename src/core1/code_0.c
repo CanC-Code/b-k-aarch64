@@ -215,11 +215,10 @@ void mainThread_entry(void *arg) {
     sns_write_payload_over_heap();
 
     while (1) {
-        BKA_FrameSyncHook();
-        #ifdef __ANDROID__
+        mainLoop();
+#ifdef __ANDROID__
         if (++frame_count % 2 == 0) sched_yield();
 #endif
-        mainLoop();
     }
 }
 
