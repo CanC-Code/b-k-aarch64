@@ -133,10 +133,10 @@ void globalTimer_decTimer(void) {
     gGlobalTimer--;
 }
 
-void mainLoop(void){
 #ifdef __ANDROID__
-    static int frame_count = 0;
+static int frame_count = 0;
 #endif
+void mainLoop(void){
     s32 x, y;
     s32 r, g, b, a;
     u16 tmp;
