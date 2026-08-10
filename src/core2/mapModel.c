@@ -594,6 +594,24 @@ void func_8030A078(void) {
     mapModel.description = description;
     mapModel.scale = (f32) description->scale;
     mapModel.model_bin_opa = (BKModelBin *)assetcache_get(mapModel.description->opa_model_id);
+    // Byteswap BKModelBin fields from N64 big-endian to ARM64 little-endian
+    if (mapModel.model_bin_opa) {
+        BKModelBin *bin = mapModel.model_bin_opa;
+        bin->geo_list_offset = __builtin_bswap32(bin->geo_list_offset);
+        bin->gfx_list_offset = __builtin_bswap32(bin->gfx_list_offset);
+        bin->vtx_list_offset = __builtin_bswap32(bin->vtx_list_offset);
+        bin->unk14_list_offset = __builtin_bswap32(bin->unk14_list_offset);
+        bin->animation_list_offset = __builtin_bswap32(bin->animation_list_offset);
+        bin->collision_list_offset = __builtin_bswap32(bin->collision_list_offset);
+        bin->camera_area_list_offset = __builtin_bswap32(bin->camera_area_list_offset);
+        bin->mesh_list_offset = __builtin_bswap32(bin->mesh_list_offset);
+        bin->anim_vertices_list_offset = __builtin_bswap32(bin->anim_vertices_list_offset);
+        bin->animated_texture_list_offset = __builtin_bswap32(bin->animated_texture_list_offset);
+        bin->texture_list_offset = __builtin_bswap16(bin->texture_list_offset);
+        bin->geo_type = __builtin_bswap16(bin->geo_type);
+        bin->unk30 = __builtin_bswap16(bin->unk30);
+        bin->vertex_count = __builtin_bswap16(bin->vertex_count);
+    }
     mapModel.collision_opa = modelbin_getCollisionList(mapModel.model_bin_opa);
     mapModel.unk20 = 0;
     if (mapModel.description->xlu_model_id != 0) {
