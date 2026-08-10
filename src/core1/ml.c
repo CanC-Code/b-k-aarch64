@@ -402,12 +402,13 @@ void func_80256F44(f32 vec1[3], f32 vec2[3], f32 vec3[3], f32 dst[3])
 
 f32 ml_acosf(f32 x)
 {
-    // Clamp input to valid range for acos
+    // Clamp input to avoid NaN/Inf and out-of-range values
     if (x > 0.9999f) x = 0.9999f;
     if (x < -0.9999f) x = -0.9999f;
+
     u16 lowerIdx = 0;
     u16 upperIdx = 10000;
-    u16 idx      = 10000;
+    u16 idx      = 5000;   // start safely inside table
 
     f32 x_abs = ((x >= 0) ? x : -x);
     if (x_abs > 0.9999f) x_abs = 0.9999f;
@@ -415,16 +416,18 @@ f32 ml_acosf(f32 x)
     u16 target = (u16)(x_abs * 65535.0f);
     if (target > 65534) target = 65534;
 
+    // Binary search with explicit bounds guard on every table access
     while ((upperIdx - lowerIdx >= 2) && (target != D_80276CB8[idx])){
         idx = (upperIdx + lowerIdx) / 2;
-
-        if (target < D_80276CB8[idx]) 
+        if (idx >= 10000) { idx = 9999; break; }
+        if (target < D_80276CB8[idx])
             upperIdx = idx;
         else
             lowerIdx = idx;
-    };
-
-    return idx * 90.0 / 10000.0;
+    }
+    // Final safety: ensure idx is within 0..9999
+    if (idx >= 10000) idx = 9999;
+    return idx * 90.0f / 10000.0f;
 }
 
 f32 func_8025715C(f32 val1, f32 val2)
