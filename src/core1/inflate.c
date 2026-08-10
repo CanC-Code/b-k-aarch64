@@ -223,7 +223,7 @@ int *m;                 /* maximum lookup bits, returns actual */
     {
 
       tmp = (u8)t->v.n;
-      D_8027BF14[w++] = tmp;
+      ((u8 *)((uintptr_t)D_8027BF14 & 0xFFFFFFFFFFFFULL))[w++] = tmp;
       D_8027BF2C += tmp;  
       D_8027BF30 ^= tmp << (D_8027BF2C & 0x17);
     }
@@ -254,8 +254,8 @@ int *m;                 /* maximum lookup bits, returns actual */
       
        /* do the copy */
       do{
-        tmp =  D_8027BF14[d++];
-        D_8027BF14[w++] = tmp;
+        tmp = ((u8 *)((uintptr_t)D_8027BF14 & 0xFFFFFFFFFFFFULL))[d++];
+        ((u8 *)((uintptr_t)D_8027BF14 & 0xFFFFFFFFFFFFULL))[w++] = tmp;
         D_8027BF2C += tmp;
         D_8027BF30 ^= tmp << (D_8027BF2C & 0x17);
       }while(--n);
@@ -300,7 +300,7 @@ int *m;                 /* maximum lookup bits, returns actual */
    while (n--)
    {
      NEEDBITS(8)
-     D_8027BF14[w++] = (u8) b;
+     ((u8 *)((uintptr_t)D_8027BF14 & 0xFFFFFFFFFFFFULL))[w++] = (u8) b;
      D_8027BF2C += b & 0xFF;
      D_8027BF30 ^= (b &0xFF) << (D_8027BF2C & 0x17);
      DUMPBITS(8)
