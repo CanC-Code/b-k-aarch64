@@ -91,6 +91,10 @@ static inline uintptr_t BKA_Validate_And_Translate(
                                                    return reg + (mask32 - 0x04000000u);
     if (mask32 >= 0xA4000000u && mask32 < 0xA5000000u)
                                                    return reg + (mask32 - 0xA4000000u);
+    /* RSP DMEM/IMEM uncached mirror (0x40000000) */
+    if (mask32 >= 0x40000000u && mask32 < 0x41000000u)
+                                                   return reg + (mask32 - 0x40000000u);
+                                                   return reg + (mask32 - 0xA4000000u);
     /* PIF ROM/RAM (0x1FC00000) */
     if (mask32 >= 0x1FC00000u && mask32 < 0x1FC01000u)
                                                    return pif + (mask32 - 0x1FC00000u);
