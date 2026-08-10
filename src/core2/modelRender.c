@@ -1178,6 +1178,7 @@ BKCollisionList *modelbin_getCollisionList(BKModelBin *this) {
 }
 
 BKMeshList *modelbin_getMeshList(BKModelBin *this) {
+    if (this == NULL) return NULL;
     if (this->mesh_list_offset == 0)
         return NULL;
 
