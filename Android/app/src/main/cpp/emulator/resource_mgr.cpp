@@ -433,7 +433,7 @@ void ResourceMgr_HandleDma(void* dramAddr, uint32_t devAddr, uint32_t size) {
         return;
     }
 
-    char path[512];
+    static char path[512];
     uint32_t relativeRomOffset = devAddr & 0x0FFFFFFF;
 
     // --- PATH 1: Try pre-extracted asset file ---
