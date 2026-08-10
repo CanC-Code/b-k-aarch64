@@ -470,7 +470,7 @@ void ResourceMgr_HandleDma(void* dramAddr, uint32_t devAddr, uint32_t size) {
     // ROM offsets like 0x00001050 are < 0x10000000 and will correctly fall
     // through to PATH 3.
     uintptr_t dramVal = reinterpret_cast<uintptr_t>(dramAddr);
-    if (dramVal > 0xFFFFFFFFULL && dramVal < 0x700000000000ULL && devAddr > 0x10000000 && (devAddr >> 24) != 0x10) {
+    if (dramVal > 0xFFFFFFFFULL && dramVal >= 0x700000000000ULL && devAddr > 0x10000000 && (devAddr >> 24) != 0x10) {
         // dramAddr is a 64-bit host pointer. Try to interpret devAddr as
         // a truncated 64-bit host pointer by borrowing dramAddr's upper bits.
         uintptr_t srcPtr = (dramVal & 0xFFFFFFFF00000000ULL) | devAddr;
