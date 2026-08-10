@@ -88,21 +88,44 @@ void func_8023E0E8(void){
 }
 
 static int _rarezip_inflate(u8 * src, u8 * dst, struct huft * arg2){
-    D_8027BF10 = (u8 *)((uintptr_t)src & 0xFFFFFFFFFFFFULL);
-    D_8027BF14 = (u8 *)((uintptr_t)dst & 0xFFFFFFFFFFFFULL);
-    D_8027BF20 = (struct huft *)((uintptr_t)arg2 & 0xFFFFFFFFFFFFULL);
-    D_8027BF10 += COMP_HEADER_SIZE;
+    // Set boot/inflate.c globals (the version the linker keeps)
+    extern u8 *inflate_inbuf;
+    extern u8 *inflate_slide;
+    extern struct huft_s *inflate_huft;
+    extern u32 inflate_inptr;
+    extern u32 inflate_wp;
+    
+    inflate_inbuf = (u8 *)((uintptr_t)src & 0xFFFFFFFFFFFFULL);
+    inflate_slide = (u8 *)((uintptr_t)dst & 0xFFFFFFFFFFFFULL);
+    inflate_huft = (struct huft_s *)((uintptr_t)arg2 & 0xFFFFFFFFFFFFULL);
+    inflate_inbuf += COMP_HEADER_SIZE;
+    inflate_wp = 0;
+    inflate_inptr = 0;
+    
+    // Also set D_ globals for any code that reads them
+    D_8027BF10 = inflate_inbuf;
+    D_8027BF14 = inflate_slide;
+    D_8027BF20 = (struct huft *)inflate_huft;
     D_8027BF1C = 0;
     D_8027BF18 = 0;
+    
     inflate();
-    return D_8027BF1C;
+    
+    // Sync back
+    D_8027BF1C = inflate_wp;
+    D_8027BF18 = inflate_inptr;
+    
+    return inflate_wp;
 }
 
 static int _rarezip_uncompress(u8 **srcPtr, u8 **dstPtr, struct huft * arg2){
     int result;
+    extern u32 inflate_wp;
+    extern u32 inflate_inptr;
+    
     result = _rarezip_inflate(*srcPtr, *dstPtr, arg2);
-    *dstPtr = *dstPtr + D_8027BF1C;
+    *dstPtr = *dstPtr + inflate_wp;
     *dstPtr = ((uintptr_t)*dstPtr & 0xF) ? (u8 *) ((uintptr_t)*dstPtr & -0x10) + 0x10: *dstPtr;
-    *srcPtr = *srcPtr + D_8027BF18 + COMP_HEADER_SIZE;
+    *srcPtr = *srcPtr + inflate_inptr + COMP_HEADER_SIZE;
     return result;
 }
