@@ -149,10 +149,6 @@ void model_free(BKModel *this) {
 }
 
 BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
-    // MTE workaround: allocate fresh memory for the model to ensure tag consistency
-    void *safe_this = malloc(sizeof(BKMeshList) + (this->count * sizeof(BKMesh)));
-    memcpy(safe_this, this, sizeof(BKMeshList) + (this->count * sizeof(BKMesh)));
-    this = (BKMeshList*)safe_this;
     s32 temp_s1;
     BKModel *model;
     void *temp_v0;
