@@ -76,6 +76,7 @@ void animationFile_getBoneTransformList(AnimationFile *anim_file, f32 progress, 
 }
 
 f32 func_8033ABA0(AnimationFile *this, f32 arg1){
+    if (this == NULL) return 0.0f;
     return this->unk0 + arg1*(this->unk2 - this->unk0);
 }
 
