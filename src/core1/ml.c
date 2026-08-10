@@ -400,11 +400,11 @@ void func_80256F44(f32 vec1[3], f32 vec2[3], f32 vec3[3], f32 dst[3])
     TUPLE_ADD_COPY(dst, vec1, tmp1)
 }
 
-f32 ml_acosf(f32 x) {
+f32 ml_acosf(f32 x)
+{
     // Clamp input to valid range for acos
     if (x > 1.0f) x = 1.0f;
     if (x < -1.0f) x = -1.0f;
-{
     u16 lowerIdx = 0;
     u16 upperIdx = 10000;
     u16 idx      = 10000;
