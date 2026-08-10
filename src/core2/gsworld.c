@@ -411,6 +411,7 @@ void gsworld_load(enum map_e map_id) {
 
     f = file_openMap(map_id);
 
+    if (!f) return;
     while (!file_isNextByteExpected(f, GS_WORLD_START_INDICATOR_0_END)) {
         if (file_isNextByteExpected(f, GS_WORLD_START_INDICATOR_2_UNUSED)) {
             /* NO OP */
