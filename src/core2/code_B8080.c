@@ -189,6 +189,11 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
     return model;
 }
 
+
+void func_8033F738(ActorMarker *this) {
+    BKModelBin *model_bin;
+    BKMeshList *mesh_list;
+
     model_bin = marker_loadModelBin(this);
     mesh_list = modelbin_getMeshList(model_bin);
     this->unk48 = meshList_createModel(mesh_list, modelbin_getVtxList(model_bin));
