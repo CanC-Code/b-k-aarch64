@@ -102,7 +102,7 @@ static bool InitializeDecompressionBuffers(const char* romPath) {
 
     if (size <= 0) {
         LOGE("InitializeDecompressionBuffers: Invalid ROM size in %s!", romPath);
-        fclose(f);
+        fclose(f); (void)fd;
         free(D_80007284);
         free(D_80007290);
         D_80007284 = nullptr;
@@ -113,7 +113,7 @@ static bool InitializeDecompressionBuffers(const char* romPath) {
     inbuf = (u8 *)malloc(size);
     if (!inbuf) {
         LOGE("InitializeDecompressionBuffers: Failed to allocate input buffer!");
-        fclose(f);
+        fclose(f); (void)fd;
         free(D_80007284);
         free(D_80007290);
         D_80007284 = nullptr;
@@ -122,7 +122,7 @@ static bool InitializeDecompressionBuffers(const char* romPath) {
     }
 
     size_t bytesRead = fread(inbuf, 1, size, f);
-    fclose(f);
+    fclose(f); (void)fd;
 
     if (bytesRead != static_cast<size_t>(size)) {
         LOGE("InitializeDecompressionBuffers: Failed to read full ROM file!");
@@ -185,14 +185,14 @@ static bool parseSplatSegments(const char* path, std::vector<SegmentRecord>& out
     fseek(f, 0, SEEK_SET);
 
     if (fileSize <= 0) {
-        fclose(f);
+        fclose(f); (void)fd;
         return false;
     }
 
     std::string buffer;
     buffer.resize(static_cast<size_t>(fileSize));
     size_t readBytes = fread(&buffer[0], 1, static_cast<size_t>(fileSize), f);
-    fclose(f);
+    fclose(f); (void)fd;
     buffer.resize(readBytes);
 
     outSegments.clear();
@@ -357,7 +357,7 @@ void ResourceMgr_Init(const char* assetDir) {
 
     if (g_romSize == 0 || g_romSize > 128 * 1024 * 1024) {
         LOGE("ResourceMgr: FATAL ERROR - Invalid rom_base.bin size detected: %zu bytes", g_romSize);
-        fclose(f);
+        fclose(f); (void)fd;
         CleanupDecompressionBuffers();
         g_romSize = 0;
         return;
@@ -374,7 +374,7 @@ void ResourceMgr_Init(const char* assetDir) {
         gN64_ROM_Base = static_cast<uint8_t*>(malloc(g_romSize));
         if (!gN64_ROM_Base) {
             LOGE("ResourceMgr: FATAL ERROR - Memory pointer verification failed. Cannot parse ROM stream.");
-            fclose(f);
+            fclose(f); (void)fd;
             CleanupDecompressionBuffers();
             return;
         }
@@ -385,7 +385,7 @@ void ResourceMgr_Init(const char* assetDir) {
     LOGI("ResourceMgr: Streaming binary database targets into virtual memory locations...");
     size_t bytesRead = fread(gN64_ROM_Base, 1, g_romSize, f);
     LOGI("ResourceMgr: Verification validation sequence populated %zu bytes into ROM base block.", bytesRead);
-    fclose(f);
+    fclose(f); (void)fd;
 
     // --- Load splat YAML segment boundaries ---
     char manifestPath[512];
@@ -446,7 +446,7 @@ void ResourceMgr_HandleDma(void* dramAddr, uint32_t devAddr, uint32_t size) {
 
     if (f) {
         size_t bytesRead = fread(dramAddr, 1, size, f);
-        fclose(f);
+        fclose(f); (void)fd;
         if (bytesRead < size) {
             memset(static_cast<uint8_t*>(dramAddr) + bytesRead, 0, size - bytesRead);
         }
@@ -515,7 +515,7 @@ void ResourceMgr_HandleDma(void* dramAddr, uint32_t devAddr, uint32_t size) {
     if (romOffset >= static_cast<uint32_t>(fileSize)) {
         LOGE("ResourceMgr_HandleDma: ROM offset 0x%X exceeds file size %ld. Zeroing.", romOffset, fileSize);
         memset(dramAddr, 0, size);
-        fclose(f);
+        fclose(f); (void)fd;
         sched_yield();
         return;
     }
@@ -528,19 +528,20 @@ void ResourceMgr_HandleDma(void* dramAddr, uint32_t devAddr, uint32_t size) {
     }
 
     // MTE-safe read: use temp buffer to avoid MTE tag violations
-    fseek(f, romOffset, SEEK_SET);
-    if (size > 128 * 1024 * 1024) { LOGE("ResourceMgr_HandleDma: size too large: %u", size); fclose(f); memset(dramAddr, 0, size > 16*1024*1024 ? 16*1024*1024 : size); return; }
+    // Use pread to avoid libc buffered I/O stack usage
+    int fd = fileno(f);
+    if (size > 128 * 1024 * 1024) { LOGE("ResourceMgr_HandleDma: size too large: %u", size); fclose(f); (void)fd; memset(dramAddr, 0, size > 16*1024*1024 ? 16*1024*1024 : size); return; }
     uint8_t* tempBuf = (uint8_t*)malloc(size);
     if (tempBuf) {
-        size_t bytesRead = fread(tempBuf, 1, size, f);
-        fclose(f);
+        ssize_t bytesRead = pread(fd, tempBuf, size, romOffset);
+        fclose(f); (void)fd;
         memcpy(dramAddr, tempBuf, bytesRead);
         if (bytesRead < size) {
             memset(static_cast<uint8_t*>(dramAddr) + bytesRead, 0, size - bytesRead);
         }
         free(tempBuf);
     } else {
-        fclose(f);
+        fclose(f); (void)fd;
         memset(dramAddr, 0, size);
     }
 
