@@ -219,7 +219,7 @@ void osStartThread(OSThread *t) {
         auto arg = new std::shared_ptr<NativeThread>(nt);
         pthread_attr_t attr1;
         pthread_attr_init(&attr1);
-        pthread_attr_setstacksize(&attr1, 4 * 1024 * 1024);
+        pthread_attr_setstacksize(&attr1, 16 * 1024 * 1024);
         if (pthread_create(&nt->thread, &attr1, NativeThreadWrapper, arg) == 0) {
             pthread_detach(nt->thread);
         } else {
@@ -433,7 +433,7 @@ void osCreatePiManager(OSPri pri, OSMesgQueue *cmdQ, OSMesg *cmdBuf, s32 cmdMsgC
     s_hlePiCmdQueue = cmdQ;
     pthread_attr_t attr2;
     pthread_attr_init(&attr2);
-    pthread_attr_setstacksize(&attr2, 4 * 1024 * 1024);
+    pthread_attr_setstacksize(&attr2, 16 * 1024 * 1024);
     pthread_create(&s_hlePiMgrThread, &attr2, HLE_PiManagerWorker, nullptr);
     pthread_detach(s_hlePiMgrThread);
     LOGI("BKA-HLE: osCreatePiManager successfully generated.");

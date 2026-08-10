@@ -254,7 +254,7 @@ Java_com_bkawrapper_NativeBridge_nativeGameBoot(JNIEnv* env, jclass clazz,
         LOGI("NativeBridge: Allocating background worker thread contexts...");
         pthread_attr_t attr;
         pthread_attr_init(&attr);
-        pthread_attr_setstacksize(&attr, 4 * 1024 * 1024); // 4MB stack
+        pthread_attr_setstacksize(&attr, 16 * 1024 * 1024); // 4MB stack
         if (pthread_create(&gameThread, &attr, game_thread_fn, nullptr) == 0) {
             pthread_detach(gameThread);
             g_engineThreadActive = true;
