@@ -59,6 +59,7 @@ void model_getMeshCenter(BKModel *this, s32 mesh_id, s16 dst[3]) {
 
 
 BKMeshList *model_getMeshList(BKModel *this) {
+    if (this == NULL || this->mesh_list == NULL) return NULL;
     return this->mesh_list;
 }
 
