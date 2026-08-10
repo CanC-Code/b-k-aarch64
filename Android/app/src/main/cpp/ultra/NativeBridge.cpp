@@ -151,8 +151,9 @@ extern "C" {
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
     // Disable MTE synchronous tag checking to avoid SEGV_ACCERR crashes
-    // Disable tagged address mode - we strip MTE tags manually in BKA_TRANSLATE_ADDR
-    prctl(PR_SET_TAGGED_ADDR_CTRL, 0, 0, 0, 0);
+    // Enable tagged address mode (memtagMode=off in manifest disables sync checks)
+    // MTE tags are stripped in BKA_TRANSLATE_ADDR for N64 pointers from RDRAM
+    prctl(PR_SET_TAGGED_ADDR_CTRL, PR_TAGGED_ADDR_ENABLE, 0, 0, 0);
     struct rlimit rl = {16 * 1024 * 1024, 16 * 1024 * 1024};
     setrlimit(RLIMIT_STACK, &rl);
     g_jvm = vm;
