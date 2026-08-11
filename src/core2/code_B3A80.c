@@ -47,6 +47,27 @@ f32 func_8033AA10(AnimationFile *this, s32 arg1){
         return 0.999999f;
     return (f32)(arg1 - this->unk0)/(f32)(this->unk2 - this->unk0);
 }
+    tmp_f22 = func_8033ABA0(anim_file, progress);
+    tmp_s0 = (AnimationFileElement *)((s32)anim_file + sizeof(AnimationFile));
+    bone_id = 0;
+    for(i = 0; i < anim_file->elem_cnt; i++){//L8033AAB8
+        if(tmp_s0->unk0_15 != bone_id){
+            if(bone_id != 0)
+                func_8033AFB8(bone_transform_list, bone_id, sp54);
+            bone_id = tmp_s0->unk0_15;
+            sp54[0][0] = sp54[0][1] = sp54[0][2] = 0.0f;
+            sp54[1][0] = sp54[1][1] = sp54[1][2] = 1.0f;
+            sp54[2][0] = sp54[2][1] = sp54[2][2] = 0.0f;
+        }
+        sp54[0][tmp_s0->unk0_3] = func_8033AC38(anim_file, tmp_s0, tmp_f22);
+        tmp_s0 += tmp_s0->data_cnt;
+        tmp_s0++;
+    }//L8033AB60
+    func_8033AFB8(bone_transform_list, bone_id, sp54);
+}
+f32 func_8033ABA0(AnimationFile *this, f32 arg1){
+    return this->unk0 + arg1*(this->unk2 - this->unk0);
+}
 
 void animationFile_getBoneTransformList(AnimationFile *anim_file, f32 progress, BoneTransformList *bone_transform_list){
     return; // Stubbed: MTE tags on RDRAM

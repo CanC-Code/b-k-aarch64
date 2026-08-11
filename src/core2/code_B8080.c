@@ -150,62 +150,40 @@ void model_free(BKModel *this) {
 }
 
 BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
-    // MTE‑safe: read every field from the possibly‑tagged RDRAM source with __builtin_memcpy
+    s32 temp_s1;
     BKModel *model;
-    s16 mesh_count;
-    s32 total_vtx;
-    int i, j;
+    void *temp_v0;
+    BKMesh *in_mesh;
+    BKModelMesh *out_mesh;
+    BKModelVtxRef *vtx_ref;
+    Vtx *new_var;
+    int j, i;
 
-    if (this == NULL || bk_vtx_list == NULL) return NULL;
-
-    // --- read mesh count safely ---
-    __builtin_memcpy(&mesh_count, this, sizeof(s16));
-    if (mesh_count <= 0 || mesh_count > 5000) return NULL;
-
-    // --- walk the source to count total vertices ---
-    total_vtx = 0;
-    uintptr_t src_ptr = ((uintptr_t)this & 0xFFFFFFFFFFFFULL) + 2;   // skip the 2‑byte count field
-    for (i = 0; i < mesh_count; i++) {
-        s16 vtx_count;
-        __builtin_memcpy(&vtx_count, (void*)(src_ptr + 2), sizeof(s16));   // vtx_count is at offset 2 in BKMesh
-        if (vtx_count < 0 || vtx_count > 10000) return NULL;
-        total_vtx += vtx_count;
-        src_ptr += 4 + vtx_count * sizeof(s16);   // 4‑byte mesh header + vertex indices
-    }
-
-    // --- allocate the runtime model ---
-    model = (BKModel *)malloc(sizeof(BKModel) + mesh_count * sizeof(BKModelMesh) + total_vtx * sizeof(BKModelVtxRef));
-    if (model == NULL) return NULL;
+    model = (BKModel *) malloc(sizeof(BKModel) + (this->count * sizeof(BKModelMesh)) + (meshList_getVtxCount(this) * sizeof(BKModelVtxRef)));
     model->mesh_list = this;
     model->vtx_list = bk_vtx_list;
 
-    // --- copy mesh data ---
-    src_ptr = ((uintptr_t)this & 0xFFFFFFFFFFFFULL) + 2;   // reset to first mesh
-    BKModelMesh *dst_mesh = (BKModelMesh *)model->data;
+    in_mesh = this->data; 
+    out_mesh = (BKModelMesh *) model->data;
 
-    for (i = 0; i < mesh_count; i++) {
-        s16 uid, vtx_count;
-        __builtin_memcpy(&uid,       (void*)src_ptr,     sizeof(s16));
-        __builtin_memcpy(&vtx_count, (void*)(src_ptr+2), sizeof(s16));
+    for (i = 0; i < this->count; i++) {
+            out_mesh->uid = in_mesh->uid;
+            out_mesh->vtx_count = in_mesh->vtx_count;
+            vtx_ref = (BKModelVtxRef *) out_mesh->data;
+            
+            for (j = 0; j < in_mesh->vtx_count; j++) {
+                vtx_ref->vtx_id = in_mesh->vertices[j];
+                memcpy(&vtx_ref->v, &bk_vtx_list->vertices[vtx_ref->vtx_id], sizeof(Vtx));
+                vtx_ref++;
+            }
 
-        dst_mesh->uid = uid;
-        dst_mesh->vtx_count = vtx_count;
-        BKModelVtxRef *vtx_ref = (BKModelVtxRef *)dst_mesh->data;
-
-        for (j = 0; j < vtx_count; j++) {
-            s16 vtx_id;
-            __builtin_memcpy(&vtx_id, (void*)(src_ptr + 4 + j * sizeof(s16)), sizeof(s16));
-            if (vtx_id < 0 || vtx_id >= bk_vtx_list->count) vtx_id = 0;
-            vtx_ref->vtx_id = vtx_id;
-            __builtin_memcpy(&vtx_ref->v, &bk_vtx_list->vertices[vtx_id], sizeof(Vtx));
-            vtx_ref++;
-        }
-
-        src_ptr += 4 + vtx_count * sizeof(s16);
-        dst_mesh = (BKModelMesh *)((BKModelVtxRef *)dst_mesh->data + dst_mesh->vtx_count);
+            in_mesh = (BKMesh *) &in_mesh->vertices[in_mesh->vtx_count];
+            out_mesh = (BKModelMesh *) ((BKModelVtxRef *) out_mesh->data + out_mesh->vtx_count);
     }
 
     return model;
+}
+    this->unk48 = meshList_createModel(mesh_list, modelbin_getVtxList(model_bin));
 }
 
 

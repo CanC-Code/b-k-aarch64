@@ -376,11 +376,29 @@ void print_free(void){
 }
 
 void print_clearPrintBufferStrings(void){
-    return;
     s32 i;
     for(i = 0; i < PRINT_BUFFER_COUNT; i++){
         print_sPrintBuffer[i].string = NULL;
     }
+}
+    print_clearPrintBufferStrings();
+}
+    print_clearPrintBufferStrings();
+
+    for(i = 0; i < 0x80; i++){//L802F52EC
+        found = 0;
+        for(j = 0; j < length && !found; j++){//L802F5304
+            if(boldFontLetters[j] == i){
+                print_sBoldFontLetterToSpriteMap[i] = j;
+                found = 1;
+            }//L802F531C
+        }//L802F5330
+        if(!found)
+            print_sBoldFontLetterToSpriteMap[i] = -1;
+    }
+    assetcache_release(print_sFontSpriteAssets[FONT_SPRITE_ASSETS_4_BOLD_FONT_TEXTURE]);
+    print_sFontSpriteAssets[FONT_SPRITE_ASSETS_4_BOLD_FONT_TEXTURE] = NULL;
+    print_sCurrentBoldFontTexture = print_getCurrentMapBoldFontTexture();
 }
 
 void print_setBoldFontTexture(s32 textureId){
@@ -414,7 +432,6 @@ void print_setBoldFontTexture(s32 textureId){
 }
 
 void print_resetBoldFontTexture(void){
-    return;
     print_setBoldFontTexture(print_getCurrentMapBoldFontTexture());
     print_clearPrintBufferStrings();
 }

@@ -14,6 +14,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Bkawrapper">
         <meta-data android:name="androidx.profileinstaller.enabled" android:value="false" />
+        <meta-data android:name="androidx.profileinstaller.enabled" android:value="false" />
 
         <activity
             android:name=".MainActivity"
