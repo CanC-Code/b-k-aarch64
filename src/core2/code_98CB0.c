@@ -86,15 +86,8 @@ void func_8031FC40(void) { return; }
 
 
 
-    var_v1 = 0xDE1C05;
-    var_v0 = 0x25;
-    obscured_addr = (u8*)OBSCURE(&gFileProgressFlags.unk8[0]);
-    for(var_a2 = 0; var_a2 < var_v0; var_a2++){
-        var_v1 += ((var_v1 % 4) + var_a2) * obscured_addr[var_a2];
-    }
-    return var_v1;
-}
 
+u32 func_8031FE40(void) { return 0; }
 void func_8031FEC0(void) { return; }
 
 bool fileProgressFlag_get(enum file_progress_e index) {
@@ -102,6 +95,7 @@ bool fileProgressFlag_get(enum file_progress_e index) {
 }
 
 s32 fileProgressFlag_getN(enum file_progress_e offset, s32 numBits) {
+
     return bitfieldarray_getNBits(gFileProgressFlags.unk8, offset, numBits);
 }
 
