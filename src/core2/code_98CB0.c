@@ -74,8 +74,8 @@ void func_8031FC40(void) {
         v0 = (((v0 - ptr[v1]) & 0x1F) << 0xF) ^ ((ptr[v1]* 0x1B) + (v0 >> 0xB));
     }
 
-    scrambled_ptr = (s32 *) ((((s32) &gFileProgressFlags & 0x55555555) << 1) + (((s32) &gFileProgressFlags & 0xAAAAAAAA) >> 1));
-    unscrambled_ptr = (s32 *) ((((s32) scrambled_ptr & 0x55555555) << 1) | (((s32) scrambled_ptr & 0xAAAAAAAA) >> 1));
+    scrambled_ptr = (s32 *) ((((intptr_t) &gFileProgressFlags & 0x55555555) << 1) + (((intptr_t) &gFileProgressFlags & 0xAAAAAAAA) >> 1));
+    unscrambled_ptr = (s32 *) ((((intptr_t) scrambled_ptr & 0x55555555) << 1) | (((intptr_t) scrambled_ptr & 0xAAAAAAAA) >> 1));
     *unscrambled_ptr = v0;
 }
 
