@@ -110,7 +110,7 @@ void skeletalAnim_setCallback_0(SkeletalAnimation *self, f32 when, GenFunction_0
     ptr->arg = 0;
 }
 
-void skeletalAnim_setCallback_1(SkeletalAnimation *self, f32 when, GenFunction_1 fn, s32 arg){
+void skeletalAnim_setCallback_1(SkeletalAnimation *self, f32 when, GenFunction_1 fn, intptr_t arg){
     SkeletalAnimationCallback *ptr;
     if(self->callback_list == NULL){
         self->callback_list = vector_new(sizeof(SkeletalAnimationCallback), 8);
