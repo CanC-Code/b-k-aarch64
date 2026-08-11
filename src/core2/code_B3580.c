@@ -97,7 +97,9 @@ void boneTransformList_interpolate(BoneTransformList *this, BoneTransformList *s
 }
 
 
-    this = UNTAG(this);
+
+void func_8033A8F0(BoneTransformList *this, s32 bone_id, f32 arg2[4]){
+    this = (BoneTransformList*)((uintptr_t)this & 0x00FFFFFFFFFFFFFFUL);
     vec4f_clone(&this->ptr[bone_id], arg2);
 }
 
@@ -116,8 +118,6 @@ void func_8033A968(BoneTransformList *this, s32 bone_id, f32 arg2[3]) {
 void func_8033A9A8(BoneTransformList *this, s32 bone_id, f32 arg2[4]){
     f32 sp18[4];
     func_80345C78(sp18, arg2);
-    func_8033A8F0(this, bone_id, sp18);
-}
 
 BoneTransformList * boneTransformList_defrag(BoneTransformList *this){
     BoneTransformList *var_v0;
