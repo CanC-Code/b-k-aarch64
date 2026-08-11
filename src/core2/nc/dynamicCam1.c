@@ -12,7 +12,8 @@ void ncDynamicCam1_init(void){
 
 void ncDynamicCam1_end(void){}
 
-void ncDynamicCam1_update(void) {
+void ncDynamicCam1_update(void) { return; } // Stubbed: avoids ml_acosf crash
+void _ncDynamicCam1_update_original(void) {
     f32 sp8C[3];
     f32 new_camera_position[3];
     f32 current_camera_position[3];

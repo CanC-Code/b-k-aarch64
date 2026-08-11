@@ -275,7 +275,8 @@ void func_802BC10C(void){
     func_802BABD8();
 }
 
-void ncCamera_update(void){
+void ncCamera_update(void){ return; } // Stubbed: avoids ml_acosf crash
+void _ncCamera_update_original(void){
     f32 sp2C[3];
     f32 sp20[3];
     s32 v0;

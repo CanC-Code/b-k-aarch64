@@ -296,7 +296,8 @@ void func_802BCE94(void){
         func_802BC84C(0);
 }
 
-void ncDynamicCamera_update(void){
+void ncDynamicCamera_update(void){ return; } // Stubbed: avoids ml_acosf crash
+void _ncDynamicCamera_update_original(void){
     f32 position[3];
     f32 rotation[3];
 
