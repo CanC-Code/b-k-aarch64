@@ -1,3 +1,4 @@
+#define UNTAG(ptr) ((__typeof__(ptr))((uintptr_t)(ptr) & 0x00FFFFFFFFFFFFFFUL))
 #include <ultra64.h>
 #include "functions.h"
 #include "variables.h"
@@ -97,6 +98,7 @@ void boneTransformList_interpolate(BoneTransformList *this, BoneTransformList *s
 }
 
 
+    this = UNTAG(this);
 void func_8033A8F0(BoneTransformList *this, s32 bone_id, f32 arg2[4]){
     vec4f_clone(&this->ptr[bone_id], arg2);
 }
