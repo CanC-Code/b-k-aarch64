@@ -49,9 +49,6 @@ extern void InitN64Registers(const char* assetDir);
 static inline uintptr_t BKA_Validate_And_Translate(
         uintptr_t addr, const char* file, int line)
 {
-    // Strip MTE/ARM64 top-byte tags: N64 pointers stored in RDRAM
-    // may carry hardware-assigned memory tags on ARM64 Android.
-    addr &= 0xFFFFFFFFFFFFULL;
     uint32_t mask32 = (uint32_t)(addr & 0xFFFFFFFFu);
 
     if (mask32 == 0u) return 0u;

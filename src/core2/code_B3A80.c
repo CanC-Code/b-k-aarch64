@@ -49,7 +49,6 @@ f32 func_8033AA10(AnimationFile *this, s32 arg1){
 }
 
 void animationFile_getBoneTransformList(AnimationFile *anim_file, f32 progress, BoneTransformList *bone_transform_list){
-    return; // Stubbed: bone transforms from RDRAM cause MTE access violations
     if (anim_file == NULL || bone_transform_list == NULL) return;
     anim_file = (AnimationFile*)BKA_TRANSLATE_ADDR(anim_file);
     s32 bone_id;
@@ -78,7 +77,8 @@ void animationFile_getBoneTransformList(AnimationFile *anim_file, f32 progress, 
 }
 
 f32 func_8033ABA0(AnimationFile *this, f32 arg1){
-    return 0.0f; // Stubbed: MTE tags on AnimationFile from RDRAM
+    if (this == NULL) return 0.0f;
+    return this->unk0 + arg1*(this->unk2 - this->unk0);
 }
 
 f32 func_8033ABCC(AnimationFile *this){
