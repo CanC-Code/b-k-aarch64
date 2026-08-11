@@ -10,10 +10,7 @@ extern void func_8030E9FC(enum sfx_e uid, f32 arg1, f32 arg2, u32 arg3, f32 arg4
 extern void func_8030EA54(enum sfx_e uid, f32 arg1, f32 arg2, u32 arg3, f32 arg4[3], f32 arg5, f32 arg6);
 extern void func_8031CE28(s32, s32, f32);
 void timed_exitStaticCamera(f32);
-extern BKCollisionTriangle *collisionList_func_802E805C(BKCollisionList *, BKVertexList *, f32[3], s32, f32, s32, s32, s32, s32);
 extern void func_80340200(s32, f32[3], s32, f32, s32, s32, BKVertexList *, s32);
-extern void func_802E9118(BKCollisionList *, BKVertexList *, f32[3], s32, f32, s32, s32, f32, s32, s32, s32);
-extern BKCollisionTriangle *func_802E9DD8(BKCollisionList *, BKVertexList *, f32[3], s32, f32, s32, f32, s32, s32);
 extern int func_80340020(s32, f32[3], s32, f32, s32, BKVertexList *, f32[3], f32[3]);
 
 extern void boneTransformList_getBoneScale(s32, s32, f32[3]);
@@ -67,7 +64,7 @@ enum maClankerState_e {
 BKCollisionTriangle *__maClanker_getClankerCollisionTris(s32 arg0, s32 arg1, s32 arg2, s32 arg3){
     BKCollisionTriangle *collision_tris;
 
-    collision_tris = collisionList_func_802E805C(maClanker.collisionList, maClanker.vertexList1, maClanker.position, 0, 1.0f, arg0, arg1, arg2, arg3);
+    collision_tris = collisionList_intersectLineGlobal(maClanker.collisionList, maClanker.vertexList1, maClanker.position, 0, 1.0f, arg0, arg1, arg2, arg3);
     if(collision_tris && func_8029453C()){
         func_80340200(maClanker.unk18, maClanker.position, 0, 1.0f, 0, collision_tris, maClanker.vertexList1, arg1);
     }
@@ -75,11 +72,11 @@ BKCollisionTriangle *__maClanker_getClankerCollisionTris(s32 arg0, s32 arg1, s32
 }
 
 void __code1F70_func_80388428(s32 arg0, s32 arg1, f32 arg2, s32 arg3, s32 arg4, s32 arg5){
-    func_802E9118(maClanker.collisionList, maClanker.vertexList1, maClanker.position, 0, 1.0f, arg0, arg1, arg2, arg3, arg4, arg5);
+    collisionList_intersectMovingSphereGlobal(maClanker.collisionList, maClanker.vertexList1, maClanker.position, 0, 1.0f, arg0, arg1, arg2, arg3, arg4, arg5);
 }
 
 void func_803884A8(s32 arg0, f32 arg1, s32 arg2, s32 arg3){
-    func_802E9DD8(maClanker.collisionList, maClanker.vertexList1, maClanker.position, 0, 1.0f, arg0, arg1, arg2, arg3);
+    collisionList_intersectSphereGlobal(maClanker.collisionList, maClanker.vertexList1, maClanker.position, 0, 1.0f, arg0, arg1, arg2, arg3);
 }
 
 void maClanker_setState(s32 next_state){
