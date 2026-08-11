@@ -4,7 +4,7 @@
 #include "variables.h"
 
 
-extern void __spawnQueue_add_2(void (*)(intptr_t, intptr_t), s32, s32);
+extern void __spawnQueue_add_2(void (*)(intptr_t, intptr_t), intptr_t, intptr_t);
 
 Actor *chBadShad_draw(ActorMarker *this, Gfx **gdl, Mtx **mptr, Vtx **arg3);
 void chBadShad_update(Actor *this);

@@ -9,7 +9,7 @@ void timed_exitStaticCamera(f32);
 void timedFunc_set_2(f32, void(*)(intptr_t, intptr_t), intptr_t, intptr_t);
 
 void func_8028E668(f32[3], f32, f32, f32);
-extern void __spawnQueue_add_3(GenFunction_3, intptr_t, s32, s32);
+extern void __spawnQueue_add_3(GenFunction_3, intptr_t, intptr_t, intptr_t);
 
 void chTanktup_update(Actor *);
 

@@ -8,7 +8,7 @@ extern void func_80324CFC(f32, enum comusic_e, s32);
 extern void func_803289EC(Actor *, f32, s32);
 extern void func_80326310(Actor *);
 extern void actor_setOpacity(Actor *, s32);
-extern void __spawnQueue_add_2(void (*)(intptr_t, intptr_t), s32, s32);
+extern void __spawnQueue_add_2(void (*)(intptr_t, intptr_t), intptr_t, intptr_t);
 extern void gcStaticCamera_activate(s32 arg0);
 
 void func_80387D18(ActorMarker *, u32);

@@ -21,7 +21,7 @@ extern void __bundle_spawnFromFirstActor(s32, Actor *);
 extern void func_8032B3A0(Actor *, ActorMarker *);
 extern void func_8032EE0C(GenFunction_2, intptr_t);
 extern void func_8032EE20(void);
-extern void __spawnQueue_add_5(GenFunction_5, intptr_t, s32, s32, s32, s32);
+extern void __spawnQueue_add_5(GenFunction_5, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t);
 
 void func_8032A6A8(Actor *arg0);
 void func_8032ACA8(Actor *arg0);
