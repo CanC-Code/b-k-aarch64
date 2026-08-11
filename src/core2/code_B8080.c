@@ -150,8 +150,55 @@ void model_free(BKModel *this) {
 }
 
 BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
-    return NULL; // Stubbed: MTE tag issues
+    BKModel *model;
+    BKMesh *src_mesh;
+    BKModelMesh *dst_mesh;
+    BKModelVtxRef *vtx_ref;
+    s16 mesh_count;
+    s32 total_vtx;
+    int i, j;
+
+    if (this == NULL || bk_vtx_list == NULL) return NULL;
+
+    mesh_count = this->count;
+    if (mesh_count <= 0 || mesh_count > 5000) return NULL;
+
+    // Count total vertices
+    total_vtx = 0;
+    src_mesh = this->data;
+    for (i = 0; i < mesh_count; i++) {
+        total_vtx += src_mesh->vtx_count;
+        src_mesh = (BKMesh *)((uintptr_t)src_mesh + sizeof(BKMesh) + src_mesh->vtx_count * sizeof(s16));
+    }
+
+    model = (BKModel *)malloc(sizeof(BKModel) + mesh_count * sizeof(BKModelMesh) + total_vtx * sizeof(BKModelVtxRef));
+    if (model == NULL) return NULL;
+    model->mesh_list = this;
+    model->vtx_list = bk_vtx_list;
+
+    src_mesh = this->data;
+    dst_mesh = (BKModelMesh *)model->data;
+
+    for (i = 0; i < mesh_count; i++) {
+        dst_mesh->uid = src_mesh->uid;
+        dst_mesh->vtx_count = src_mesh->vtx_count;
+        vtx_ref = (BKModelVtxRef *)dst_mesh->data;
+
+        for (j = 0; j < src_mesh->vtx_count; j++) {
+            s16 vtx_id = src_mesh->vertices[j];
+            if (vtx_id < 0 || vtx_id >= bk_vtx_list->count) vtx_id = 0;
+            vtx_ref->vtx_id = vtx_id;
+            vtx_ref->v = bk_vtx_list->vertices[vtx_id];
+            vtx_ref++;
+        }
+
+        src_mesh = (BKMesh *)((uintptr_t)src_mesh + sizeof(BKMesh) + src_mesh->vtx_count * sizeof(s16));
+        dst_mesh = (BKModelMesh *)((uintptr_t)dst_mesh + sizeof(BKModelMesh) + dst_mesh->vtx_count * sizeof(BKModelVtxRef));
+    }
+
+    return model;
 }
+
 
 
 
