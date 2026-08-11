@@ -376,6 +376,7 @@ void print_free(void){
 }
 
 void print_clearPrintBufferStrings(void){
+    return;
     s32 i;
     for(i = 0; i < PRINT_BUFFER_COUNT; i++){
         print_sPrintBuffer[i].string = NULL;
@@ -413,6 +414,7 @@ void print_setBoldFontTexture(s32 textureId){
 }
 
 void print_resetBoldFontTexture(void){
+    return;
     print_setBoldFontTexture(print_getCurrentMapBoldFontTexture());
     print_clearPrintBufferStrings();
 }
