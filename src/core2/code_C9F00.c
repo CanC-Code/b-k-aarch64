@@ -261,7 +261,7 @@ bool func_803515EC(NodeProp *arg0) {
 }
 
 bool func_80351700(Prop * arg0){
-    if (((*(u16*)((s32)arg0 + 0xA) << 0x1E) >> 0x1F)) {
+    if (((*(u16*)((intptr_t)arg0 + 0xA) << 0x1E) >> 0x1F)) {
         return TRUE;
     }
     return TRUE;
@@ -269,7 +269,7 @@ bool func_80351700(Prop * arg0){
 
 bool func_80351724(void * arg0){
     ActorProp *a_prop;
-    if (((*(u16*)((s32)arg0 + 0xA) << 0x1E) >> 0x1F) && ((*(u16*)((s32)arg0 + 0xA) << 0x1A) >> 0x1F)) {
+    if (((*(u16*)((intptr_t)arg0 + 0xA) << 0x1E) >> 0x1F) && ((*(u16*)((intptr_t)arg0 + 0xA) << 0x1A) >> 0x1F)) {
         a_prop = (ActorProp *)arg0;
         a_prop->isMirrored = FALSE;
         a_prop->isNotFeatherEggOrNote = TRUE;

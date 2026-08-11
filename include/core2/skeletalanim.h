@@ -45,7 +45,7 @@ void               skeletalAnim_getProgressRange(SkeletalAnimation *self, f32 *p
 BoneTransformList *skeletalAnim_getBoneTransformList(SkeletalAnimation *self);
 s32                skeletalAnim_getLoopCount(SkeletalAnimation *self);
 void               skeletalAnim_setCallback_0(SkeletalAnimation *self, f32 when, GenFunction_0 fn);
-void               skeletalAnim_setCallback_1(SkeletalAnimation *self, f32 when, GenFunction_1 fn, s32 arg);
+void               skeletalAnim_setCallback_1(SkeletalAnimation *self, f32 when, GenFunction_1 fn, intptr_t arg);
 void               skeletalAnim_free(SkeletalAnimation *self);
 SkeletalAnimation *skeletalAnim_new(void);
 void               skeletalAnim_func_80335918(SkeletalAnimation *self);

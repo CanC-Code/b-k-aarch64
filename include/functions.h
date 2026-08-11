@@ -469,8 +469,8 @@ void func_802596AC(f32 a0[3], f32 a1[3], f32 a2[3], f32 a3[3]);
 
 void controller_copyFaceButtons(s32, s32 [6]);
 
-void __spawnQueue_add_1(GenFunction_1, s32);
-#define SPAWNQUEUE_ADD_1(method, arg0) __spawnQueue_add_1((GenFunction_1) (method), reinterpret_cast(s32, (arg0)))
+void __spawnQueue_add_1(GenFunction_1, intptr_t);
+#define SPAWNQUEUE_ADD_1(method, arg0) __spawnQueue_add_1((GenFunction_1) (method), (intptr_t)(arg0))
 
 void func_802FAD64(enum item_e);
 void nodeprop_getPosition(NodeProp *, f32[3]);
