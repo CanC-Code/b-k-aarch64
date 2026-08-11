@@ -80,9 +80,6 @@ void animationFile_getBoneTransformList(AnimationFile *anim_file, f32 progress, 
     func_8033AFB8(bone_transform_list, bone_id, sp54);
 }
 
-f32 func_8033ABA0(AnimationFile *this, f32 arg1){
-    return 0.0f; // Stubbed: MTE tags on RDRAM
-}
 
 f32 func_8033ABCC(AnimationFile *this){
     f32 tmp = func_8033AC0C(this);
