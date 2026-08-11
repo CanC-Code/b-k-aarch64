@@ -13,7 +13,7 @@ void player_walkToPosition(f32 *, f32,  void(*)(ActorMarker *), ActorMarker *);
 struct unkfunc_80304ED0 *func_80304ED0(void*, f32 *);
 void func_8031CD44(s32, s32, f32, f32, s32);
 
-#define OBSCURE(ptr) (((((s32)(ptr) ^ 0x746DF219) & 0xFF) + ((((s32)(ptr) >> 0x18) & 0xFF) << 0x18) + ((((s32)(ptr) >> 8) & 0xFFFF) << 8)) ^ 0x19)
+#define OBSCURE(ptr) (((((intptr_t)(ptr) ^ 0x746DF219) & 0xFF) + ((((intptr_t)(ptr) >> 0x18) & 0xFF) << 0x18) + ((((intptr_t)(ptr) >> 8) & 0xFFFF) << 8)) ^ 0x19)
 
 
 /* .data */
@@ -197,7 +197,7 @@ u32 func_80320250(void) {
 }
 
 void func_803202D0(void) {
-    s32 addr = (s32) &gVolatileFlags.unk0;
+    uintptr_t addr = (uintptr_t) &gVolatileFlags.unk0;
     addr ^= 0x7EDDF5F4;
     addr ^= 0x7BEF9D80;
     addr ^= 0x5326874;
@@ -205,7 +205,7 @@ void func_803202D0(void) {
 }
 
 s32 func_80320320(void) {
-    s32 addr = (s32) &gVolatileFlags.unk8[0];
+    uintptr_t addr = (uintptr_t) &gVolatileFlags.unk8[0];
     s32 checksum = 0x281E421C;
     s32 len = 25;
     s32 scrambled;
@@ -275,7 +275,7 @@ s32 func_8032056C(void) {
     s32 temp_a1;
     s32 temp_a1_2;
     s32 phi_t9;
-    s32 addr = (s32)&gVolatileFlags;
+    uintptr_t addr = (uintptr_t)&gVolatileFlags;
     s32 temp_v1;
 
     temp_v1 = ((addr & 0xE0000000) >> 15) +
@@ -302,8 +302,8 @@ s32 func_80320708(void) {
     u16 temp_t6;
     s32 addr;
 
-    temp_t6 = ((s32) &gVolatileFlags.unk4 >> 0x10);
-    addr = (s32) &gVolatileFlags.unk4 ^ temp_t6;
+    temp_t6 = ((intptr_t) &gVolatileFlags.unk4 >> 0x10);
+    addr = (intptr_t) &gVolatileFlags.unk4 ^ temp_t6;
     return func_80320320() == *(s32*)(addr ^ temp_t6);
 }
 
