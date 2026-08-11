@@ -245,11 +245,11 @@ void timedFunc_set_3(f32 time, GenFunction_3 funcPtr, intptr_t arg0, intptr_t ar
     __timedFuncQueue_insert(time, 3, (void *) funcPtr, arg0, arg1, arg2, 0, 0);
 }
 
-void timedFunc_set_4(f32 time, GenFunction_4 funcPtr, s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
+void timedFunc_set_4(f32 time, GenFunction_4 funcPtr, intptr_t arg0, s32 arg1, s32 arg2, s32 arg3) {
     __timedFuncQueue_insert(time, 4, (void *) funcPtr, arg0, arg1, arg2, arg3, 0);
 }
 
-void timedFunc_set_5(f32 time, GenFunction_5 funcPtr, s32 arg0, s32 arg1, s32 arg2, s32 arg3, s32 arg4) {
+void timedFunc_set_5(f32 time, GenFunction_5 funcPtr, intptr_t arg0, s32 arg1, s32 arg2, s32 arg3, s32 arg4) {
     __timedFuncQueue_insert(time, 5, (void *) funcPtr, arg0, arg1, arg2, arg3, arg4);
 }
 
