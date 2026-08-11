@@ -489,7 +489,7 @@ void __spawnQueue_add_1(GenFunction_1 arg0, intptr_t arg1){
     }
 }
 
-void __spawnQueue_add_2(void (* arg0)(void), s32 arg1, s32 arg2){
+void __spawnQueue_add_2(void (* arg0)(intptr_t, intptr_t), intptr_t arg1, intptr_t arg2){
     u32 tmp = (gsworld_getMap() == MAP_90_GL_BATTLEMENTS)? 0x32: 0xF;
     if(tmp != spawnQueueLength){
         spawnQueue[spawnQueueLength].func0 = arg0;
@@ -500,7 +500,7 @@ void __spawnQueue_add_2(void (* arg0)(void), s32 arg1, s32 arg2){
     }
 }
 
-void __spawnQueue_add_3(void (* arg0)(void), s32 arg1, s32 arg2, s32 arg3){
+void __spawnQueue_add_3(void (* arg0)(intptr_t, intptr_t, intptr_t), intptr_t arg1, intptr_t arg2, intptr_t arg3){
     u32 tmp = (gsworld_getMap() == MAP_90_GL_BATTLEMENTS)? 0x32: 0xF;
     if(tmp != spawnQueueLength){
         spawnQueue[spawnQueueLength].func0 = arg0;
@@ -525,7 +525,7 @@ void __spawnQueue_add_4(GenFunction_4 arg0, intptr_t arg1, intptr_t arg2, intptr
     }
 }
 
-void __spawnQueue_add_5(void (* arg0)(void), s32 arg1, s32 arg2, s32 arg3, s32 arg4, s32 arg5){
+void __spawnQueue_add_5(void (* arg0)(intptr_t, intptr_t, intptr_t, intptr_t, intptr_t), intptr_t arg1, intptr_t arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5){
     u32 tmp = (gsworld_getMap() == MAP_90_GL_BATTLEMENTS)? 0x32: 0xF;
     if(tmp != spawnQueueLength){
         spawnQueue[spawnQueueLength].func0 = arg0;

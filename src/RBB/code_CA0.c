@@ -95,7 +95,7 @@ void func_80387308(ActorMarker *marker){
     timed_playSfx(0.5f, SFX_7F_HEAVYDOOR_SLAM, 0.8f, 19000);
     timed_playSfx(0.5f, SFX_7F_HEAVYDOOR_SLAM, 0.9f, 19000);
     timed_playSfx(0.5f, SFX_7F_HEAVYDOOR_SLAM, 1.0f, 19000);
-    timedFunc_set_2(0.5f, (GenFunction_2) chCageUpSwitch_setStateByMarker, (s32) actor->marker, CH_CAGE_UP_SWITCH_STATE_1_NOT_PRESSED);
+    timedFunc_set_2(0.5f, (GenFunction_2) chCageUpSwitch_setStateByMarker, (intptr_t)actor->marker, CH_CAGE_UP_SWITCH_STATE_1_NOT_PRESSED);
     
     timedFunc_set_2(1.5f, (GenFunction_2) func_803870BC, 0x19d, 0x1f4);
     timed_exitStaticCamera(1.5f);
@@ -110,13 +110,13 @@ void func_80387488(ActorMarker *marker){
     if(-50.0f < player_position[1] && player_position[1] < 600.0f){
         player_position[1] = 0;
         if(ml_vec3f_distance(player_position, D_80390264) < 500.0f){
-            timedFunc_set_1(1.0f, (GenFunction_1) func_80387488, (s32)actor->marker);
+            timedFunc_set_1(1.0f, (GenFunction_1) func_80387488, (intptr_t)actor->marker);
             return;
         }
     }
     func_80324E38(0.0f, 3);
     timed_setStaticCameraToNode(0.0f, 6);
-    timedFunc_set_1(0.5f, (GenFunction_1) func_80387308, (s32) actor->marker);
+    timedFunc_set_1(0.5f, (GenFunction_1) func_80387308, (intptr_t)actor->marker);
 }
 
 void chCageUpSwitch_setState(Actor *this, s32 next_state){

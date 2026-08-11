@@ -346,5 +346,5 @@ int anctrl_isAt(AnimCtrl *this, f32 arg1){
 }
 
 s32 anctrl_isContiguous(AnimCtrl *this){
-    return (s32)this->animation - (s32) this == 0x28;
+    return (intptr_t)this->animation - (intptr_t)this == 0x28;
 }

@@ -50,7 +50,7 @@ void chShrapnel_func_802D0A38(Actor *this){
 void chShrapnel_func_802D0AB8(Actor *this) {
     subaddie_set_state_with_direction(this, SHRAPNEL_STATE_1_IDLE, 0.0f, 0);
     chShrapnel_func_802D0A00(this);
-    func_80328CEC(this, (s32) this->yaw_ideal, 0x87, 0xAF);
+    func_80328CEC(this, (intptr_t)this->yaw_ideal, 0x87, 0xAF);
     this->unk38_31 = 0x1E;
 }
 

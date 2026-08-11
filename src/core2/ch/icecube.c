@@ -371,7 +371,7 @@ void chicecube_update(Actor *this){
                 func_8035A9E0(this);
             }
             else if(func_80359FEC(this->position, this->unk1C, 0x14)){//L8035AEEC
-                if(func_803294F0(this, 0xa, (s32)this->velocity[0])){
+                if(func_803294F0(this, 0xa, (intptr_t)this->velocity[0])){
                     func_8035AA40(this);
                 }
             }

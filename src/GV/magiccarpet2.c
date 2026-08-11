@@ -111,7 +111,7 @@ void chmagiccarpet2_update(Actor *this){
                 this->velocity[0] = 0.0f;
             }
             else{
-                if(D_80390FF4[((s32)this->velocity[0]) % 6] == 0){
+                if(D_80390FF4[((intptr_t)this->velocity[0]) % 6] == 0){
                     this->alpha_124_19 -= 0x55;
                 }
                 else{
@@ -139,7 +139,7 @@ void chmagiccarpet2_update(Actor *this){
                 this->velocity[0] = 0.0f;
             }
             else {
-                if(D_80390FF4[5 - ((s32)this->velocity[0])%6 ] != 0){
+                if(D_80390FF4[5 - ((intptr_t)this->velocity[0])%6 ] != 0){
                     this->alpha_124_19 += 0x55;
                 }
                 else{

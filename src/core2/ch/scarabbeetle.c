@@ -293,9 +293,9 @@ void chScarabBeetle_update(Actor *this) {
         local->unk38 = 0;
         local->unk39 = 0;
         local->unk28 = 0.0f;
-        local->unk30[0] = (s16) (s32) this->position[0];
-        local->unk30[1] = (s16) (s32) this->position[1];
-        local->unk30[2] = (s16) (s32) this->position[2];
+        local->unk30[0] = (s16) (intptr_t)this->position[0];
+        local->unk30[1] = (s16) (intptr_t)this->position[1];
+        local->unk30[2] = (s16) (intptr_t)this->position[2];
         local->unk30[1] += 0xC8;
         marker_setCollisionScripts(this->marker, func_803582C4, NULL, func_80358304);
         local->sfxsourceIdx = 0;

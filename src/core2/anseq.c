@@ -103,7 +103,7 @@ void __anSeq_updateStep(vector(AnSeqElement) **ppAnSeq, AnSeqElement *pStep){
             ((void (*)(s32)) pStep->funcPtr)(pStep->arg0);
             break;
         case 2:// 80288C24
-            ((void (*)(s32, s32)) pStep->funcPtr)(pStep->arg0, pStep->arg1);
+            ((void (*)(intptr_t, intptr_t)) pStep->funcPtr)(pStep->arg0, pStep->arg1);
             break;
         case 3:// 80288C40
             ((void (*)(s32, s32, s32)) pStep->funcPtr)(pStep->arg0, pStep->arg1, pStep->arg2);

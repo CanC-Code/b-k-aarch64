@@ -208,7 +208,7 @@ static void __chTreasurehunt_updateFunc(Actor *this){
                 marker_despawn(this->marker);
             break;
     }
-    actor_setOpacity(this, (s32)this->lifetime_value);
+    actor_setOpacity(this, (intptr_t)this->lifetime_value);
     this->depth_mode = 2;
 }
 

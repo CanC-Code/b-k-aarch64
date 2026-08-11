@@ -132,5 +132,5 @@ void chOrangePad_update(Actor *this) {
     } else { } // Can't remove the else ;.;
 
     // If hit, then fade out
-    actor_setOpacity(this, 0xFF - (s32) this->lifetime_value);
+    actor_setOpacity(this, 0xFF - (intptr_t)this->lifetime_value);
 }

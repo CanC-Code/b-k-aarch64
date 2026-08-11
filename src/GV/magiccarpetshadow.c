@@ -30,7 +30,7 @@ Actor *chMagicCarpetShadow_draw(ActorMarker *this_marker, Gfx **gfx, Mtx **mtx, 
         position[1] = this->position_y;
         position[2] = this->position_z;
         position[1] += 8.0f;
-        modelRender_setPreDrawCallback((GenFunction_1)actor_predrawMethod, (s32)this);
+        modelRender_setPreDrawCallback((GenFunction_1)actor_predrawMethod, (intptr_t)this);
         modelRender_draw(gfx, mtx, position, rotation, this->unk1C[0], NULL, marker_loadModelBin(this_marker));
     }
     return this;

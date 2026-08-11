@@ -369,9 +369,9 @@ void chYellowFlibbit_update(Actor *this) {
         local->unk2 = 0U;
         local->unk20[0] = randf2(-2.0f, -1.0f);
         local->unk20[1] = randf2(-2.0f, -1.0f);
-        local->unk10[0] = (s16) (s32) this->position[0];
-        local->unk10[1] = (s16) (s32) this->position[1];
-        local->unk10[2] = (s16) (s32) this->position[2];
+        local->unk10[0] = (s16) (intptr_t)this->position[0];
+        local->unk10[1] = (s16) (intptr_t)this->position[1];
+        local->unk10[2] = (s16) (intptr_t)this->position[2];
         chYellowFlibbit_setState(this, CH_YELLOW_FLIBBIT_STATE_1_IDLE_NOT_SPAWNED);
         if (jiggyscore_isSpawned(JIGGY_24_BGS_FLIBBITS) != 0) {
             marker_despawn(this->marker);

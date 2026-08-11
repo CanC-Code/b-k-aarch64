@@ -220,7 +220,7 @@ void chsnacker_update(Actor *this) {
             func_80328FF0(this, 3.0f);
             func_8032CA80(this, (s_chSnacker_inRbb) ? 15 : 9);
             if (func_80329480(this) != 0) {
-                func_80328CEC(this, (s32) this->yaw, 0x5A, 0x96);
+                func_80328CEC(this, (intptr_t)this->yaw, 0x5A, 0x96);
             }
             subaddie_maybe_set_state_position_direction(this, 1, 0.0f, 1, 0.0075f);
             __chsnacker_start_dialog(this);
@@ -254,7 +254,7 @@ void chsnacker_update(Actor *this) {
             }
             if (actor_animationIsAt(this, 0.99f)) {
                 func_802E0CD0(this);
-                func_80328CEC(this, (s32) this->yaw_ideal, 0x87, 0xAF);
+                func_80328CEC(this, (intptr_t)this->yaw_ideal, 0x87, 0xAF);
                 this->unk38_31 = 0x78;
                 subaddie_set_state_with_direction(this, 2, 0.0f, 1);
                 actor_loopAnimation(this);

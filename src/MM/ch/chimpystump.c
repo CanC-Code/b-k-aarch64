@@ -36,8 +36,8 @@ void __chchimpystump_updateShaking(Actor *this) {
             core1_7090_initSfxSource(0, 0x6A, 0x7FF8, 0.2f);
         }//L80386D0C
 
-        this->position_x = ((globalTimer_getTime() & 1) * 2) ^ (s32) this->position_x;
-        this->position_z = ((globalTimer_getTime() & 2) * 2) ^ (s32) this->position_z;
+        this->position_x = ((globalTimer_getTime() & 1) * 2) ^ (intptr_t)this->position_x;
+        this->position_z = ((globalTimer_getTime() & 2) * 2) ^ (intptr_t)this->position_z;
     }
 }
 

@@ -60,7 +60,7 @@ void func_802DC208(Actor *this) {
         && !(globalTimer_getTime() & 0x1F) 
         && randf() < 0.1
     ){
-        switch((s32)this->yaw){
+        switch((intptr_t)this->yaw){
             case 0:
                 phi_a1 = ASSET_710_SPRITE_SPARKLE_PURPLE;
                 break;

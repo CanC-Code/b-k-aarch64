@@ -243,7 +243,7 @@ void func_8038CB68(ActorMarker *marker, enum asset_e arg1, s32 arg2){
     Actor *actor = marker_getActor(marker);
     timed_exitStaticCamera(0.0f);
     func_80324E38(0.0f, 0);
-    timedFunc_set_2(0.0f, (GenFunction_2)RBB_func_8038C370, (s32)actor->marker, 3);
+    timedFunc_set_2(0.0f, (GenFunction_2)RBB_func_8038C370, (intptr_t)actor->marker, 3);
 }
 
 void chbossboombox_hideJiggy(void){
@@ -380,7 +380,7 @@ void chBossBoomBox_setState(Actor *this, s32 new_state){
                     volatileFlag_set(VOLATILE_FLAG_5_FF_MINIGAME_WON, 1);
                 }
                 else{//L8038D220
-                    timedFunc_set_3(0.0f, (GenFunction_3)chbossboombox_respawnJiggy,  (s32)this->position_x, (s32)this->position_y, (s32)this->position_z);
+                    timedFunc_set_3(0.0f, (GenFunction_3)chbossboombox_respawnJiggy,  (intptr_t)this->position_x, (intptr_t)this->position_y, (intptr_t)this->position_z);
                     gcdialog_showDialog(VER_SELECT(ASSET_B9F_DIALOG_BOSS_BOOM_BOX_COMPLETE, 0x974, 0, 0), 4, 0, 0, 0, 0);
                 }
             }//L8038D278

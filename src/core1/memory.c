@@ -643,7 +643,7 @@ void *defrag(void *this){
         return this;
     }
     
-    size = (s32)((HeapHeader*)this)[-1].next - (s32)this + 0x10;
+    size = (s32)((HeapHeader*)this)[-1].next - (intptr_t)this + 0x10;
 
     this_block = &((HeapHeader*)this)[-1];
     if(D_80283220 + size >= 1000000){
@@ -709,7 +709,7 @@ void *func_80255774(void *this){
         return this;
     }
 
-    size = (s32)((HeapHeader*)this)[-1].next - (s32)this + 0x10;
+    size = (s32)((HeapHeader*)this)[-1].next - (intptr_t)this + 0x10;
     this_block = &((HeapHeader*)this)[-1];
 
     if(D_80283220 + size >= 1000000)

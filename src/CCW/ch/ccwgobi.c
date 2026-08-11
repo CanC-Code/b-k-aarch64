@@ -116,7 +116,7 @@ void func_8038894C(ActorMarker* marker, ActorMarker *other_marker) {
     Actor* actor = marker_getActor(marker);
     if (actor->state == CH_CCW_GOBI_STATE_1_WAITING) {
         actor_collisionOff(actor);
-        timedFunc_set_2(0.5f, (GenFunction_2)chCCWGobi_setStateByMarker, (s32)actor->marker, 2);
+        timedFunc_set_2(0.5f, (GenFunction_2)chCCWGobi_setStateByMarker, (intptr_t)actor->marker, 2);
     }
 }
 

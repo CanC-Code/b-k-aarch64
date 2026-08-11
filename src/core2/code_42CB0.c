@@ -45,9 +45,9 @@ enum honeycomb_e func_802C9C40(Actor *this){
             return HONEYCOMB_1_MM_HILL;
     }
     
-    sp18[0] = (s32)this->position_x;
-    sp18[1] = (s32)this->position_y;
-    sp18[2] = (s32)this->position_z;
+    sp18[0] = (intptr_t)this->position_x;
+    sp18[1] = (intptr_t)this->position_y;
+    sp18[2] = (intptr_t)this->position_z;
 
     tmp_a0 = func_80307164(sp18);
     if(tmp_a0 < 0)

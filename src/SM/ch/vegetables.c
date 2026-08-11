@@ -396,7 +396,7 @@ static void __chVegetables_update(Actor* this) {
                 this->actor_specific_1_f = 3.0f;
                 if (mapSpecificFlags_get(SM_SPECIFIC_FLAG_C) || volatileFlag_get(VOLATILE_FLAG_C1_IN_FINAL_CHARACTER_PARADE)) {//L80388554
                     if (!func_80329030(this, 0) && func_80329480(this)) {
-                        func_80328CEC(this, (s32)this->yaw, 0x78, 0xb4);
+                        func_80328CEC(this, (intptr_t)this->yaw, 0x78, 0xb4);
                         this->unk38_0 = 1;
                     }
                     if (func_803292E0(this)) {
@@ -404,7 +404,7 @@ static void __chVegetables_update(Actor* this) {
                     }
                     else {
                         if (randf() < 0.02) {
-                            func_80328CEC(this, (s32)this->yaw, 0x1E, 0x5A);
+                            func_80328CEC(this, (intptr_t)this->yaw, 0x1E, 0x5A);
                         }
                     }
                 }
@@ -415,14 +415,14 @@ static void __chVegetables_update(Actor* this) {
             else if (local->vegetable_type == CH_VEGETABLE_2_BAWL) {
                 this->actor_specific_1_f = 4.0f;
                 if (!func_80329030(this, 0) && func_80329480(this)) {
-                    func_80328CEC(this, (s32)this->yaw, 0x78, 0xB4);
+                    func_80328CEC(this, (intptr_t)this->yaw, 0x78, 0xB4);
                     this->unk38_0 = 1;
                 }
                 if (mapSpecificFlags_get(SM_SPECIFIC_FLAG_C) || (volatileFlag_get(VOLATILE_FLAG_C1_IN_FINAL_CHARACTER_PARADE) && func_803292E0(this))) {
                     this->yaw_ideal = subaddie_getYawToPlayer(this);
                 } else {
                     if (randf() < 0.02) {
-                        func_80328CEC(this, (s32)this->yaw, 0x1E, 0x5A);
+                        func_80328CEC(this, (intptr_t)this->yaw, 0x1E, 0x5A);
                     }
                 }
             } else {
@@ -450,9 +450,9 @@ static void __chVegetables_update(Actor* this) {
                 }
                 this->actor_specific_1_f = 5.0f;
                 if (mapSpecificFlags_get(SM_SPECIFIC_FLAG_C) || (volatileFlag_get(VOLATILE_FLAG_C1_IN_FINAL_CHARACTER_PARADE))) { //L8038892C
-                    if (!__chVegetables_func_80387FA8(this, local, (s32)this->yaw, (s32)this->actor_specific_1_f)) {
+                    if (!__chVegetables_func_80387FA8(this, local, (intptr_t)this->yaw, (intptr_t)this->actor_specific_1_f)) {
                         if (func_80329480(this)) {
-                            func_80328CEC(this, (s32)this->yaw, 0x78, 0xb4);
+                            func_80328CEC(this, (intptr_t)this->yaw, 0x78, 0xb4);
                             this->unk38_0 = 1;
                         }
                     } else {
@@ -478,7 +478,7 @@ static void __chVegetables_update(Actor* this) {
                         this->yaw_ideal = subaddie_getYawToPlayer(this);
                     } else {
                         if (randf() < 0.01) {
-                            func_80328CEC(this, (s32)this->yaw, 0x1e, 0x5A);
+                            func_80328CEC(this, (intptr_t)this->yaw, 0x1e, 0x5A);
                         }
                     }
                 } else {

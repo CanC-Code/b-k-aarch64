@@ -34,11 +34,11 @@ ActorInfo D_80367390 = {0x1A8, ACTOR_28B_SOUND_SOURCE, 0,
 /* .code */
 void func_802D0500(Actor *this){
     ActorLocal_Core2_49570 *local = (ActorLocal_Core2_49570 *)this->local;
-    if(D_80367340[(s32)this->yaw].unk8 != -1){
+    if(D_80367340[(intptr_t)this->yaw].unk8 != -1){
         if(this->unk1C[0] == this->unk1C[1])
-            sfxsource_setSampleRate(local->sfxsourceIdx, D_80367340[(s32)this->yaw].unk8);
+            sfxsource_setSampleRate(local->sfxsourceIdx, D_80367340[(intptr_t)this->yaw].unk8);
         else{
-            sfxsource_setSampleRate(local->sfxsourceIdx, (s32)((D_80367340[(s32)this->yaw].unk8/this->unk1C[1])*this->unk1C[0]));
+            sfxsource_setSampleRate(local->sfxsourceIdx, (s32)((D_80367340[(intptr_t)this->yaw].unk8/this->unk1C[1])*this->unk1C[0]));
 
         }
     }
@@ -53,19 +53,19 @@ void func_802D05A0(Actor *this, s32 next_state){
     if(next_state == 2){
         this->unk1C[0] = 0.0f;
         this->unk1C[1] = 0.0f;
-        if(-1.0f != D_80367340[(s32)this->yaw].unk10){
-            this->unk1C[1] = D_80367340[(s32)this->yaw].unk10;
+        if(-1.0f != D_80367340[(intptr_t)this->yaw].unk10){
+            this->unk1C[1] = D_80367340[(intptr_t)this->yaw].unk10;
         }
         local->sfxsourceIdx = sfxsource_createSfxsourceAndReturnIndex();
-        sfxsource_setSfxId(local->sfxsourceIdx, D_80367340[(s32)this->yaw].unk0);
+        sfxsource_setSfxId(local->sfxsourceIdx, D_80367340[(intptr_t)this->yaw].unk0);
         sfxSource_setunk43_7ByIndex(local->sfxsourceIdx, 3);
         func_8030DFF0(local->sfxsourceIdx, 1);
         sfxsource_set_position(local->sfxsourceIdx, this->position);
-        sfxsource_set_fade_distances(local->sfxsourceIdx, D_80367340[(s32)this->yaw].unk4*this->scale, D_80367340[(s32)this->yaw].unk6*this->scale);
+        sfxsource_set_fade_distances(local->sfxsourceIdx, D_80367340[(intptr_t)this->yaw].unk4*this->scale, D_80367340[(intptr_t)this->yaw].unk6*this->scale);
         func_8030DFB4(local->sfxsourceIdx, 1);
         func_802D0500(this);
-        if(-1.0f != D_80367340[(s32)this->yaw].unkC)
-            sfxsource_playSfxAtVolume(local->sfxsourceIdx, D_80367340[(s32)this->yaw].unkC);
+        if(-1.0f != D_80367340[(intptr_t)this->yaw].unkC)
+            sfxsource_playSfxAtVolume(local->sfxsourceIdx, D_80367340[(intptr_t)this->yaw].unkC);
         sfxSource_func_8030E2C4(local->sfxsourceIdx);
     }//L802D0780
     this->state = next_state;
@@ -86,12 +86,12 @@ void func_802D07C8(Actor *this){
     player_getPosition(sp2C);
     sp28 = ml_vec3f_distance(sp2C, this->position);
     if( this->state == 1){
-        if(sp28 < D_80367340[(s32)this->yaw].unk6*this->scale){
+        if(sp28 < D_80367340[(intptr_t)this->yaw].unk6*this->scale){
             func_802D05A0(this, 2);
         }
     }//L802D08A0
     if(this->state == 2){
-        if((D_80367340[(s32)this->yaw].unk6 + 100)*this->scale < sp28){
+        if((D_80367340[(intptr_t)this->yaw].unk6 + 100)*this->scale < sp28){
             func_802D05A0(this, 1);
         }
         if(this->unk1C[0] != this->unk1C[1]){

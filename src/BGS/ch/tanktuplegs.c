@@ -84,7 +84,7 @@ void chTanktupLeg_despawn(ActorMarker *this, ActorMarker *other_marker){
 
     thisActor = marker_getActor(this);
     sfx_playFadeShorthandDefault( SFX_87_TANKTUP_OOOHW, 1.0f, 32750, thisActor->position, 1000, 3000);
-    timedFunc_set_2(0.65f, (GenFunction_2) chTanktupLeg_retractLeg, (s32) this, (intptr_t)other_marker);
+    timedFunc_set_2(0.65f, (GenFunction_2) chTanktupLeg_retractLeg, (intptr_t)this, (intptr_t)other_marker);
     func_8038F51C(thisActor);
     this->collidable = FALSE;
 }

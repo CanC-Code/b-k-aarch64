@@ -211,7 +211,7 @@ void func_8035B824(Actor *this){
 
     subaddie_set_state_with_direction(this, 4, 0.01f, 1);
     actor_loopAnimation(this);
-    func_80328CEC(this, (s32)this->yaw_ideal, 0xA, 0x1E);
+    func_80328CEC(this, (intptr_t)this->yaw_ideal, 0xA, 0x1E);
     this->actor_specific_1_f = 4.0f;
     local->unk4 = randf2(2.0f, 4.5f);
 }
@@ -219,7 +219,7 @@ void func_8035B824(Actor *this){
 void func_8035B8A8(Actor *this){
     subaddie_set_state_with_direction(this, 5, 0.01f, 1);
     actor_loopAnimation(this);
-    func_80328CEC(this, (s32)this->yaw_ideal, 0xE1, 0x87);
+    func_80328CEC(this, (intptr_t)this->yaw_ideal, 0xE1, 0x87);
 }  
 
 void chTeehee_update(Actor *this){

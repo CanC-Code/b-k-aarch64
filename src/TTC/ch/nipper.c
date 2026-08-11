@@ -75,7 +75,7 @@ static Actor *__chNipper_animFunc(ActorMarker *marker, Gfx **gfx, Mtx **mtx, Vtx
 static void __chNipper_setAnimationDuration(Actor *this) {
     subaddie_set_state_looped(this, CH_NIPPER_STATE_3_UNKNOWN);
     this->unk1C[0] = 0.0f;
-    switch((s32)this->lifetime_value){
+    switch((intptr_t)this->lifetime_value){
         case 120:
             anctrl_setDuration(this->anctrl, 1.2f);
             break;

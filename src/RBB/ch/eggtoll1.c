@@ -102,7 +102,7 @@ void func_803865D0(ActorMarker *marker){
     ActorLocal_ChRBBEggToll * local = (ActorLocal_ChRBBEggToll *) &actor->local;
     RBB_func_803863F0(actor, 1);
     timed_setStaticCameraToNode(0.0f, chRBBEggTollInfoTable[local->tollId].cameraNode);
-    timedFunc_set_2(0.75 * chRBBEggTollInfoTable[local->tollId].unk4, (GenFunction_2) func_803865A4, (s32)actor->marker, 4);
+    timedFunc_set_2(0.75 * chRBBEggTollInfoTable[local->tollId].unk4, (GenFunction_2) func_803865A4, (intptr_t)actor->marker, 4);
     timed_exitStaticCamera(0.75 * chRBBEggTollInfoTable[local->tollId].unk4);
     func_80324E38(0.75 * chRBBEggTollInfoTable[local->tollId].unk4, 0);
     timed_playSfx(chRBBEggTollInfoTable[local->tollId].unk4, SFX_7F_HEAVYDOOR_SLAM, 0.8f, 0x7FD0);

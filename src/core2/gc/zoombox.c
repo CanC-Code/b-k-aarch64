@@ -893,7 +893,7 @@ void func_80316764(GcZoombox *this, s32 arg1) {
         this->unk19C += phi_f0;
         while (this->unk1A0 < this->unk19C) {
             this->unk186 += 1;
-            if (this->unk186 >= (s32) this->frame_count) {
+            if (this->unk186 >= (intptr_t)this->frame_count) {
                 this->unk186 = 0;
             }
             this->unk19C -= this->unk1A0;

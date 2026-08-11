@@ -851,15 +851,15 @@ ParticleEmitter * partEmitMgr_defragEmitter(ParticleEmitter *this){
     s32 a3;
 
     if(this){
-        a3 = (s32)this;
+        a3 = (intptr_t)this;
         i = 0;
         while(partEmitMgr[i] != this && i < partEmitMgrLength){
             i++;
         }
         this = (ParticleEmitter *)defrag(this);
-        this->pList_start_124 = (Particle *)((s32)this + (u32)((s32)this->pList_start_124 - a3));
-        this->pList_end_128 = (Particle *)((s32)this + (u32)((s32)this->pList_end_128 - a3));
-        this->pList_capacity_12C = (Particle *)((s32)this + (u32)((s32)this->pList_capacity_12C - a3));
+        this->pList_start_124 = (Particle *)((intptr_t)this + (u32)((intptr_t)this->pList_start_124 - a3));
+        this->pList_end_128 = (Particle *)((intptr_t)this + (u32)((intptr_t)this->pList_end_128 - a3));
+        this->pList_capacity_12C = (Particle *)((intptr_t)this + (u32)((intptr_t)this->pList_capacity_12C - a3));
         if(i < partEmitMgrLength){
             partEmitMgr[i] = this;
         }

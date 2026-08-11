@@ -17,11 +17,11 @@ void *vector_at(VLA *this, u32 n){
 }
 
 s32 vector_getIndex(VLA *this, void *elemPtr){
-    return ((s32)elemPtr - (s32)this->begin)/(s32)this->elem_size;
+    return ((s32)elemPtr - (intptr_t)this->begin)/(intptr_t)this->elem_size;
 }
 
 s32 vector_size(VLA *this){
-    return ((s32)this->end - (s32)this->begin)/this->elem_size;
+    return ((intptr_t)this->end - (intptr_t)this->begin)/this->elem_size;
 }
 
 void *vector_getEnd(VLA *this){
@@ -36,7 +36,7 @@ void *vector_pushBackNew(VLA **thisPtr){
 
     this = *thisPtr;
     if(this->end == this->mem_end){
-        size = ((s32)this->end - (s32)this->begin)/this->elem_size;
+        size = ((intptr_t)this->end - (intptr_t)this->begin)/this->elem_size;
         mem_size = size + 5;
         this = realloc(this,  mem_size*this->elem_size + sizeof(VLA));
         this->begin = &this->data;
@@ -45,7 +45,7 @@ void *vector_pushBackNew(VLA **thisPtr){
         *thisPtr = this; 
     }
     retVal = this->end;
-    this->end = (void *)((s32)this->end + this->elem_size);
+    this->end = (void *)((intptr_t)this->end + this->elem_size);
     return retVal;
 }
 
@@ -55,11 +55,11 @@ void *vector_insertNew(VLA **thisPtr, s32 indx){
 
     vector_pushBackNew(thisPtr);
     this = *thisPtr;
-    i = ((s32)this->end - (s32)this->begin)/this->elem_size;
+    i = ((intptr_t)this->end - (intptr_t)this->begin)/this->elem_size;
     while(indx < --i){
-        memcpy((void *)((s32)this->begin + (i)*this->elem_size), (void *)((s32)this->begin + (i -1)*this->elem_size), this->elem_size);
+        memcpy((void *)((intptr_t)this->begin + (i)*this->elem_size), (void *)((intptr_t)this->begin + (i -1)*this->elem_size), this->elem_size);
     }
-    return (void *)((s32)this->begin +  indx*this->elem_size);
+    return (void *)((intptr_t)this->begin +  indx*this->elem_size);
 }
 
 void vector_free(VLA *this){
@@ -90,18 +90,18 @@ void vector_popBack_n(VLA *this, u32 n){
 }
 
 void vector_assign(VLA *this, s32 indx, void* value){
-    memcpy((void*)((s32)this->begin + indx * this->elem_size), value, this->elem_size);
+    memcpy((void*)((intptr_t)this->begin + indx * this->elem_size), value, this->elem_size);
 }
 
 VLA * vector_defrag(VLA *this){
    s32 oldSize;
    s32 oldMemSize;
 
-   oldSize = (s32) this->end - (s32)this->begin;
-   oldMemSize = (s32) this->mem_end - (s32)this->begin;
+   oldSize = (intptr_t)this->end - (intptr_t)this->begin;
+   oldMemSize = (intptr_t)this->mem_end - (intptr_t)this->begin;
    this = (VLA *)defrag(this);
    this->begin = &this->data;
-   this->end = (void *)((s32)this->begin + oldSize);
-   this->mem_end = (void *)((s32)this->begin + oldMemSize);
+   this->end = (void *)((intptr_t)this->begin + oldSize);
+   this->mem_end = (void *)((intptr_t)this->begin + oldMemSize);
    return this;
 }

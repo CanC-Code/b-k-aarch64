@@ -345,7 +345,7 @@ void spawnGameSelectProps(ActorMarker *marker) {
     this = marker_getActor(marker);
     scale = this->scale;
     prop = actor_spawnWithYaw_f32(game_number + ACTOR_198_BANJOS_BED, // Bed -> Chair -> Stove 
-        this->position, (s32)this->yaw);
+        this->position, (intptr_t)this->yaw);
     prop->scale = scale;
 }
 

@@ -39,8 +39,8 @@ void func_802D2DA0(Actor *this) {
         if (--this->unk38_31 == 0) {
             marker_despawn(this->marker);
         }
-        pCtrl = partEmitMgr_newEmitter((s32) this->lifetime_value);
-        for(phi_s6 = 0; phi_s6 < (s32)this->lifetime_value; phi_s6++){
+        pCtrl = partEmitMgr_newEmitter((intptr_t)this->lifetime_value);
+        for(phi_s6 = 0; phi_s6 < (intptr_t)this->lifetime_value; phi_s6++){
             for(i = 0; i < 3; i++){
                 sp70[i] = this->position[i] + randf()*2*this->actorTypeSpecificField - ((i == 1)? 0: this->actorTypeSpecificField);
             }

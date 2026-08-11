@@ -88,7 +88,7 @@ void func_802C5F44(Actor *this){
 void func_802C5F94(Actor *this){
     subaddie_set_state(this, BIGBUTT_STATE_2_WALK);
     func_802C5E80(this);
-    func_80328CEC(this, (s32)this->yaw_ideal, 135, 175);
+    func_80328CEC(this, (intptr_t)this->yaw_ideal, 135, 175);
     this->unk38_31 = 150;
 }
 
@@ -171,7 +171,7 @@ void chbull_update(Actor *this){
                 && !func_80328A2C(this, 0.0f, -1, 0.45f)
                 && subaddie_maybe_set_state_position_direction(this, BIGBUTT_STATE_2_WALK, 0.0f, -1, 0.58f)
             ){
-                func_80328CEC(this, (s32)this->yaw, 10, 45);
+                func_80328CEC(this, (intptr_t)this->yaw, 10, 45);
                 func_802C5E80(this);
             }//L802C647C
             func_802C5EB8(this);
@@ -181,16 +181,16 @@ void chbull_update(Actor *this){
             func_802C5FF8(this);
             subaddie_turnToYaw(this, 2.0f);
             if(!func_80329030(this, 0) && func_80329480(this)){
-                func_80328CEC(this, (s32)this->yaw, 90, 150);
+                func_80328CEC(this, (intptr_t)this->yaw, 90, 150);
             }//L802C64EC
             if(!(globalTimer_getTime() & 0xf))
-                func_80328CEC(this, (s32)this->yaw_ideal, 10, 20);
+                func_80328CEC(this, (intptr_t)this->yaw_ideal, 10, 20);
             
             if(!(globalTimer_getTime() & 0x7))
                 subaddie_maybe_set_state_position_direction(this, BIGBUTT_STATE_1_EAT, 0.16f, 1, 0.02f);
             
             if( !(globalTimer_getTime() & 0xf)
-                && func_80329078(this, (s32)this->yaw_ideal, 150)
+                && func_80329078(this, (intptr_t)this->yaw_ideal, 150)
                 && subaddie_maybe_set_state(this, BIGBUTT_STATE_3_RUN, 0.13f)
             ){
                 this->actor_specific_1_f = randf2(7.1f, 8.4f);
@@ -209,7 +209,7 @@ void chbull_update(Actor *this){
         case BIGBUTT_STATE_3_RUN: //L802C6620
             subaddie_turnToYaw(this, 3.0f);
             if(! func_80329030(this, 0) && func_80329480(this)){
-                func_80328CEC(this, (s32)this->yaw, 120, 180);
+                func_80328CEC(this, (intptr_t)this->yaw, 120, 180);
                 subaddie_set_state(this, BIGBUTT_STATE_2_WALK);
                 func_802C5E80(this);
             }
@@ -229,7 +229,7 @@ void chbull_update(Actor *this){
                 func_8030E58C(SFX_3C_BULL_GROWN, randf()/10.0f + 1.0);
                 this->unk10_12--;
             }
-            if(!func_80329078(this, (s32)this->yaw, 20))
+            if(!func_80329078(this, (intptr_t)this->yaw, 20))
                 func_802C5F94(this);
 
             if(this->unk10_12 == 0 || (this->unk10_12 < 3 && subaddie_playerIsWithinSphereAndActive(this, 300))){
@@ -253,7 +253,7 @@ void chbull_update(Actor *this){
                 func_802C5F94(this);
 
             if(subaddie_playerIsWithinSphereAndActive(this, 320)){
-                if(func_80329078(this, (s32)this->yaw_ideal,200)){
+                if(func_80329078(this, (intptr_t)this->yaw_ideal,200)){
                     anctrl_setPlaybackType(this->anctrl, ANIMCTRL_ONCE);
                     subaddie_set_state(this, BIGBUTT_STATE_4_SLIDE);
                     this->actor_specific_1_f += 5.7;

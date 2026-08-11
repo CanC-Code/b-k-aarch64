@@ -346,13 +346,13 @@ bool chbat_updateRoam(Actor *this) {
     }
     for(phi_s2 = 0; !func_80360198(this) && phi_s2 < 1; phi_s2++){
         this->lifetime_value = 45.0f;
-        func_80328CEC(this, (s32) this->yaw, 90, 180);
+        func_80328CEC(this, (intptr_t)this->yaw, 90, 180);
         phi_s1 = 0;
         do{
             if (this->unk38_0) {
-                phi_v0 = func_80329140(this, (s32) this->yaw_ideal, 200);
+                phi_v0 = func_80329140(this, (intptr_t)this->yaw_ideal, 200);
             } else {
-                phi_v0 = func_80329078(this, (s32) this->yaw_ideal, 200);
+                phi_v0 = func_80329078(this, (intptr_t)this->yaw_ideal, 200);
             }
 
             if(phi_v0 == 0){

@@ -34,7 +34,7 @@ Actor *func_802DF160(Gfx **gfx, Mtx **mtx, Vtx **vtx) {
     modelRender_setDepthMode(MODEL_RENDER_DEPTH_FULL);
     gDPSetTextureFilter((*gfx)++, G_TF_POINT);
     gSPSegment((*gfx)++, 0x04, osVirtualToPhysical(sp38));
-    modelRender_setPreDrawCallback((GenFunction_1)actor_predrawMethod, (s32)this);
+    modelRender_setPreDrawCallback((GenFunction_1)actor_predrawMethod, (intptr_t)this);
     modelRender_setPostDrawCallback((GenFunction_1)actor_postdrawMethod, (s32)D_8037E000);
     modelRender_draw(gfx, mtx, &D_80368360, NULL, 1.0f, NULL, marker_loadModelBin(D_8037E000));
     gDPSetTextureFilter((*gfx)++, G_TF_BILERP);

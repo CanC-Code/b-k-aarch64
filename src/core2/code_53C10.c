@@ -63,7 +63,7 @@ void func_802DAE40(Actor *this) {
 
     subaddie_set_state(this, CHHUMANOIDBADDIE_STATE_2_IDLE_UNK);
     func_802DAE10(this);
-    func_80328CEC(this, (s32) this->yaw_ideal, (s32) (this->yaw + 160.0f) % 360, (s32) (this->yaw + 200.0f) % 360);
+    func_80328CEC(this, (intptr_t)this->yaw_ideal, (s32) (this->yaw + 160.0f) % 360, (s32) (this->yaw + 200.0f) % 360);
     this->unk38_31 = 0x5A;
 }
 
@@ -115,13 +115,13 @@ bool func_802DAFBC(Actor *this) {
         func_802DAE10(this);
         this->unk38_31 = 0x5A;
         subaddie_set_state_with_direction(this, CHHUMANOIDBADDIE_STATE_2_IDLE_UNK, sp44, 1);
-        func_80328CEC(this, (s32) this->yaw_ideal, 0xB3, 0xB4);
+        func_80328CEC(this, (intptr_t)this->yaw_ideal, 0xB3, 0xB4);
         this->unk38_0 = TRUE;
     } else {
         func_802DAE10(this);
         this->unk38_31 = 0x5A;
         subaddie_set_state_with_direction(this, CHHUMANOIDBADDIE_STATE_8_IDLE_UNK, sp44, 1);
-        func_80328CEC(this, (s32) this->yaw_ideal, 120, 180);
+        func_80328CEC(this, (intptr_t)this->yaw_ideal, 120, 180);
     }
     return TRUE;
 }
@@ -236,7 +236,7 @@ void humanoidBaddie_update(Actor *this) {
     switch(this->state){
         case CHHUMANOIDBADDIE_STATE_1_IDLE_UNK://L802DB6B8
             if (subaddie_maybe_set_state(this, CHHUMANOIDBADDIE_STATE_2_IDLE_UNK, 0.58f)) {
-                func_80328CEC(this, (s32) this->yaw, 0xA, 0x2D);
+                func_80328CEC(this, (intptr_t)this->yaw, 0xA, 0x2D);
                 func_802DAE10(this);
             }
             break;
@@ -265,7 +265,7 @@ void humanoidBaddie_update(Actor *this) {
                     subaddie_maybe_set_state(this, CHHUMANOIDBADDIE_STATE_1_IDLE_UNK, 0.02f);
                 }
                 if( !(globalTimer_getTime() & 0xF) 
-                   && func_80329078(this, (s32) this->yaw_ideal, 0x96)
+                   && func_80329078(this, (intptr_t)this->yaw_ideal, 0x96)
                 ) {
                     if (subaddie_maybe_set_state(this, CHHUMANOIDBADDIE_STATE_3_RANDOM_CHASE, 0.13f) != 0) {
                         this->actor_specific_1_f = randf2((f32)local->unk8, (f32)local->unk9);
@@ -318,7 +318,7 @@ void humanoidBaddie_update(Actor *this) {
                 this->actor_specific_1_f = (f32) local->unkA;
                 this->unk38_31 = 0;
             }
-            if(!func_80329078(this, (s32) this->yaw, 0x14)) {
+            if(!func_80329078(this, (intptr_t)this->yaw, 0x14)) {
                 func_802DAE40(this);
             }
             break;

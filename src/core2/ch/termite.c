@@ -228,7 +228,7 @@ void chTermite_update(Actor *this) {
             if ((sp34 & 0x1F) == 0xE && 0.45 < randf()) {
                 __chTermite_updateRandomRotationSpeed(this);
             }
-            if (func_8034A6FC(0.73f, 0.76f) && func_80329078(this, (s32) this->yaw, 750) ) {
+            if (func_8034A6FC(0.73f, 0.76f) && func_80329078(this, (intptr_t)this->yaw, 750) ) {
                 this->yaw_ideal = this->yaw;
                 this->velocity[0] = 35.0f;
                 this->actor_specific_1_f = 19.4444447f;

@@ -615,9 +615,9 @@ void func_803896FC(Actor *this){
             break;
     }//L8038A034
 
-    D_80392F20[0] = (s32)this->position[0];
-    D_80392F20[1] = (s32)this->position[1];
-    D_80392F20[2] = (s32)this->position[2];
+    D_80392F20[0] = (intptr_t)this->position[0];
+    D_80392F20[1] = (intptr_t)this->position[1];
+    D_80392F20[2] = (intptr_t)this->position[2];
     this->unk1C[0] = this->yaw;
     local->unkC = sp58;
 }

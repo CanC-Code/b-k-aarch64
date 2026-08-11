@@ -194,7 +194,7 @@ void chTNTDownSwitch_emits(ActorMarker *marker){
     timed_playSfx(3.0f, SFX_1A_BIG_THINGS_FALL_OVER, 0.6f, 22000);
     timed_exitStaticCamera(4.0f);
     func_80324E38(4.0f, 0);
-    timedFunc_set_2(4.0f, (GenFunction_2) chTNTDownSwitch_setStateByMarker, (s32) actor->marker, 3);
+    timedFunc_set_2(4.0f, (GenFunction_2) chTNTDownSwitch_setStateByMarker, (intptr_t)actor->marker, 3);
 }
 
 void chTNTDownSwitch_dropTNTActions(ActorMarker *marker){
@@ -204,7 +204,7 @@ void chTNTDownSwitch_dropTNTActions(ActorMarker *marker){
     timed_playSfx(0.0f, SFX_7F_HEAVYDOOR_SLAM, 1.0f, 32710);
     timedFunc_set_2(1.2f, (GenFunction_2) func_80387B8C, 0x19f, 0);
     timed_setStaticCameraToNode(1.2f, 8);
-    timedFunc_set_1(1.5f, (GenFunction_1) chTNTDownSwitch_emits, (s32) actor->marker);
+    timedFunc_set_1(1.5f, (GenFunction_1) chTNTDownSwitch_emits, (intptr_t)actor->marker);
 }
 
 void chTNTDownSwitch_setState(Actor *this, s32 next_state){

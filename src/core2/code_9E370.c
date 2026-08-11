@@ -212,7 +212,7 @@ Actor *actor_draw(ActorMarker *marker, Gfx **gfx, Mtx **mtx, Vtx **vtx) {
     Actor *this;
 
     this = marker_getActorAndRotation(marker, sp3C);
-    modelRender_setPreDrawCallback((GenFunction_1)actor_predrawMethod, (s32)this);
+    modelRender_setPreDrawCallback((GenFunction_1)actor_predrawMethod, (intptr_t)this);
     modelRender_setPostDrawCallback((GenFunction_1)actor_postdrawMethod, (s32)marker);
     modelRender_draw(gfx, mtx, this->position, sp3C, this->scale, (this->unk104 != NULL) ? D_8036E580 : NULL, func_803257B4(marker));
     return this;
@@ -334,7 +334,7 @@ Actor *actor_drawFullDepth(ActorMarker *marker, Gfx **gfx, Mtx **mtx, Vtx **vtx)
 
     this = marker_getActorAndRotation(marker, rotation);
     modelRender_setDepthMode(MODEL_RENDER_DEPTH_FULL);
-    modelRender_setPreDrawCallback((GenFunction_1)actor_predrawMethod, (s32)this);
+    modelRender_setPreDrawCallback((GenFunction_1)actor_predrawMethod, (intptr_t)this);
     modelRender_setPostDrawCallback((GenFunction_1)actor_postdrawMethod, (s32)marker);
     modelRender_draw(gfx, mtx, this->position, rotation, this->scale, (this->unk104 != NULL) ?  D_8036E580 : NULL, func_803257B4(marker));
     return this;
@@ -2296,9 +2296,9 @@ void func_8032B5C0(ActorMarker *arg0, ActorMarker *arg1, CollisionParams *arg2) 
                 }
                 if ((sp64 == 2) && (drop_bundle_num != 0)) {
                     player_yaw = player_getYaw();
-                    sp3C[0] = (s32) this->position[0];
-                    sp3C[1] = (s32) this->position[1];
-                    sp3C[2] = (s32) this->position[2];
+                    sp3C[0] = (intptr_t)this->position[0];
+                    sp3C[1] = (intptr_t)this->position[1];
+                    sp3C[2] = (intptr_t)this->position[2];
                     if ((s32)arg0->unk44 < 0) {
                         vec3fArray_get_vec3f(arg0->unk44, 0x20, sp50);
                     }

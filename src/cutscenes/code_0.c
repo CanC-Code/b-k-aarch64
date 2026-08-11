@@ -5,7 +5,7 @@
 
 extern void anSeq_PushStep_0Arg(vector(AnSeqElement) **, f32, void(*)(void));
 extern void anSeq_PushStep_1Arg(vector(AnSeqElement) **, f32, void(*)(s32), s32);
-extern void anSeq_PushStep_2Arg(vector(AnSeqElement) **, f32, void(*)(s32,s32), s32, s32);
+extern void anSeq_PushStep_2Arg(vector(AnSeqElement) **, f32, void(*)(intptr_t,intptr_t), s32, s32);
 extern void anSeq_func_80288EB0(vector(AnSeqElement) **, f32, s32, f32, f32);
 extern void anSeq_func_80288EF8(vector(AnSeqElement) **, f32, s32, f32);
 extern void anSeq_func_80288F38(vector(AnSeqElement) **, f32, s32, f32);

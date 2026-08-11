@@ -115,7 +115,7 @@ void chLeafBoat_update(Actor *this){
                 this->velocity_x = 0.0f;
             }
             else{
-                if(!tmp[((s32)this->velocity_x) % 6])
+                if(!tmp[((intptr_t)this->velocity_x) % 6])
                     this->alpha_124_19 -= 0x55;
                 else
                     this->alpha_124_19 += 0x55;
@@ -142,7 +142,7 @@ void chLeafBoat_update(Actor *this){
                 subaddie_set_state(this, CH_LEAF_BOAT_STATE_1_UNK);
                 this->velocity[0] = 0.0f;
             } else {
-                if(tmp[5-(((s32)this->velocity_x)%6)]) {
+                if(tmp[5-(((intptr_t)this->velocity_x)%6)]) {
                     this->alpha_124_19 += 0x55;
                 } else {
                     this->alpha_124_19 -= 0x55;

@@ -267,7 +267,7 @@ void chTwinklyBox_activateBox(ActorMarker *this_marker, ActorMarker *other_marke
         func_8025A58C(0, 4000);
         core1_ce60_incOrDecCounter(FALSE);
         this->unk1C[2] = 428571.0f;
-        func_8025AEA0(0x68, (s32)this->unk1C[2]);
+        func_8025AEA0(0x68, (intptr_t)this->unk1C[2]);
         subaddie_set_state_with_direction(this, 3, 0.001f, 1);
         actor_playAnimationOnce(this);
         this->velocity[0] = 1.0f;
@@ -379,7 +379,7 @@ void chTwinklyBox_update(Actor *this){
         if(this->unk1C[2] < 233333.0f)
             this->unk1C[2] = 233333.0f;
 
-        func_8025AEA0(COMUSIC_68_TWINKLY_MINIGAME, (s32)this->unk1C[2]);
+        func_8025AEA0(COMUSIC_68_TWINKLY_MINIGAME, (intptr_t)this->unk1C[2]);
         if(item_getCount(ITEM_24_TWINKLY_SCORE) == 0){
             subaddie_set_state_with_direction(this, 1, 0.001f, 1);
             coMusicPlayer_playMusic(COMUSIC_2D_PUZZLE_SOLVED_FANFARE, 28000);

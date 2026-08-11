@@ -13,7 +13,7 @@ bool bkmodelunk14list_func_802EA760(BKModelUnk14List *this, s32 arg1, f32 arg2[3
     if (arg1 >= this->unk4) {
         return FALSE;
     }
-    start = sizeof(BKModelUnk14List) + this->cnt0*sizeof(BKModelUnk14_0) + (s32)this;
+    start = sizeof(BKModelUnk14List) + this->cnt0*sizeof(BKModelUnk14_0) + (intptr_t)this;
     temp_v0 = (BKModelUnk14_2*)(this->cnt2*sizeof(BKModelUnk14_1) + start + arg1 *sizeof(BKModelUnk14_2));
 
     arg6[0] = (f32) temp_v0->unk2[0];

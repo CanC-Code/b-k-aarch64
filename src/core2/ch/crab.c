@@ -71,7 +71,7 @@ void __chCrab_802CB078(Actor *this) {
 void __chCrab_802CB140(Actor *this) {
     subaddie_set_state(this, CRAB_STATE_2_IDLE_UNK);
     __chCrab_802CB040(this);
-    func_80328CEC(this, (s32) this->yaw_ideal, 135, 175);
+    func_80328CEC(this, (intptr_t)this->yaw_ideal, 135, 175);
     this->unk38_31 = 150;
 }
 
@@ -328,7 +328,7 @@ void chCrab_update(Actor *this) {
             if( func_8032CA80(this, (this->modelCacheIndex == ACTOR_F2_BLACK_SNIPPET)? 0xD: 0)
                 && func_80329480(this)
             ) {
-                func_80328CEC(this, (s32) this->yaw, 90, 150);
+                func_80328CEC(this, (intptr_t)this->yaw, 90, 150);
             }
             subaddie_maybe_set_state_position_direction(this, CRAB_STATE_1_IDLE_UNK, 0.0f, 1, 0.0075f);
             __chCrab_802CB078(this);

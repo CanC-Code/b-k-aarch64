@@ -153,7 +153,7 @@ void chRBBWhistleSwitch_update(Actor *this){
         chRBBWhistleSwitch_setState(this, CH_RBB_WHISTLE_SWITCH_STATE_1_UNK);
 
     if(this->state == CH_RBB_WHISTLE_SWITCH_STATE_2_UNK){
-        y_position = (s32)this->position_y;
+        y_position = (intptr_t)this->position_y;
         if(this->position_y < local->whistleSwitchInfo->position[1])
             this->position_y += 60.0f * time_delta;
         

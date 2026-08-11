@@ -31,9 +31,9 @@ enum jiggy_e getJiggyId(Actor *this) {
     
     id = gsworld_getMap();
 
-    position[0] = (s32)this->position[0];
-    position[1] = (s32)this->position[1]; 
-    position[2] = (s32)this->position[2];
+    position[0] = (intptr_t)this->position[0];
+    position[1] = (intptr_t)this->position[1]; 
+    position[2] = (intptr_t)this->position[2];
  
     id = func_80307164(position);
 
@@ -78,7 +78,7 @@ void destroyJiggy(Actor *this, s32 jiggyFlag, s32 timerRunningFlag, s32 cameraId
     gcStaticCamera_activate(cameraId);
 
     progressDialog_setAndTriggerDialog_0(dialogFlag);
-    timedFunc_set_4(0.6f, (GenFunction_4)spawnJiggyDestroyedEffects, (s32)this->position[0], (s32)this->position[1], (s32)this->position[2], switchPressedFlag);
+    timedFunc_set_4(0.6f, (GenFunction_4)spawnJiggyDestroyedEffects, (intptr_t)this->position[0], (intptr_t)this->position[1], (intptr_t)this->position[2], switchPressedFlag);
     timedFunc_set_2(0.6f, (GenFunction_2)playJiggyDestroyedSoundsAndReset, (intptr_t)this->marker, resetSwitchFlag);
     timedFunc_set_0(1.0f, (GenFunction_0)func_802BE720);
     timedFunc_set_1(3.9f, (GenFunction_1)resetFlag, switchPressedFlag);

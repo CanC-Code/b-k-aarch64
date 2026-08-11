@@ -111,7 +111,7 @@ static void __func_8038771C(Actor *this){
     if( !func_80329030(this, 0)
         && func_80329480(this)
     ){
-        func_80328CEC(this, (s32)this->yaw_ideal, 120, 180);
+        func_80328CEC(this, (intptr_t)this->yaw_ideal, 120, 180);
     }
 }
 

@@ -135,8 +135,8 @@ void func_8038A96C(Actor *this, s32 arg1) {
         sp5C = func_8034C2C4(this->marker, 0x1C3);
         if(sp5C != 0){
             for(i = 0; i < 3; i++){
-                sp48[i] = D_803935A8[(((s32)this->actorTypeSpecificField - 1)>>1)][0][i];
-                sp38[i] = D_803935A8[(((s32)this->actorTypeSpecificField - 1)>>1)][1][i];
+                sp48[i] = D_803935A8[(((intptr_t)this->actorTypeSpecificField - 1)>>1)][0][i];
+                sp38[i] = D_803935A8[(((intptr_t)this->actorTypeSpecificField - 1)>>1)][1][i];
 
             }
             sp48[3] = 1.0f;
@@ -403,8 +403,8 @@ void chWarpCauldron_update(Actor *this) {
             }
             func_8038AC7C(this);
             sp38 = subaddie_getYawToPlayer(this);
-            if( lair_func_8038ADF0(sp38, (s32) this->velocity[0]) 
-                || lair_func_8038ADF0((s32) this->velocity[0], sp38)
+            if( lair_func_8038ADF0(sp38, (intptr_t)this->velocity[0]) 
+                || lair_func_8038ADF0((intptr_t)this->velocity[0], sp38)
             ) {
                 this->yaw_ideal = (f32) sp38;
             }
