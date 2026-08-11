@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <application
+        <meta-data android:name="androidx.profileinstaller.enabled" android:value="false" />
         android:memtagMode="off"
         android:allowBackup="true"
         android:label="@string/app_name"
