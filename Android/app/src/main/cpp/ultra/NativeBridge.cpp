@@ -149,8 +149,12 @@ extern "C" {
     }
 }
 
+#ifndef M_MTE
+#define M_MTE 7
+#endif
+
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
-    prctl(PR_SET_TAGGED_ADDR_CTRL, 0, 0, 0, 0);
+    mallopt(M_MTE, 0);
     struct rlimit rl = {16 * 1024 * 1024, 16 * 1024 * 1024};
     setrlimit(RLIMIT_STACK, &rl);
     g_jvm = vm;
