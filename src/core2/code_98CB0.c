@@ -36,54 +36,55 @@ u8 glVolatileFlagsCopy[0x21]; //copy of gVolatileFlags
 
 
 /* .code */
-void func_8031FC40(void) {
-    s32 *scrambled_ptr;
-    s32 *unscrambled_ptr;
-    u32 a1;
-    s32 t0;
-    s32 t1;
-    u32 a0;
-    u8 *ptr;
-    u32 v0 = 0x17536C34;
-    u32 v1;
+void func_8031FC40(void) { return; }
 
-    //obsucre address
-    t0 = (((intptr_t)&gFileProgressFlags.unk8 & 0xE0000000) >> 15) +
-              (((intptr_t)&gFileProgressFlags.unk8 & 0x1FC00000) >> 22) +
-              (((intptr_t)&gFileProgressFlags.unk8 & 0x00300000) << 10) +
-              (((intptr_t)&gFileProgressFlags.unk8 & 0x000F0000) << 7) +
-              (((intptr_t)&gFileProgressFlags.unk8 & 0x0000E000) << 14) +
-              (((intptr_t)&gFileProgressFlags.unk8 & 0x00001800) >> 4) +
-              (((intptr_t)&gFileProgressFlags.unk8 & 0x00000780) << 10) +
-              (((intptr_t)&gFileProgressFlags.unk8 & 0x00000060) << 4) +
-              (((intptr_t)&gFileProgressFlags.unk8 & 0x00000018) << 18) +
-              (((intptr_t)&gFileProgressFlags.unk8 & 0x00000007) << 11);
 
-    //unobscure address
-    t1 = (intptr_t)((t0 & 0x1E0600) << 0xB) | ((intptr_t) (t0 & 0x603800) / 8);
-    a0 = (((t0 & 0x1C07F) << 0xF) + ((u32) (t0 & 0xC7800000) >> 0x11)) | (((t0 & 0x38000000) / (1 << 24)) + ((intptr_t) (t0 & 0x180) >> 6)); \
-    a1 = a0; \
-    a0 = (((a1 & 0x3FE000) << 7)
-           | (((t1 >> 8) & 7) + ((a1 << 0xA) & 0xFF800))
-           | ((((u32) (t1 & 0xF0000000) >> 0x15) + (a1 & 0xE0000000)) ^ ((intptr_t) ((t1 /0x40) & 0xF000) >> 9)));
 
-    //calculate checksum
-    ptr = (u8*)(a0);
-    a1 = 0x25;
-    for(v1 = 0; v1 < a1; v1++){
-        v0 = (((v0 - ptr[v1]) & 0x1F) << 0xF) ^ ((ptr[v1]* 0x1B) + (v0 >> 0xB));
-    }
 
-    scrambled_ptr = (s32 *) ((((intptr_t) &gFileProgressFlags & 0x55555555) << 1) + (((intptr_t) &gFileProgressFlags & 0xAAAAAAAA) >> 1));
-    unscrambled_ptr = (s32 *) ((((intptr_t) scrambled_ptr & 0x55555555) << 1) | (((intptr_t) scrambled_ptr & 0xAAAAAAAA) >> 1));
-    *unscrambled_ptr = v0;
-}
 
-u32 func_8031FE40(void) {
-    u8 *obscured_addr;
-    u32 var_v1;
-    u32 var_a2;
-    u32 var_v0;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     var_v1 = 0xDE1C05;
     var_v0 = 0x25;
@@ -94,11 +95,7 @@ u32 func_8031FE40(void) {
     return var_v1;
 }
 
-void func_8031FEC0(void) {
-    u32 *obscured_addr;
-    obscured_addr = (u32*)OBSCURE(&gFileProgressFlags.unk4);
-    *obscured_addr = func_8031FE40();
-}
+void func_8031FEC0(void) { return; }
 
 bool fileProgressFlag_get(enum file_progress_e index) {
     return bitfieldarray_getBit(gFileProgressFlags.unk8, index);
