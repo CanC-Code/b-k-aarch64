@@ -5,8 +5,6 @@
 #include "core2/modelRender.h"
 #include "core2/coords.h"
 
-extern UNK_TYPE(s32) func_802E8E88(BKCollisionList *, BKVertexList *, f32[3], f32[3], f32, f32[3], s32, s32);
-extern UNK_TYPE(s32) func_802E92AC(BKCollisionList *, BKVertexList *, f32[3], f32, f32[3], s32);
 extern s32 bkmodelunk14list_func_802EC394(BKModelUnk14List *arg0, s32 arg1, s32 arg2, f32 arg3, s32 arg4, s32 arg5, s32 arg6);
 extern void vtxList_getBounds_s32(BKVertexList *, s32[3], s32[3]);
 extern void func_802F7BC0(Gfx **, Mtx **, Vtx **);
@@ -371,7 +369,7 @@ void mapModel_xlu_draw(Gfx **gfx, Mtx **mtx, Vtx **vtx) {
 void func_80309704(s32 arg0, s32 arg1, s32 arg2){}
 
 s32 func_80309714(void){
-    return mapModel.collision_opa->unk12;
+    return mapModel.collision_opa->scale;
 }
 
 f32 mapModel_getFloorY(f32 arg0[3]){
@@ -449,20 +447,20 @@ f32 func_80309B24(f32 arg0[3]){
     return func_80308FDC(arg0, 0xf800ff0f);
 }
 
-BKCollisionTriangle *func_80309B48(f32 startPoint[3], f32 endPoint[3], f32 arg2[3], s32 flagFilter) {
+BKCollisionTriangle *func_80309B48(f32 startPoint[3], f32 endPoint[3], f32 arg2[3], s32 flag_filter) {
     BKCollisionTriangle *opaqueTri;
     BKCollisionTriangle *transparentTri;
 
     mapModel.unk20 = 0;
     if (mapModel.collision_xlu != NULL) {
-        if ((flagFilter & 0x80001F00) == 0x80001F00) {
+        if ((flag_filter & 0x80001F00) == 0x80001F00) {
             opaqueTri = NULL;
         }
         else {
-            opaqueTri = func_802E76B0(mapModel.collision_opa, modelbin_getVtxList(mapModel.model_bin_opa), startPoint, endPoint, arg2, flagFilter);
+            opaqueTri = collisionList_intersectLine(mapModel.collision_opa, modelbin_getVtxList(mapModel.model_bin_opa), startPoint, endPoint, arg2, flag_filter);
         }
 
-        transparentTri = func_802E76B0(mapModel.collision_xlu, modelbin_getVtxList(mapModel.model_bin_xlu), startPoint, endPoint, arg2, flagFilter);
+        transparentTri = collisionList_intersectLine(mapModel.collision_xlu, modelbin_getVtxList(mapModel.model_bin_xlu), startPoint, endPoint, arg2, flag_filter);
 
         if (transparentTri != NULL) {
             mapModel.unk20 = (s32) mapModel.model_bin_xlu;
@@ -476,7 +474,7 @@ BKCollisionTriangle *func_80309B48(f32 startPoint[3], f32 endPoint[3], f32 arg2[
         return opaqueTri;
     }
     else{
-        opaqueTri = func_802E76B0(mapModel.collision_opa, modelbin_getVtxList(mapModel.model_bin_opa), startPoint, endPoint, arg2, flagFilter);
+        opaqueTri = collisionList_intersectLine(mapModel.collision_opa, modelbin_getVtxList(mapModel.model_bin_opa), startPoint, endPoint, arg2, flag_filter);
         if (opaqueTri != NULL) {
             mapModel.unk20 = (s32) mapModel.model_bin_opa;
         }
@@ -485,11 +483,11 @@ BKCollisionTriangle *func_80309B48(f32 startPoint[3], f32 endPoint[3], f32 arg2[
     return opaqueTri;
 }
 
-BKCollisionTriangle *func_80309C74(f32 arg0[3], f32 arg1[3], f32 arg2[3], s32 flagFilter, BKModelBin **arg4) {
+BKCollisionTriangle *func_80309C74(f32 arg0[3], f32 arg1[3], f32 arg2[3], s32 flag_filter, BKModelBin **arg4) {
     BKCollisionTriangle *sp2C;
     BKCollisionTriangle *phi_v0;
 
-    sp2C = func_802E76B0(mapModel.collision_opa, modelbin_getVtxList(mapModel.model_bin_opa), arg0, arg1, arg2, flagFilter);
+    sp2C = collisionList_intersectLine(mapModel.collision_opa, modelbin_getVtxList(mapModel.model_bin_opa), arg0, arg1, arg2, flag_filter);
     if (sp2C != NULL) {
         *arg4 = mapModel.model_bin_opa;
     }
@@ -497,7 +495,7 @@ BKCollisionTriangle *func_80309C74(f32 arg0[3], f32 arg1[3], f32 arg2[3], s32 fl
         return sp2C;
     }
 
-    phi_v0 = func_802E76B0(mapModel.collision_xlu, modelbin_getVtxList(mapModel.model_bin_xlu), arg0, arg1, arg2, flagFilter);
+    phi_v0 = collisionList_intersectLine(mapModel.collision_xlu, modelbin_getVtxList(mapModel.model_bin_xlu), arg0, arg1, arg2, flag_filter);
     if (phi_v0 != 0) {
         *arg4 = mapModel.model_bin_xlu;
     }
@@ -519,14 +517,14 @@ UNK_TYPE(s32) func_80309DBC(f32 currentPosition[3], f32 next_position[3], f32 ar
     s32 temp_v0_2;
 
     mapModel.unk20 = 0;
-    sp34 = func_802E8E88(mapModel.collision_opa, modelbin_getVtxList(mapModel.model_bin_opa), currentPosition, next_position, arg2, arg3, arg4, arg5);
+    sp34 = collisionList_intersectMovingSphere(mapModel.collision_opa, modelbin_getVtxList(mapModel.model_bin_opa), currentPosition, next_position, arg2, arg3, arg4, arg5);
     if (sp34 != 0) {
         mapModel.unk20 = (s32) mapModel.model_bin_opa;
     }
     if (mapModel.collision_xlu == 0) {
         return sp34;
     }
-    temp_v0_2 = func_802E8E88(mapModel.collision_xlu, modelbin_getVtxList(mapModel.model_bin_xlu), currentPosition, next_position, arg2, arg3, arg4, arg5);
+    temp_v0_2 = collisionList_intersectMovingSphere(mapModel.collision_xlu, modelbin_getVtxList(mapModel.model_bin_xlu), currentPosition, next_position, arg2, arg3, arg4, arg5);
     if (temp_v0_2 != 0) {
         mapModel.unk20 = (s32) mapModel.model_bin_xlu;
         return temp_v0_2;
@@ -538,11 +536,11 @@ UNK_TYPE(s32) func_80309EB0(f32 arg0[3], f32 arg1, f32 arg2[3], s32 arg3) {
     s32 sp24;
     s32 temp_v0_2;
 
-    sp24 = func_802E92AC(mapModel.collision_opa, modelbin_getVtxList(mapModel.model_bin_opa), arg0, arg1, arg2, arg3);
+    sp24 = collisionList_intersectSphere(mapModel.collision_opa, modelbin_getVtxList(mapModel.model_bin_opa), arg0, arg1, arg2, arg3);
     if (mapModel.collision_xlu == 0) {
         return sp24;
     }
-    temp_v0_2 = func_802E92AC(mapModel.collision_xlu, modelbin_getVtxList(mapModel.model_bin_xlu), arg0, arg1, arg2, arg3);
+    temp_v0_2 = collisionList_intersectSphere(mapModel.collision_xlu, modelbin_getVtxList(mapModel.model_bin_xlu), arg0, arg1, arg2, arg3);
     return (temp_v0_2 != 0) ? temp_v0_2 : sp24;
 }
 
