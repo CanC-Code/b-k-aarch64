@@ -33,17 +33,6 @@ static void skeletalAnim_clearTransition(SkeletalAnimation *self){
 
     self->transition_duration = 0.0f;
 }
-        animationFile_getBoneTransformList(self->animation_bin, self->progress, self->bone_transform);
-        return self->bone_transform;
-    }
-
-    if(self->transition_target == NULL){
-        self->transition_target = (BoneTransformList *) boneTransformList_new();
-    }
-    animationFile_getBoneTransformList(self->animation_bin, self->progress, self->transition_target);
-    boneTransformList_interpolate(self->bone_transform, self->transition_start, self->transition_target, self->transition_progress);
-    return self->bone_transform;
-}
 
 static void __perform_callback(SkeletalAnimationCallback* arg0){
     if(arg0->arg_count == 0){
