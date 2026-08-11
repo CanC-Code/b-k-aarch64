@@ -14,7 +14,6 @@
 #include <cstring>
 #include <GLES2/gl2.h>
 #include <EGL/egl.h>
-#include <malloc.h>
 
 #define LOG_TAG "NativeBridge"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
@@ -151,7 +150,7 @@ extern "C" {
 }
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
-    mallopt(M_MTE, 0);
+    prctl(PR_SET_TAGGED_ADDR_CTRL, 0, 0, 0, 0);
     struct rlimit rl = {16 * 1024 * 1024, 16 * 1024 * 1024};
     setrlimit(RLIMIT_STACK, &rl);
     g_jvm = vm;
