@@ -183,8 +183,6 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
 
     return model;
 }
-    this->unk48 = meshList_createModel(mesh_list, modelbin_getVtxList(model_bin));
-}
 
 
 
