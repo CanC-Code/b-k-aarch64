@@ -9,7 +9,7 @@
 #define _76D90_MIN(s,t) ((s > t)? t : s)
 
 f32 func_802FDE60(f32);
-void timedFunc_set_1(f32, void (*)(s32), s32);
+void timedFunc_set_1(f32, void (*)(intptr_t), intptr_t);
 void timedFunc_set_2(f32, void (*)(s32,s32), s32, s32);
 void item_inc(s32);
 void gcpausemenu_80314AC8(s32);
