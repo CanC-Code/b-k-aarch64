@@ -150,8 +150,66 @@ void model_free(BKModel *this) {
 }
 
 BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
-    return NULL; // Stubbed: MTE tags on RDRAM
+    // MTE‑safe implementation — every read from the source RDRAM uses __builtin_memcpy
+    // BKMeshList header: s16 count (2 bytes) then BKMesh data[]
+    // BKMesh header:       s16 uid, s16 vtx_count (4 bytes) then s16 vertices[]
+
+    if (this == NULL || bk_vtx_list == NULL) return NULL;
+
+    // 1. read mesh count
+    s16 mesh_count;
+    __builtin_memcpy(&mesh_count, this, sizeof(s16));
+    if (mesh_count <= 0 || mesh_count > 5000) return NULL;
+
+    // 2. count total vertices by walking the source memory
+    s32 total_vtx = 0;
+    uintptr_t src_base = (uintptr_t)this & 0xFFFFFFFFFFFFULL;   // strip possible MTE tag
+    uintptr_t src = src_base + 2;                               // skip count field
+    for (int i = 0; i < mesh_count; i++) {
+        s16 vtx_count;
+        __builtin_memcpy(&vtx_count, (void*)(src + 2), sizeof(s16)); // vtx_count is at offset 2 in BKMesh
+        total_vtx += vtx_count;
+        src += 4 + vtx_count * sizeof(s16);                     // move to next mesh
+    }
+
+    // 3. allocate the runtime model
+    BKModel *model = (BKModel*) malloc(sizeof(BKModel)
+                     + mesh_count * sizeof(BKModelMesh)
+                     + total_vtx * sizeof(BKModelVtxRef));
+    if (model == NULL) return NULL;
+    model->mesh_list = this;
+    model->vtx_list = bk_vtx_list;
+
+    // 4. copy mesh data into the model
+    src = src_base + 2;                                         // reset to start of first mesh
+    BKModelMesh *dst_mesh = (BKModelMesh*) model->data;
+
+    for (int i = 0; i < mesh_count; i++) {
+        s16 uid, vtx_count;
+        __builtin_memcpy(&uid,       (void*)src,     sizeof(s16));
+        __builtin_memcpy(&vtx_count, (void*)(src+2), sizeof(s16));
+
+        dst_mesh->uid = uid;
+        dst_mesh->vtx_count = vtx_count;
+        BKModelVtxRef *vtx_ref = (BKModelVtxRef*) dst_mesh->data;
+
+        // copy each vertex reference
+        for (int j = 0; j < vtx_count; j++) {
+            s16 vtx_id;
+            __builtin_memcpy(&vtx_id, (void*)(src + 4 + j * sizeof(s16)), sizeof(s16));
+            if (vtx_id < 0 || vtx_id >= bk_vtx_list->count) vtx_id = 0;
+            vtx_ref->vtx_id = vtx_id;
+            __builtin_memcpy(&vtx_ref->v, &bk_vtx_list->vertices[vtx_id], sizeof(Vtx));
+            vtx_ref++;
+        }
+
+        src += 4 + vtx_count * sizeof(s16);                    // next source mesh
+        dst_mesh = (BKModelMesh*)((BKModelVtxRef*)dst_mesh->data + dst_mesh->vtx_count);
+    }
+
+    return model;
 }
+
 
 
 void func_8033F738(ActorMarker *this) {
