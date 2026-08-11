@@ -1179,10 +1179,14 @@ BKCollisionList *modelbin_getCollisionList(BKModelBin *this) {
 
 BKMeshList *modelbin_getMeshList(BKModelBin *this) {
     if (this == NULL) return NULL;
-    if (this->mesh_list_offset == 0)
-        return NULL;
-
-    return modelbin_getMeshList_MACRO(this);
+    if (this->mesh_list_offset == 0) return NULL;
+    BKMeshList *mesh_list;
+    // MTE-safe: read pointer from tagged RDRAM and strip top-byte tag
+    __builtin_memcpy(&mesh_list, (void*)((uintptr_t)this + offsetof(BKModelBin, mesh_list_offset) + 4), sizeof(mesh_list));
+    // Actually the mesh_list field is before mesh_list_offset. Let's just read directly
+    // from the correct offset. mesh_list is at offset 0 in BKModelBin.
+    __builtin_memcpy(&mesh_list, this, sizeof(mesh_list));
+    return (BKMeshList *)((uintptr_t)mesh_list & 0xFFFFFFFFFFFFULL);
 }
 
 f32 modelbin_getUnk34(BKModelBin *this) {

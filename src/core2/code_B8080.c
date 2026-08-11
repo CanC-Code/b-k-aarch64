@@ -156,14 +156,16 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
 
     if (this == NULL || bk_vtx_list == NULL) return NULL;
 
+    // Strip MTE tag from source pointer before any access
+    uintptr_t src_base = (uintptr_t)this & 0xFFFFFFFFFFFFULL;
+
     // 1. read mesh count
     s16 mesh_count;
-    __builtin_memcpy(&mesh_count, this, sizeof(s16));
+    __builtin_memcpy(&mesh_count, (void*)src_base, sizeof(s16));
     if (mesh_count <= 0 || mesh_count > 5000) return NULL;
 
     // 2. count total vertices by walking the source memory
     s32 total_vtx = 0;
-    uintptr_t src_base = (uintptr_t)this & 0xFFFFFFFFFFFFULL;   // strip possible MTE tag
     uintptr_t src = src_base + 2;                               // skip count field
     for (int i = 0; i < mesh_count; i++) {
         s16 vtx_count;
