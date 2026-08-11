@@ -113,7 +113,7 @@ void SM_func_80386D68(Actor *this){
 
     if (this->partnerActor && codeBF0_shouldSpawnQuarrieHoneyComb(this->partnerActor)) {
         func_802CA1CC(HONEYCOMB_18_SM_QUARRIES);
-        __spawnQueue_add_4((GenFunction_4) spawnQueue_bundle_f32, BUNDLE_1F_SM_EMPTY_HONEYCOMB, reinterpret_cast(s32, this->position[0]), reinterpret_cast(s32, this->position[1]), reinterpret_cast(s32, this->position[2]));
+        __spawnQueue_add_4((GenFunction_4) spawnQueue_bundle_f32, BUNDLE_1F_SM_EMPTY_HONEYCOMB, reinterpret_cast(intptr_t, this->position[0]), reinterpret_cast(intptr_t, this->position[1]), reinterpret_cast(intptr_t, this->position[2]));
     }
 
     marker_despawn(this->marker);

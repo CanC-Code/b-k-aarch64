@@ -165,7 +165,7 @@ void __baMarker_8028B9A8(s32 arg0){
 }
 
 void __baMarker_8028BA00(s32 arg0){
-    __spawnQueue_add_1((GenFunction_1)__baMarker_8028B9A8, reinterpret_cast(s32, arg0));
+    __spawnQueue_add_1((GenFunction_1)__baMarker_8028B9A8, reinterpret_cast(intptr_t, arg0));
 }
 
 

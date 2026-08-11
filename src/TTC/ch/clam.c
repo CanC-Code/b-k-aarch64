@@ -244,7 +244,7 @@ static void __chClam_playerDropsItem(enum bundle_e bundle_id, enum item_e item_i
 
     player_getPosition(position);
     bundle_setYaw(randf2(0.0f, 359.0f));
-    __spawnQueue_add_4((GenFunction_4) spawnQueue_bundle_f32, bundle_id, reinterpret_cast(s32, position[0]), reinterpret_cast(s32, position[1]), reinterpret_cast(s32, position[2]));
+    __spawnQueue_add_4((GenFunction_4) spawnQueue_bundle_f32, bundle_id, reinterpret_cast(intptr_t, position[0]), reinterpret_cast(intptr_t, position[1]), reinterpret_cast(intptr_t, position[2]));
     item_dec(item_id);
 }
 

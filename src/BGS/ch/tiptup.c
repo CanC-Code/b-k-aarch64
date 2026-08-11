@@ -228,12 +228,12 @@ void chTiptup_setState(Actor *this, s32 next_state){
             timedFunc_set_2(
                 sequence_time,
                 (GenFunction_2) chTiptup_activatePattern,
-                reinterpret_cast(s32, this->marker),
+                reinterpret_cast(intptr_t, this->marker),
                 rand2);
             timedFunc_set_2(
                 sequence_time + 0.1,
                 (GenFunction_2)chTiptup_activatePattern,
-                reinterpret_cast(s32, this->marker),
+                reinterpret_cast(intptr_t, this->marker),
                 0);
             prev_member = rand2;
         }//L80388B7C
@@ -255,7 +255,7 @@ void chTiptup_setState(Actor *this, s32 next_state){
             timedFunc_set_1(
                 sp54,
                 (GenFunction_1)chTiptup_activateTimer,
-                reinterpret_cast(s32, this->marker));
+                reinterpret_cast(intptr_t, this->marker));
         }else{
             this->state = CH_TIPTUP_STATE_5_WIN_MINIGAME;
         }
@@ -273,12 +273,12 @@ void chTiptup_setState(Actor *this, s32 next_state){
             timedFunc_set_2(
                 sequence_time,
                 (GenFunction_2)chTiptup_activatePattern,
-                reinterpret_cast(s32, this->marker),
+                reinterpret_cast(intptr_t, this->marker),
                 s1->unk0);
             timedFunc_set_2(
                 sequence_time + 0.1,
                 (GenFunction_2)chTiptup_activatePattern,
-                reinterpret_cast(s32, this->marker),
+                reinterpret_cast(intptr_t, this->marker),
                 0);
         }
         timed_exitStaticCamera(sequence_time += 2.5);
@@ -332,7 +332,7 @@ void chTiptup_choirHitReaction(ActorMarker *this, s32 arg1){
     }else{
         tmp = (Struct_BGS_2270_0s *)vector_at(unqPtr->unk4, unqPtr->unk0);
         if(arg1 == tmp->unk0){
-            timedFunc_set_1(0.5f, (GenFunction_1)chTiptup_correctHit, reinterpret_cast(s32, thisActor->marker));
+            timedFunc_set_1(0.5f, (GenFunction_1)chTiptup_correctHit, reinterpret_cast(intptr_t, thisActor->marker));
         }
         else{
             func_8028F55C(1, thisActor->marker);

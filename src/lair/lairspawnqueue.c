@@ -1156,7 +1156,7 @@ void func_803880BC(Actor *this)
         this->position_y -= 51.f;
         this->unk1C[0] = 0;
 
-        __spawnQueue_add_1((GenFunction_1)func_80387E94, reinterpret_cast(s32, this->marker));
+        __spawnQueue_add_1((GenFunction_1)func_80387E94, reinterpret_cast(intptr_t, this->marker));
 
         if (volatileFlag_get(VOLATILE_FLAG_BC_WITCH_SWITCH_PRESSED_CC) && !fileProgressFlag_get(FILEPROG_9A_CC_WITCH_SWITCH_PRESSED))
             FUNC_8030E624(SFX_3F6_RUBBING, 0.75f, 30000);
@@ -1848,7 +1848,7 @@ void func_8038982C(Actor *this)
         this->initialized = TRUE;
 
         if (!fileProgressFlag_get(FILEPROG_9E_CRYPT_COFFIN_LID_OPEN))
-            __spawnQueue_add_1((GenFunction_1)func_803897D4, reinterpret_cast(s32, this->marker));
+            __spawnQueue_add_1((GenFunction_1)func_803897D4, reinterpret_cast(intptr_t, this->marker));
     }
 }
 

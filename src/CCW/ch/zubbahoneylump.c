@@ -148,7 +148,7 @@ void chZubbaFight_update(Actor *this) {
     if(!this->volatile_initialized) {
         this->volatile_initialized = TRUE;
         this->marker->propPtr->unk8_3 = TRUE;
-        reinterpret_cast(s32, local->jiggyMarker) = 1;
+        reinterpret_cast(intptr_t, local->jiggyMarker) = 1;
         local->spawnedZubbaCount = 0;
         local->zubbasDefeated = 0;
         local->unkC = 0.0f;
@@ -211,7 +211,7 @@ void chZubbaFight_update(Actor *this) {
                     break;
 
             }
-            __spawnQueue_add_4((GenFunction_4)spawnQueue_actor_f32, ACTOR_29B_ZUBBA, reinterpret_cast(s32, sp4C[0]), reinterpret_cast(s32, sp4C[1]), reinterpret_cast(s32, sp4C[2]));
+            __spawnQueue_add_4((GenFunction_4)spawnQueue_actor_f32, ACTOR_29B_ZUBBA, reinterpret_cast(intptr_t, sp4C[0]), reinterpret_cast(intptr_t, sp4C[1]), reinterpret_cast(intptr_t, sp4C[2]));
             local->spawnedZubbaCount++;
         }
         local->unkC = randf2(0.5 - ((local->zubbasDefeated / 10) * 0.4), 1.0 - ((local->zubbasDefeated / 10) * 0.8));

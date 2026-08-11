@@ -128,7 +128,7 @@ void chMrVile_setAction(Actor *this, s32 action){
         skeletalAnim_swap(this->unk148, ASSET_124_ANIM_VILE_BITE, 0.1f, 0.5f);
         if(this->state == CH_MR_VILE_STATE_4_ATTACK_PLAYER){
             timed_playSfx(0.31f, SFX_4C_LIP_SMACK, 0.90f, 25000);
-            timedFunc_set_1(0.31f, (GenFunction_1)chMrVile_attackPlayer, reinterpret_cast(s32, this->marker));
+            timedFunc_set_1(0.31f, (GenFunction_1)chMrVile_attackPlayer, reinterpret_cast(intptr_t, this->marker));
         }
         else{
             timed_playSfx(0.31f, SFX_4C_LIP_SMACK, 0.90f, 25000);

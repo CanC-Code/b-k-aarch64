@@ -45,9 +45,9 @@ void chLongSwampSwitch_jiggySpawn(void) {
 
     jiggy_spawn(JIGGY_20_BGS_ELEVATED_WALKWAY, elevated_walkway_jiggy_position);
     __spawnQueue_add_4((GenFunction_4)spawnQueue_actor_f32, ACTOR_4C_STEAM,
-        reinterpret_cast(s32, elevated_walkway_jiggy_position[0]), 
-        reinterpret_cast(s32, elevated_walkway_jiggy_position[1]), 
-        reinterpret_cast(s32, elevated_walkway_jiggy_position[2])
+        reinterpret_cast(intptr_t, elevated_walkway_jiggy_position[0]), 
+        reinterpret_cast(intptr_t, elevated_walkway_jiggy_position[1]), 
+        reinterpret_cast(intptr_t, elevated_walkway_jiggy_position[2])
     );
 }
 
@@ -101,9 +101,9 @@ void chShortSwampSwitch_jiggySpawn(void){
 
     jiggy_spawn(JIGGY_25_BGS_MAZE, maze_jiggy_position);
     __spawnQueue_add_4((GenFunction_4)spawnQueue_actor_f32, ACTOR_4C_STEAM,
-        reinterpret_cast(s32, maze_jiggy_position[0]), 
-        reinterpret_cast(s32, maze_jiggy_position[1]), 
-        reinterpret_cast(s32, maze_jiggy_position[2])
+        reinterpret_cast(intptr_t, maze_jiggy_position[0]), 
+        reinterpret_cast(intptr_t, maze_jiggy_position[1]), 
+        reinterpret_cast(intptr_t, maze_jiggy_position[2])
     );
 }
 

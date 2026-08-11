@@ -149,27 +149,27 @@ void func_80361BD0(s32 arg0, s32 arg1, s32 arg2){
 }
 
 void func_80361C24(s32 arg0, f32 arg1, ActorMarker * arg2, f32 arg3){
-    anSeq_PushStep_2Arg(arg0, arg1, func_80361B68, reinterpret_cast(s32, arg2), reinterpret_cast(s32, arg3));
+    anSeq_PushStep_2Arg(arg0, arg1, func_80361B68, reinterpret_cast(intptr_t, arg2), reinterpret_cast(intptr_t, arg3));
 }
 
 void func_80361C64(s32 arg0, f32 arg1, ActorMarker * arg2, s32 arg3, s32 arg4){
-    anSeq_PushStep_3Arg(arg0, arg1, func_80361B98, reinterpret_cast(s32, arg2), reinterpret_cast(s32, arg3), arg4);
+    anSeq_PushStep_3Arg(arg0, arg1, func_80361B98, reinterpret_cast(intptr_t, arg2), reinterpret_cast(intptr_t, arg3), arg4);
 }
 
 void func_80361CAC(s32 arg0, f32 arg1, ActorMarker *arg2, f32 arg3){
-    anSeq_PushStep_3Arg(arg0, arg1, func_80361BD0, reinterpret_cast(s32, arg2), reinterpret_cast(s32, arg3), 1);
+    anSeq_PushStep_3Arg(arg0, arg1, func_80361BD0, reinterpret_cast(intptr_t, arg2), reinterpret_cast(intptr_t, arg3), 1);
 }
 
 void func_80361CF4(s32 arg0, f32 arg1, ActorMarker *arg2, f32 arg3){
-    anSeq_PushStep_3Arg(arg0, arg1, func_80361BD0, reinterpret_cast(s32, arg2), reinterpret_cast(s32, arg3), 2);
+    anSeq_PushStep_3Arg(arg0, arg1, func_80361BD0, reinterpret_cast(intptr_t, arg2), reinterpret_cast(intptr_t, arg3), 2);
 }
 
 void func_80361D3C(s32 arg0, f32 arg1, s32 arg2, s32 arg3){
-    anSeq_PushStep_2Arg(arg0, arg1, func_80361AB0, reinterpret_cast(s32, arg2), reinterpret_cast(s32, arg3));
+    anSeq_PushStep_2Arg(arg0, arg1, func_80361AB0, reinterpret_cast(intptr_t, arg2), reinterpret_cast(intptr_t, arg3));
 }
 
 void func_80361D7C(s32 arg0, f32 arg1, struct ActorMarker *arg2, s32 arg3, u32 arg4){
-    anSeq_PushStep_3Arg(arg0, arg1, func_80361AE0, reinterpret_cast(s32, arg2), arg3, arg4);
+    anSeq_PushStep_3Arg(arg0, arg1, func_80361AE0, reinterpret_cast(intptr_t, arg2), arg3, arg4);
 }
 
 void func_80361DC4(Actor *this){

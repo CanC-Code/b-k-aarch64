@@ -145,9 +145,9 @@ void baModel_reset(void){
     player_getPosition(plyr_pos);
     __spawnQueue_add_4((GenFunction_4)spawnQueue_actor_f32,
         ACTOR_17_PLAYER_SHADOW, 
-        reinterpret_cast(s32, plyr_pos[0]), 
-        reinterpret_cast(s32, plyr_pos[1]), 
-        reinterpret_cast(s32, plyr_pos[2])
+        reinterpret_cast(intptr_t, plyr_pos[0]), 
+        reinterpret_cast(intptr_t, plyr_pos[1]), 
+        reinterpret_cast(intptr_t, plyr_pos[2])
     );
 }
 

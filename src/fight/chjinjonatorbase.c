@@ -118,7 +118,7 @@ void chjinjonatorbase_update(Actor *this){
         func_802FA060(temp_s0, 17000, 17000, 0.0f);
         coMusicPlayer_playMusic(JINGLE_MENACING_GRUNTILDA_A, 15000);
         func_8032BB88(this, 0, 0x7fff);
-        timedFunc_set_1(8.0f, (GenFunction_1)chjinjonatorbase_func_8038E2CC, reinterpret_cast(s32,this->marker));
+        timedFunc_set_1(8.0f, (GenFunction_1)chjinjonatorbase_func_8038E2CC, reinterpret_cast(intptr_t,this->marker));
         this->unk1C[0] = this->position_x;
         this->unk1C[1] = this->position_y;
         this->unk1C[2] = this->position_z;
@@ -131,10 +131,10 @@ void chjinjonatorbase_update(Actor *this){
             this->velocity_y = 100.0f;
         }
 
-        timedFunc_set_1(this->lifetime_value* 0.05, (GenFunction_1)chjinjonatorbase_spawnActivator,  reinterpret_cast(s32,this->marker));
-        timedFunc_set_1(this->lifetime_value* 0.28, (GenFunction_1) chjinjonatorbase_spawnActivator, reinterpret_cast(s32,this->marker));
-        timedFunc_set_1(this->lifetime_value* 0.46, (GenFunction_1) chjinjonatorbase_spawnActivator, reinterpret_cast(s32,this->marker));
-        timedFunc_set_1(this->lifetime_value* 0.58, (GenFunction_1) chjinjonatorbase_spawnActivator, reinterpret_cast(s32,this->marker));
+        timedFunc_set_1(this->lifetime_value* 0.05, (GenFunction_1)chjinjonatorbase_spawnActivator,  reinterpret_cast(intptr_t,this->marker));
+        timedFunc_set_1(this->lifetime_value* 0.28, (GenFunction_1) chjinjonatorbase_spawnActivator, reinterpret_cast(intptr_t,this->marker));
+        timedFunc_set_1(this->lifetime_value* 0.46, (GenFunction_1) chjinjonatorbase_spawnActivator, reinterpret_cast(intptr_t,this->marker));
+        timedFunc_set_1(this->lifetime_value* 0.58, (GenFunction_1) chjinjonatorbase_spawnActivator, reinterpret_cast(intptr_t,this->marker));
         SPAWNQUEUE_ADD_1(chjinjonatorbase_spawnStoneJinjo, this->marker);
     }
     else {

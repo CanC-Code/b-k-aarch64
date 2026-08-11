@@ -45,7 +45,7 @@ int sfxInstruments_func_80335354(enum sfx_e sfx_id, struct46s *arg1) {
 }
 
 void sfxInstruments_func_80335394(s32 arg0, f32 arg1) {
-    func_80244978(arg0, AL_SEQP_STOP_EVT, reinterpret_cast(s32, arg1));
+    func_80244978(arg0, AL_SEQP_STOP_EVT, reinterpret_cast(intptr_t, arg1));
 }
 
 void sfxInstruments_func_803353BC(s32 arg0, u16 arg1) {

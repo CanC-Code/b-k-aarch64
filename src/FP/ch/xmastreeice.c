@@ -79,8 +79,8 @@ void chXmasTreeIce_returnCameraToBanjo(ActorMarker *marker){
 void chXmasTreeIce_initiateShatter(Actor *this){
     func_80324E38(0.0f, 3);
     timed_setStaticCameraToNode(0.0f, 0);
-    timedFunc_set_1(0.6f, (GenFunction_1)chXmasTreeIce_shatterIce, reinterpret_cast(s32, this->marker));
-    timedFunc_set_1(2.5f, (GenFunction_1)chXmasTreeIce_returnCameraToBanjo, reinterpret_cast(s32, this->marker));
+    timedFunc_set_1(0.6f, (GenFunction_1)chXmasTreeIce_shatterIce, reinterpret_cast(intptr_t, this->marker));
+    timedFunc_set_1(2.5f, (GenFunction_1)chXmasTreeIce_returnCameraToBanjo, reinterpret_cast(intptr_t, this->marker));
 }
 
 void chXmasTreeIce_update(Actor *this) {

@@ -127,7 +127,7 @@ void func_802C7318(Actor *actor){
     actor->lifetime_value = 0.0f;
     actor->unk154 = 0;
     actor->unk124_5 = 0;
-    reinterpret_cast(s32, actor->unkBC) = 1;
+    reinterpret_cast(intptr_t, actor->unkBC) = 1;
     switch(actor->modelCacheIndex){
         case 0x195:
         case 0x196:
@@ -170,7 +170,7 @@ void func_802C7478(Actor *actor){
 
 void func_802C74F4(Actor *actor, s32 arg1, f32 arg2){
     f32 tmp_f0;
-    switch(reinterpret_cast(s32, actor->unkBC)){
+    switch(reinterpret_cast(intptr_t, actor->unkBC)){
         case 0:
             tmp_f0 = 0.35f;
             break;
@@ -204,7 +204,7 @@ void func_802C75C8(enum actor_e actor_id, s32 arg1){
 }
 
 void func_802C75F8(Actor *actor, s32 arg1){
-    reinterpret_cast(s32, actor->unkBC) = arg1;
+    reinterpret_cast(intptr_t, actor->unkBC) = arg1;
 }
 
 void func_802C7600(enum actor_e actor_id, s32 arg1){

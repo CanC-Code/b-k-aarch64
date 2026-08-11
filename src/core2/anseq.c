@@ -193,7 +193,7 @@ void anSeq_func_80289048(vector(AnSeqElement) **ppAnSeq, f32 duration, s32 arg2,
 }
 
 void anSeq_func_80289090(vector(AnSeqElement) **ppAnSeq, f32 duration, s32 arg2, f32 arg3){
-    anSeq_PushStep_2Arg(ppAnSeq, duration, __anSeq_func_802888C0, arg2, reinterpret_cast(s32, arg3));
+    anSeq_PushStep_2Arg(ppAnSeq, duration, __anSeq_func_802888C0, arg2, reinterpret_cast(intptr_t, arg3));
 }
 
 void anSeq_free(vector(AnSeqElement)** ppAnSeq){

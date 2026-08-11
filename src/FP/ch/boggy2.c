@@ -585,7 +585,7 @@ void func_803896FC(Actor *this){
                     case 1: //L80389F78
                         if(this->unk38_31 == 2){
                             if(jiggyscore_isCollected(JIGGY_30_FP_BOGGY_2)){
-                                __spawnQueue_add_1((GenFunction_1)func_80388F54, reinterpret_cast(s32, this->marker));
+                                __spawnQueue_add_1((GenFunction_1)func_80388F54, reinterpret_cast(intptr_t, this->marker));
                                 maSlalom_unlinkBoggy();
                                 marker_despawn(this->marker);
                             }

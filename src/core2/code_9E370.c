@@ -19,9 +19,9 @@ f32 func_8033229C(ActorMarker *);
 f32 player_getYaw(void);
 extern void __bundle_spawnFromFirstActor(s32, Actor *);
 extern void func_8032B3A0(Actor *, ActorMarker *);
-extern void func_8032EE0C(GenFunction_2, s32);
+extern void func_8032EE0C(GenFunction_2, intptr_t);
 extern void func_8032EE20(void);
-extern void __spawnQueue_add_5(GenFunction_5, s32, s32, s32, s32, s32);
+extern void __spawnQueue_add_5(GenFunction_5, intptr_t, s32, s32, s32, s32);
 
 void func_8032A6A8(Actor *arg0);
 void func_8032ACA8(Actor *arg0);
@@ -2181,12 +2181,12 @@ void func_8032B258(Actor *this, enum collision_e arg1) {
             vec3fArray_get_vec3f( this->marker->unk44, 0x20, sp38);
         }
         if (((intptr_t)this->marker->unk44 < 0) && ((sp38[0] != 0.0f) || (sp38[1] != 0.0f) || (sp38[2] != 0.0f))) {
-            __spawnQueue_add_5((GenFunction_5) spawnQueue_bundleWithYaw_f32, this->unk138_27 + BUNDLE_15__JIGGY, reinterpret_cast(s32, sp38[0]), reinterpret_cast(s32, sp38[1]), reinterpret_cast(s32, sp38[2]), reinterpret_cast(s32, sp44));
+            __spawnQueue_add_5((GenFunction_5) spawnQueue_bundleWithYaw_f32, this->unk138_27 + BUNDLE_15__JIGGY, reinterpret_cast(intptr_t, sp38[0]), reinterpret_cast(intptr_t, sp38[1]), reinterpret_cast(intptr_t, sp38[2]), reinterpret_cast(intptr_t, sp44));
             return;
         }
         else{
             sp34 = this->position[1] + 50.0f;
-            __spawnQueue_add_5((GenFunction_5)spawnQueue_bundleWithYaw_f32, this->unk138_27 + BUNDLE_15__JIGGY, reinterpret_cast(s32,this->position[0]), reinterpret_cast(s32,sp34), reinterpret_cast(s32,this->position[2]), reinterpret_cast(s32,sp44));
+            __spawnQueue_add_5((GenFunction_5)spawnQueue_bundleWithYaw_f32, this->unk138_27 + BUNDLE_15__JIGGY, reinterpret_cast(intptr_t,this->position[0]), reinterpret_cast(intptr_t,sp34), reinterpret_cast(intptr_t,this->position[2]), reinterpret_cast(intptr_t,sp44));
         }
     }
 }
@@ -2304,15 +2304,15 @@ void func_8032B5C0(ActorMarker *arg0, ActorMarker *arg1, CollisionParams *arg2) 
                     }
                     func_8032EE0C(func_8032B38C, this);
                     if (((s32)arg0->unk44 < 0) && ((sp50[0] != 0.0f) || (sp50[1] != 0.0f) || (sp50[2] != 0.0f))) {
-                        __spawnQueue_add_5((GenFunction_5)spawnQueue_bundleWithYaw_f32, drop_bundle_num + BUNDLE_15__JIGGY, reinterpret_cast(s32, sp50[0]), reinterpret_cast(s32, sp50[1]), reinterpret_cast(s32, sp50[2]), reinterpret_cast(s32, player_yaw));
+                        __spawnQueue_add_5((GenFunction_5)spawnQueue_bundleWithYaw_f32, drop_bundle_num + BUNDLE_15__JIGGY, reinterpret_cast(intptr_t, sp50[0]), reinterpret_cast(intptr_t, sp50[1]), reinterpret_cast(intptr_t, sp50[2]), reinterpret_cast(intptr_t, player_yaw));
                     } else if (this->unk16C_3 && func_803048E0(sp3C, &sp4C, &sp48, 3, (s32) (func_8033229C(arg0) * 4.0f))) {
                         sp50[0] = (f32) sp48->position_x;
                         sp50[1] = (f32) sp48->position_y;
                         sp50[2] = (f32) sp48->position_z;
-                        __spawnQueue_add_5((GenFunction_5)spawnQueue_bundleWithYaw_f32, drop_bundle_num + BUNDLE_15__JIGGY, reinterpret_cast(s32, sp50[0]), reinterpret_cast(s32, sp50[1]), reinterpret_cast(s32, sp50[2]), reinterpret_cast(s32, player_yaw));
+                        __spawnQueue_add_5((GenFunction_5)spawnQueue_bundleWithYaw_f32, drop_bundle_num + BUNDLE_15__JIGGY, reinterpret_cast(intptr_t, sp50[0]), reinterpret_cast(intptr_t, sp50[1]), reinterpret_cast(intptr_t, sp50[2]), reinterpret_cast(intptr_t, player_yaw));
                     } else {
                         sp38 = this->position[1] + func_8033229C(arg0);
-                        __spawnQueue_add_5((GenFunction_5)spawnQueue_bundleWithYaw_f32, drop_bundle_num + BUNDLE_15__JIGGY, reinterpret_cast(s32, this->position[0]), reinterpret_cast(s32, sp38), reinterpret_cast(s32, this->position[2]), reinterpret_cast(s32, player_yaw));
+                        __spawnQueue_add_5((GenFunction_5)spawnQueue_bundleWithYaw_f32, drop_bundle_num + BUNDLE_15__JIGGY, reinterpret_cast(intptr_t, this->position[0]), reinterpret_cast(intptr_t, sp38), reinterpret_cast(intptr_t, this->position[2]), reinterpret_cast(intptr_t, player_yaw));
                     }
                     func_8032EE20();
                 }

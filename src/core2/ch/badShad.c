@@ -139,7 +139,7 @@ void func_802D729C(Actor *actor, f32 arg1){
         return;
     }
     if(!actor->unk104){
-        __spawnQueue_add_2((GenFunction_2)func_802D71A0, (s32) actor->marker, reinterpret_cast(s32, arg1));
+        __spawnQueue_add_2((GenFunction_2)func_802D71A0, (s32) actor->marker, reinterpret_cast(intptr_t, arg1));
         return;
     }
 

@@ -333,7 +333,7 @@ void func_802432F8(N_ALSndPlayer *sndp, N_ALEvent *event) {
                     func_80244978(sp68, AL_SEQP_PROG_EVT, temp_s0->unk34);
                     func_80244978(sp68, AL_SEQ_END_EVT, temp_s0->unk3D);
                     func_80244978(sp68, 0x100, temp_s0->unk3E);
-                    func_80244978(sp68, AL_SEQP_STOP_EVT, reinterpret_cast(s32, temp_s0->unk2C));
+                    func_80244978(sp68, AL_SEQP_STOP_EVT, reinterpret_cast(intptr_t, temp_s0->unk2C));
                 }
                 
                 break;
@@ -364,7 +364,7 @@ void func_80243FE4(N_AL_Struct81s *arg0) {
     sp1C = alCents2Ratio(arg0->unk8->keyMap->detune)* arg0->unk2C;
     evt.type = 0x10;
     evt.msg.unk3A70.unk0 = arg0;
-    evt.msg.unk3A70.unk4 = reinterpret_cast(s32, sp1C);
+    evt.msg.unk3A70.unk4 = reinterpret_cast(intptr_t, sp1C);
     alEvtqPostEvent(&D_802758CC->evtq, &evt, 33333);
 }
 

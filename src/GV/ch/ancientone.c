@@ -89,7 +89,7 @@ void func_803867F4(void){
     gcStaticCamera_activate(4);
     if(nodeProp_findPositionFromActorId(0x148, sp24)){
         jiggy_spawn(JIGGY_46_GV_ANCIENT_ONES, sp24);
-        __spawnQueue_add_4((GenFunction_4)spawnQueue_actor_f32, 0x4C, reinterpret_cast(s32, sp24[0]), reinterpret_cast(s32, sp24[1]), reinterpret_cast(s32, sp24[2]));
+        __spawnQueue_add_4((GenFunction_4)spawnQueue_actor_f32, 0x4C, reinterpret_cast(intptr_t, sp24[0]), reinterpret_cast(intptr_t, sp24[1]), reinterpret_cast(intptr_t, sp24[2]));
     }
 }
 
@@ -184,10 +184,10 @@ void chAncientOne_update(Actor *this){
                     this->position_z += (sp38 & 2) ? 0xC : -0xC;
                     if(this->actorTypeSpecificField != 1){
                         if(sp38 == 6){
-                            __spawnQueue_add_4((GenFunction_4)spawnQueue_actor_f32, 0x4C, reinterpret_cast(s32, this->position_x), reinterpret_cast(s32, sp34), reinterpret_cast(s32, this->position_z));
+                            __spawnQueue_add_4((GenFunction_4)spawnQueue_actor_f32, 0x4C, reinterpret_cast(intptr_t, this->position_x), reinterpret_cast(intptr_t, sp34), reinterpret_cast(intptr_t, this->position_z));
                         }
                         if(sp38 == 4 && this->position_y < LOCAL_CH_ANCIENT_ONE(this)->unk1C - 600.0f){
-                            __spawnQueue_add_4((GenFunction_4)spawnQueue_actor_f32, 0x11f, reinterpret_cast(s32, this->position_x), reinterpret_cast(s32, sp34), reinterpret_cast(s32, this->position_z));
+                            __spawnQueue_add_4((GenFunction_4)spawnQueue_actor_f32, 0x11f, reinterpret_cast(intptr_t, this->position_x), reinterpret_cast(intptr_t, sp34), reinterpret_cast(intptr_t, this->position_z));
                         }//L80386D80
                     }
                     if(LOCAL_CH_ANCIENT_ONE(this)->unk1C <= this->position_y){

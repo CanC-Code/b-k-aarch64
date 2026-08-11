@@ -88,7 +88,7 @@ void func_802EDF40(f32 pos[3], s32 arg1, s32 cnt, f32 arg3, f32 arg4, f32 arg5, 
     }
     if(arg6){
         particleEmitter_setRGB(pCtrl, arg6);
-        particleEmitter_setAlpha(pCtrl, reinterpret_cast(s32, arg6[3]));
+        particleEmitter_setAlpha(pCtrl, reinterpret_cast(intptr_t, arg6[3]));
     }
 
     particleEmitter_setPosition(pCtrl, pos);

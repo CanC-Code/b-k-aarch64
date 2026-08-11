@@ -122,10 +122,10 @@ void chMudHut_update(Actor *this){
                     if(hut_id == 5){
                         coMusicPlayer_playMusic(COMUSIC_2D_PUZZLE_SOLVED_FANFARE, 28000);
                     }
-                    __spawnQueue_add_1((GenFunction_1)chMudHut_spawnExplosion, reinterpret_cast(s32, this->marker));
+                    __spawnQueue_add_1((GenFunction_1)chMudHut_spawnExplosion, reinterpret_cast(intptr_t, this->marker));
 
                     if (hut_id < 5) {
-                        __spawnQueue_add_4((GenFunction_4) spawnQueue_bundle_f32, chBGSMudHutDrops[hut_id], reinterpret_cast(s32, diffPos[0]), reinterpret_cast(s32, diffPos[1]), reinterpret_cast(s32, diffPos[2]));
+                        __spawnQueue_add_4((GenFunction_4) spawnQueue_bundle_f32, chBGSMudHutDrops[hut_id], reinterpret_cast(intptr_t, diffPos[0]), reinterpret_cast(intptr_t, diffPos[1]), reinterpret_cast(intptr_t, diffPos[2]));
                     }
                     else {
                         jiggy_spawn(JIGGY_23_BGS_HUTS, diffPos);

@@ -157,17 +157,17 @@ void func_802CA1E0(Actor *this){
         this->volatile_initialized = TRUE;
         tmp_v1 = (s32)this->yaw;
         this->unk154 = (u32)D_80366E64[tmp_v1].unk0;
-        reinterpret_cast(s32, this->unkBC[4]) = D_80366E64[tmp_v1].unk4;
-        reinterpret_cast(s32, this->unkBC[0]) = 0;
+        reinterpret_cast(intptr_t, this->unkBC[4]) = D_80366E64[tmp_v1].unk4;
+        reinterpret_cast(intptr_t, this->unkBC[0]) = 0;
     }
     if(func_8025AEEC() && this->unk154){
-        tmp_v0 = (Struct_Core2_43250_1 *)this->unk154 + reinterpret_cast(s32, this->unkBC[0]);
+        tmp_v0 = (Struct_Core2_43250_1 *)this->unk154 + reinterpret_cast(intptr_t, this->unkBC[0]);
         phi_a0 = tmp_v0->unk0;
         tmp_f4 = tmp_v0->unk2*0.0078125;
         phi_a2 = tmp_v0->unk3*128.0;
         gcsfx_playWithPitch(phi_a0, tmp_f4, phi_a2);
-        reinterpret_cast(s32, this->unkBC[0])++;
-        if(reinterpret_cast(s32, this->unkBC[0]) == reinterpret_cast(s32, this->unkBC[4]))
+        reinterpret_cast(intptr_t, this->unkBC[0])++;
+        if(reinterpret_cast(intptr_t, this->unkBC[0]) == reinterpret_cast(intptr_t, this->unkBC[4]))
             this->unk154 = 0;
     }
 }

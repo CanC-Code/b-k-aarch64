@@ -32,7 +32,7 @@ void chBossBoomBoxCtrl_update(Actor *this){
         {
             marker_despawn(this->marker);
         } else {
-            __spawnQueue_add_4((GenFunction_4)spawnQueue_actor_f32, ACTOR_281_BOSS_BOOM_BOX_LARGEST, reinterpret_cast(s32,this->position_x), reinterpret_cast(s32,this->position_y), reinterpret_cast(s32,this->position_z));
+            __spawnQueue_add_4((GenFunction_4)spawnQueue_actor_f32, ACTOR_281_BOSS_BOOM_BOX_LARGEST, reinterpret_cast(intptr_t,this->position_x), reinterpret_cast(intptr_t,this->position_y), reinterpret_cast(intptr_t,this->position_z));
             __chBossBoomBoxCtrl_setState(this, BOSS_BOOM_BOX_CTRL_STATE_1_INIT);
         }
     }//L8038DEF4

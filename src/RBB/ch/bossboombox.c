@@ -392,9 +392,9 @@ void chBossBoomBox_setState(Actor *this, s32 new_state){
             __spawnQueue_add_4(
                 (GenFunction_4)spawnQueue_actor_f32,
                 local->unk0->actorId + 1, 
-                reinterpret_cast(s32, spawn_position[0]),
-                reinterpret_cast(s32, spawn_position[1]),
-                reinterpret_cast(s32, spawn_position[2]));
+                reinterpret_cast(intptr_t, spawn_position[0]),
+                reinterpret_cast(intptr_t, spawn_position[1]),
+                reinterpret_cast(intptr_t, spawn_position[2]));
 
             spawn_position[0] = this->position_x - 200.0f * local->unk0->spawnPositionDelta;
             spawn_position[1] = this->position_y + 80.0f * local->unk0->spawnPositionDelta;
@@ -402,9 +402,9 @@ void chBossBoomBox_setState(Actor *this, s32 new_state){
             __spawnQueue_add_4(
                 (GenFunction_4)spawnQueue_actor_f32,
                 local->unk0->actorId + 1,
-                reinterpret_cast(s32, spawn_position[0]),
-                reinterpret_cast(s32, spawn_position[1]),
-                reinterpret_cast(s32, spawn_position[2]));
+                reinterpret_cast(intptr_t, spawn_position[0]),
+                reinterpret_cast(intptr_t, spawn_position[1]),
+                reinterpret_cast(intptr_t, spawn_position[2]));
         }
     }//L8038D378
 

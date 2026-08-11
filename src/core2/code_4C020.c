@@ -814,9 +814,9 @@ void func_802D4D3C(enum actor_e arg0, enum actor_e arg1) {
         }
         else{
             __spawnQueue_add_4((GenFunction_4)spawnQueue_actor_f32, ACTOR_4C_STEAM,
-                reinterpret_cast(s32, sp5C[0]),
-                reinterpret_cast(s32, sp5C[1]),
-                reinterpret_cast(s32, sp5C[2])
+                reinterpret_cast(intptr_t, sp5C[0]),
+                reinterpret_cast(intptr_t, sp5C[1]),
+                reinterpret_cast(intptr_t, sp5C[2])
             );
         }
     }

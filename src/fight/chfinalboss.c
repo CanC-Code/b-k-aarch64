@@ -574,7 +574,7 @@ void chfinalboss_setPhase(ActorMarker *this, enum ch_finalboss_phase_e phase_id)
             timed_setStaticCameraToNode(0.0f, 0);
             timed_exitStaticCamera(2.0f);
             timed_setStaticCameraToNode(2.0f, 1);
-            timedFunc_set_1(2.0f, (GenFunction_1)chfinalboss_func_8038B780, reinterpret_cast(s32, actor->marker));
+            timedFunc_set_1(2.0f, (GenFunction_1)chfinalboss_func_8038B780, reinterpret_cast(intptr_t, actor->marker));
             break;
 
         case FINALBOSS_PHASE_1_BROOMSTICK:

@@ -61,9 +61,9 @@ void maSnowy_update(void){
                     gcStaticCamera_activate(0x12);
                     jiggy_spawn(JIGGY_31_FP_SIR_SLUSH, Me.spawn_pos);
                     __spawnQueue_add_4((GenFunction_4)spawnQueue_actor_f32, ACTOR_4C_STEAM,
-                        reinterpret_cast(s32, Me.spawn_pos[0]),
-                        reinterpret_cast(s32, Me.spawn_pos[1]),
-                        reinterpret_cast(s32, Me.spawn_pos[2])
+                        reinterpret_cast(intptr_t, Me.spawn_pos[0]),
+                        reinterpret_cast(intptr_t, Me.spawn_pos[1]),
+                        reinterpret_cast(intptr_t, Me.spawn_pos[2])
                     );
                 }
                 // * WARNING * :masnowy.c: Jigsaw 49 CANNOT find it's bootup marker point
