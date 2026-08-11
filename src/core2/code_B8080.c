@@ -151,6 +151,8 @@ void model_free(BKModel *this) {
 }
 
 BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
+    this = UNTAG(this);
+    bk_vtx_list = UNTAG(bk_vtx_list);
     s32 temp_s1;
     BKModel *model;
     void *temp_v0;
