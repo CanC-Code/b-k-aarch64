@@ -88,7 +88,7 @@ void chZubbaFight_setState(Actor *this, s32 next_state) {
             coMusicPlayer_playMusic(COMUSIC_2D_PUZZLE_SOLVED_FANFARE, 28000);
             func_80324E38(0.0f, 3);
             timed_setStaticCameraToNode(2.0f, 4);
-            timedFunc_set_1(2.0f, (GenFunction_1)chZubbaFight_jiggy, (s32) this->marker);
+            timedFunc_set_1(2.0f, (GenFunction_1)chZubbaFight_jiggy, (intptr_t)this->marker);
             timed_exitStaticCamera(4.0f);
             func_80324E38(4.0f, 0);
         }
@@ -158,7 +158,7 @@ void chZubbaFight_update(Actor *this) {
         chZubbaFight_setState(this, CH_ZUBBA_FIGHT_STATE_1_IDLE);
         return;
     }
-    if ((s32)local->jiggyMarker == 1) {
+    if ((intptr_t)local->jiggyMarker == 1) {
         jiggy_actor = actorArray_findActorFromActorId(ACTOR_46_JIGGY);
         if(volatileFlag_get(VOLATILE_FLAG_2_FF_IN_MINIGAME)) {
             local->jiggyMarker = NULL;

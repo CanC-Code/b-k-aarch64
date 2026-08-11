@@ -215,7 +215,7 @@ void chTNTDownSwitch_setState(Actor *this, s32 next_state){
         timedFunc_set_2(0.1f, (GenFunction_2)coMusicPlayer_playMusic, COMUSIC_2B_DING_B, 28000);
         func_80324E38(0.2f, 3);
         timed_setStaticCameraToNode(1.1f, 7);
-        timedFunc_set_1(1.6f, (GenFunction_1)chTNTDownSwitch_dropTNTActions, (s32)this->marker);
+        timedFunc_set_1(1.6f, (GenFunction_1)chTNTDownSwitch_dropTNTActions, (intptr_t)this->marker);
         levelSpecificFlags_set(LEVEL_FLAG_2D_RBB_UNKNOWN, TRUE);
     }
 }

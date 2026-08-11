@@ -424,7 +424,7 @@ void jigsawPicture_setState(Actor *this, s32 nextState) {
                 func_80324DBC(1.0f, 0xFAC, 4, NULL, this->marker, gruntyLaughCallback, NULL);
             }
 
-            timedFunc_set_1(2.0f, (GenFunction_1) afterPictureComplete, (s32) this->marker);
+            timedFunc_set_1(2.0f, (GenFunction_1) afterPictureComplete, (intptr_t)this->marker);
             this->lifetime_value = 3.0f;
             break;
     }

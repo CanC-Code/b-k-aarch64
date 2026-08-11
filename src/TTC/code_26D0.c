@@ -137,7 +137,7 @@ static void __code26D0_spawnLighthouseB(s32 arg0){
 static void __code26D0_lighthouseAUpdateFunc(Actor *this){
     __code26D0_genericUpdateFunc(this);
     if(!this->volatile_initialized){
-        __spawnQueue_add_1((GenFunction_1)__code26D0_spawnLighthouseB, (s32)this->marker);
+        __spawnQueue_add_1((GenFunction_1)__code26D0_spawnLighthouseB, (intptr_t)this->marker);
         this->volatile_initialized = TRUE;
     }
 }

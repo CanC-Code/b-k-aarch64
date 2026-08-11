@@ -6,7 +6,7 @@
 
 void timed_exitStaticCamera(f32);
 
-void timedFunc_set_2(f32, void(*)(s32, s32), s32, s32);
+void timedFunc_set_2(f32, void(*)(intptr_t, intptr_t), intptr_t, intptr_t);
 
 void func_8028E668(f32[3], f32, f32, f32);
 extern void __spawnQueue_add_3(GenFunction_3, s32, s32, s32);
@@ -54,7 +54,7 @@ void func_8038F470(ActorMarker *this, s32 arg1, enum chtanktup_leg_e leg_id){
     sp18[2] = thisActor->position_z;
     sp18[1] += 50.0f;
 
-    leg = actor_spawnWithYaw_f32(leg_id + ACTOR_E9_TANKTUP_LEG_FL, sp18, (s32)thisActor->yaw);
+    leg = actor_spawnWithYaw_f32(leg_id + ACTOR_E9_TANKTUP_LEG_FL, sp18, (intptr_t)thisActor->yaw);
     subaddie_set_state_with_direction(leg, arg1 + 1, 0, -1);
     leg->unk10_12 = leg_id;
 }

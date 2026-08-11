@@ -492,27 +492,27 @@ void chMrVileMinigame_setState(Actor *this, s32 next_state) {
         func_80324E38(0.0f, 3);
         timedFunc_set_2(1.0f, (GenFunction_2)coMusicPlayer_playMusic, COMUSIC_3C_MINIGAME_LOSS, 28000);
         timedFunc_set_0(4.0f, (GenFunction_0)func_8038A044);
-        timedFunc_set_1(4.0f, (GenFunction_1)chMrVileMinigame_vileWinsRound, (s32) this->marker);
+        timedFunc_set_1(4.0f, (GenFunction_1)chMrVileMinigame_vileWinsRound, (intptr_t)this->marker);
     }
     if (next_state == MR_VILE_MINIGAME_STATE_8_PLAYER_WINS) {
         chMrVile_setStateTalkToPlayer(local->vile_marker);
         func_80324E38(0.0f, 3);
         timedFunc_set_2(1.0f, (GenFunction_2)coMusicPlayer_playMusic, COMUSIC_3B_MINIGAME_VICTORY, 28000);
         timedFunc_set_0(3.0f, (GenFunction_0)func_8038A044);
-        timedFunc_set_1(3.0f, (GenFunction_1)chMrVileMinigame_playerWinsRound, (s32) this->marker);
+        timedFunc_set_1(3.0f, (GenFunction_1)chMrVileMinigame_playerWinsRound, (intptr_t)this->marker);
     }
     if (next_state == MR_VILE_MINIGAME_STATE_9_DROP_JIGGY) {
         chMrVile_setStateTalkToPlayer(local->vile_marker);
         func_80324E38(0.0f, 3);
         timedFunc_set_2(1.0f, (GenFunction_2)coMusicPlayer_playMusic, COMUSIC_3B_MINIGAME_VICTORY, 28000);
         timedFunc_set_0(3.0f, (GenFunction_0)func_8038A044);
-        timedFunc_set_1(3.0f, (GenFunction_1)chMrVileMinigame_vileDropsJiggy, (s32) this->marker);
+        timedFunc_set_1(3.0f, (GenFunction_1)chMrVileMinigame_vileDropsJiggy, (intptr_t)this->marker);
     }
     if (next_state == MR_VILE_MINIGAME_STATE_A_DROP_EXTRA_LIVES) {
         chMrVile_setStateTalkToPlayer(local->vile_marker);
         func_80324E38(0.5f, 3);
         timedFunc_set_2(1.0f, (GenFunction_2) coMusicPlayer_playMusic, COMUSIC_3B_MINIGAME_VICTORY, 28000);
-        timedFunc_set_1(3.0f, (GenFunction_1) chMrVileMinigame_vileDropsExtraLives, (s32) this->marker);
+        timedFunc_set_1(3.0f, (GenFunction_1) chMrVileMinigame_vileDropsExtraLives, (intptr_t)this->marker);
     }
     if (next_state == MR_VILE_MINIGAME_STATE_7_ATTACK_PLAYER) {
         chMrVile_setStateAttackPlayer(local->vile_marker);

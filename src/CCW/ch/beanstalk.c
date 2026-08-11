@@ -112,7 +112,7 @@ void chCCWBeanstalk_setNextState(Actor *this, s32 next_state){
             timedFunc_set_2(
                 8.0f,
                 (GenFunction_2)chCCWBeanstalk_setNextStateByMarker,
-                (s32) this->marker,
+                (intptr_t)this->marker,
                 CH_CCW_BEANSTALK_STATE_3_GROWN);
         } else {
             if (gsworld_getMap() == MAP_43_CCW_SPRING) {
@@ -122,7 +122,7 @@ void chCCWBeanstalk_setNextState(Actor *this, s32 next_state){
             timedFunc_set_2(
                 7.0f,
                 (GenFunction_2)chCCWBeanstalk_setNextStateByMarker,
-                (s32) this->marker,
+                (intptr_t)this->marker,
                 CH_CCW_BEANSTALK_STATE_3_GROWN);
         }
     }

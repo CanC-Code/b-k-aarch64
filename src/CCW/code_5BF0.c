@@ -89,15 +89,15 @@ void code_5BF0_setState(Actor *this, s32 next_state) {
     if (next_state == CODE_5BF0_STATE_2_CCW_WINTER_OR_NO_ACORN_JIGGY) {
         if (this->marker->id == MARKER_1CA_NABNUT) {
             skeletalAnim_set(this->unk148, ASSET_22E_ANIM_NABNUT_STAND, 0.2f, 3.53f);
-            skeletalAnim_setCallback_1(this->unk148, 0.1f, (GenFunction_1)func_8038C0E8, (s32)this->marker);
+            skeletalAnim_setCallback_1(this->unk148, 0.1f, (GenFunction_1)func_8038C0E8, (intptr_t)this->marker);
         }
         if (this->marker->id == MARKER_1C7_PINK_SQUIRREL) {
             skeletalAnim_set(this->unk148, ASSET_230_ANIM_PINK_SQUIRREL_UNK, 0.2f, 4.0f);
         }
         if (this->marker->id == MARKER_1CB_NABNUT_EATING_ACORNS) {
             skeletalAnim_set(this->unk148, ASSET_1A2_ANIM_NABNUT_SLEEP, 0.2f, 4.0f);
-            skeletalAnim_setCallback_1(this->unk148, 0.3f, (GenFunction_1)func_8038BFE0, (s32)this->marker);
-            skeletalAnim_setCallback_1(this->unk148, 0.65f, (GenFunction_1)func_8038C064, (s32)this->marker);
+            skeletalAnim_setCallback_1(this->unk148, 0.3f, (GenFunction_1)func_8038BFE0, (intptr_t)this->marker);
+            skeletalAnim_setCallback_1(this->unk148, 0.65f, (GenFunction_1)func_8038C064, (intptr_t)this->marker);
         }
         if (this->marker->id == MARKER_1C8_NABNUT_BEDSHEETS) {
             skeletalAnim_set(this->unk148, ASSET_231_ANIM_NABNUT_BEDSHEETS_UNK, 0.2f, 4.0f);

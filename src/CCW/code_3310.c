@@ -219,12 +219,12 @@ void chEyrieBaby_setState(Actor *this, s32 next_state) {
         func_8028F784(0);
         skeletalAnim_set(this->unk148, local->progression->sleepingAnimation, 0.2f, 6.0f);
         skeletalAnim_setBehavior(this->unk148, SKELETAL_ANIM_1_LOOP);
-        skeletalAnim_setCallback_1(this->unk148, 0.2f, (GenFunction_1)func_80389740, (s32)this->marker);
-        skeletalAnim_setCallback_1(this->unk148, 0.3f, (GenFunction_1)func_80389740, (s32)this->marker);
-        skeletalAnim_setCallback_1(this->unk148, 0.4f, (GenFunction_1)func_80389740, (s32)this->marker);
-        skeletalAnim_setCallback_1(this->unk148, 0.72f, (GenFunction_1)func_80389740, (s32)this->marker);
-        skeletalAnim_setCallback_1(this->unk148, 0.82f, (GenFunction_1)func_80389740, (s32)this->marker);
-        skeletalAnim_setCallback_1(this->unk148, 0.92f, (GenFunction_1)func_80389740, (s32)this->marker);
+        skeletalAnim_setCallback_1(this->unk148, 0.2f, (GenFunction_1)func_80389740, (intptr_t)this->marker);
+        skeletalAnim_setCallback_1(this->unk148, 0.3f, (GenFunction_1)func_80389740, (intptr_t)this->marker);
+        skeletalAnim_setCallback_1(this->unk148, 0.4f, (GenFunction_1)func_80389740, (intptr_t)this->marker);
+        skeletalAnim_setCallback_1(this->unk148, 0.72f, (GenFunction_1)func_80389740, (intptr_t)this->marker);
+        skeletalAnim_setCallback_1(this->unk148, 0.82f, (GenFunction_1)func_80389740, (intptr_t)this->marker);
+        skeletalAnim_setCallback_1(this->unk148, 0.92f, (GenFunction_1)func_80389740, (intptr_t)this->marker);
         local->sfx = local->progression->sleepingSFX;
     }
     this->state = next_state;

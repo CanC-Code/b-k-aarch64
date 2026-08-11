@@ -36,7 +36,7 @@ void chBoomBoxMinigameCtrl_setState(Actor *this, s32 next_state){
         func_80324E38(0.0f, 3);
         timedFunc_set_2(1.0f, (GenFunction_2)coMusicPlayer_playMusic, COMUSIC_2B_DING_B, 28000);
         timed_setStaticCameraToNode(1.8f, 1);
-        timedFunc_set_1(2.0f, (GenFunction_1) chBoomBoxMinigameCtrl_spawnExtraLife, (s32)this->marker);
+        timedFunc_set_1(2.0f, (GenFunction_1) chBoomBoxMinigameCtrl_spawnExtraLife, (intptr_t)this->marker);
         timed_exitStaticCamera(5.0f);
         func_80324E38(5.0f, 0);
     }

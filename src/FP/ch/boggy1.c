@@ -151,7 +151,7 @@ void func_8038794C(Actor *this){
                 if(!player_movementGroup() || player_movementGroup() == BSGROUP_8_TROT){
                     if (gcdialog_showDialog(VER_SELECT(ASSET_BFF_DIALOG_BOGGY_MEET, 0x979, 0, 0), 0x2a, this->position, NULL, NULL, NULL)) {
                         for (i = 0; i < 5; i++) {
-                            timedFunc_set_1(D_80391BEC[i], (GenFunction_1) func_8038787C, (s32) this->marker);
+                            timedFunc_set_1(D_80391BEC[i], (GenFunction_1) func_8038787C, (intptr_t)this->marker);
                         }
                         this->has_met_before = TRUE;
                     }

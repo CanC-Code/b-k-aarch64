@@ -81,7 +81,7 @@ void chCCWGobi_setState(Actor *this, s32 next_state) {
         timed_playSfx(0.8f, SFX_4B_GULPING, 0.8f, 28000);
         timed_playSfx(1.4f, SFX_4B_GULPING, 0.8f, 28000);
         timed_playSfx(2.0f, SFX_4B_GULPING, 0.8f, 28000);
-        timedFunc_set_2(3.2f, (GenFunction_2) chCCWGobi_setStateByMarker, (s32) this->marker, 3);
+        timedFunc_set_2(3.2f, (GenFunction_2) chCCWGobi_setStateByMarker, (intptr_t)this->marker, 3);
     }
     if (next_state == CH_CCW_GOBI_STATE_3_GROW_BEANSTALK) {
         chCCWBeanstalk_growBeanstalk();
@@ -94,7 +94,7 @@ void chCCWGobi_setState(Actor *this, s32 next_state) {
     }
     if (next_state == CH_CCW_GOBI_STATE_5_GETTING_UP) {
         if (local->dialogs->autumnCompleteDialog != NULL) {
-            gcdialog_showDialog((s32) local->dialogs->autumnCompleteDialog, 4, NULL, NULL, NULL, NULL);
+            gcdialog_showDialog((intptr_t)local->dialogs->autumnCompleteDialog, 4, NULL, NULL, NULL, NULL);
         }
         skeletalAnim_set(this->unk148, ASSET_FD_ANIM_GOBI2_GETTING_UP, 0.23f, 0.5f);
         timed_setStaticCameraToNode(0.0f, 3);
@@ -184,7 +184,7 @@ void chGobiCCW_update(Actor *this) {
             player_getPosition(player_position);
             if (ml_vec3f_distance(this->position, player_position) < 600.0f) {
                 if (local->dialogs->summerMeetDialog != NULL) {
-                    gcdialog_showDialog((s32) local->dialogs->summerMeetDialog, 4, NULL, NULL, NULL, NULL);
+                    gcdialog_showDialog((intptr_t)local->dialogs->summerMeetDialog, 4, NULL, NULL, NULL, NULL);
                 }
                 this->has_met_before = TRUE;
             }

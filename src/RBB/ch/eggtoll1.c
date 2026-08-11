@@ -123,7 +123,7 @@ void chRBBEggToll_setState(Actor *this, s32 next_state){
         coMusicPlayer_playMusic(COMUSIC_2B_DING_B, 28000);
         func_80324E38(0.0f, 3);
         timedFunc_set_2(0.5f, (GenFunction_2) coMusicPlayer_playMusic, COMUSIC_2D_PUZZLE_SOLVED_FANFARE, 28000);
-        timedFunc_set_1(1.0f,  (GenFunction_1) func_803865D0, (s32)this->marker);
+        timedFunc_set_1(1.0f,  (GenFunction_1) func_803865D0, (intptr_t)this->marker);
     }//L803867D4
 
     if(next_state == CH_RBB_EGG_TOLL_STATE_4_UNK){

@@ -49,7 +49,7 @@ void chChoirTurtle_setState(Actor *this, s32 next_state) {
     if (next_state == CHOIR_TURTLE_STATE_3_SQUISHED) {
         gcsfx_playWithPitch(SFX_86_TIPTUP_CHORUS_AH, local->unk8, 0x7FFF);
         skeletalAnim_set(this->unk148, ASSET_12F_ANIM_CHOIR_TURTLE_HURT, 0.1f, 1.75f);
-        skeletalAnim_setCallback_1(this->unk148, 0.9f, (GenFunction_1)chChoirTurtle_returnState, (s32)this->marker);
+        skeletalAnim_setCallback_1(this->unk148, 0.9f, (GenFunction_1)chChoirTurtle_returnState, (intptr_t)this->marker);
         if (local->tiptup_marker != NULL) {
             chTiptup_choirHitReaction(local->tiptup_marker, local->unk0);
         }

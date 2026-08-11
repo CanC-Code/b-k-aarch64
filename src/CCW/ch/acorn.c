@@ -46,8 +46,8 @@ void chCarriedAcorn_setNextState(Actor *this, s32 next_state) {
     local = (ActorLocal_ChCarriedAcorn *)&this->local;
     if (next_state == CH_CARRIED_ACORN_STATE_1_PULL_OUT) {
         skeletalAnim_set(this->unk148, ASSET_25B_ANIM_ACORN_IDLE, 0.0f, 1.0f);
-        skeletalAnim_setCallback_1(this->unk148, 0.5f, (GenFunction_1)chCarriedAcorn_sfxBoing, (s32)this->marker);
-        skeletalAnim_setCallback_1(this->unk148, 0.7f, (GenFunction_1)chCarriedAcorn_sfxBanjoNoise, (s32)this->marker);
+        skeletalAnim_setCallback_1(this->unk148, 0.5f, (GenFunction_1)chCarriedAcorn_sfxBoing, (intptr_t)this->marker);
+        skeletalAnim_setCallback_1(this->unk148, 0.7f, (GenFunction_1)chCarriedAcorn_sfxBanjoNoise, (intptr_t)this->marker);
     }
     if (next_state == CH_CARRIED_ACORN_STATE_3_TOSS) {
         local->position[0] = this->position[0];

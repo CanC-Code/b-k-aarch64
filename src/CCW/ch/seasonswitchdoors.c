@@ -211,8 +211,8 @@ void chSeasonSwitchDoors_update(Actor *this) {
     switch (this->state) {                              /* irregular */
         case CH_CCW_SEASON_SWITCH_DOOR_STATE_1_LOWERED:
             if (levelSpecificFlags_get(this->unk10_12 + 7)) {
-                timedFunc_set_1(0.05f, (GenFunction_1)chSeasonSwitchDoors_doorOpening, (s32) this->marker);
-                timedFunc_set_1(4.0f, (GenFunction_1)chSeasonSwitchDoors_doorOpened, (s32) this->marker);
+                timedFunc_set_1(0.05f, (GenFunction_1)chSeasonSwitchDoors_doorOpening, (intptr_t)this->marker);
+                timedFunc_set_1(4.0f, (GenFunction_1)chSeasonSwitchDoors_doorOpened, (intptr_t)this->marker);
                 subaddie_set_state(this, CH_CCW_SEASON_SWITCH_DOOR_STATE_2_OPENING);
             }
             break;

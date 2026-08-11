@@ -114,7 +114,7 @@ void actor_predrawMethod(Actor *this){
 
     modelRender_setDepthMode(this->depth_mode);
     if(this->marker->unk44 != 0){
-        if((s32)this->marker->unk44 == 1){
+        if((intptr_t)this->marker->unk44 == 1){
             modelRender_setRefPoints(D_8036E568);
         }
         else{
@@ -2177,10 +2177,10 @@ void func_8032B258(Actor *this, enum collision_e arg1) {
 
     if ((arg1 == COLLISION_2_DIE) && this->unk138_27 != 0) {
         sp44 = player_getYaw();
-        if ((s32)this->marker->unk44 < 0) {
+        if ((intptr_t)this->marker->unk44 < 0) {
             vec3fArray_get_vec3f( this->marker->unk44, 0x20, sp38);
         }
-        if (((s32)this->marker->unk44 < 0) && ((sp38[0] != 0.0f) || (sp38[1] != 0.0f) || (sp38[2] != 0.0f))) {
+        if (((intptr_t)this->marker->unk44 < 0) && ((sp38[0] != 0.0f) || (sp38[1] != 0.0f) || (sp38[2] != 0.0f))) {
             __spawnQueue_add_5((GenFunction_5) spawnQueue_bundleWithYaw_f32, this->unk138_27 + BUNDLE_15__JIGGY, reinterpret_cast(s32, sp38[0]), reinterpret_cast(s32, sp38[1]), reinterpret_cast(s32, sp38[2]), reinterpret_cast(s32, sp44));
             return;
         }

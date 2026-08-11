@@ -68,7 +68,7 @@ void chSnarebear_update(Actor *this) {
     if (!this->volatile_initialized) {
         this->volatile_initialized = TRUE;
         func_8028746C(this->anctrl, (GenFunction_2)func_8038E060);
-        func_8028748C(this->anctrl, (s32) this->marker);
+        func_8028748C(this->anctrl, (intptr_t)this->marker);
         this->marker->propPtr->unk8_3 = TRUE;
         this->unk1C[0] = 0.0f;
         this->unk38_31 = 0;

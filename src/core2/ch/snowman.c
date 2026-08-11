@@ -311,7 +311,7 @@ void chSnowman_update(Actor *this){
                     && local->unkB
                 ){
                     func_8030E878(SFX_8F_SNOWBALL_FLYING, randf2(0.95f, 1.05f), 30000, this->position, 800.0f, 3050.0f);
-                    __spawnQueue_add_1((GenFunction_1)__chSnowman_spawnSnowball, (s32)this->marker);
+                    __spawnQueue_add_1((GenFunction_1)__chSnowman_spawnSnowball, (intptr_t)this->marker);
                     local->unk9 = FALSE;
                 }
                 

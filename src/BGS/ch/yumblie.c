@@ -114,7 +114,7 @@ Actor *chYumblie_draw(ActorMarker *this, Gfx **gfx, Mtx** mtx, Vtx **vtx){
         return thisActor;
     }
 
-    modelRender_setPreDrawCallback((GenFunction_1) actor_predrawMethod, (s32)thisActor);
+    modelRender_setPreDrawCallback((GenFunction_1) actor_predrawMethod, (intptr_t)thisActor);
     modelRender_setPostDrawCallback((GenFunction_1) actor_postdrawMethod, (s32)this);
     actor_position[0] = thisActor->position_x;
     actor_position[1] = thisActor->position_y + local->animTimer * 75.0f;

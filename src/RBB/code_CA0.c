@@ -160,7 +160,7 @@ void chCageUpSwitch_setState(Actor *this, s32 next_state){
         timedFunc_set_2(0.1f, (GenFunction_2)func_8038711C, 0x19d, 0x1f4);
         timedFunc_set_2(0.1f, (GenFunction_2)coMusicPlayer_playMusic, COMUSIC_2B_DING_B, 28000);
         func_80324E38(0.2f, 3);
-        timedFunc_set_1(1.1f, (GenFunction_1)func_8038718C, (s32)this->marker);
+        timedFunc_set_1(1.1f, (GenFunction_1)func_8038718C, (intptr_t)this->marker);
     }//L80387704
 
     if(next_state == CH_CAGE_UP_SWITCH_STATE_3_TIMED_RAISED_CAGE){
@@ -188,7 +188,7 @@ void chCageUpSwitch_setState(Actor *this, s32 next_state){
         }//L803877D4
         timed_playSfx(3.0f, SFX_7F_HEAVYDOOR_SLAM, 0.5f, 25000);
         timed_playSfx(3.0f, SFX_7F_HEAVYDOOR_SLAM, 0.6f, 25000);
-        timedFunc_set_1(4.0f, (GenFunction_1)func_80387488, (s32)this->marker);
+        timedFunc_set_1(4.0f, (GenFunction_1)func_80387488, (intptr_t)this->marker);
     }//L80387828
 
     this->state = next_state;

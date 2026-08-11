@@ -65,7 +65,7 @@ void chGnawtySwimming_setState(Actor *this, s32 next_state) {
     if (next_state == CH_GNAWTY_SWIMMING_STATE_1_SWIMMING) {
         skeletalAnim_set(this->unk148, 0x289, 0.2f, 1.1f);
         for(i = 0; i < 10; i++){
-            skeletalAnim_setCallback_1(this->unk148, randf(), (GenFunction_1)chGnawtySwimming_emitParticles, (s32)this->marker);
+            skeletalAnim_setCallback_1(this->unk148, randf(), (GenFunction_1)chGnawtySwimming_emitParticles, (intptr_t)this->marker);
         }
     }
     this->state = next_state;

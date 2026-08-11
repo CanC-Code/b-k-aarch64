@@ -47,7 +47,7 @@ void chAutumnOutsideNabnut_setState(Actor *this, s32 next_state) {
         timedFunc_set_2(
             1.0f,
             (GenFunction_2)__chAutumnOutsideNabnut_setStateMethod,
-            (s32)this->marker,
+            (intptr_t)this->marker,
             CH_AUTUMN_OUTDOOR_NABNUT_STATE_3_BACKFLIP);
     }
 

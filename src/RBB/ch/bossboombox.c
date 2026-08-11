@@ -330,7 +330,7 @@ void chBossBoomBox_setState(Actor *this, s32 new_state){
             item_set(ITEM_0_HOURGLASS_TIMER, 0x1067);
             timed_exitStaticCamera(2.4f);
             func_80324E38(2.4f, 0);
-            timedFunc_set_2(2.4f, (GenFunction_2)RBB_func_8038C370, (s32)this->marker, 3);
+            timedFunc_set_2(2.4f, (GenFunction_2)RBB_func_8038C370, (intptr_t)this->marker, 3);
         }
         else{//L8038CEFC
             timedFunc_set_3(2.4f, (GenFunction_3)comusic_8025AB44, COMUSIC_62_RBB_BOOMBOX, 8000, 300);
