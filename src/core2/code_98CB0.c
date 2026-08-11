@@ -48,15 +48,15 @@ void func_8031FC40(void) {
     u32 v1;
 
     //obsucre address
-    t0 = (((s32)&gFileProgressFlags.unk8 & 0xE0000000) >> 15) +
-              (((s32)&gFileProgressFlags.unk8 & 0x1FC00000) >> 22) +
-              (((s32)&gFileProgressFlags.unk8 & 0x00300000) << 10) +
-              (((s32)&gFileProgressFlags.unk8 & 0x000F0000) << 7) +
-              (((s32)&gFileProgressFlags.unk8 & 0x0000E000) << 14) +
-              (((s32)&gFileProgressFlags.unk8 & 0x00001800) >> 4) +
-              (((s32)&gFileProgressFlags.unk8 & 0x00000780) << 10) +
-              (((s32)&gFileProgressFlags.unk8 & 0x00000060) << 4) +
-              (((s32)&gFileProgressFlags.unk8 & 0x00000018) << 18) +
+    t0 = (((intptr_t)(s32)&gFileProgressFlagsgFileProgressFlags.unk8 & 0xE0000000) >> 15) +
+              (((intptr_t)(s32)&gFileProgressFlagsgFileProgressFlags.unk8 & 0x1FC00000) >> 22) +
+              (((intptr_t)(s32)&gFileProgressFlagsgFileProgressFlags.unk8 & 0x00300000) << 10) +
+              (((intptr_t)(s32)&gFileProgressFlagsgFileProgressFlags.unk8 & 0x000F0000) << 7) +
+              (((intptr_t)(s32)&gFileProgressFlagsgFileProgressFlags.unk8 & 0x0000E000) << 14) +
+              (((intptr_t)(s32)&gFileProgressFlagsgFileProgressFlags.unk8 & 0x00001800) >> 4) +
+              (((intptr_t)(s32)&gFileProgressFlagsgFileProgressFlags.unk8 & 0x00000780) << 10) +
+              (((intptr_t)(s32)&gFileProgressFlagsgFileProgressFlags.unk8 & 0x00000060) << 4) +
+              (((intptr_t)(s32)&gFileProgressFlagsgFileProgressFlags.unk8 & 0x00000018) << 18) +
               (((s32)&gFileProgressFlags.unk8 & 0x00000007) << 11);
 
     //unobscure address
