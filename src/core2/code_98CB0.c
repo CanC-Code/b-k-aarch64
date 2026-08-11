@@ -289,12 +289,12 @@ s32 func_8032056C(void) {
               ((addr & 0x00000018) << 18) +
               ((addr & 0x00000007) << 11);
     phi_t9 = (temp_v1 & 0x38000000) / (1 << 24);
-    temp_a0 = ((temp_v1 & 0x1E0600) << 0xB) | ((s32) (temp_v1 & 0x603800) / 8);
+    temp_a0 = ((temp_v1 & 0x1E0600) << 0xB) | ((intptr_t) (temp_v1 & 0x603800) / 8);
     temp_a1 = (((temp_v1 & 0x1C07F) << 15) + ((temp_v1 & 0xC7800000) >> 17)) | 
-               (phi_t9 + ((s32) (temp_v1 & 0x180) >> 6));
+               (phi_t9 + ((intptr_t) (temp_v1 & 0x180) >> 6));
     temp_a1 = ((temp_a1 & 0x3FE000) << 7) |
               (((temp_a0 >> 8) & 7) + ((temp_a1 << 0xA) & 0xFF800)) |
-              ((((u32) (temp_a0 & 0xF0000000) >> 0x15) + (temp_a1 & 0xE0000000)) ^ ((s32) ((temp_a0 / 0x40) & 0xF000) >> 9));
+              ((((u32) (temp_a0 & 0xF0000000) >> 0x15) + (temp_a1 & 0xE0000000)) ^ ((intptr_t) ((temp_a0 / 0x40) & 0xF000) >> 9));
     return func_80320250() == *(s32*)temp_a1;
 }
 
