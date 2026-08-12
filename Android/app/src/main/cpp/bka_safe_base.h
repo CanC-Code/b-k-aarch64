@@ -50,6 +50,7 @@ static inline uintptr_t BKA_Validate_And_Translate(
         uintptr_t addr, const char* file, int line)
 {
     uint32_t mask32 = (uint32_t)(addr & 0xFFFFFFFFu);
+    addr &= 0x00FFFFFFFFFFFFFFULL;
 
     if (mask32 == 0u) return 0u;
 
