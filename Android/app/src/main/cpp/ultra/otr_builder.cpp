@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <vector>
+#include <utility>
 #include <string>
 
 #include "rare_decompression.h"
@@ -50,6 +51,7 @@ struct SplatSegment {
 // ---------------------------------------------------------------------------
 
 static constexpr uint32_t MAX_SPLIT_SEGMENTS = 100000;
+static std::vector<std::pair<uint32_t, uint32_t>> g_compressedRanges;
 static constexpr uint32_t MAX_ASSET_SIZE = 0x10000000; // 256 MB
 
 // ---------------------------------------------------------------------------
@@ -504,6 +506,7 @@ Java_com_bkawrapper_OtrService_runNativeOtrGeneration(
                                            static_cast<uint32_t>(srcBuffer[5]);
                     if (declaredSize > 0 && declaredSize <= MAX_ASSET_SIZE) {
                         isRareCompressed = true;
+                        g_compressedRanges.push_back({offset, size});
                     }
                 }
 
@@ -542,8 +545,14 @@ Java_com_bkawrapper_OtrService_runNativeOtrGeneration(
         uint32_t* words = reinterpret_cast<uint32_t*>(romBaseBuffer);
         size_t wordCount = romSize / 4;
         for (size_t w = 0; w < wordCount; w++) {
+
             words[w] = swap_uint32(words[w]);
         }
+    }
+
+    // Undo the 32-bit swap for compressed assets, leaving them in original big-endian order.
+    for (const auto& range : g_compressedRanges) {
+        byteswap_n64(romBaseBuffer + range.first, range.second);
     }
 
     // -----------------------------------------------------------------------
