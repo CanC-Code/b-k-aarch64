@@ -1,4 +1,3 @@
-#include "../../Android/app/src/main/cpp/bka_safe_base.h"
 #include <ultra64.h>
 #include "functions.h"
 #include "variables.h"
@@ -20,7 +19,7 @@ s32 assetCacheCurrentSize = 0;
 
 
 /* .bss */
-u8 D_80383CB0[16];
+s32 D_80383CB0;
 u8 pad_80383CB8[0x8];
 AssetROMHead *assetSectionRomHeader;
 AssetFileMeta *assetSectionRomMetaList;
@@ -47,13 +46,8 @@ f32 func_8033AA10(AnimationFile *this, s32 arg1){
         return 0.999999f;
     return (f32)(arg1 - this->unk0)/(f32)(this->unk2 - this->unk0);
 }
-f32 func_8033ABA0(AnimationFile *this, f32 arg1){
-    return this->unk0 + arg1*(this->unk2 - this->unk0);
-}
 
 void animationFile_getBoneTransformList(AnimationFile *anim_file, f32 progress, BoneTransformList *bone_transform_list){
-    if (anim_file == NULL || bone_transform_list == NULL) return;
-    anim_file = (AnimationFile*)BKA_TRANSLATE_ADDR(anim_file);
     s32 bone_id;
     int i;
     f32 tmp_f22;
@@ -61,7 +55,7 @@ void animationFile_getBoneTransformList(AnimationFile *anim_file, f32 progress, 
     f32 sp54[3][3];
 
     tmp_f22 = func_8033ABA0(anim_file, progress);
-    tmp_s0 = (AnimationFileElement *)((uintptr_t)anim_file + sizeof(AnimationFile));
+    tmp_s0 = (AnimationFileElement *)((s32)anim_file + sizeof(AnimationFile));
     bone_id = 0;
     for(i = 0; i < anim_file->elem_cnt; i++){//L8033AAB8
         if(tmp_s0->unk0_15 != bone_id){
@@ -79,6 +73,10 @@ void animationFile_getBoneTransformList(AnimationFile *anim_file, f32 progress, 
     func_8033AFB8(bone_transform_list, bone_id, sp54);
 }
 
+f32 func_8033ABA0(AnimationFile *this, f32 arg1){
+    this = (AnimationFile*)((uintptr_t)this & 0x00FFFFFFFFFFFFFFUL);
+    return this->unk0 + arg1*(this->unk2 - this->unk0);
+}
 
 f32 func_8033ABCC(AnimationFile *this){
     f32 tmp = func_8033AC0C(this);
@@ -94,6 +92,7 @@ s32 func_8033AC14(AnimationFile *this){
 }
 
 s32 func_8033AC1C(AnimationFile *this){
+    return this->unk2 - this->unk0 + 1;
 }
 
 s32 animationFile_count(AnimationFile *this){
@@ -392,8 +391,8 @@ void *assetcache_get(enum asset_e assetId) {
         
         if (func_8025498C((u32)comp_size + uncomp_size) && !sp28) {
             sp33 = 1;
-            uncompressed_file = malloc((u32)comp_size + uncomp_size + 64);
-            compressed_file = (void *)(uncompressed_file + uncomp_size);
+            uncompressed_file = malloc((u32)comp_size + uncomp_size);
+            compressed_file = (void *)((s32) uncompressed_file + uncomp_size);
         } else {
             sp33 = 2;
             if (sp28) {
@@ -403,20 +402,18 @@ void *assetcache_get(enum asset_e assetId) {
             compressed_file = malloc(comp_size);
         }
     } else { //uncompressed
-        uncompressed_file = malloc(comp_size + 64);
+        uncompressed_file = malloc(comp_size);
         compressed_file = uncompressed_file;
     }
-    extern int g_diag_assetId; extern void* g_diag_cfile; extern int g_diag_csize; g_diag_assetId = assetId; g_diag_cfile = compressed_file; g_diag_csize = comp_size;
-    piMgr_read(compressed_file, assetSectionRomMetaList[assetId].offset + D_80383CCC, sp3C);
+    parallel_readDMA(compressed_file, assetSectionRomMetaList[assetId].offset + D_80383CCC, sp3C);
     if(assetSectionRomMetaList[assetId].compFlag & 0x0001){//decompress
         rarezip_inflate(compressed_file, uncompressed_file);
-        uncompressed_file = (void*)realloc(uncompressed_file, assetCacheCurrentSize);
+        realloc(uncompressed_file, assetCacheCurrentSize);
         osWritebackDCache(uncompressed_file, assetCacheCurrentSize);
         if (sp33 == 2) {
             free(compressed_file);
         }
     }
-    extern u8 assetCacheLength; extern void** assetCachePtrList; extern u8* assetCacheDependencyCount; for (int _i = 0; _i < assetCacheLength; _i++) { if (assetCacheDependencyCount[_i]) { free(assetCachePtrList[_i]); assetCachePtrList[_i] = NULL; } } assetCacheLength = 0;
     assetCacheCurrentIndex = assetCacheLength;
     assetCacheDependencyCount[assetCacheLength] = 1;
     assetCachePtrList[assetCacheLength] = uncompressed_file;
@@ -427,7 +424,7 @@ void *assetcache_get(enum asset_e assetId) {
 }
 
 void func_8033BAB0(enum asset_e asset_id, s32 offset, s32 size, void *dst_ptr) {
-    piMgr_read(dst_ptr, assetSectionRomMetaList[asset_id].offset + D_80383CCC + offset, size);
+    parallel_readDMA(dst_ptr, assetSectionRomMetaList[asset_id].offset + D_80383CCC + offset, size);
 }
 
 void assetCache_resizeAsset(void *assetPtr, s32 size){
@@ -448,9 +445,9 @@ void assetCache_init(void){
     assetCacheLength = 0;
     assetSectionRomHeader = (AssetROMHead *)malloc(sizeof(AssetROMHead));
     D_80383CC8 = (u32)assets_ROM_START;
-    piMgr_read(assetSectionRomHeader, D_80383CC8, sizeof(AssetROMHead));
+    parallel_readDMA(assetSectionRomHeader, D_80383CC8, sizeof(AssetROMHead));
     assetSectionRomMetaList = (AssetFileMeta *)malloc(assetSectionRomHeader->count*sizeof(AssetFileMeta));
-    piMgr_read(assetSectionRomMetaList, D_80383CC8 + sizeof(AssetROMHead),assetSectionRomHeader->count*sizeof(AssetFileMeta));
+    parallel_readDMA(assetSectionRomMetaList, D_80383CC8 + sizeof(AssetROMHead),assetSectionRomHeader->count*sizeof(AssetFileMeta));
     D_80383CCC = D_80383CC8 + sizeof(AssetROMHead) + assetSectionRomHeader->count*sizeof(AssetFileMeta);
 }
 
@@ -518,11 +515,11 @@ s32 code_B3A80_func_8033BDAC(enum asset_e id, void *dst, s32 size) {
 
         if (size >= (comp_ptr + var_s0)) {
             sp2B = 1;
-            comp_ptr = (u8*)dst + var_s0;
+            comp_ptr = (s32)dst + var_s0;
         }
         else if(size >= var_s0) {
             sp2B = 2;
-            comp_ptr = malloc(comp_ptr);
+            comp_ptr = (s32)malloc(comp_ptr);
         }
         else{
             return 0;
@@ -534,14 +531,14 @@ s32 code_B3A80_func_8033BDAC(enum asset_e id, void *dst, s32 size) {
            var_s0 = (comp_ptr - (comp_ptr & (0x10 -1))) + 0x10;
         
         if(size >= comp_ptr){
-            comp_ptr = (u8*)dst;
+            comp_ptr = (s32)dst;
         }
         else{
             return 0;
         }
     }
     comp_size = assetSectionRomMetaList[id].offset + D_80383CCC;
-    piMgr_read((void *)comp_ptr, comp_size, sp34);
+    parallel_readDMA((void *)comp_ptr, comp_size, sp34);
     if (assetSectionRomMetaList[id].compFlag & 1) {
         rarezip_inflate(comp_ptr, dst);
         osWritebackDCache(dst, assetCacheCurrentSize);
