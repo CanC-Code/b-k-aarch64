@@ -49,13 +49,14 @@ extern void InitN64Registers(const char* assetDir);
 static inline uintptr_t BKA_Validate_And_Translate(
         uintptr_t addr, const char* file, int line)
 {
+    uintptr_t orig_addr = addr;
     uint32_t mask32 = (uint32_t)(addr & 0xFFFFFFFFu);
     addr &= 0x00FFFFFFFFFFFFFFULL;
 
     if (mask32 == 0u) return 0u;
 
     /* Pass through genuine 64-bit host pointers unchanged. */
-    if ((addr >> 32) != 0u && (addr >> 32) != 0xFFFFFFFFu) return addr;
+    if ((orig_addr >> 32) != 0u && (orig_addr >> 32) != 0xFFFFFFFFu) return orig_addr;
 
     /*
      * Acquire-load: if gN64_RDRAM was written by InitN64Registers() on
