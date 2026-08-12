@@ -11,13 +11,14 @@ typedef struct {
 }struct10E0s;
 
 /* .bss */
-struct10E0s D_80379E20[340];
+#define ANIM_CACHE_SIZE 1024
+struct10E0s D_80379E20[ANIM_CACHE_SIZE];
 
 /* .code */
 void animCache_init(void){
     int i;
 
-    for(i = 0; i<340; i++){
+    for(i = 0; i<ANIM_CACHE_SIZE; i++){
         D_80379E20[i].alive = FALSE;
         D_80379E20[i].bone_xform = NULL;
         D_80379E20[i].life = 0;
@@ -27,7 +28,7 @@ void animCache_init(void){
 void animCache_free(void){
     int i;
 
-    for(i = 0; i<340; i++){
+    for(i = 0; i<ANIM_CACHE_SIZE; i++){
         if(D_80379E20[i].alive){
             if(D_80379E20[i].bone_xform){
                 boneTransformList_free(D_80379E20[i].bone_xform);
@@ -39,7 +40,7 @@ void animCache_free(void){
 void animCache_flushStale(void){
     int i;
 
-    for(i = 0; i<340; i++){
+    for(i = 0; i<ANIM_CACHE_SIZE; i++){
         if(D_80379E20[i].alive == TRUE && D_80379E20[i].bone_xform != NULL){
             if(D_80379E20[i].life < 0x3b){
                 boneTransformList_free(D_80379E20[i].bone_xform);
@@ -55,7 +56,7 @@ void animCache_flushStale(void){
 void animCache_flushAll(void){
     int i;
 
-    for(i = 0; i<340; i++){
+    for(i = 0; i<ANIM_CACHE_SIZE; i++){
         if(D_80379E20[i].alive){
             volatileFlag_get(VOLATILE_FLAG_0_IN_FURNACE_FUN_QUIZ);
             D_80379E20[i].life = 0;
@@ -68,7 +69,7 @@ void animCache_flushAll(void){
 void animCache_update(void){
     int i;
 
-    for(i = 0; i<340; i++){
+    for(i = 0; i<ANIM_CACHE_SIZE; i++){
         if(D_80379E20[i].alive == TRUE && D_80379E20[i].bone_xform){
             if(--D_80379E20[i].life <= 0){
                 boneTransformList_free(D_80379E20[i].bone_xform);
@@ -81,7 +82,7 @@ void animCache_update(void){
 s16 animCache_getNextFree(void){
     int i;
 
-    for(i = 0; i<340; i++){
+    for(i = 0; i<ANIM_CACHE_SIZE; i++){
         if(!D_80379E20[i].alive){
             return i;
         }
@@ -91,6 +92,7 @@ s16 animCache_getNextFree(void){
 
 s16 animCache_getNew(void){
     int indx = animCache_getNextFree();
+    if (indx < 0 || indx >= ANIM_CACHE_SIZE) return 0;
     D_80379E20[indx].alive = TRUE;
     D_80379E20[indx].life = 0;
     D_80379E20[indx].bone_xform = 0;
@@ -125,7 +127,7 @@ int animCache_getBoneTransformList(s16 index, BoneTransformList **arg1){
 
 void animCache_defrag(void){
     int i;
-    for(i = 0; i < 340; i++){
+    for(i = 0; i < ANIM_CACHE_SIZE; i++){
         if(D_80379E20[i].alive == TRUE && D_80379E20[i].bone_xform){
             D_80379E20[i].bone_xform = boneTransformList_defrag(D_80379E20[i].bone_xform);
         }
