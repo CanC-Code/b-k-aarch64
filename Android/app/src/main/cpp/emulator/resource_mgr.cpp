@@ -324,20 +324,6 @@ extern "C" {
 /**
  * Initializes the Resource Manager in Absolute Self-Building Mode and parses decompressed.us.v10.yaml.
  */
-
-// Byteswap a N64 ROM buffer from big-endian to little-endian
-static void byteswap_n64(uint8_t* data, size_t size) {
-    if (size < 4) return;
-    uint32_t* words = reinterpret_cast<uint32_t*>(data);
-    size_t count = size / 4;
-    for (size_t i = 0; i < count; i++) {
-        uint32_t v = words[i];
-        words[i] = ((v & 0xFF) << 24) |
-                   ((v & 0xFF00) << 8) |
-                   ((v & 0xFF0000) >> 8) |
-                   ((v & 0xFF000000) >> 24);
-    }
-}
 void ResourceMgr_Init(const char* assetDir) {
     if (!assetDir) {
         LOGE("ResourceMgr: Received an uninitialized null pointer for assetDir configuration.");
@@ -388,8 +374,6 @@ void ResourceMgr_Init(const char* assetDir) {
     if (gN64_ROM_Base == nullptr) {
         LOGI("ResourceMgr: gN64_ROM_Base not yet allocated by InitN64Registers. Allocating fallback buffer of %zu bytes.", g_romSize);
         gN64_ROM_Base = static_cast<uint8_t*>(malloc(g_romSize));
-    // Byteswap ROM data from N64 big-endian to ARM little-endian
-    byteswap_n64(gN64_ROM_Base, g_romSize);
         if (!gN64_ROM_Base) {
             LOGE("ResourceMgr: FATAL ERROR - Memory pointer verification failed. Cannot parse ROM stream.");
             fclose(f);
