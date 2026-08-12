@@ -128,9 +128,9 @@ void propModelList_free(void){
             codeB3A80_releaseSprite(&jPtr->sprite, &jPtr->display);
         }
     }
-    free(sPropModelList);
+    bk_free(sPropModelList);
     sPropModelList = NULL;
-    free(sPropSpriteList);
+    bk_free(sPropSpriteList);
     sPropSpriteList = NULL;
 }
 
@@ -138,8 +138,8 @@ void propModelList_init(void){//init
     PropModelData* iPtr;
     PropSpriteData* jPtr;
 
-    sPropModelList = (PropModelData *)malloc(PROP_MODEL_COUNT * sizeof(PropModelData));
-    sPropSpriteList = (PropSpriteData *)malloc(PROP_SPRITE_COUNT * sizeof(PropSpriteData));
+    sPropModelList = (PropModelData *)bk_malloc(PROP_MODEL_COUNT * sizeof(PropModelData));
+    sPropSpriteList = (PropSpriteData *)bk_malloc(PROP_SPRITE_COUNT * sizeof(PropSpriteData));
     D_8036B800 = 0;
     for(iPtr = sPropModelList; iPtr < &sPropModelList[PROP_MODEL_COUNT]; iPtr++){
         iPtr->model_bin = NULL;

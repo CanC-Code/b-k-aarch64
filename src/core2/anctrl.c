@@ -99,7 +99,7 @@ void func_802871A4(AnimCtrl *this){
 AnimCtrl *anctrl_new(s32 arg0){ //new
     ActorAnimCtrl *this;
 
-    this = (ActorAnimCtrl *)malloc( anim_getSize() + 0x28);
+    this = (ActorAnimCtrl *)bk_malloc( anim_getSize() + 0x28);
     this->anctrl.animation = &this->animation;
     anim_new(&this->animation, 1);
     this->anctrl.playback_type = 0;
@@ -118,7 +118,7 @@ AnimCtrl *anctrl_new(s32 arg0){ //new
 
 void anctrl_free(AnimCtrl * this){ //free
     anim_release(this->animation);
-    free(this);
+    bk_free(this);
 }
 
 void anctrl_update(AnimCtrl *this){//update

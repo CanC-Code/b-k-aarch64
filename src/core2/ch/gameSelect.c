@@ -234,63 +234,63 @@ void setGameInformationZoombox(s32 gamenum) {
         gameFile_load(gamenum);
         D_8037DCCE[gamenum] = (itemscore_timeScores_get(LEVEL_6_LAIR)) ? 1 : 0;
     
-        strcpy(upperTextLine, "");
-        strcat(upperTextLine, "GAME ");
+        bk_strcpy(upperTextLine, "");
+        bk_strcat(upperTextLine, "GAME ");
 
         // Game number to human readable. Interestingly, gamenumber 1 is Banjo playing gameboy as opposed to cooking
         switch (gamenum) {
             case CH_GAME_SELECT_SAVEFILE_0_BED: //L802C4820
-                strIToA(upperTextLine, 1);
+                bk_strIToA(upperTextLine, 1);
                 break;
             case CH_GAME_SELECT_SAVEFILE_1_GAMING_CHAIR: //L802C4838
-                strIToA(upperTextLine, 3);
+                bk_strIToA(upperTextLine, 3);
                 break;
             case CH_GAME_SELECT_SAVEFILE_2_KITCHEN: //L802C484C
-                strIToA(upperTextLine, 2);
+                bk_strIToA(upperTextLine, 2);
                 break;
         } //L802C4858
 
-        strcat(upperTextLine, ": TIME ");
-        strcat(upperTextLine, gcpausemenu_TimeToA(itemscore_timeScores_getTotal()));
-        strcat(upperTextLine, ",");
-        strcat(upperTextLine, "");
+        bk_strcat(upperTextLine, ": TIME ");
+        bk_strcat(upperTextLine, gcpausemenu_TimeToA(itemscore_timeScores_getTotal()));
+        bk_strcat(upperTextLine, ",");
+        bk_strcat(upperTextLine, "");
 
-        strcpy(lowerTextLine, "");
-        strIToA(lowerTextLine, jiggyscore_total());
-        strcat(lowerTextLine, " JIGSAW");
+        bk_strcpy(lowerTextLine, "");
+        bk_strIToA(lowerTextLine, jiggyscore_total());
+        bk_strcat(lowerTextLine, " JIGSAW");
         if (jiggyscore_total() != 1) {
-            strcat(lowerTextLine, "S");
+            bk_strcat(lowerTextLine, "S");
         }
 
-        strcat(lowerTextLine, ", ");
-        strIToA(lowerTextLine, itemscore_noteScores_getTotal());
-        strcat(lowerTextLine, " NOTE");
+        bk_strcat(lowerTextLine, ", ");
+        bk_strIToA(lowerTextLine, itemscore_noteScores_getTotal());
+        bk_strcat(lowerTextLine, " NOTE");
         if (itemscore_noteScores_getTotal() != 1) {
-            strcat(lowerTextLine, "S");
+            bk_strcat(lowerTextLine, "S");
         }
 
-        strcat(lowerTextLine, ".");
-        strcat(lowerTextLine, "");
+        bk_strcat(lowerTextLine, ".");
+        bk_strcat(lowerTextLine, "");
     } else { //L802C49AC
         D_8037DCCE[gamenum] = 0;
-        strcpy(upperTextLine, "");
-        strcat(upperTextLine, "GAME ");
+        bk_strcpy(upperTextLine, "");
+        bk_strcat(upperTextLine, "GAME ");
 
         // Game number to human readable
         switch (gamenum){
             case CH_GAME_SELECT_SAVEFILE_0_BED:
-                strIToA(upperTextLine, 1);
+                bk_strIToA(upperTextLine, 1);
                 break;
             case CH_GAME_SELECT_SAVEFILE_1_GAMING_CHAIR:
-                strIToA(upperTextLine, 3);
+                bk_strIToA(upperTextLine, 3);
                 break;
             case CH_GAME_SELECT_SAVEFILE_2_KITCHEN:
-                strIToA(upperTextLine, 2);
+                bk_strIToA(upperTextLine, 2);
                 break;
         } //L802C4A40
 
-        strcat(upperTextLine, ": EMPTY");
-        strcpy(lowerTextLine, "");
+        bk_strcat(upperTextLine, ": EMPTY");
+        bk_strcpy(lowerTextLine, "");
     } //L802C4A68
 
     // Can't delete backslash

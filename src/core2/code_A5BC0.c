@@ -422,10 +422,10 @@ Prop *__codeA5BC0_initProp2Ptr(Cube *cube) {
 
     if (cube->prop2Ptr != NULL) {
         cube->prop2Cnt++;
-        cube->prop2Ptr = realloc(cube->prop2Ptr, cube->prop2Cnt * sizeof(Prop));
+        cube->prop2Ptr = bk_realloc(cube->prop2Ptr, cube->prop2Cnt * sizeof(Prop));
     } else {
         cube->prop2Cnt = 1;
-        cube->prop2Ptr = malloc(sizeof(Prop));
+        cube->prop2Ptr = bk_malloc(sizeof(Prop));
     }
     sp1C = &cube->prop2Ptr[cube->prop2Cnt-1];
     sp1C->isActorProp = FALSE;
@@ -436,10 +436,10 @@ Prop *__codeA5BC0_initProp2Ptr(Cube *cube) {
 NodeProp *__codeA5BC0_pad_func_8032D8F0(Cube *cube) {
     if (cube->prop1Ptr != 0) {
         cube->prop1Cnt++;
-        cube->prop1Ptr = realloc(cube->prop1Ptr, cube->prop1Cnt * sizeof(NodeProp));
+        cube->prop1Ptr = bk_realloc(cube->prop1Ptr, cube->prop1Cnt * sizeof(NodeProp));
     } else {
         cube->prop1Cnt = 1;
-        cube->prop1Ptr = malloc(sizeof(NodeProp));
+        cube->prop1Ptr = bk_malloc(sizeof(NodeProp));
     }
     return &cube->prop1Ptr[cube->prop1Cnt - 1];
 }
@@ -456,14 +456,14 @@ s32 func_8032D9C0(Cube *cube, Prop* prop){
             func_80305CD8(func_803058C0(prop->position_y), -1);
         }
         if((prop - cube->prop2Ptr) < (cube->prop2Cnt - 1)){
-            memcpy(prop, prop + 1, (s32)(&cube->prop2Ptr[cube->prop2Cnt-1]) - (s32)(prop));
+            bk_memcpy(prop, prop + 1, (s32)(&cube->prop2Ptr[cube->prop2Cnt-1]) - (s32)(prop));
         }
         cube->prop2Cnt--;
         if(cube->prop2Cnt){
-            cube->prop2Ptr = realloc(cube->prop2Ptr, cube->prop2Cnt*sizeof(Prop));
+            cube->prop2Ptr = bk_realloc(cube->prop2Ptr, cube->prop2Cnt*sizeof(Prop));
             code_A5BC0_initCubePropActorProp(cube);
         }else{
-            free(cube->prop2Ptr);
+            bk_free(cube->prop2Ptr);
             cube->prop2Ptr = NULL;
         }
         return sp24;
@@ -479,7 +479,7 @@ void func_8032DB2C(Cube *cube, NodeProp *arg1) {
 
     sp24 = arg1 - cube->prop1Ptr;
     if (sp24 < cube->prop1Cnt - 1) {
-        memcpy(arg1, arg1 + 1, (s32)&cube->prop1Ptr[cube->prop1Cnt] - (s32)arg1 - sizeof(NodeProp));
+        bk_memcpy(arg1, arg1 + 1, (s32)&cube->prop1Ptr[cube->prop1Cnt] - (s32)arg1 - sizeof(NodeProp));
     }
     if (sp24 < cube->unk0_4) {
         cube->unk0_4--;
@@ -487,10 +487,10 @@ void func_8032DB2C(Cube *cube, NodeProp *arg1) {
 
     cube->prop1Cnt--;
     if (cube->prop1Cnt != 0) {
-        cube->prop1Ptr = realloc(cube->prop1Ptr, cube->prop1Cnt * sizeof(NodeProp));
+        cube->prop1Ptr = bk_realloc(cube->prop1Ptr, cube->prop1Cnt * sizeof(NodeProp));
     }
     else{
-        free(cube->prop1Ptr);
+        bk_free(cube->prop1Ptr);
         cube->prop1Ptr = NULL;
         cube->unk0_4 = 0;
     }
@@ -655,11 +655,11 @@ void cube_free(Cube *cube){
                 func_80332B2C(iProp->actorProp.marker);
             }
         }
-        free(cube->prop2Ptr);
+        bk_free(cube->prop2Ptr);
         cube->prop2Ptr = NULL;
     }
     if(cube->prop1Ptr){
-        free(cube->prop1Ptr);
+        bk_free(cube->prop1Ptr);
         cube->prop1Ptr = NULL;
     }
     cube->prop2Cnt = 0;
@@ -855,7 +855,7 @@ bool func_8032E6CC(Cube *cube, s32 *arg1, s32 arg2) {
 
 static void __codeA5BC0_freeCube1Pointer(Cube *cube, s32 cnt){
     if(cube->prop1Ptr != NULL){
-        free(cube->prop1Ptr);
+        bk_free(cube->prop1Ptr);
     }
 
     cube->prop1Cnt = cnt;
@@ -878,15 +878,15 @@ static void __codeA5BC0_initPropPointerForCube(NodeProp *node, Cube *cube, s32 c
             || (iPtr->category == PROP_1_CATEGORY_A_FLAG) 
             || (iPtr->bit0 == 1)
         ){
-            memcpy(&cube->prop1Ptr[cube_ptr_idx], &node[i], sizeof(NodeProp));
+            bk_memcpy(&cube->prop1Ptr[cube_ptr_idx], &node[i], sizeof(NodeProp));
             cube_ptr_idx--;
         } else {
-            memcpy(&cube->prop1Ptr[cube->unk0_4], &node[i], sizeof(NodeProp));
+            bk_memcpy(&cube->prop1Ptr[cube->unk0_4], &node[i], sizeof(NodeProp));
             cube->unk0_4++;
         }
     }
 
-    free(node);
+    bk_free(node);
     
     for(i = 0; i < cnt; i++){
         iPtr = &cube->prop1Ptr[i];
@@ -918,15 +918,15 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
     cube_free(cube);
     if (file_getByte_ifExpected(file_ptr, CUBE_PROP_1_INDICATOR, &cube1_count)) {
         __codeA5BC0_freeCube1Pointer(cube, cube1_count);
-        cube->prop1Ptr = (NodeProp*) malloc(cube1_count * sizeof(NodeProp));
-        node_prop_ptr = (NodeProp*) malloc(cube1_count * sizeof(NodeProp));
+        cube->prop1Ptr = (NodeProp*) bk_malloc(cube1_count * sizeof(NodeProp));
+        node_prop_ptr = (NodeProp*) bk_malloc(cube1_count * sizeof(NodeProp));
         file_getNBytes_ifExpected(file_ptr, CUBE_PROP_1_LIST_START_INDICATOR, node_prop_ptr, cube->prop1Cnt * sizeof(NodeProp));
         __codeA5BC0_initPropPointerForCube(node_prop_ptr, cube, cube1_count);
         
     } else if (file_getByte_ifExpected(file_ptr, CUBE_PROP_1_OTHER_INDICATOR, &cube1_count)) {
         __codeA5BC0_freeCube1Pointer(cube, cube1_count);
-        cube->prop1Ptr = (NodeProp*) malloc(cube1_count * sizeof(OtherNode));
-        node_prop_ptr = (NodeProp*) malloc(cube1_count * sizeof(OtherNode));
+        cube->prop1Ptr = (NodeProp*) bk_malloc(cube1_count * sizeof(OtherNode));
+        node_prop_ptr = (NodeProp*) bk_malloc(cube1_count * sizeof(OtherNode));
         file_getNBytes_ifExpected(file_ptr, CUBE_PROP_1_OTHER_LIST_START_INDICATOR, node_prop_ptr, cube->prop1Cnt * sizeof(OtherNode));
         for(other_prop_ptr = (OtherNode *)node_prop_ptr; other_prop_ptr < (OtherNode*)&node_prop_ptr[cube1_count]; other_prop_ptr++){
             if(other_prop_ptr->unk4_0 && !other_prop_ptr->unkC_0){
@@ -946,10 +946,10 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
             is_in_furnace_fun = 0;
         }
         if (cube->prop2Ptr != NULL) {
-            free(cube->prop2Ptr);
+            bk_free(cube->prop2Ptr);
         }
         cube->prop2Cnt = prop2_count;
-        cube->prop2Ptr = (Prop *) malloc(prop2_count * sizeof(Prop));
+        cube->prop2Ptr = (Prop *) bk_malloc(prop2_count * sizeof(Prop));
         file_getNBytes_ifExpected(file_ptr, CUBE_PROP_2_LIST_START_INDICATOR, cube->prop2Ptr, cube->prop2Cnt * sizeof(Prop));
         for(this_prop2 = cube->prop2Ptr; this_prop2 < cube->prop2Ptr + prop2_count; this_prop2++){
                 this_prop2->isNotFeatherEggOrNote = TRUE;
@@ -972,12 +972,12 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
             
     }
     if ((cube->prop2Ptr != NULL) && ((cube->prop2Cnt) == 0)) {
-        free(cube->prop2Ptr);
+        bk_free(cube->prop2Ptr);
         cube->prop2Ptr = NULL;
     }
     
     if ((cube->prop1Ptr != NULL) && (cube->prop1Cnt == 0)) {
-        free(cube->prop1Ptr);
+        bk_free(cube->prop1Ptr);
         cube->prop1Ptr = NULL;
         cube->unk0_4 = 0;
     }
@@ -1464,7 +1464,7 @@ bool func_8033056C(Actor *actor){
 void func_803305AC(void){
     s32 i;
 
-    modelCache = (ModelCache *)malloc(AssetCacheSize * sizeof(ModelCache));
+    modelCache = (ModelCache *)bk_malloc(AssetCacheSize * sizeof(ModelCache));
     for(i = 0; i<AssetCacheSize; i++){
         modelCache[i].modelPtr = NULL;
         modelCache[i].unk4 = 0;
@@ -1539,7 +1539,7 @@ void func_803308A0(void) {
         }
     }
     
-    free(modelCache);
+    bk_free(modelCache);
     modelCache = 0;
 }
 
@@ -2274,7 +2274,7 @@ void func_80332894(void) {
     s32 i;
 
     size = VER_SELECT(0x579, 0x391, 0, 0);
-    D_8036E7C4 = malloc(size);
+    D_8036E7C4 = bk_malloc(size);
     i = 0;
     do{
         D_8036E7C4[i] = 0;
@@ -2288,7 +2288,7 @@ void func_80332894(void) {
 }
 
 void func_8033297C(void){
-    free(D_8036E7C4);
+    bk_free(D_8036E7C4);
     D_8036E7C4 = NULL;
     func_8032D36C();
 }
@@ -2297,7 +2297,7 @@ void func_8033297C(void){
 void func_803329AC(void){
     s32 i;
     
-    D_8036E7C8 = (ActorMarker *)malloc(0xE0*sizeof(ActorMarker));
+    D_8036E7C8 = (ActorMarker *)bk_malloc(0xE0*sizeof(ActorMarker));
 
     for( i = 0; i < 0x1C; i++){
         D_80383428[i] = 0;
@@ -2309,7 +2309,7 @@ void func_803329AC(void){
 }
 
 void func_80332A38(void){
-    free(D_8036E7C8);
+    bk_free(D_8036E7C8);
     D_8036E7C8 = NULL;
 }
 

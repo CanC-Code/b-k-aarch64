@@ -66,7 +66,7 @@ void func_802EA418(Struct_core2_63410_0 **arg0, Struct_core2_63410_2 *arg1, f32 
     if (phi_s1->unk4 == phi_s1->unk8) {
         sp34 = (phi_s1->unk8 - phi_s1->unk0);
         sp20 = sp34 * 2;
-        phi_s1 = (Struct_core2_63410_0 *)realloc(phi_s1, sizeof(Struct_core2_63410_0) + (sizeof(Struct_core2_63410_1)*sp20));
+        phi_s1 = (Struct_core2_63410_0 *)bk_realloc(phi_s1, sizeof(Struct_core2_63410_0) + (sizeof(Struct_core2_63410_1)*sp20));
         phi_s1->unk0 = (Struct_core2_63410_1 *)(phi_s1 + 1);
         phi_s1->unk4 = phi_s1->unk0 + sp34;
         phi_s1->unk8 = phi_s1->unk0 + sp20;
@@ -86,14 +86,14 @@ void func_802EA418(Struct_core2_63410_0 **arg0, Struct_core2_63410_2 *arg1, f32 
 
 void func_802EA5C4(Struct_core2_63410_0 *arg0){
     //free vec
-    free(arg0);
+    bk_free(arg0);
 }
 
 Struct_core2_63410_0 *func_802EA5E4(void){
     //new
     Struct_core2_63410_0 *phi_v0;
 
-    phi_v0 = (Struct_core2_63410_0 *)malloc(sizeof(Struct_core2_63410_0) + 2 * sizeof(Struct_core2_63410_1));
+    phi_v0 = (Struct_core2_63410_0 *)bk_malloc(sizeof(Struct_core2_63410_0) + 2 * sizeof(Struct_core2_63410_1));
     phi_v0->unk0 = (Struct_core2_63410_1 *)(phi_v0 + 1);
     phi_v0->unk4 = phi_v0->unk0;
     phi_v0->unk8 = phi_v0->unk0 + 2;

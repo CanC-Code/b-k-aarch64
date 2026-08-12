@@ -255,7 +255,7 @@ void timedFunc_set_5(f32 time, GenFunction_5 funcPtr, s32 arg0, s32 arg1, s32 ar
 
 void timedFunc_set_6(f32 time, GenFunction_6 funcPtr, void* argPtr) {
     TimedFunction *q = __timedFuncQueue_insert(time, 6, funcPtr, 0, 0, 0, 0, 0);
-    memcpy(&q->arg[5], argPtr, 0x50);
+    bk_memcpy(&q->arg[5], argPtr, 0x50);
 }
 
 //timedJiggySpawn
@@ -283,7 +283,7 @@ void timedFuncQueue_flush(void){
 
     while(vector_size(D_80383380.ptr) > 0){
         iPtr = vector_getBegin(D_80383380.ptr);
-        memcpy(&iFunc, iPtr, sizeof(TimedFunction));
+        bk_memcpy(&iFunc, iPtr, sizeof(TimedFunction));
         vector_remove(D_80383380.ptr, 0);
         __timedFunc_execute(&iFunc);
     }
@@ -315,7 +315,7 @@ void timedFuncQueue_update(void){
         iPtr = vector_getBegin(D_80383380.ptr);
         if(D_80383380.time < iPtr->time)
             break;
-        memcpy(&iFunc, iPtr, sizeof(TimedFunction));
+        bk_memcpy(&iFunc, iPtr, sizeof(TimedFunction));
         vector_remove(D_80383380.ptr, 0);
         __timedFunc_execute(&iFunc);
     }

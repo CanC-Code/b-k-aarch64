@@ -203,7 +203,7 @@ void func_80344720(BKSpriteDisplayData *arg0, s32 frame, bool mirrored, f32 posi
 
 
 void func_803449DC(BKSpriteDisplayData *arg0){
-    free(arg0);
+    bk_free(arg0);
 }
 
 void func_803449FC(BKSpriteDisplayData *arg0){
@@ -225,11 +225,11 @@ BKSpriteDisplayData * func_80344A1C(BKSprite *arg0){
 
     header_size = ALIGN(sizeof(BKSpriteDisplayData)+ sizeof(BKSpriteFrameDisplayData)*arg0->frameCnt, 0x10);
     s1 = 0;
-    s6 = (BKSpriteDisplayData *) malloc(header_size);
+    s6 = (BKSpriteDisplayData *) bk_malloc(header_size);
     s6->sprite = arg0;
     for(i = 0; i < arg0->frameCnt; i++){//L80344A88
         s1 = ALIGN(s1, 0x10);
-        s6 = (BKSpriteDisplayData *)realloc(s6, header_size + s1 + 0x12C0);
+        s6 = (BKSpriteDisplayData *)bk_realloc(s6, header_size + s1 + 0x12C0);
         vtx_start = (Vtx *)((s32)s6 + header_size + s1);
         gfx_start = (Gfx *)(vtx_start + 200);
         vtx_end = vtx_start;
@@ -239,8 +239,8 @@ BKSpriteDisplayData * func_80344A1C(BKSprite *arg0){
         frame_vtx_size[i] = ALIGN(sizeof(Vtx)*(vtx_end - vtx_start), 0x10);
         frame_gfx_size[i] = sizeof(Gfx)*(gfx_end - gfx_start);
         s1 += frame_vtx_size[i] + frame_gfx_size[i];
-        memcpy((void *)((s32)vtx_start + frame_vtx_size[i]), gfx_start, frame_gfx_size[i]);
-        s6 = realloc(s6, header_size + s1);
+        bk_memcpy((void *)((s32)vtx_start + frame_vtx_size[i]), gfx_start, frame_gfx_size[i]);
+        s6 = bk_realloc(s6, header_size + s1);
     }//L80344B6C
     osWritebackDCache(s6, header_size + s1);
     v1 = &s6->frame[0];

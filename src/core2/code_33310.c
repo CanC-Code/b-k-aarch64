@@ -42,7 +42,7 @@ ZoomCameraNode *cameraNodeType3_init() {
     ZoomCameraNode * this;
     f32 sp20[3];
 
-    this = (ZoomCameraNode *)malloc(sizeof(ZoomCameraNode));
+    this = (ZoomCameraNode *)bk_malloc(sizeof(ZoomCameraNode));
     ml_vec3f_clear(sp20);
     __cameraNodeType3_setPosition(this, sp20);
     __cameraNodeType3_setPitchYawRoll(this, sp20);
@@ -56,7 +56,7 @@ ZoomCameraNode *cameraNodeType3_init() {
 }
 
 void cameraNodeType3_free(ZoomCameraNode *this) {
-    free(this);
+    bk_free(this);
 }
 
 void cameraNodeType3_getPositionWithPitchYawRoll(ZoomCameraNode *this, f32 pitch_yaw_roll[3]) {

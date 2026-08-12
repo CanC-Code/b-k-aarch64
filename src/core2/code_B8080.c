@@ -145,7 +145,7 @@ s32 model_func_8033F3E8(BKModel *this, f32 position[3], s32 min_id, s32 max_id) 
 }
 
 void model_free(BKModel *this) {
-    free(this);
+    bk_free(this);
 }
 
 BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
@@ -158,7 +158,7 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
     Vtx *new_var;
     int j, i;
 
-    model = (BKModel *) malloc(sizeof(BKModel) + (this->count * sizeof(BKModelMesh)) + (meshList_getVtxCount(this) * sizeof(BKModelVtxRef)));
+    model = (BKModel *) bk_malloc(sizeof(BKModel) + (this->count * sizeof(BKModelMesh)) + (meshList_getVtxCount(this) * sizeof(BKModelVtxRef)));
     model->mesh_list = this;
     model->vtx_list = bk_vtx_list;
 
@@ -172,7 +172,7 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
             
             for (j = 0; j < in_mesh->vtx_count; j++) {
                 vtx_ref->vtx_id = in_mesh->vertices[j];
-                memcpy(&vtx_ref->v, &bk_vtx_list->vertices[vtx_ref->vtx_id], sizeof(Vtx));
+                bk_memcpy(&vtx_ref->v, &bk_vtx_list->vertices[vtx_ref->vtx_id], sizeof(Vtx));
                 vtx_ref++;
             }
 

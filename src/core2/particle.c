@@ -284,11 +284,11 @@ int particleEmitter_isDone(ParticleEmitter *this){
 
 void particleEmitter_free(ParticleEmitter *this){
     func_802EE930(this);
-    free(this);
+    bk_free(this);
 }
 
 ParticleEmitter * particleEmitter_new(u32 capacity){
-    ParticleEmitter *this = malloc(capacity*sizeof(Particle) + sizeof(ParticleEmitter));
+    ParticleEmitter *this = bk_malloc(capacity*sizeof(Particle) + sizeof(ParticleEmitter));
     f32 sp40[3];
     
     this->auto_free = 0;
@@ -612,7 +612,7 @@ void particleEmitter_update(ParticleEmitter *this){
         for(particle = this->pList_start_124; particle < this->pList_end_128;){//L802F005C
             particle->age_48 += tick;
             if(particle->lifetime_4C <= particle->age_48){
-                memcpy(particle, --this->pList_end_128, sizeof(Particle));
+                bk_memcpy(particle, --this->pList_end_128, sizeof(Particle));
             }else{//L802F00A0
                 temp_f0 = particle->age_48/particle->lifetime_4C;
                 if(temp_f0 < this->fade_in)
@@ -654,7 +654,7 @@ void particleEmitter_update(ParticleEmitter *this){
                 if( 0.0f != this->unkFC 
                     && !viewport_func_8024DB50(&particle->position, this->unkFC)
                 ){
-                    memcpy(particle, --this->pList_end_128, sizeof(Particle));
+                    bk_memcpy(particle, --this->pList_end_128, sizeof(Particle));
                 }
                 else{//L802F029C
                     if(particle->unk5C > 0){
@@ -685,7 +685,7 @@ void particleEmitter_update(ParticleEmitter *this){
                             if(--particle->unk5C == 0){
                                 if(this->particleCallback_80)
                                     this->particleCallback_80(this, particle->position);
-                                memcpy(particle, --this->pList_end_128, sizeof(Particle));
+                                bk_memcpy(particle, --this->pList_end_128, sizeof(Particle));
                                 continue;
                             }
                         }
@@ -751,7 +751,7 @@ void func_802F066C(ParticleEmitter *this, f32 position[3]){
 }
 
 void partEmitMgr_init(void){
-    partEmitMgr = (ParticleEmitter **) malloc(0);
+    partEmitMgr = (ParticleEmitter **) bk_malloc(0);
     partEmitMgrLength = 0;
 }
 
@@ -760,7 +760,7 @@ void partEmitMgr_free(void){
     for(i = 0; i < partEmitMgrLength; i++){
         particleEmitter_free(partEmitMgr[i]);
     }
-    free(partEmitMgr);
+    bk_free(partEmitMgr);
     partEmitMgr = NULL;
     partEmitMgrLength = 0;
 }
@@ -819,7 +819,7 @@ void partEmitMgr_draw(Gfx **gdl, Mtx **mptr, Vtx **vptr){
 }
 
 ParticleEmitter *partEmitMgr_newEmitter(u32 cnt){
-    partEmitMgr = realloc(partEmitMgr, (++partEmitMgrLength)*4);
+    partEmitMgr = bk_realloc(partEmitMgr, (++partEmitMgrLength)*4);
     partEmitMgr[partEmitMgrLength - 1] = particleEmitter_new(cnt);
     partEmitMgr[partEmitMgrLength - 1]->auto_free = TRUE;
     return partEmitMgr[partEmitMgrLength - 1];
@@ -835,7 +835,7 @@ void partEmitMgr_freeEmitter(ParticleEmitter *this){
     particleEmitter_free(this);
     partEmitMgr[i] = partEmitMgr[partEmitMgrLength - 1];
     partEmitMgrLength--;
-    partEmitMgr = realloc(partEmitMgr, partEmitMgrLength*sizeof(ParticleEmitter *));
+    partEmitMgr = bk_realloc(partEmitMgr, partEmitMgrLength*sizeof(ParticleEmitter *));
 }
 
 void particleEmitter_manualFree(ParticleEmitter *this){

@@ -186,7 +186,7 @@ FunctionQueue *spawnQueue = NULL;
 /* .code */
 void spawnQueue_malloc(void){
     u32 tmp = (gsworld_getMap() == MAP_90_GL_BATTLEMENTS)? 50: 15;
-    spawnQueue = (FunctionQueue *) malloc(tmp * sizeof(FunctionQueue));
+    spawnQueue = (FunctionQueue *) bk_malloc(tmp * sizeof(FunctionQueue));
 }
 
 void spawnQueue_reset(void){
@@ -413,7 +413,7 @@ void spawnQueue_free(void){
     spawnableActorList_free();
     actorArray_free();
     func_80305D94();
-    free(spawnQueue);
+    bk_free(spawnQueue);
     spawnQueue = NULL;
     spawnQueueLength = 0;
     

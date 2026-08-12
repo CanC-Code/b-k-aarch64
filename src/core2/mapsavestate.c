@@ -37,7 +37,7 @@ void mapSavestate_clearAll(void) {
     int i;
     for (i = 0; i < MAP_NUM_MAPS; i++) {
         if ((u32 *) sMapSavestates[i] != NULL) {
-            free((void*)sMapSavestates[i]);
+            bk_free((void*)sMapSavestates[i]);
             sMapSavestates[i] = NULL;
         }
     }
@@ -60,10 +60,10 @@ void mapSavestate_save(enum map_e map) {
     int new_var;
     
     if (sMapSavestates[map] != NULL) {
-        free((void*)sMapSavestates[map]);
+        bk_free((void*)sMapSavestates[map]);
     }
     
-    sMapSavestates[map] = (u32 *) malloc(savestate_size * (sizeof(u32)));
+    sMapSavestates[map] = (u32 *) bk_malloc(savestate_size * (sizeof(u32)));
     data_ptr = sMapSavestates[map];
     
     *data_ptr = mapSpecificFlags_getAll();
@@ -77,7 +77,7 @@ void mapSavestate_save(enum map_e map) {
         
         if (bit_position >= (8 * (savestate_size * (sizeof(u32))))) {
             savestate_size += 4;
-            sMapSavestates[map] = (u32 *) realloc(sMapSavestates[map], savestate_size * new_var);
+            sMapSavestates[map] = (u32 *) bk_realloc(sMapSavestates[map], savestate_size * new_var);
             data_ptr = ((s32) sMapSavestates[map]) + (savestate_size * new_var);
             data_ptr[-1] = 0;
             new_var = 1;
@@ -118,6 +118,6 @@ void mapSavestate_apply(enum map_e map) {
 
     cubeList_sort(FALSE);
     actors_applyFromSavestate(sMapSavestates[map], (ActorListSaveState *) (u32 *) sMapSavestates[map] + (4 * ((bit_position + 127) >> 7)));
-    free((void*)sMapSavestates[map]);
+    bk_free((void*)sMapSavestates[map]);
     sMapSavestates[map] = NULL;
 }

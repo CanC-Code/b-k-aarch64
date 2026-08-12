@@ -418,7 +418,7 @@ void actorArray_free(void) {
             }
             var_s0->marker = NULL;
         }
-        free(suBaddieActorArray);
+        bk_free(suBaddieActorArray);
         suBaddieActorArray = NULL;
     }
     vec3fArray_free(D_8036E568);
@@ -759,14 +759,14 @@ Actor *actor_new(s32 position[3], s32 yaw, ActorInfo* actorInfo, u32 flags){
     f32 sp44[3];
     
     if(suBaddieActorArray == NULL){
-        suBaddieActorArray = (ActorArray *)malloc(sizeof(ActorArray) + 20*sizeof(Actor));
+        suBaddieActorArray = (ActorArray *)bk_malloc(sizeof(ActorArray) + 20*sizeof(Actor));
         suBaddieActorArray->cnt = 0;
         suBaddieActorArray->max_cnt = 20;
     }
     
     if(suBaddieActorArray->cnt + 1 > suBaddieActorArray->max_cnt){
         suBaddieActorArray->max_cnt = suBaddieActorArray->cnt + 5;
-        suBaddieActorArray = (ActorArray *)realloc(suBaddieActorArray, sizeof(ActorArray) + suBaddieActorArray->max_cnt*sizeof(Actor));
+        suBaddieActorArray = (ActorArray *)bk_realloc(suBaddieActorArray, sizeof(ActorArray) + suBaddieActorArray->max_cnt*sizeof(Actor));
     }
 
     ++suBaddieActorArray->cnt;
@@ -1036,7 +1036,7 @@ static void __actor_free(ActorMarker *arg0, Actor *arg1){
     arrayEnd = &suBaddieActorArray->data[suBaddieActorArray->cnt - 1];
     func_80325FE8(arg1);
     if((s32)arg1 != arrayEnd)
-        memcpy(arg1, arrayEnd, 0x180); //memcpy
+        bk_memcpy(arg1, arrayEnd, 0x180); //bk_memcpy
     arg1->marker->actrArrayIdx = arg0->actrArrayIdx;
 
     //remove last actor from actor array
@@ -1045,7 +1045,7 @@ static void __actor_free(ActorMarker *arg0, Actor *arg1){
     //shrink actor array capacity
     if(suBaddieActorArray->cnt + 8 <= suBaddieActorArray->max_cnt){
         suBaddieActorArray->max_cnt = suBaddieActorArray->cnt + 4;
-        suBaddieActorArray = (ActorArray *)realloc(suBaddieActorArray, suBaddieActorArray->max_cnt*sizeof(Actor) + sizeof(ActorArray));
+        suBaddieActorArray = (ActorArray *)bk_realloc(suBaddieActorArray, suBaddieActorArray->max_cnt*sizeof(Actor) + sizeof(ActorArray));
     }
 
     marker_free(arg0);
@@ -1701,7 +1701,7 @@ void actor_copy(Actor *dst, Actor *src){
     dst->unk148 = src->unk148;
     dst->unk14C[0] = src->unk14C[0];
     dst->unk14C[1] = src->unk14C[1];
-    memcpy(src, dst, sizeof(Actor));
+    bk_memcpy(src, dst, sizeof(Actor));
 }
 
 void *actors_appendToSavestate(void *savestate_begin_ptr, void *savestate_end_ptr) {
@@ -1720,7 +1720,7 @@ void *actors_appendToSavestate(void *savestate_begin_ptr, void *savestate_end_pt
         }
 
         savestate_size = (u8 *) savestate_end_ptr - (u8 *) savestate_begin_ptr;
-        savestate_ptr = realloc(savestate_ptr, savestate_size + sizeof(u32) + num_actors * sizeof(Actor));
+        savestate_ptr = bk_realloc(savestate_ptr, savestate_size + sizeof(u32) + num_actors * sizeof(Actor));
 
         savestate_end_ptr = (u8 *) savestate_ptr + savestate_size;
         *(u32 *)savestate_end_ptr = num_actors;
@@ -1728,7 +1728,7 @@ void *actors_appendToSavestate(void *savestate_begin_ptr, void *savestate_end_pt
 
         for(actor_ptr = suBaddieActorArray->data; actor_ptr < &suBaddieActorArray->data[(u32) suBaddieActorArray->cnt]; actor_ptr++) {
             if (actor_ptr->marker && (actor_ptr->unk10_1 == 1) && (!actor_ptr->despawn_flag) && (actor_ptr->unk40 == 0)) {
-                memcpy(actor_savestate_ptr, actor_ptr, sizeof(Actor));
+                bk_memcpy(actor_savestate_ptr, actor_ptr, sizeof(Actor));
                 actor_savestate_ptr->unk40 = 0;
                 actor_savestate_ptr->unk138_28 = 1;
                 actor_savestate_ptr->unk14C[0] = actor_savestate_ptr->unk14C[1] = NULL;
@@ -1807,9 +1807,9 @@ void actors_applyFromSavestate(void *savestate_ptr, ActorListSaveState *savestat
 
         var_s3++;
         
-        sp60 = malloc(var_s3*sizeof(Actor *));
+        sp60 = bk_malloc(var_s3*sizeof(Actor *));
         pad = sp5C + i;
-        sp5C = malloc(var_s3*sizeof(Actor *));
+        sp5C = bk_malloc(var_s3*sizeof(Actor *));
         for (i = 0; i < var_s3; i++) {
             *(u32*)&sp60[i] = 0; 
             *(u32*)&sp5C[i] = 0;
@@ -1864,8 +1864,8 @@ void actors_applyFromSavestate(void *savestate_ptr, ActorListSaveState *savestat
         }
 
         func_803283D4();
-        free(sp60);
-        free(sp5C);
+        bk_free(sp60);
+        bk_free(sp5C);
     }
 
     spawnQueue_unlock();

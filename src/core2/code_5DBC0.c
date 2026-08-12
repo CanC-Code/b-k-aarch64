@@ -60,12 +60,12 @@ void func_802E6820(s32 arg0);
 /* .code */
 struct5DBC0s *func_802E4B50(void){
     u8 sp24[3] = D_80368830;
-    D_8037E900 = (struct5DBC0s *)malloc(sizeof(struct5DBC0s));
-    D_8037E900->unk0 = (struct5DBC0_1s *) malloc(sizeof(struct5DBC0_1s));
+    D_8037E900 = (struct5DBC0s *)bk_malloc(sizeof(struct5DBC0s));
+    D_8037E900->unk0 = (struct5DBC0_1s *) bk_malloc(sizeof(struct5DBC0_1s));
     D_8037E900->unkC = 0;
-    D_8037E900->unk4 = (struct5DBC0_2s *) malloc(sizeof(struct5DBC0_2s));
+    D_8037E900->unk4 = (struct5DBC0_2s *) bk_malloc(sizeof(struct5DBC0_2s));
     D_8037E900->unk10 = 0;
-    D_8037E900->string = (char *) malloc(sizeof(char));
+    D_8037E900->string = (char *) bk_malloc(sizeof(char));
     D_8037E900->string_len = 0;
     D_8037E900->flags = 0;
     D_8037E900->unk1C[0] = sp24[0];
@@ -78,22 +78,22 @@ void func_802E4C0C(struct5DBC0_2s *arg0, u32 arg1)
 {
     while(arg1--){
         assetcache_release(arg0[arg1].font_bin);   
-        free(arg0[arg1].letter_texture);
+        bk_free(arg0[arg1].letter_texture);
     }
-    free(arg0);
+    bk_free(arg0);
 }
 
 void func_802E4C78(void){
     if(D_8037E900->unk0 != NULL){
-        free(D_8037E900->unk0);
+        bk_free(D_8037E900->unk0);
     }
     if(D_8037E900->unk4 != NULL){
         func_802E4C0C(D_8037E900->unk4, D_8037E900->unk10);
     }
     if(D_8037E900->string != NULL){
-        free(D_8037E900->string);
+        bk_free(D_8037E900->string);
     }
-    free(D_8037E900);
+    bk_free(D_8037E900);
     D_8037E900 = NULL;
 }
 
@@ -122,7 +122,7 @@ BKSpriteTextureBlock **func_802E4D8C(BKSprite *sprite) {
     s32 chunk_size;
 
     frame = sprite_getFramePtr(sprite, 0);
-    chunkPtrArray = (BKSpriteTextureBlock **)malloc((frame->chunkCnt + 1)*4);
+    chunkPtrArray = (BKSpriteTextureBlock **)bk_malloc((frame->chunkCnt + 1)*4);
     chunk = (BKSpriteTextureBlock *)(frame + 1);
     for (i = 0; i < frame->chunkCnt; i++) {
         chunkPtrArray[i] = chunk;
@@ -142,7 +142,7 @@ s32 func_802E4E54(u8 font_id) {
     if (sp24 == -1) { //font not loaded
         sp24 = D_8037E900->unk10++;
         if (D_8037E900->unk10 > 1) {
-            D_8037E900->unk4 = (struct5DBC0_2s *)realloc(D_8037E900->unk4, (D_8037E900->unk10 + 1)*sizeof(struct5DBC0_2s));
+            D_8037E900->unk4 = (struct5DBC0_2s *)bk_realloc(D_8037E900->unk4, (D_8037E900->unk10 + 1)*sizeof(struct5DBC0_2s));
         }
         D_8037E900->unk4[sp24].font_id = font_id;
         D_8037E900->unk4[sp24].font_bin = (BKSprite *)assetcache_get(font_id + 0x6E9);
@@ -160,11 +160,11 @@ s32 func_802E4F98(char *arg0) {
 
 
     sp1C = D_8037E900->string_len;
-    D_8037E900->string_len += strlen(arg0) + 1;
+    D_8037E900->string_len += bk_strlen(arg0) + 1;
     if (D_8037E900->string_len >= 2) {
-        D_8037E900->string = (char *)realloc(D_8037E900->string, D_8037E900->string_len + 1);
+        D_8037E900->string = (char *)bk_realloc(D_8037E900->string, D_8037E900->string_len + 1);
     }
-    strcpy(D_8037E900->string + sp1C, arg0);
+    bk_strcpy(D_8037E900->string + sp1C, arg0);
     return sp1C;
 }
 
@@ -173,7 +173,7 @@ void func_802E502C(s32 arg0, s32 arg1, s32 arg2, char *arg3, u8 rgb[3]) {
 
     sp24 = D_8037E900->unkC++;
     if (D_8037E900->unkC >= 2) {
-        D_8037E900->unk0 = realloc(D_8037E900->unk0, (D_8037E900->unkC * 0x1C) + 0x1C);
+        D_8037E900->unk0 = bk_realloc(D_8037E900->unk0, (D_8037E900->unkC * 0x1C) + 0x1C);
     }
     D_8037E900->unk0[sp24].unk0 = arg0;
     D_8037E900->unk0[sp24].unk4 = arg1;
@@ -198,7 +198,7 @@ s32 func_802E51A4(char *str, s32 arg1, s32 start, u32 flags) {
     s32 i;
 
     if (flags & 2) {
-        return  2 * D_8037E900->unk4[arg1].half_width *strlen(str);
+        return  2 * D_8037E900->unk4[arg1].half_width *bk_strlen(str);
     }
 
     position = start;
@@ -378,7 +378,7 @@ void func_802E60D4(s32 arg0, s32 arg1, s32 arg2, char *arg3, u8 arg4[3], u8 arg5
 
     sp24 = D_8037E900->unkC++;
     if (D_8037E900->unkC >= 2) {
-        D_8037E900->unk0 = (struct5DBC0_1s *)realloc(D_8037E900->unk0, (D_8037E900->unkC + 1)* sizeof(struct5DBC0_1s));
+        D_8037E900->unk0 = (struct5DBC0_1s *)bk_realloc(D_8037E900->unk0, (D_8037E900->unkC + 1)* sizeof(struct5DBC0_1s));
     }
     D_8037E900->unk0[sp24].unk0 = arg0;
     D_8037E900->unk0[sp24].unk4 = arg1;

@@ -38,7 +38,7 @@ void *vector_pushBackNew(VLA **thisPtr){
     if(this->end == this->mem_end){
         size = ((s32)this->end - (s32)this->begin)/this->elem_size;
         mem_size = size + 5;
-        this = realloc(this,  mem_size*this->elem_size + sizeof(VLA));
+        this = bk_realloc(this,  mem_size*this->elem_size + sizeof(VLA));
         this->begin = &this->data;
         this->end = (u8 *)this->begin + size* this->elem_size;
         this->mem_end = (u8 *)this->begin + mem_size* this->elem_size;
@@ -57,17 +57,17 @@ void *vector_insertNew(VLA **thisPtr, s32 indx){
     this = *thisPtr;
     i = ((s32)this->end - (s32)this->begin)/this->elem_size;
     while(indx < --i){
-        memcpy((void *)((s32)this->begin + (i)*this->elem_size), (void *)((s32)this->begin + (i -1)*this->elem_size), this->elem_size);
+        bk_memcpy((void *)((s32)this->begin + (i)*this->elem_size), (void *)((s32)this->begin + (i -1)*this->elem_size), this->elem_size);
     }
     return (void *)((s32)this->begin +  indx*this->elem_size);
 }
 
 void vector_free(VLA *this){
-    free(this);
+    bk_free(this);
 }
 
 VLA *vector_new(u32 elemSize, u32 cnt){
-    VLA *this = malloc(cnt*elemSize + sizeof(VLA));
+    VLA *this = bk_malloc(cnt*elemSize + sizeof(VLA));
     this->elem_size = elemSize;
     this->begin = &this->data;
     this->end = &this->data;
@@ -80,7 +80,7 @@ void vector_remove(VLA *this, u32 indx){
     u32 nextOffset = (u32)this->begin + (indx + 1) * this->elem_size;\
     u32 size = (u32)this->end - (u32)this->begin;
     
-    memcpy((void *)elemOffset, (void *)nextOffset, size - (indx + 1) * this->elem_size);
+    bk_memcpy((void *)elemOffset, (void *)nextOffset, size - (indx + 1) * this->elem_size);
     this->end = (void *)((u32)this->end - this->elem_size);
 }
 
@@ -90,7 +90,7 @@ void vector_popBack_n(VLA *this, u32 n){
 }
 
 void vector_assign(VLA *this, s32 indx, void* value){
-    memcpy((void*)((s32)this->begin + indx * this->elem_size), value, this->elem_size);
+    bk_memcpy((void*)((s32)this->begin + indx * this->elem_size), value, this->elem_size);
 }
 
 VLA * vector_defrag(VLA *this){

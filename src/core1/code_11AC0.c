@@ -219,13 +219,13 @@ void musicInstruments_init(void) {
     int i;
     
     size = soundfont2ctl_ROM_END - soundfont2ctl_ROM_START;
-    bnk_f = malloc(size);
+    bnk_f = bk_malloc(size);
     osWritebackDCacheAll();
     osPiStartDma(audioManager_getExtraDMAMesg(), OS_MESG_PRI_NORMAL, OS_READ, (u32)soundfont2ctl_ROM_START, bnk_f, size, audioManager_getDMANotifyMesgQueue());
     osRecvMesg(audioManager_getDMANotifyMesgQueue(), NULL, OS_MESG_BLOCK);
 
     sNumMIDIAssets = COMUSIC_NUM_TRACKS;
-    sMIDIAssets = (MidiBin **) malloc(sNumMIDIAssets * sizeof(MidiBin *));
+    sMIDIAssets = (MidiBin **) bk_malloc(sNumMIDIAssets * sizeof(MidiBin *));
     for (i = 0; i < sNumMIDIAssets; i++) {
         sMIDIAssets[i] = NULL;
     }

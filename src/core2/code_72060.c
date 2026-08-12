@@ -62,9 +62,9 @@ void func_802F8FF0(void){
 
 void func_802F8FFC(void){
     if(D_80369280){
-        free(D_80369280->unk1C);
+        bk_free(D_80369280->unk1C);
         func_8033BD20(&D_80369288);
-        free(D_80369280);
+        bk_free(D_80369280);
         D_80369280 = NULL;
         D_80369284 = 0;
     }
@@ -72,11 +72,11 @@ void func_802F8FFC(void){
 
 void func_802F9054(void){
     func_802F8FFC();
-    D_80369280 = (struct4Cs *) malloc(sizeof(struct4Cs));
+    D_80369280 = (struct4Cs *) bk_malloc(sizeof(struct4Cs));
     D_80369280->unk0[0] = D_80369280->unk0[1] = D_80369280->unk0[2] = 0.0f;
     D_80369280->unkC[0] = D_80369280->unkC[1] = D_80369280->unkC[2] = 0.0f;
     D_8036928C = 0;
-    D_80369280->unk1C = malloc(100*sizeof(struct4Ds));
+    D_80369280->unk1C = bk_malloc(100*sizeof(struct4Ds));
     D_80369280->unk18 = 0;
     D_80369288 = assetcache_get(0x8a1); //2D_light
 }
@@ -94,7 +94,7 @@ void func_802F9114(void){
 void func_802F9134(s32 gfx){
     D_80369284 = D_80369284 - 1;
     if(gfx < D_80369284){
-        wmemcpy(D_80369280->unk1C + gfx, D_80369280->unk1C + D_80369284, sizeof(struct4Ds));
+        bk_wmemcpy(D_80369280->unk1C + gfx, D_80369280->unk1C + D_80369284, sizeof(struct4Ds));
     }
 }
 

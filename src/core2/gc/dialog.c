@@ -144,7 +144,7 @@ void clearDialogStrings(void) {
             g_Dialog.dialog[i][j].str = NULL;
         }
         g_Dialog.string_count[i] = 0;
-        free(g_Dialog.dialog[i]);
+        bk_free(g_Dialog.dialog[i]);
         g_Dialog.dialog[i] = NULL;
     }
 
@@ -513,8 +513,8 @@ void dialog_update(void) {
                                     }
         
                                     if (ret >= 0 && CMD(g_Dialog.string_index[g_Dialog.u8.active_zoombox] + ret + 1)->cmd == -8) {
-                                        strlen(CMD(g_Dialog.string_index[g_Dialog.u8.active_zoombox] + ret + 1)->str);
-                                        strlen(CMD(g_Dialog.string_index[g_Dialog.u8.active_zoombox])->str);
+                                        bk_strlen(CMD(g_Dialog.string_index[g_Dialog.u8.active_zoombox] + ret + 1)->str);
+                                        bk_strlen(CMD(g_Dialog.string_index[g_Dialog.u8.active_zoombox])->str);
         
                                         replaceText(
                                                 g_Dialog.output,
@@ -541,9 +541,9 @@ void dialog_update(void) {
                                         ret = g_Dialog.conditionalCallback(g_Dialog.caller, g_Dialog.currentTextId, g_Dialog.string_index[g_Dialog.u8.active_zoombox]);
                                     }
         
-                                    strIToA(D_80382FF8, ret);
-                                    strlen(D_80382FF8);
-                                    strlen(CMD(g_Dialog.string_index[g_Dialog.u8.active_zoombox])->str);
+                                    bk_strIToA(D_80382FF8, ret);
+                                    bk_strlen(D_80382FF8);
+                                    bk_strlen(CMD(g_Dialog.string_index[g_Dialog.u8.active_zoombox])->str);
         
                                     replaceText(
                                             g_Dialog.output,
@@ -636,7 +636,7 @@ void loadDialogStrings(s32 text_id) {
     
     for (i = 0; i < 2; i++) {
         g_Dialog.string_count[i] = *(txt++);
-        g_Dialog.dialog[i] = (BKDialog *) malloc(g_Dialog.string_count[i] * sizeof(BKDialog));
+        g_Dialog.dialog[i] = (BKDialog *) bk_malloc(g_Dialog.string_count[i] * sizeof(BKDialog));
         for (j = 0; j < g_Dialog.string_count[i]; j++) {
             // Step 1: Get the cmd / chat head from the dialog asset
             ch = *(txt++);

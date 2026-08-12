@@ -232,7 +232,7 @@ void func_8033B268(void){
 }
 
 void func_8033B2A4(s32 arg0) {
-    assetCachePtrList[assetCacheLength] = malloc(arg0);
+    assetCachePtrList[assetCacheLength] = bk_malloc(arg0);
     D_80383CD4[assetCacheLength] = NULL;
     assetCacheDependencyCount[assetCacheLength] = 1;
     assetCacheAssetIdList[assetCacheLength] = -1;
@@ -277,7 +277,7 @@ s32 assetcache_release(void * arg0){
         if(assetCacheDependencyCount[i] == 1){
             if(D_80383CD4[i])
                 func_803449DC(D_80383CD4[i]);
-            free(arg0);
+            bk_free(arg0);
             assetCacheLength--;
             assetCacheDependencyCount[i] = assetCacheDependencyCount[assetCacheLength];
             assetCachePtrList[i] = assetCachePtrList[assetCacheLength];
@@ -390,27 +390,27 @@ void *assetcache_get(enum asset_e assetId) {
         
         if (func_8025498C((u32)comp_size + uncomp_size) && !sp28) {
             sp33 = 1;
-            uncompressed_file = malloc((u32)comp_size + uncomp_size);
+            uncompressed_file = bk_malloc((u32)comp_size + uncomp_size);
             compressed_file = (void *)((s32) uncompressed_file + uncomp_size);
         } else {
             sp33 = 2;
             if (sp28) {
                 func_80254C98();
             }
-            uncompressed_file = malloc(uncomp_size);
-            compressed_file = malloc(comp_size);
+            uncompressed_file = bk_malloc(uncomp_size);
+            compressed_file = bk_malloc(comp_size);
         }
     } else { //uncompressed
-        uncompressed_file = malloc(comp_size);
+        uncompressed_file = bk_malloc(comp_size);
         compressed_file = uncompressed_file;
     }
     parallel_readDMA(compressed_file, assetSectionRomMetaList[assetId].offset + D_80383CCC, sp3C);
     if(assetSectionRomMetaList[assetId].compFlag & 0x0001){//decompress
         rarezip_inflate(compressed_file, uncompressed_file);
-        realloc(uncompressed_file, assetCacheCurrentSize);
+        bk_realloc(uncompressed_file, assetCacheCurrentSize);
         osWritebackDCache(uncompressed_file, assetCacheCurrentSize);
         if (sp33 == 2) {
-            free(compressed_file);
+            bk_free(compressed_file);
         }
     }
     assetCacheCurrentIndex = assetCacheLength;
@@ -431,21 +431,21 @@ void assetCache_resizeAsset(void *assetPtr, s32 size){
     s32 i;
 
     for(i = 0; i < assetCacheLength  && assetPtr != assetCachePtrList[i]; i++);
-    assetCachePtrList[i] = realloc(assetPtr, size);
+    assetCachePtrList[i] = bk_realloc(assetPtr, size);
 }
 
 void assetCache_init(void){
     D_80370A1C = FALSE;
     func_8033B180();
-    assetCachePtrList = (void **)malloc(150*sizeof(void*));
-    D_80383CD4 = malloc(600);
-    assetCacheDependencyCount = (u8*)malloc(150*sizeof(u8));
-    assetCacheAssetIdList = (s16 *)malloc(150*sizeof(s16));
+    assetCachePtrList = (void **)bk_malloc(150*sizeof(void*));
+    D_80383CD4 = bk_malloc(600);
+    assetCacheDependencyCount = (u8*)bk_malloc(150*sizeof(u8));
+    assetCacheAssetIdList = (s16 *)bk_malloc(150*sizeof(s16));
     assetCacheLength = 0;
-    assetSectionRomHeader = (AssetROMHead *)malloc(sizeof(AssetROMHead));
+    assetSectionRomHeader = (AssetROMHead *)bk_malloc(sizeof(AssetROMHead));
     D_80383CC8 = (u32)assets_ROM_START;
     parallel_readDMA(assetSectionRomHeader, D_80383CC8, sizeof(AssetROMHead));
-    assetSectionRomMetaList = (AssetFileMeta *)malloc(assetSectionRomHeader->count*sizeof(AssetFileMeta));
+    assetSectionRomMetaList = (AssetFileMeta *)bk_malloc(assetSectionRomHeader->count*sizeof(AssetFileMeta));
     parallel_readDMA(assetSectionRomMetaList, D_80383CC8 + sizeof(AssetROMHead),assetSectionRomHeader->count*sizeof(AssetFileMeta));
     D_80383CCC = D_80383CC8 + sizeof(AssetROMHead) + assetSectionRomHeader->count*sizeof(AssetFileMeta);
 }
@@ -518,7 +518,7 @@ s32 code_B3A80_func_8033BDAC(enum asset_e id, void *dst, s32 size) {
         }
         else if(size >= var_s0) {
             sp2B = 2;
-            comp_ptr = (s32)malloc(comp_ptr);
+            comp_ptr = (s32)bk_malloc(comp_ptr);
         }
         else{
             return 0;
@@ -542,7 +542,7 @@ s32 code_B3A80_func_8033BDAC(enum asset_e id, void *dst, s32 size) {
         rarezip_inflate(comp_ptr, dst);
         osWritebackDCache(dst, assetCacheCurrentSize);
         if (sp2B == 2) {
-            free((void *)comp_ptr);
+            bk_free((void *)comp_ptr);
         }
     }
     return var_s0;
