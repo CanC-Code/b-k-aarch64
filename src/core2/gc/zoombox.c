@@ -476,7 +476,7 @@ void gczoombox_free(GcZoombox *this){
     if(this){
         func_80315200(this);
         func_80315300(this);
-        free(this);
+        bk_free(this);
     }
 }
 
@@ -1049,7 +1049,7 @@ void func_80316E84(GcZoombox *this, s32 state){
 }
 
 s32 gczoombox_strlen(u8 *arg0){
-    return strlen(arg0);
+    return bk_strlen(arg0);
 }
 
 void gczoombox_update(GcZoombox *this){
@@ -1379,7 +1379,7 @@ GcZoombox *gczoombox_new(s32 y, GcZoomboxSprite portrait_id, s32 arg2, s32 arg3,
     s32 i;
     s32 temp_v1;
 
-    this = (GcZoombox *)malloc(sizeof(GcZoombox));
+    this = (GcZoombox *)bk_malloc(sizeof(GcZoombox));
     this->callback = callback;
     this->state = 0xB;
     this->portrait_id = portrait_id;

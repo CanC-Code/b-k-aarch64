@@ -158,7 +158,7 @@ void func_802F2740(Struct64s *arg0) {
             if (i_ptr != end_ptr) {
                 //if current indx not last index
                 // copy end object to this position and reduce size (dropping this)
-                memcpy(i_ptr, end_ptr, sizeof(Struct65s));
+                bk_memcpy(i_ptr, end_ptr, sizeof(Struct65s));
             } else {
                 //else increment current index
                 i++;
@@ -168,10 +168,10 @@ void func_802F2740(Struct64s *arg0) {
 
             if (arg0->unk4 != 0) {
                 //if not empty, shrink struct
-                arg0->unk0 = (Struct65s *)realloc(arg0->unk0, arg0->unk4 * sizeof(Struct65s));
+                arg0->unk0 = (Struct65s *)bk_realloc(arg0->unk0, arg0->unk4 * sizeof(Struct65s));
             } else {
                 //else (if empty) free struct
-                free(arg0->unk0);
+                bk_free(arg0->unk0);
                 arg0->unk0 = NULL;
             }
         } else {
@@ -221,7 +221,7 @@ void *func_802F2AEC(void) {
 
 
     if (D_80368AB4 == 0) {
-        D_80368AB0 = malloc(0x10);
+        D_80368AB0 = bk_malloc(0x10);
         if (D_80368AB0 == NULL) {
             return NULL;
         }
@@ -240,13 +240,13 @@ void *func_802F2AEC(void) {
             }
         }
 
-        D_80380A10 = (f32 *)malloc(0x100*sizeof(f32));
+        D_80380A10 = (f32 *)bk_malloc(0x100*sizeof(f32));
         for(var_s1 = 0; var_s1 < 0x100; var_s1++){
             D_80380A10[var_s1] = 0.0f;
         };
     }
     D_80368AB4++;
-    temp_v0 = malloc(8);
+    temp_v0 = bk_malloc(8);
     if (temp_v0 == NULL) {
         return NULL;
     }
@@ -263,9 +263,9 @@ void func_802F2C78(Struct64s *arg0) {
 
     if (arg0 != NULL) {
         if (arg0->unk0 != NULL) {
-            free(arg0->unk0);
+            bk_free(arg0->unk0);
         }
-        free(arg0);
+        bk_free(arg0);
         D_80368AB4 -= 1;
     }
     if (D_80368AB4 == 0) {
@@ -280,13 +280,13 @@ void func_802F2C78(Struct64s *arg0) {
                     assetcache_release(i_ptr->unk4);
                 }
             }
-            free(D_80368AB0);
+            bk_free(D_80368AB0);
             D_80368AB0 = NULL;
             D_80368AB8 = 0;
         }
 
         if (D_80380A10 != NULL) {
-            free(D_80380A10);
+            bk_free(D_80380A10);
             D_80380A10 = NULL;
         }
     }
@@ -340,9 +340,9 @@ void func_802F2FCC(Struct64s *arg0, f32 arg1[3], s16 arg2, f32 arg3, ActorMarker
     if (arg0 != NULL) {
         if ((arg0->unk4 != 0x20) && (D_80380A58 >= 0x19000)) {
             if ( arg0->unk0 != NULL) {
-                var_v0 = (Struct65s *)realloc(arg0->unk0, (arg0->unk4 + 1)*sizeof(Struct65s));
+                var_v0 = (Struct65s *)bk_realloc(arg0->unk0, (arg0->unk4 + 1)*sizeof(Struct65s));
             } else {
-                var_v0 = malloc(sizeof(Struct65s));
+                var_v0 = bk_malloc(sizeof(Struct65s));
             }
             if (var_v0 != NULL) {
                 arg0->unk0 = var_v0;

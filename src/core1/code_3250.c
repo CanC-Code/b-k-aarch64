@@ -1,9 +1,7 @@
 #include <ultra64.h>
-#include "core1/core1.h"
+#include "core1/bk_gu.h"
 
-extern f32 sqrtf(f32);
-
-static void __guMtxF2L(float mf[4][4], Mtx *m)
+void core1_3250_guMtxF2L(float mf[4][4], Mtx *m)
 {
     int	i, j;
     int	e1,e2;
@@ -22,7 +20,7 @@ static void __guMtxF2L(float mf[4][4], Mtx *m)
     }
 }
 
-static void _guMtxIdentF(float mf[4][4])
+void core1_3250_guMtxIdentF(float mf[4][4])
 {
     int	i, j;
 
@@ -32,9 +30,9 @@ static void _guMtxIdentF(float mf[4][4])
         else mf[i][j] = 0.0;
 }
 
-void guScaleF(float mf[4][4], float x, float y, float z)
+void core1_3250_guScaleF(float mf[4][4], float x, float y, float z)
 {
-    _guMtxIdentF(mf);
+    core1_3250_guMtxIdentF(mf);
 
     mf[0][0] = x;
     mf[1][1] = y;
@@ -42,7 +40,7 @@ void guScaleF(float mf[4][4], float x, float y, float z)
     mf[3][3] = 1;
 }
 
-void guLookAtReflectF(float mf[4][4], LookAt *l, 
+void core1_3250_guLookAtReflectF(float mf[4][4], LookAt *l, 
 		      float xEye, float yEye, float zEye,
 		      float xAt,  float yAt,  float zAt,
 		      float xUp,  float yUp,  float zUp)
@@ -127,31 +125,31 @@ void guLookAtReflectF(float mf[4][4], LookAt *l,
 	mf[3][3] = 1;
 }
 
-void guLookAtReflect (Mtx *m, LookAt *l, float xEye, float yEye, float zEye,
+void core1_3250_guLookAtReflect (Mtx *m, LookAt *l, float xEye, float yEye, float zEye,
 	       float xAt,  float yAt,  float zAt,
 	       float xUp,  float yUp,  float zUp)
 {
 	float	mf[4][4];
 
-	guLookAtReflectF(mf, l, xEye, yEye, zEye, xAt, yAt, zAt,
+	core1_3250_guLookAtReflectF(mf, l, xEye, yEye, zEye, xAt, yAt, zAt,
 			 xUp, yUp, zUp);
 
 	guMtxF2L(mf, m);
 }
 
-void guScale(Mtx *m, float x, float y, float z)
+void core1_3250_guScale(Mtx *m, float x, float y, float z)
 {
     float	mf[4][4];
 
-    guScaleF(mf, x, y, z);
-    __guMtxF2L(mf, m);
+    core1_3250_guScaleF(mf, x, y, z);
+    core1_3250_guMtxF2L(mf, m);
 }
 
-void guRotateRPYF(f32 mf[4][4], f32 r, f32 p, f32 h) {
-    static f32 dtor = 3.1415926 / 180.0;
+void core1_3250_guRotateRPYF(float mf[4][4], float r, float p, float h) {
+    static float dtor = 3.1415926 / 180.0;
     s32 pad;
-    f32 sinp, sinh, sinr;
-    f32 cosp, cosh, cosr;
+    float sinp, sinh, sinr;
+    float cosp, cosh, cosr;
 
     r *= dtor;
     p *= dtor;

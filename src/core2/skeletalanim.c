@@ -129,13 +129,13 @@ void skeletalAnim_free(SkeletalAnimation *self){
     if(temp_a0 != NULL){
         vector_free(temp_a0);
     }
-    free(self);
+    bk_free(self);
 }
 
 SkeletalAnimation *skeletalAnim_new(void){
     SkeletalAnimation *self;
 
-    self = (SkeletalAnimation *)malloc(sizeof(SkeletalAnimation));
+    self = (SkeletalAnimation *)bk_malloc(sizeof(SkeletalAnimation));
     self->bone_transform = NULL;
     self->animation_bin = NULL;
     self->callback_list = 0;

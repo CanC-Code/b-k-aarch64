@@ -41,7 +41,7 @@ PivotCameraNode *cameraNodeType1_init() {
     PivotCameraNode *this;
     f32 sp20[3];
 
-    this = (PivotCameraNode *)malloc(sizeof(PivotCameraNode));
+    this = (PivotCameraNode *)bk_malloc(sizeof(PivotCameraNode));
     ml_vec3f_clear(sp20);
     __cameraNodeType1_setPosition(this, sp20);
     __cameraNodeType1_func_802BA808(this, sp20);
@@ -54,7 +54,7 @@ PivotCameraNode *cameraNodeType1_init() {
 }
 
 void cameraNodeType1_free(PivotCameraNode *this) {
-    free(this);
+    bk_free(this);
 }
 
 void cameraNodeType1_getPosition(PivotCameraNode *this, f32 position[3]) {

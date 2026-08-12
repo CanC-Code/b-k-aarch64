@@ -13,7 +13,7 @@ void animMtxList_setBoneless(AnimMtxList **this_ptr, BKAnimationList *anim_list)
     this = *this_ptr;
 
     if (this->capacity < anim_list->count) {
-        this = (AnimMtxList *) realloc(this, anim_list->count * sizeof(MtxF) + sizeof(AnimMtxList));
+        this = (AnimMtxList *) bk_realloc(this, anim_list->count * sizeof(MtxF) + sizeof(AnimMtxList));
         this->capacity = anim_list->count;
         *this_ptr = this;
     }
@@ -37,11 +37,11 @@ MtxF *animMtxList_get(AnimMtxList *this, s32 index) {
 }
 
 void animMtxList_free(AnimMtxList *this){
-    free(this);
+    bk_free(this);
 }
 
 AnimMtxList *animMtxList_new(void) {
-    AnimMtxList *this = malloc(sizeof(AnimMtxList));
+    AnimMtxList *this = bk_malloc(sizeof(AnimMtxList));
     this->size = 0;
     this->capacity = 0;
     mlMtxIdent();
@@ -72,7 +72,7 @@ void animMtxList_setBoned(AnimMtxList **this_ptr, BKAnimationList *anim_list, Bo
     this = *this_ptr;
 
     if (this->capacity < anim_list->count) {
-        this = (AnimMtxList *) realloc(this, anim_list->count * sizeof(MtxF) + sizeof(AnimMtxList));
+        this = (AnimMtxList *) bk_realloc(this, anim_list->count * sizeof(MtxF) + sizeof(AnimMtxList));
         this->capacity = anim_list->count;
         *this_ptr = this;
     }

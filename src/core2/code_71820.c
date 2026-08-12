@@ -91,11 +91,11 @@ void func_802F8B8C(struct6s *this){
     func_8033BD20(&this->unk24[1]);
     func_8033BD20(&this->unk24[2]);
     func_8033BD20(&this->unk24[3]);
-    free(this);
+    bk_free(this);
 }
 
 struct6s * func_802F8BE0(s32 arg0){
-    struct6s *this = (struct6s *) malloc(sizeof(struct6s));
+    struct6s *this = (struct6s *) bk_malloc(sizeof(struct6s));
     vector(struct5s) *vecPtr;
     this->unk18 = 0;
     this->unk8 = 0.0f;

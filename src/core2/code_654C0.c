@@ -150,7 +150,7 @@ f32 vtxList_getLocalNorm(BKVertexList *this) {
 }
 
 void vtxList_free(BKVertexList *this) {
-    free(this);
+    bk_free(this);
 }
 
 BKVertexList *vtxList_clone(BKVertexList *this) {
@@ -158,8 +158,8 @@ BKVertexList *vtxList_clone(BKVertexList *this) {
     u32 list_size;
     
     list_size = sizeof(BKVertexList) + this->count * sizeof(Vtx);
-    new_ptr = (BKVertexList *) malloc(list_size);
-    wmemcpy(new_ptr, this, list_size);
+    new_ptr = (BKVertexList *) bk_malloc(list_size);
+    bk_wmemcpy(new_ptr, this, list_size);
     return new_ptr;
 }
 

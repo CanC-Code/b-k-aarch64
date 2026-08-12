@@ -190,7 +190,7 @@ void fxcommon3score_draw(enum item_e item_id, void *arg1, Gfx **gfx, Mtx **mtx, 
     sp40 = func_802FB0E4(arg1)*a1->unk54 + a1->unk34;
     if(a1->model != NULL && func_802FB0D4(arg1)){
         a1->value_string[0] = '\0';
-        strIToA(a1->value_string, itemPrint_getValue(item_id));
+        bk_strIToA(a1->value_string, itemPrint_getValue(item_id));
         print_bold_spaced(a1->unk30 + a1->unk40, sp40 + a1->unk44, a1->value_string);
         sp3C = viewport_transformCoordinate(a1->unk30, sp40, sp5C, sp68);
 

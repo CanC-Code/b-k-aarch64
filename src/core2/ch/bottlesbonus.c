@@ -206,10 +206,10 @@ void chBottlesBonus_free(Actor *this) {
         assetcache_release(D_8037DEA8);
         D_8037DEA8 = 0;
     }
-    free(D_8037DEB8);
-    free(D_8037DEBC);
-    free(D_8037DEC0);
-    free(D_8037DEC4);
+    bk_free(D_8037DEB8);
+    bk_free(D_8037DEBC);
+    bk_free(D_8037DEC0);
+    bk_free(D_8037DEC4);
 }
 
 void chBottlesBonus_func_802DD484(f32 dst[3], f32 arg1, f32 avg, f32 range) {
@@ -468,10 +468,10 @@ void chBottlesBonus_update(Actor *this) {
         for(phi_s0 = 0; phi_s0 < CH_BOTTLES_BONUS_PUZZLE_PIECE_COUNT; phi_s0++){
             func_8034DFB0(&func_8034C2C4(this->marker, phi_s0 + 0x190)->type_6D, D_803682B4, D_803682A4, 0.0f);
         }
-        D_8037DEB8 = (Struct_core2_560F0_1 *) malloc(CH_BOTTLES_BONUS_PUZZLE_PIECE_COUNT*sizeof(Struct_core2_560F0_1));
-        D_8037DEBC = (Struct_core2_560F0_1 *) malloc(CH_BOTTLES_BONUS_PUZZLE_PIECE_COUNT*sizeof(Struct_core2_560F0_1));
-        D_8037DEC0 = (Struct_core2_560F0_1 *) malloc(CH_BOTTLES_BONUS_PUZZLE_PIECE_COUNT*sizeof(Struct_core2_560F0_1));
-        D_8037DEC4 = (Struct_core2_560F0_1 *) malloc(CH_BOTTLES_BONUS_PUZZLE_PIECE_COUNT*sizeof(Struct_core2_560F0_1));
+        D_8037DEB8 = (Struct_core2_560F0_1 *) bk_malloc(CH_BOTTLES_BONUS_PUZZLE_PIECE_COUNT*sizeof(Struct_core2_560F0_1));
+        D_8037DEBC = (Struct_core2_560F0_1 *) bk_malloc(CH_BOTTLES_BONUS_PUZZLE_PIECE_COUNT*sizeof(Struct_core2_560F0_1));
+        D_8037DEC0 = (Struct_core2_560F0_1 *) bk_malloc(CH_BOTTLES_BONUS_PUZZLE_PIECE_COUNT*sizeof(Struct_core2_560F0_1));
+        D_8037DEC4 = (Struct_core2_560F0_1 *) bk_malloc(CH_BOTTLES_BONUS_PUZZLE_PIECE_COUNT*sizeof(Struct_core2_560F0_1));
     }
     func_8034CF90(local, D_8037DEAC, 0xF0);
     sp48 = chBottlesBonusCursor_func_802E06B4() - 1;

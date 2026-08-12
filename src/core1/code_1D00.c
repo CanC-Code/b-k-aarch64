@@ -264,7 +264,7 @@ void audioManager_setupSeqp(ALSeqpConfig *config) {
 }
 
 void audioManager_init(void) {
-    sALHeapBuffer = malloc(AUDIO_HEAP_SIZE);
+    sALHeapBuffer = bk_malloc(AUDIO_HEAP_SIZE);
     bzero(sALHeapBuffer, AUDIO_HEAP_SIZE);
     alHeapInit(&sALHeapInfo, sALHeapBuffer, AUDIO_HEAP_SIZE);
 #if VERSION == VERSION_USA_1_0
@@ -317,7 +317,7 @@ void audioManager_create(void) {
     sDMAStateData[i].heap = alHeapAlloc(sn_alConfig.heap, 1, DMA_BLOCK_SIZE);
 
     for (i = 0; i < 2; i++) {
-        audioManager.ACMDList[i] = malloc(NUM_AUDIO_CMDS_PER_SECOND * sizeof(Acmd) / FRAMERATE);
+        audioManager.ACMDList[i] = bk_malloc(NUM_AUDIO_CMDS_PER_SECOND * sizeof(Acmd) / FRAMERATE);
     }
 
     sNumAudioCmdsPerFrame = NUM_AUDIO_CMDS_PER_SECOND / FRAMERATE;
@@ -326,7 +326,7 @@ void audioManager_create(void) {
         audioManager.audio_info[i] = alHeapAlloc(sn_alConfig.heap, 1, sizeof(AudioInfo));
         audioManager.audio_info[i]->reply_mesg_data.unk0 = 0;
         audioManager.audio_info[i]->reply_mesg_data.audio_info_ptr = audioManager.audio_info[i];
-        audioManager.audio_info[i]->data = malloc(4 * sMaxFrameSize);
+        audioManager.audio_info[i]->data = bk_malloc(4 * sMaxFrameSize);
     }
 
     osCreateThread(&audioManager.thread, AUDIOMANAGER_THREAD_ID, audioManagerThread_entry, NULL, STACK_START(audioManager.thread_stack), AUDIOMANAGER_THREAD_PRI);

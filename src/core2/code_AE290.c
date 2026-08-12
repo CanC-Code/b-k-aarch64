@@ -17,7 +17,7 @@ void sfxInstruments_init(void) {
     ALBankFile *bnk_f;
 
     size = soundfont1ctl_ROM_END - soundfont1ctl_ROM_START;
-    bnk_f = malloc(size);
+    bnk_f = bk_malloc(size);
     osWritebackDCache(bnk_f, size);
     osPiStartDma(audioManager_getExtraDMAMesg(), OS_MESG_PRI_NORMAL, OS_READ, (u32)soundfont1ctl_ROM_START, bnk_f, size, audioManager_getDMANotifyMesgQueue());
     osRecvMesg(audioManager_getDMANotifyMesgQueue(), NULL, OS_MESG_BLOCK);

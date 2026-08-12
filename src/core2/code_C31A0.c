@@ -26,11 +26,11 @@ void vec3fArray_getDirectionVector(Vec3fArray *this, s32 index1, s32 index2, f32
 }
 
 void vec3fArray_free(Vec3fArray *this) {
-    free(this);
+    bk_free(this);
 }
 
 Vec3fArray *vec3fArray_new(void) {
-    Vec3fArray *this = (Vec3fArray *) malloc(sizeof(Vec3fArray) + ELEMENT_COUNT * sizeof(f32[3]));
+    Vec3fArray *this = (Vec3fArray *) bk_malloc(sizeof(Vec3fArray) + ELEMENT_COUNT * sizeof(f32[3]));
     this->begin_ptr = (vec3f_ptr) ((u8 *) this + sizeof(Vec3fArray));
     this->end_ptr = (vec3f_ptr) &this->begin_ptr[ELEMENT_COUNT];
     vec3fArray_clearValues(this);

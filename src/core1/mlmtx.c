@@ -6,7 +6,6 @@
 
 #include "version.h"
 
-void _guRotateF(f32 mf[4][4], f32, f32, f32, f32);
 f32 func_80263FF0(f32);
 f32 cosf(f32);
 
@@ -43,7 +42,7 @@ MtxF *mlMtx_get_stack_pointer(void){
 }
 
 void mlMtxApply(Mtx *mPtr){
-    _guMtxF2L(s_mtx_stack, mPtr);
+    core1_7F60_guMtxF2L(s_mtx_stack, mPtr);
 }
 
 void func_802514BC(MtxF *arg0) {
@@ -253,8 +252,8 @@ void mlMtxSet(MtxF* arg0) {
 }
 
 void mlMtxRotate(f32 a, f32 x, f32 y, f32 z) {
-    _guRotateF((s_mtx_stack + 1)->m, a, x, y, z);
-    guMtxCatF((s_mtx_stack + 1)->m, s_mtx_stack->m, s_mtx_stack->m);
+    core1_7F60_guRotateF((s_mtx_stack + 1)->m, a, x, y, z);
+    core1_7F60_guMtxCatF((s_mtx_stack + 1)->m, s_mtx_stack->m, s_mtx_stack->m);
 }
 
 void mlMtxRotPitch(f32 arg0) {

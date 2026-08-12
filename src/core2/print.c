@@ -286,7 +286,7 @@ void print_applyTextureToBoldFontLetter(BKSpriteTextureBlock *alphaMask, BKSprit
 FontLetter *print_getLettersFromFont(BKSprite *alphaMask, BKSprite *textureSprite){
     BKSpriteFrame * font = sprite_getFramePtr(alphaMask, 0);
     BKSpriteTextureBlock *chunkPtr;
-    FontLetter * letters = malloc((font->chunkCnt + 1)*sizeof(FontLetter));
+    FontLetter * letters = bk_malloc((font->chunkCnt + 1)*sizeof(FontLetter));
     u8* palDataPtr;
     u8* chunkDataPtr;
     s32 chunkSize;
@@ -367,11 +367,11 @@ void print_free(void){
         assetcache_release(print_sFontSpriteAssets[i]);
         print_sFontSpriteAssets[i] = NULL;
         if(i < FONTS_4_MAX){
-            free(print_sFonts[i]);
+            bk_free(print_sFonts[i]);
             print_sFonts[i] = NULL;
         }
     }
-    free(print_sPrintBuffer);
+    bk_free(print_sPrintBuffer);
     print_sPrintBuffer = NULL;
 }
 
@@ -401,10 +401,10 @@ void print_setBoldFontTexture(s32 textureId){
         }
     }//L802F510C
     print_sFontSpriteAssets[FONT_SPRITE_ASSETS_4_BOLD_FONT_TEXTURE] = assetcache_get(textureId);
-    free(print_sFonts[FONTS_1_BOLD_NUMBERS]);
+    bk_free(print_sFonts[FONTS_1_BOLD_NUMBERS]);
     print_sFonts[FONTS_1_BOLD_NUMBERS] = print_getLettersFromFont(print_sFontSpriteAssets[FONT_SPRITE_ASSETS_1_BOLD_FONT_NUMBERS_ALPHAMASK], print_sFontSpriteAssets[FONT_SPRITE_ASSETS_4_BOLD_FONT_TEXTURE]);
     if(print_sFontSpriteAssets[FONT_SPRITE_ASSETS_3_BOLD_FONT_LETTERS_ALPHAMASK]){
-        free(print_sFonts[FONTS_3_BOLD_LETTERS]);
+        bk_free(print_sFonts[FONTS_3_BOLD_LETTERS]);
         print_sFonts[FONTS_3_BOLD_LETTERS] = print_getLettersFromFont(print_sFontSpriteAssets[FONT_SPRITE_ASSETS_3_BOLD_FONT_LETTERS_ALPHAMASK], print_sFontSpriteAssets[FONT_SPRITE_ASSETS_4_BOLD_FONT_TEXTURE]);
     }
     assetcache_release(print_sFontSpriteAssets[FONT_SPRITE_ASSETS_4_BOLD_FONT_TEXTURE]);
@@ -422,7 +422,7 @@ void print_init(void){
     s32 length;
     int found;
 
-    length = strlen(boldFontLetters);
+    length = bk_strlen(boldFontLetters);
     print_sCurrentFont = \
     print_sPreviousFont = \
     print_sMonospacedModeEnabled = \
@@ -441,7 +441,7 @@ void print_init(void){
     print_sFontSpriteAssets[FONT_SPRITE_ASSETS_4_BOLD_FONT_TEXTURE] = assetcache_get(print_getCurrentMapBoldFontTexture());
     print_sFonts[FONTS_0_DIALOG] =  print_getLettersFromFont(print_sFontSpriteAssets[FONT_SPRITE_ASSETS_0_DIALOG_FONT_ALPHAMASK], print_sFontSpriteAssets[FONT_SPRITE_ASSETS_4_BOLD_FONT_TEXTURE]);
     print_sFonts[FONTS_1_BOLD_NUMBERS] =  print_getLettersFromFont(print_sFontSpriteAssets[FONT_SPRITE_ASSETS_1_BOLD_FONT_NUMBERS_ALPHAMASK], print_sFontSpriteAssets[FONT_SPRITE_ASSETS_4_BOLD_FONT_TEXTURE]);
-    print_sPrintBuffer = malloc(PRINT_BUFFER_COUNT * sizeof(PrintBuffer));
+    print_sPrintBuffer = bk_malloc(PRINT_BUFFER_COUNT * sizeof(PrintBuffer));
     print_clearPrintBufferStrings();
 
     for(i = 0; i < 0x80; i++){//L802F52EC
@@ -464,7 +464,7 @@ void print_updateBoldLetterFontDelayedFreeing(void){
     if(print_sBoldLetterFontFreeTimer > 0 && --print_sBoldLetterFontFreeTimer == 0){
         assetcache_release(print_sFontSpriteAssets[FONT_SPRITE_ASSETS_3_BOLD_FONT_LETTERS_ALPHAMASK]);
         print_sFontSpriteAssets[FONT_SPRITE_ASSETS_3_BOLD_FONT_LETTERS_ALPHAMASK] = 0;
-        free(print_sFonts[FONTS_3_BOLD_LETTERS]);
+        bk_free(print_sFonts[FONTS_3_BOLD_LETTERS]);
         print_sFonts[FONTS_3_BOLD_LETTERS] = NULL;
     }
 }
@@ -475,7 +475,7 @@ void print_freeBoldLetterFont(void){
         print_sFontSpriteAssets[FONT_SPRITE_ASSETS_3_BOLD_FONT_LETTERS_ALPHAMASK] = NULL;
     }
     if(print_sFonts[FONTS_3_BOLD_LETTERS]){
-        free(print_sFonts[FONTS_3_BOLD_LETTERS]);
+        bk_free(print_sFonts[FONTS_3_BOLD_LETTERS]);
         print_sFonts[FONTS_3_BOLD_LETTERS] = NULL;
     }
     print_sBoldLetterFontFreeTimer = 0;
@@ -837,7 +837,7 @@ void printbuffer_draw(Gfx **gfx, Mtx **mtx, Vtx **vtx) {
                 _printbuffer_draw_letter(print_sCurrentPtr->fmtString[j], &_x, &_y, 1.0f, gfx, mtx, vtx);
             }
             if (print_sBackgroundModeEnabled != 0) {
-                width = (strlen(print_sCurrentPtr->string) -1)*maxFontLetterWidths[print_sCurrentFont];
+                width = (bk_strlen(print_sCurrentPtr->string) -1)*maxFontLetterWidths[print_sCurrentFont];
                 gDPPipeSync((*gfx)++);
                 gDPSetPrimColor((*gfx)++, 0, 0, 0x00, 0x00, 0x00, 0x64);
                 gDPSetCombineMode((*gfx)++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
@@ -905,7 +905,7 @@ void _printbuffer_push_new(s32 x, s32 y, u8 * string) {
 void print_bold_overlapping(s32 x, s32 y, f32 scale, u8* string){
     _printbuffer_push_new(x, y, string);
     if(print_sCurrentPtr){
-        strcpy(print_sCurrentPtr->fmtString, "fl");
+        bk_strcpy(print_sCurrentPtr->fmtString, "fl");
         print_sCurrentPtr->scale = scale;
     }
 }
@@ -913,21 +913,21 @@ void print_bold_overlapping(s32 x, s32 y, f32 scale, u8* string){
 void print_bold_spaced(s32 x, s32 y, u8* string){
     _printbuffer_push_new(x, y, string);
     if(print_sCurrentPtr){
-        strcpy(print_sCurrentPtr->fmtString, "f");
+        bk_strcpy(print_sCurrentPtr->fmtString, "f");
     }
 }
 
 void print_dialog(s32 x, s32 y, u8* string){
     _printbuffer_push_new(x, y, string);
     if(print_sCurrentPtr){
-        strcpy(print_sCurrentPtr->fmtString, "elq");
+        bk_strcpy(print_sCurrentPtr->fmtString, "elq");
     }
 }
 
 void print_dialog_w_bg(s32 x, s32 y, u8* string){
     _printbuffer_push_new(x, y, string);
     if(print_sCurrentPtr){
-        strcpy(print_sCurrentPtr->fmtString, "pb");
+        bk_strcpy(print_sCurrentPtr->fmtString, "pb");
     }
 }
 
@@ -936,7 +936,7 @@ void print_dialog_gradient(s32 x, s32 y, u8* string, u8 topVertexAlpha, u8 botto
     if(print_sCurrentPtr){
         print_sCurrentPtr->topVertexAlpha = topVertexAlpha;
         print_sCurrentPtr->bottomVertexAlpha = bottomVertexAlpha;
-        strcpy(print_sCurrentPtr->fmtString, "v");
+        bk_strcpy(print_sCurrentPtr->fmtString, "v");
     }
 }
 
@@ -945,7 +945,7 @@ void print_dialog_gradient2(s32 x, s32 y, u8* string, s32 topVertexAlpha, s32 bo
     if(print_sCurrentPtr){
         print_sCurrentPtr->topVertexAlpha = topVertexAlpha;
         print_sCurrentPtr->bottomVertexAlpha = bottomVertexAlpha;
-        strcpy(print_sCurrentPtr->fmtString, "delq");
+        bk_strcpy(print_sCurrentPtr->fmtString, "delq");
     }
 }
 

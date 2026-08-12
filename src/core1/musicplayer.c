@@ -74,7 +74,7 @@ void coMusicPlayer_init(void) {
         coMusicPlayer_free();
     }
 
-    comusicTracks = (CoMusic *) malloc(NUM_MUSIC_SLOTS * sizeof(CoMusic));
+    comusicTracks = (CoMusic *) bk_malloc(NUM_MUSIC_SLOTS * sizeof(CoMusic));
 
     for (i_ptr = &comusicTracks[0]; i_ptr < &comusicTracks[NUM_MUSIC_SLOTS]; i_ptr++) {
         i_ptr->track_id = -1;
@@ -103,7 +103,7 @@ void coMusicPlayer_free(void) {
         freelist_free(i_ptr->unk18);
     }
 
-    free(comusicTracks);
+    bk_free(comusicTracks);
     comusicTracks = NULL;
 }
 

@@ -102,7 +102,7 @@ void func_802C83F0(Actor *actor) {
         }
         phi_s0->unk3C = NULL;
     }
-    free((s32*)actor->unk40);
+    bk_free((s32*)actor->unk40);
 }
 
 Actor *func_802C8484(ActorMarker *marker, Gfx **gfx, Mtx **mtx, Vtx **vtx) {
@@ -130,7 +130,7 @@ Actor *func_802C8484(ActorMarker *marker, Gfx **gfx, Mtx **mtx, Vtx **vtx) {
 }
 
 Actor *func_802C8580(s32 position[3], s32 yaw, ActorInfo* actorInfo, u32 flags){
-    Struct25s *s1 =  malloc(sizeof(Struct25s) + D_8037DD90 * sizeof(Struct24s));
+    Struct25s *s1 =  bk_malloc(sizeof(Struct25s) + D_8037DD90 * sizeof(Struct24s));
     Actor *actor = actor_new(position, yaw, actorInfo, flags);
     f32 f24;
     f32 sp68[3];

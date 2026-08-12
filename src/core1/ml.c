@@ -508,7 +508,7 @@ void ml_init(void)
     u16 i;
 
     // Allocate table
-    D_80276CB8 = (u16 *)malloc(10001 * sizeof(u16));
+    D_80276CB8 = (u16 *)bk_malloc(10001 * sizeof(u16));
 
     // Generate all entries in the table
     for (i = 0; i < 10001; i++)
@@ -524,7 +524,7 @@ void ml_init(void)
 //ml_free
 void ml_free(void)
 {
-    free(D_80276CB8);
+    bk_free(D_80276CB8);
     D_80276CB8 = NULL;
 }
 

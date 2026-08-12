@@ -1,61 +1,64 @@
 #include <ultra64.h>
 #include "core2/string.h"
 
-void strcat(char *dst, const char *src){
-    while(*(dst) != '\0'){
-        dst++;
+void bk_strcat(char *dest, const char *src) {
+    while (*dest) {
+        dest++;
     }
-    while(*(src) != '\0'){
-        *(dst++) = *(src++);
+
+    while (*src) {
+        *dest++ = *src++;
     }
-    *(dst) = 0;
+
+    *dest = '\0';
 }
 
-void strcatc(char *dst, char src){
-    while(*(dst) != '\0'){
-        dst++;
+void bk_strcatc(char *dest, char src) {
+    while (*dest) {
+        dest++;
     }
-    *(dst++) = src;
-    *(dst) = 0;
+
+    *dest++ = src;
+    *dest = '\0';
 }
 
-void strFToA(char *dst, f32 val){
+void bk_strFToA(char *dest, f32 val){
     s32 decimal;
     if (val < (f32) 0.0){
-        strcat(dst, "-");
+        bk_strcat(dest, "-");
         val = -val;
     }
-    strIToA(dst, (s32)val);
-    strcat(dst, ".");
+    bk_strIToA(dest, (s32)val);
+    bk_strcat(dest, ".");
     decimal = (s32)((val - (f32)((s32)val))*(f32)100.0);
     if(decimal < 10){
-        strcat(dst, "0");
+        bk_strcat(dest, "0");
     }
-    strIToA(dst, decimal);
+    bk_strIToA(dest, decimal);
 }
 
-void _strFToA(char *dst, f32 val, s32 decPlaces){
+void bk__strFToA(char *dest, f32 val, s32 decPlaces) {
     u32 i;
     if (val < 0.0f){
-        strcat(dst, "-");
+        bk_strcat(dest, "-");
         val = -val;
     }
-    strIToA(dst, val);
+    bk_strIToA(dest, val);
     if (decPlaces != 0){
-        strcat(dst, ".");
+        bk_strcat(dest, ".");
         for(i = decPlaces--; i > 0; i = decPlaces--) {
             val -= (s32)val;
             val *= 10;
-            strIToA(dst, val);
+            bk_strIToA(dest, val);
         }
     }
 }
 
-void strIToA(char *str, s32 num){
-    _strIToA(str, num, 0);
+void bk_strIToA(char *str, s32 num) {
+    bk__strIToA(str, num, 0);
 }
 
-void _strIToA(char *str, s32 num, char prefix){
+void bk__strIToA(char *str, s32 num, char prefix) {
     s32 i;
 
     //Find end of string to concatinate onto
@@ -88,78 +91,80 @@ void _strIToA(char *str, s32 num, char prefix){
     *str = '\0';
 }
 
-int strcmp(const char *str1, const char *str2){
-    while (*str1 && *str2 && *str1 == *str2) {
-        str1++;
-        str2++;
+int bk_strcmp(const char *lhs, const char *rhs) {
+    while (*lhs && *rhs && *lhs == *rhs) {
+        lhs++;
+        rhs++;
     }
 
-    if (*str1 == *str2)
+    if (*lhs == *rhs) {
         return 0;
-    else if (*str1 == '\0' || *str1 < *str2)
+    } else if ((*lhs == '\0') || (*lhs < *rhs)) {
         return -1;
-    else
+    } else {
         return 1;
-}
-
-void *strcpy(char *dst, const char *src){
-     while(*(src) != '\0'){
-        *(dst++) = *(src++);
     }
-    *(dst) = 0;
+}
+
+void bk_strcpy(char *dest, const char *src) {
+    while (*src) {
+        *dest++ = *src++;
+    }
+
+    *dest = '\0';
 }
 
 
-int strlen(const char *str){
-    char v0;
-    int len;
+int bk_strlen(const char *str) {
+    int len = 0;
 
-    len = 0;
-    v0 = *(str++);
-    while(v0 != '\0'){
+    while (*str++) {
         len++;
-        v0 = *(str++);
     }
+
     return len;
 }
 
-s32 strcmpToTok(char *str1, char* str2, char* str3){
+int bk_strcmptotok(char *str1, char *str2, char *str3) {
     while (*str2 == *str3) {
         str2++;
         str3++;
-        if ((*str2 == '\0' || *str2 == *str1) && (*str3 == '\0' || *str3 == *str1)){
+        if (((*str2 == '\0') || (*str2 == *str1)) && ((*str3 == '\0') || (*str3 == *str1))) {
             return 1;
         }
     }
     return 0;
 }
 
-char *strtok(char *str, const char *delim){
-    while (*delim != '\0' && *delim != *str){
+char *bk_strtok(char *str, const char *delim) {
+    while (*delim && *delim != *str ) {
         delim++;
     }
-    if (*delim == *str){
+
+    if (*delim == *str) {
         delim++;
     }
-    return delim;
+
+    return (char *) delim;
 }
 
-void strcpyToTok(char *arg0, char *arg1, char *arg2){
-    while ((*arg2 != '\0') && (*arg2 != *arg0)){
-        *arg1 = *arg2;
-        arg2++;
-        arg1++;
+void bk_strcpytotok(char *str1, char *str2, char *str3){
+    while ((*str3 != '\0') && (*str3 != *str1)){
+        *str2 = *str3;
+        str3++;
+        str2++;
     }
-    *arg1 = '\0';
+    *str2 = '\0';
 }
 
-char *strupr(char *str){
-    char *ret = str;
-    while (*ret != '\0'){
-        if ((*ret >= 0x61) && (*ret < 0x7B)){
-            *ret -= 0x20;
+void bk_strupr(char *str) {
+    char *ch = str;
+
+    while (*ch) {
+        if ((*ch >= 'a') && (*ch <= 'z')) {
+            *ch -= 'a' - 'A';
         }
-        ret++;
+
+        ch++;
     }
-    str = ret;
 }

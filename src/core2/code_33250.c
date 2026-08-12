@@ -14,13 +14,13 @@ static void __code33250_func_802BA23C(RandomCameraNode *this, s32 arg1);
 RandomCameraNode *cameraNodeType4_init(){
     RandomCameraNode * this;
     
-    this = malloc(sizeof(RandomCameraNode));
+    this = bk_malloc(sizeof(RandomCameraNode));
     __code33250_func_802BA23C(this, 1);
     return this;
 }
 
 void cameraNodeType4_free(RandomCameraNode *this){
-    free(this);
+    bk_free(this);
 }
 
 s32 code33250_func_802BA234(RandomCameraNode *this){

@@ -1,19 +1,19 @@
 #ifndef BANJO_KAZOOIE_CORE1_MEMORY_H
 #define BANJO_KAZOOIE_CORE1_MEMORY_H
 
-/**
-* copy memory area
-*/
-void memcpy(void * dst, void *src, int size);
+#include <ultra64.h>
 
-/**
-* copy an array of wide_characters
-*/
-void wmemcpy(void * dst, void *src, int size); 
+/*
+ * These functions are slightly modified from the Standard C Library.
+ * To avoid naming collisions and make porting easier, they were prefixed.
+ */
 
+void bk_memcpy(void *dest, void *src, int count);
+void bk_wmemcpy(void *dest, void *src, int count);
+void bk_memmove(void *dest, void *src, int count);
 
-/**
- * copy memory area
-*/
-void memmove(u8* dst, u8* src, s32 n);
+void *bk_malloc(int size);
+void bk_free(void *ptr);
+void *bk_realloc(void *ptr, int new_size);
+
 #endif
