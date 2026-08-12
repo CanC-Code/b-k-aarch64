@@ -49,6 +49,7 @@ f32 func_8033AA10(AnimationFile *this, s32 arg1){
     return (f32)(arg1 - this->unk0)/(f32)(this->unk2 - this->unk0);
 }
 f32 func_8033ABA0(AnimationFile *this, f32 arg1){
+    if (this == NULL) return 0.0f;
     this = (AnimationFile*)((uintptr_t)this & 0x00FFFFFFFFFFFFFFUL);
     return this->unk0 + arg1*(this->unk2 - this->unk0);
 }
