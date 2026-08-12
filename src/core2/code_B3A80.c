@@ -14,8 +14,9 @@ f32 D_803709E0[] = {
     0.0f, 0.0f, 0.0f, 0.0f
 };
 s32 assetCacheCurrentSize = 0;
- u8 assetCacheLength = 0; //assetCache_size;
- u8 assetCacheCurrentIndex = 0;
+#define ASSET_CACHE_SIZE 512
+ u16 assetCacheLength = 0; //assetCache_size;
+ u16 assetCacheCurrentIndex = 0;
  u8 D_80370A1C = FALSE;
 
 
@@ -28,7 +29,7 @@ u32 D_80383CC8;
 s32 D_80383CCC; //asset_data_rom_offset
 void** assetCachePtrList; //assetCache_ptrs;
 BKSpriteDisplayData **D_80383CD4;
-u8* assetCacheDependencyCount; //assetCache_dependencies;
+u16* assetCacheDependencyCount; //assetCache_dependencies;
 s16 *assetCacheAssetIdList; //assetCache_indexs
 vector(struct21s) *D_80383CE0[2];
 
@@ -370,7 +371,7 @@ void *assetcache_get(enum asset_e assetId) {
     D_80370A1C = FALSE;
     for(i = 0; i < assetCacheLength && assetId != assetCacheAssetIdList[i]; i++);
     assetCacheCurrentIndex = i;
-    if(i == 0x96)
+    if(i == ASSET_CACHE_SIZE)
         return NULL;
     
     if(i < assetCacheLength){ //asset exists in array;
@@ -441,10 +442,10 @@ void assetCache_resizeAsset(void *assetPtr, s32 size){
 void assetCache_init(void){
     D_80370A1C = FALSE;
     func_8033B180();
-    assetCachePtrList = (void **)malloc(150*sizeof(void*));
-    D_80383CD4 = malloc(600);
-    assetCacheDependencyCount = (u8*)malloc(150*sizeof(u8));
-    assetCacheAssetIdList = (s16 *)malloc(150*sizeof(s16));
+    assetCachePtrList = (void **)malloc(ASSET_CACHE_SIZE*sizeof(void*));
+    D_80383CD4 = (BKSpriteDisplayData **)malloc(ASSET_CACHE_SIZE * sizeof(BKSpriteDisplayData*));
+    assetCacheDependencyCount = (u16*)malloc(ASSET_CACHE_SIZE*sizeof(u16));
+    assetCacheAssetIdList = (s16 *)malloc(ASSET_CACHE_SIZE*sizeof(s16));
     assetCacheLength = 0;
     assetSectionRomHeader = (AssetROMHead *)malloc(sizeof(AssetROMHead));
     D_80383CC8 = (u32)assets_ROM_START;
@@ -497,7 +498,7 @@ s32 code_B3A80_func_8033BDAC(enum asset_e id, void *dst, s32 size) {
     //find asset in cache
     for(phi_v0 = 0; phi_v0 < assetCacheLength && id != assetCacheAssetIdList[phi_v0]; phi_v0++);
     assetCacheCurrentIndex = phi_v0;
-    if (phi_v0 == 150) { //asset not in cache
+    if (phi_v0 == ASSET_CACHE_SIZE) { //asset not in cache
         return 0;
     }
     comp_ptr = assetSectionRomMetaList[id + 1].offset - assetSectionRomMetaList[id].offset;
