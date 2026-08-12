@@ -151,7 +151,6 @@ void model_free(BKModel *this) {
 }
 
 BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
-    if (!this || !bk_vtx_list) { __android_log_print(ANDROID_LOG_FATAL, "BKA", "meshList_createModel: null pointer this=%p bk_vtx_list=%p", this, bk_vtx_list); return NULL; }
     this = UNTAG(this);
     bk_vtx_list = UNTAG(bk_vtx_list);
     s32 temp_s1;
