@@ -60,18 +60,19 @@ static void __animBinCache_loadAll(void){
 }
 
 AnimationFile *animBinCache_get(enum asset_e asset_id){
-    if(animBinCache[asset_id].ptr == NULL){
-        animBinCache[asset_id].ptr = (AnimationFile *) assetcache_get(asset_id);
+    AnimationFile *ptr = (AnimationFile *) assetcache_get(asset_id);
+    if (ptr != NULL) {
+        animBinCache[asset_id].ptr = ptr;
+        animBinCache[asset_id].exp_timer = 30;
     }
-    animBinCache[asset_id].exp_timer = 30;
-    return animBinCache[asset_id].ptr;
+    return ptr;
 }
-
 void animBinCache_free(void){
     s32 i;
     for(i = 0; i < 0x2CA; i++){
         if(animBinCache[i].ptr){
             assetcache_release(animBinCache[i].ptr);
+                animBinCache[i].ptr = NULL;
         }
     }
 }
@@ -97,6 +98,7 @@ void animBinCache_flushStale(s32 persistant){
             ){
                 assetcache_release(animBinCache[i].ptr);
                 animBinCache[i].ptr = NULL;
+                animBinCache[i].ptr = NULL;
                 animBinCache[i].persist = 0;
             }
         }
@@ -107,6 +109,7 @@ void animBinCache_flushStale(s32 persistant){
                 && (animBinCache[i].exp_timer < 30)
             ){
                 assetcache_release(animBinCache[i].ptr);
+                animBinCache[i].ptr = NULL;
                 animBinCache[i].ptr = NULL;
                 if(func_80254BC4(1))
                     break;
@@ -121,6 +124,7 @@ void animBinCache_update(void){
         if((animBinCache[i].ptr != NULL) && !animBinCache[i].persist){
             if(--animBinCache[i].exp_timer == 0){
                 assetcache_release(animBinCache[i].ptr);
+                animBinCache[i].ptr = NULL;
                 animBinCache[i].ptr = NULL;
             }
         }
