@@ -1179,15 +1179,8 @@ BKCollisionList *modelbin_getCollisionList(BKModelBin *this) {
 
 BKMeshList *modelbin_getMeshList(BKModelBin *this) {
     this = (BKModelBin*)((uintptr_t)this & 0x00FFFFFFFFFFFFFFUL);
-    if (this == NULL) return NULL;
-    if (this->mesh_list_offset == 0) return NULL;
-    BKMeshList *mesh_list;
-    // MTE-safe: read pointer from tagged RDRAM and strip top-byte tag
-    __builtin_memcpy(&mesh_list, (void*)((uintptr_t)this + offsetof(BKModelBin, mesh_list_offset) + 4), sizeof(mesh_list));
-    // Actually the mesh_list field is before mesh_list_offset. Let's just read directly
-    // from the correct offset. mesh_list is at offset 0 in BKModelBin.
-    __builtin_memcpy(&mesh_list, this, sizeof(mesh_list));
-    return (BKMeshList *)((uintptr_t)mesh_list & 0xFFFFFFFFFFFFULL);
+    BKMeshList *result = modelbin_getMeshList_MACRO(this);
+    return (BKMeshList*)((uintptr_t)result & 0x00FFFFFFFFFFFFFFUL);
 }
 
 f32 modelbin_getUnk34(BKModelBin *this) {
@@ -1211,10 +1204,8 @@ BKTextureList *modelbin_getTextureList(BKModelBin *this) {
 
 BKAnimTextureList *modelbin_getAnimTextureList(BKModelBin *this) {
     this = (BKModelBin*)((uintptr_t)this & 0x00FFFFFFFFFFFFFFUL);
-    if (this->animated_texture_list_offset == 0)
-        return NULL;
-
-    return modelbin_getAnimTextureList_MACRO(this);
+    BKAnimTextureList *result = modelbin_getAnimTextureList_MACRO(this);
+    return (BKAnimTextureList*)((uintptr_t)result & 0x00FFFFFFFFFFFFFFUL);
 }
 
 BKModelUnk14List *modelbin_getUnk14List(BKModelBin *this) {
@@ -1226,7 +1217,8 @@ BKModelUnk14List *modelbin_getUnk14List(BKModelBin *this) {
 
 BKVertexList *modelbin_getVtxList(BKModelBin *this) {
     this = (BKModelBin*)((uintptr_t)this & 0x00FFFFFFFFFFFFFFUL);
-    return modelbin_getVtxList_MACRO(this);
+    BKVertexList *result = modelbin_getVtxList_MACRO(this);
+    return (BKVertexList*)((uintptr_t)result & 0x00FFFFFFFFFFFFFFUL);
 }
 
 BKCameraAreaList *modelbin_getCameraAreaList(BKModelBin *this) {
