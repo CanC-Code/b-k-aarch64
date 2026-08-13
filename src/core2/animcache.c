@@ -92,7 +92,20 @@ s16 animCache_getNextFree(void){
 
 s16 animCache_getNew(void){
     int indx = animCache_getNextFree();
-    if (indx < 0 || indx >= ANIM_CACHE_SIZE) return 0;
+    if (indx < 0) {
+        // Evict an expired slot, or if none are expired, evict slot 0 as a last resort.
+        for (int i = 0; i < ANIM_CACHE_SIZE; i++) {
+            if (D_80379E20[i].alive && D_80379E20[i].life <= 0) {
+                animCache_release(i);
+                indx = i;
+                break;
+            }
+        }
+        if (indx < 0) {
+            animCache_release(0);
+            indx = 0;
+        }
+    }
     D_80379E20[indx].alive = TRUE;
     D_80379E20[indx].life = 0;
     D_80379E20[indx].bone_xform = 0;
