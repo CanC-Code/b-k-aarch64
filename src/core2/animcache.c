@@ -90,6 +90,7 @@ s16 animCache_getNextFree(void){
     return -1;
 }
 
+void animCache_release(s16 index);
 s16 animCache_getNew(void){
     int indx = animCache_getNextFree();
     if (indx < 0) {
