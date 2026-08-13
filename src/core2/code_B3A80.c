@@ -1,4 +1,5 @@
 #include "../../Android/app/src/main/cpp/bka_safe_base.h"
+#include <android/log.h>
 #include <ultra64.h>
 #include "functions.h"
 #include "variables.h"
@@ -51,13 +52,17 @@ f32 func_8033AA10(AnimationFile *this, s32 arg1){
 }
 f32 func_8033ABA0(AnimationFile *this, f32 arg1){
     if (this == NULL) return 0.0f;
+    __android_log_print(ANDROID_LOG_INFO, "BKA-ANIM", "func_8033ABA0: this=%p arg1=%f", this, arg1);
     this = (AnimationFile*)((uintptr_t)this & 0x00FFFFFFFFFFFFFFUL);
+    __android_log_print(ANDROID_LOG_INFO, "BKA-ANIM", "func_8033ABA0 after mask: this=%p", this);
     return this->unk0 + arg1*(this->unk2 - this->unk0);
 }
 
 void animationFile_getBoneTransformList(AnimationFile *anim_file, f32 progress, BoneTransformList *bone_transform_list){
     if (anim_file == NULL || bone_transform_list == NULL) return;
+    __android_log_print(ANDROID_LOG_INFO, "BKA-ANIM", "animationFile_getBoneTransformList raw anim_file=%p progress=%f", anim_file, progress);
     anim_file = (AnimationFile*)BKA_TRANSLATE_ADDR(anim_file);
+    __android_log_print(ANDROID_LOG_INFO, "BKA-ANIM", "animationFile_getBoneTransformList translated anim_file=%p", anim_file);
     s32 bone_id;
     int i;
     f32 tmp_f22;
@@ -273,8 +278,7 @@ bool func_8033B388(BKSprite **sprite_ptr, BKSpriteDisplayData **arg1){
 
 s32 assetcache_release(void * arg0){
     (void)arg0;
-    /* TEMPORARY: no-op to prevent premature frees during startup. */
-    /* Proper refcounting/eviction will be restored once stable. */
+    // TEMPORARY NO-OP: do not free assets during startup to avoid stale pointers.
     return 0;
 }
 

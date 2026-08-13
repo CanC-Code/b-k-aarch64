@@ -11,6 +11,7 @@
 #include "variables.h"
 
 #include "animation.h"
+#include <android/log.h>
 #define ANIM_BIN_CACHE_SIZE 0x2CA
 
 typedef struct animation_file_cache_s{
@@ -62,10 +63,14 @@ static void __animBinCache_loadAll(void){
 
 AnimationFile *animBinCache_get(enum asset_e asset_id){
     if (asset_id < 0 || asset_id >= ANIM_BIN_CACHE_SIZE) {
+        __android_log_print(ANDROID_LOG_INFO, "BKA-ANIMCACHE", "asset_id=%d OUT OF RANGE", asset_id);
         return NULL;
     }
     if(animBinCache[asset_id].ptr == NULL){
         animBinCache[asset_id].ptr = (AnimationFile *) assetcache_get(asset_id);
+        __android_log_print(ANDROID_LOG_INFO, "BKA-ANIMCACHE", "loaded asset_id=%d ptr=%p", asset_id, animBinCache[asset_id].ptr);
+    } else {
+        __android_log_print(ANDROID_LOG_INFO, "BKA-ANIMCACHE", "cached asset_id=%d ptr=%p", asset_id, animBinCache[asset_id].ptr);
     }
     animBinCache[asset_id].exp_timer = 30;
     return animBinCache[asset_id].ptr;
