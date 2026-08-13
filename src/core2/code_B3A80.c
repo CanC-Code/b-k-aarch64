@@ -272,32 +272,10 @@ bool func_8033B388(BKSprite **sprite_ptr, BKSpriteDisplayData **arg1){
 }
 
 s32 assetcache_release(void * arg0){
-    s32 i;
-    if(arg0){
-        for(i = 0; i < assetCacheLength  && arg0 != assetCachePtrList[i]; i++);
-        
-        if(i == assetCacheLength)
-            return 2;
-
-        assetCacheCurrentIndex = i;
-        if(assetCacheDependencyCount[i] == 1){
-            if(D_80383CD4[i])
-                func_803449DC(D_80383CD4[i]);
-            free(arg0);
-            assetCacheLength--;
-            assetCacheDependencyCount[i] = assetCacheDependencyCount[assetCacheLength];
-            assetCachePtrList[i] = assetCachePtrList[assetCacheLength];
-            D_80383CD4[i] = D_80383CD4[assetCacheLength];
-            assetCacheAssetIdList[i] = assetCacheAssetIdList[assetCacheLength];
-            return 0;
-        }
-        else{
-            assetCacheDependencyCount[i]--;
-            return 1;
-        }
-    } else{
-        return 3;
-    }
+    (void)arg0;
+    /* TEMPORARY: no-op to prevent premature frees during startup. */
+    /* Proper refcounting/eviction will be restored once stable. */
+    return 0;
 }
 
 void assetcache_update_ptr(void * arg0, void* arg1){
