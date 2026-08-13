@@ -162,6 +162,10 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
     Vtx *new_var;
     int j, i;
 
+    __android_log_print(ANDROID_LOG_INFO, "BKA-MESH", "meshList_createModel: this=%p bk_vtx_list=%p this->count=%d vtxCount=%d",
+        this, bk_vtx_list, this ? this->count : -1,
+        (this && bk_vtx_list) ? meshList_getVtxCount(this) : -1);
+
     model = (BKModel *) malloc(sizeof(BKModel) + (this->count * sizeof(BKModelMesh)) + (meshList_getVtxCount(this) * sizeof(BKModelVtxRef)));
     model->mesh_list = this;
     model->vtx_list = bk_vtx_list;
@@ -170,6 +174,8 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
     out_mesh = (BKModelMesh *) model->data;
 
     for (i = 0; i < this->count; i++) {
+            __android_log_print(ANDROID_LOG_INFO, "BKA-MESH", "meshList_createModel loop %d: in_mesh=%p uid=%d vtx_count=%d out_mesh=%p",
+                i, in_mesh, in_mesh ? in_mesh->uid : -1, in_mesh ? in_mesh->vtx_count : -1, out_mesh);
             out_mesh->uid = in_mesh->uid;
             out_mesh->vtx_count = in_mesh->vtx_count;
             vtx_ref = (BKModelVtxRef *) out_mesh->data;
