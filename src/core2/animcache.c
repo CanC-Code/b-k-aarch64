@@ -1,6 +1,4 @@
 #include <ultra64.h>
-#include <stdlib.h>
-#include <string.h>
 #include "functions.h"
 #include "variables.h"
 #include "core2/bonetransform.h"
@@ -13,7 +11,7 @@ typedef struct {
 }struct10E0s;
 
 /* .bss */
-#define INITIAL_g_animCacheCapacity 1024
+#define INITIAL_ANIM_CACHE_SIZE 1024
 static struct10E0s *D_80379E20 = NULL;
 static s32 g_animCacheCapacity = 0;
 
@@ -23,7 +21,7 @@ void animCache_init(void){
 
     if (!D_80379E20) {
         g_animCacheCapacity = INITIAL_ANIM_CACHE_SIZE;
-        D_80379E20 = (struct10E0s *)calloc(g_animCacheCapacity, sizeof(struct10E0s));
+        D_80379E20 = (struct10E0s *)malloc(g_animCacheCapacity * sizeof(struct10E0s));
         if (!D_80379E20) return;
     }
 
@@ -100,14 +98,20 @@ s16 animCache_getNextFree(void){
 }
 
 void animCache_release(s16 index);
-void animCache_release(s16 index);
 s16 animCache_getNew(void){
     int indx = animCache_getNextFree();
     if (indx < 0) {
         s32 new_cap = g_animCacheCapacity * 2;
         struct10E0s *new_arr = (struct10E0s *)realloc(D_80379E20, new_cap * sizeof(struct10E0s));
         if (!new_arr) return -1;
-        memset(new_arr + g_animCacheCapacity, 0, (new_cap - g_animCacheCapacity) * sizeof(struct10E0s));
+
+        // zero the newly allocated part manually
+        for (s32 j = g_animCacheCapacity; j < new_cap; j++) {
+            new_arr[j].alive = FALSE;
+            new_arr[j].bone_xform = NULL;
+            new_arr[j].life = 0;
+        }
+
         D_80379E20 = new_arr;
         g_animCacheCapacity = new_cap;
         indx = animCache_getNextFree();
