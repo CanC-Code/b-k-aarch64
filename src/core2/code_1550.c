@@ -64,12 +64,11 @@ AnimationFile *animBinCache_get(enum asset_e asset_id){
     if (asset_id < 0 || asset_id >= ANIM_BIN_CACHE_SIZE) {
         return NULL;
     }
-    AnimationFile *ptr = (AnimationFile *) assetcache_get(asset_id);
-    if (ptr != NULL) {
-        animBinCache[asset_id].ptr = ptr;
-        animBinCache[asset_id].exp_timer = 30;
+    if (animBinCache[asset_id].ptr == NULL) {
+        animBinCache[asset_id].ptr = (AnimationFile *) assetcache_get(asset_id);
     }
-    return ptr;
+    animBinCache[asset_id].exp_timer = 30;
+    return animBinCache[asset_id].ptr;
 }
 void animBinCache_free(void){
     s32 i;

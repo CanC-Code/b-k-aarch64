@@ -405,6 +405,15 @@ void *assetcache_get(enum asset_e assetId) {
             free(compressed_file);
         }
     }
+    // Evict unreferenced assets when the cache reaches its base cap.
+    if (assetCacheLength >= ASSET_CACHE_SIZE) {
+        for (int evict_i = 0; evict_i < assetCacheLength; evict_i++) {
+            if (assetCacheDependencyCount[evict_i] == 0) {
+                assetcache_release(assetCachePtrList[evict_i]);
+                evict_i = -1; // restart because the array compacts after release
+            }
+        }
+    }
     if (assetCacheLength >= g_assetCacheCapacity) {
         u32 new_cap = g_assetCacheCapacity * 2;
         assetCachePtrList = (void**)realloc(assetCachePtrList, new_cap * sizeof(void*));
