@@ -8,6 +8,7 @@
 void anim_setIndex(Animation *this, enum asset_e arg1);
 void anim_drawSetup(Animation *this);
 void animationFile_getBoneTransformList(AnimationFile *, f32, BoneTransformList *);
+AnimationFile *animBinCache_get(enum asset_e asset_id);
 void boneTransformList_interpolate(BoneTransformList *, BoneTransformList *, BoneTransformList *, f32);
 
 //function definitions
