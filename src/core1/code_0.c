@@ -208,6 +208,10 @@ void mainLoop(void){
             }
         }
     }//L8023DF70
+
+#ifdef __ANDROID__
+    BKA_FrameSyncHook();
+#endif
 }
 
 void mainThread_entry(void *arg) { 
