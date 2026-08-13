@@ -95,9 +95,9 @@ void animCache_release(s16 index);
 s16 animCache_getNew(void){
     int indx = animCache_getNextFree();
     if (indx < 0) {
-        // Evict an expired slot, or if none are expired, evict slot 0 as a last resort.
+        // Evict an expired used slot; only consider slots that actually own a bone_xform.
         for (int i = 0; i < ANIM_CACHE_SIZE; i++) {
-            if (D_80379E20[i].alive && D_80379E20[i].life <= 0) {
+            if (D_80379E20[i].alive && D_80379E20[i].bone_xform && D_80379E20[i].life <= 0) {
                 animCache_release(i);
                 indx = i;
                 break;
@@ -109,7 +109,7 @@ s16 animCache_getNew(void){
         }
     }
     D_80379E20[indx].alive = TRUE;
-    D_80379E20[indx].life = 0;
+    D_80379E20[indx].life = 1;   // non-zero until first use, prevents immediate re-eviction
     D_80379E20[indx].bone_xform = 0;
     return indx;
 }
