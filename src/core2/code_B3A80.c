@@ -395,14 +395,6 @@ void *assetcache_get(enum asset_e assetId) {
     if(assetSectionRomMetaList[assetId].compFlag & 0x0001){//decompress
         rarezip_inflate(compressed_file, uncompressed_file);
 
-        // Convert decompressed asset data from N64 big-endian to ARM little-endian.
-        {
-            u32 *words = (u32*)uncompressed_file;
-            s32 wordCount = assetCacheCurrentSize / 4;
-            for (s32 j = 0; j < wordCount; j++) {
-                words[j] = __builtin_bswap32(words[j]);
-            }
-        }
         uncompressed_file = (void*)realloc(uncompressed_file, assetCacheCurrentSize);
         osWritebackDCache(uncompressed_file, assetCacheCurrentSize);
         if (sp33 == 2) {

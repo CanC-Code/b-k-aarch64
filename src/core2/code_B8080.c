@@ -1,5 +1,6 @@
 #define UNTAG(ptr) ((__typeof__(ptr))((uintptr_t)(ptr) & 0x00FFFFFFFFFFFFFFUL))
 #include <ultra64.h>
+static inline s16 bswap16(s16 v) { return (s16)__builtin_bswap16((u16)v); }
 #include <android/log.h>
 #include "functions.h"
 #include "variables.h"
@@ -167,6 +168,7 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
         this, bk_vtx_list, this ? this->count : -1,
         (this && bk_vtx_list) ? meshList_getVtxCount(this) : -1);
 
+    this->count = bswap16(this->count);
     model = (BKModel *) malloc(sizeof(BKModel) + (this->count * sizeof(BKModelMesh)) + (meshList_getVtxCount(this) * sizeof(BKModelVtxRef)));
     model->mesh_list = this;
     model->vtx_list = bk_vtx_list;
@@ -182,7 +184,7 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
             vtx_ref = (BKModelVtxRef *) out_mesh->data;
             
             for (j = 0; j < in_mesh->vtx_count; j++) {
-                vtx_ref->vtx_id = in_mesh->vertices[j];
+                vtx_ref->vtx_id = bswap16(in_mesh->vertices[j]);
                 memcpy(&vtx_ref->v, &bk_vtx_list->vertices[vtx_ref->vtx_id], sizeof(Vtx));
                 vtx_ref++;
             }
