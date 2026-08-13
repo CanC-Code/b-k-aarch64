@@ -30,6 +30,7 @@ s32 D_80383CCC; //asset_data_rom_offset
 void** assetCachePtrList; //assetCache_ptrs;
 BKSpriteDisplayData **D_80383CD4;
 u16* assetCacheDependencyCount; //assetCache_dependencies;
+static u32 g_assetCacheCapacity = 0;
 s16 *assetCacheAssetIdList; //assetCache_indexs
 vector(struct21s) *D_80383CE0[2];
 
@@ -372,9 +373,7 @@ void *assetcache_get(enum asset_e assetId) {
     D_80370A1C = FALSE;
     for(i = 0; i < assetCacheLength && assetId != assetCacheAssetIdList[i]; i++);
     assetCacheCurrentIndex = i;
-    if(i == ASSET_CACHE_SIZE)
-        return NULL;
-    
+        
     if(i < assetCacheLength){ //asset exists in array;
         assetCacheDependencyCount[i]++;
         return assetCachePtrList[i];
@@ -419,6 +418,18 @@ void *assetcache_get(enum asset_e assetId) {
             free(compressed_file);
         }
     }
+    if (assetCacheLength >= g_assetCacheCapacity) {
+        u32 new_cap = g_assetCacheCapacity * 2;
+        assetCachePtrList = (void**)realloc(assetCachePtrList, new_cap * sizeof(void*));
+        D_80383CD4 = (BKSpriteDisplayData**)realloc(D_80383CD4, new_cap * sizeof(BKSpriteDisplayData*));
+        assetCacheDependencyCount = (u16*)realloc(assetCacheDependencyCount, new_cap * sizeof(u16));
+        assetCacheAssetIdList = (s16*)realloc(assetCacheAssetIdList, new_cap * sizeof(s16));
+        if (!assetCachePtrList || !D_80383CD4 || !assetCacheDependencyCount || !assetCacheAssetIdList) {
+            return NULL;
+        }
+        g_assetCacheCapacity = new_cap;
+    }
+
     assetCacheCurrentIndex = assetCacheLength;
     assetCacheDependencyCount[assetCacheLength] = 1;
     assetCachePtrList[assetCacheLength] = uncompressed_file;
@@ -447,6 +458,7 @@ void assetCache_init(void){
     D_80383CD4 = (BKSpriteDisplayData **)malloc(ASSET_CACHE_SIZE * sizeof(BKSpriteDisplayData*));
     assetCacheDependencyCount = (u16*)malloc(ASSET_CACHE_SIZE*sizeof(u16));
     assetCacheAssetIdList = (s16 *)malloc(ASSET_CACHE_SIZE*sizeof(s16));
+    g_assetCacheCapacity = ASSET_CACHE_SIZE;
     assetCacheLength = 0;
     assetSectionRomHeader = (AssetROMHead *)malloc(sizeof(AssetROMHead));
     D_80383CC8 = (u32)assets_ROM_START;

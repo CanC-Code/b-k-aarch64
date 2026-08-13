@@ -11,6 +11,7 @@
 #include "variables.h"
 
 #include "animation.h"
+#define ANIM_BIN_CACHE_SIZE 0x2CA
 
 typedef struct animation_file_cache_s{
     AnimationFile *ptr;
@@ -38,7 +39,7 @@ s16 animBinCache_persistantList[] = {
 };
 
 /* .bss */
-AnimationFileCache animBinCache[0x2CA];
+AnimationFileCache animBinCache[ANIM_BIN_CACHE_SIZE];
 
 /* .code */
 static void __animBinCache_initPersistent(void){
@@ -60,6 +61,9 @@ static void __animBinCache_loadAll(void){
 }
 
 AnimationFile *animBinCache_get(enum asset_e asset_id){
+    if (asset_id < 0 || asset_id >= ANIM_BIN_CACHE_SIZE) {
+        return NULL;
+    }
     AnimationFile *ptr = (AnimationFile *) assetcache_get(asset_id);
     if (ptr != NULL) {
         animBinCache[asset_id].ptr = ptr;
