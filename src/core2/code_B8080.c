@@ -168,8 +168,9 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
         this, bk_vtx_list, this ? this->count : -1,
         (this && bk_vtx_list) ? meshList_getVtxCount(this) : -1);
 
-    this->count = bswap16(this->count);
-    model = (BKModel *) malloc(sizeof(BKModel) + (this->count * sizeof(BKModelMesh)) + (meshList_getVtxCount(this) * sizeof(BKModelVtxRef)));
+    s16 count = bswap16(this->count);
+    s32 vtx_count_total = meshList_getVtxCount(this);
+    model = (BKModel *) malloc(sizeof(BKModel) + (count * sizeof(BKModelMesh)) + (vtx_count_total * sizeof(BKModelVtxRef)));
     model->mesh_list = this;
     model->vtx_list = bk_vtx_list;
 
