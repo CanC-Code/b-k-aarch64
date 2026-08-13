@@ -1,5 +1,6 @@
 #define UNTAG(ptr) ((__typeof__(ptr))((uintptr_t)(ptr) & 0x00FFFFFFFFFFFFFFUL))
 #include <ultra64.h>
+#include <android/log.h>
 #include "functions.h"
 #include "variables.h"
 
