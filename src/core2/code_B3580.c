@@ -48,7 +48,9 @@ void func_8033A6B0(BoneTransformList *this, s32 bone_id, f32 arg2[3]) {
 }
 
 void boneTransformList_free(BoneTransformList *this){
-    free(this);
+    (void)this;
+    // TEMPORARY NO-OP: prevent premature free of live bone transforms.
+    // Proper lifetime management will be restored later.
 }
 
 BoneTransformList *boneTransformList_new(void) {
