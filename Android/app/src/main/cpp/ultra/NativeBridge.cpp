@@ -85,6 +85,8 @@ static void DestroyEGL_Locked() {
 
 extern "C" {
     extern uint8_t* gN64_RDRAM;
+    extern s32 gFramebufferWidth;
+    extern s32 gFramebufferHeight;
     extern uint32_t* gN64_Reg_Base;
 
     void InitN64Registers(const char* assetDir);
@@ -357,7 +359,7 @@ Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass clazz, jint t
     // ===================================================================
     {
         int activeFb = getActiveFramebuffer();
-        size_t fbSize = 292 * 216 * sizeof(uint16_t);
+        size_t fbSize = (size_t)gFramebufferWidth * gFramebufferHeight * sizeof(uint16_t);
         memcpy(gN64_RDRAM + g_active_fb_offset, gFramebuffers[activeFb], fbSize);
     }
 
