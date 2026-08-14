@@ -1216,6 +1216,7 @@ BKModelUnk14List *modelbin_getUnk14List(BKModelBin *this) {
 }
 
 BKVertexList *modelbin_getVtxList(BKModelBin *this) {
+    if (this == NULL || this->vtx_list_offset == 0) return NULL;
     this = (BKModelBin*)((uintptr_t)this & 0x00FFFFFFFFFFFFFFUL);
     BKVertexList *result = modelbin_getVtxList_MACRO(this);
     return (BKVertexList*)((uintptr_t)result & 0x00FFFFFFFFFFFFFFUL);
