@@ -1,4 +1,5 @@
 #include "../../Android/app/src/main/cpp/bka_safe_base.h"
+static inline s16 bswap16(s16 v) { return (s16)__builtin_bswap16((u16)v); }
 #include <android/log.h>
 #include <ultra64.h>
 #include "functions.h"
@@ -72,17 +73,22 @@ void animationFile_getBoneTransformList(AnimationFile *anim_file, f32 progress, 
     tmp_f22 = func_8033ABA0(anim_file, progress);
     tmp_s0 = (AnimationFileElement *)((uintptr_t)anim_file + sizeof(AnimationFile));
     bone_id = 0;
-    for(i = 0; i < anim_file->elem_cnt; i++){//L8033AAB8
-        if(tmp_s0->unk0_15 != bone_id){
+    s16 elem_cnt = bswap16(anim_file->elem_cnt);
+    for(i = 0; i < elem_cnt; i++){//L8033AAB8
+        u16 packed = bswap16(*(u16*)&tmp_s0->unk0_15);
+        s16 bone = (packed >> 4) & 0xFFF;
+        s16 channel = packed & 0xF;
+        s16 data_cnt = bswap16(tmp_s0->data_cnt);
+        if(bone != bone_id){
             if(bone_id != 0)
                 func_8033AFB8(bone_transform_list, bone_id, sp54);
-            bone_id = tmp_s0->unk0_15;
+            bone_id = bone;
             sp54[0][0] = sp54[0][1] = sp54[0][2] = 0.0f;
             sp54[1][0] = sp54[1][1] = sp54[1][2] = 1.0f;
             sp54[2][0] = sp54[2][1] = sp54[2][2] = 0.0f;
         }
-        sp54[0][tmp_s0->unk0_3] = func_8033AC38(anim_file, tmp_s0, tmp_f22);
-        tmp_s0 += tmp_s0->data_cnt;
+        sp54[0][channel] = func_8033AC38(anim_file, tmp_s0, tmp_f22);
+        tmp_s0 += data_cnt;
         tmp_s0++;
     }//L8033AB60
     func_8033AFB8(bone_transform_list, bone_id, sp54);
@@ -115,48 +121,69 @@ f32 func_8033AC38(AnimationFile *this, AnimationFileElement *elem, f32 time){
     AnimationFileData *var_v0;
     f32 temp_f12;
     f32 knot_list[4];
-    u32 temp_t2;
+    s16 elem_count = bswap16(elem->data_cnt);
 
     start_anim = &elem->data[0];
-    if ((s32)time < start_anim->unk0_13) {
+    u16 s_info = bswap16(*(u16*)start_anim);
+    s16 s_unk0_13 = s_info & 0x3FFF;
+    s16 s_unk0_14 = (s_info >> 14) & 1;
+    s16 s_unk0_15 = (s_info >> 15) & 1;
+    s16 s_unk2 = bswap16(((s16*)start_anim)[1]);
+
+    if ((s32)time < s_unk0_13) {
         knot_list[0] = knot_list[1] = D_803709E0[elem->unk0_3];
-        knot_list[2] = (f32) start_anim->unk2 / 64;
-        knot_list[3] = (start_anim->unk0_15 == 1 && elem->data_cnt >= 2) ? (f32)(start_anim + 1)->unk2/64 : knot_list[2];
-        return glspline_catmull_rom_interpolate((time - this->unk0)/(start_anim->unk0_13 - this->unk0), 4, knot_list);
+        knot_list[2] = (f32) s_unk2 / 64;
+        knot_list[3] = (s_unk0_15 == 1 && elem_count >= 2) ? (f32)(bswap16(((s16*)(start_anim + 1))[1]))/64 : knot_list[2];
+        return glspline_catmull_rom_interpolate((time - this->unk0)/(s_unk0_13 - this->unk0), 4, knot_list);
     }
-    end_anim = start_anim + elem->data_cnt;
+
+    end_anim = start_anim + elem_count;
     end_anim--;
-    if ((s32) time >= (end_anim->unk0_13)) {
-        knot_list[1] = (f32) end_anim->unk2 / 64;
-        knot_list[0] =  ((end_anim->unk0_14 == 1) && (elem->data_cnt >= 2)) ? (f32) (end_anim - 1)->unk2 / 64 : knot_list[1];
-        knot_list[2] = knot_list[3] = knot_list[1];
+    u16 e_info = bswap16(*(u16*)end_anim);
+    s16 e_unk0_13 = e_info & 0x3FFF;
+    s16 e_unk0_14 = (e_info >> 14) & 1;
+    s16 e_unk0_15 = (e_info >> 15) & 1;
+    s16 e_unk2 = bswap16(((s16*)end_anim)[1]);
 
-        return glspline_catmull_rom_interpolate(time - end_anim->unk0_13, 4, knot_list);
+    if ((s32) time >= e_unk0_13) {
+        knot_list[1] = (f32) e_unk2 / 64;
+        knot_list[0] = ((e_unk0_14 == 1) && (elem_count >= 2)) ? (f32)(bswap16(((s16*)(end_anim - 1))[1]))/64 : knot_list[1];
+        knot_list[2] = knot_list[3] = knot_list[1];
+        return glspline_catmull_rom_interpolate(time - e_unk0_13, 4, knot_list);
     }
 
-    
     var_v0 = start_anim + 1;
     while (var_v0 < end_anim){
-            var_v0 = &start_anim[(end_anim - start_anim)/2];
-            if (var_v0->unk0_13 <= (s32)time) {
-                start_anim = var_v0;
-                if (!start_anim);
-            } else {
-                end_anim = var_v0;
-            }
-            var_v0 = start_anim + 1;
-        
+        var_v0 = &start_anim[(end_anim - start_anim)/2];
+        u16 v_info = bswap16(*(u16*)var_v0);
+        s16 v_unk0_13 = v_info & 0x3FFF;
+        if (v_unk0_13 <= (s32)time) {
+            start_anim = var_v0;
+            s_info = bswap16(*(u16*)start_anim);
+            s_unk0_13 = s_info & 0x3FFF;
+            s_unk0_14 = (s_info >> 14) & 1;
+            s_unk0_15 = (s_info >> 15) & 1;
+            s_unk2 = bswap16(((s16*)start_anim)[1]);
+        } else {
+            end_anim = var_v0;
+            e_info = bswap16(*(u16*)end_anim);
+            e_unk0_13 = e_info & 0x3FFF;
+            e_unk0_14 = (e_info >> 14) & 1;
+            e_unk0_15 = (e_info >> 15) & 1;
+            e_unk2 = bswap16(((s16*)end_anim)[1]);
+        }
+        var_v0 = start_anim + 1;
     }
-    
-    knot_list[1] = (f32) start_anim->unk2 / 64;
-    knot_list[2] = (f32) end_anim->unk2 / 64;
-    temp_f12 = (time - start_anim->unk0_13) / (end_anim->unk0_13 - start_anim->unk0_13);
-    if ((start_anim->unk0_14 == 0) && (end_anim->unk0_15 == 0)) {
+
+    knot_list[1] = (f32) s_unk2 / 64;
+    knot_list[2] = (f32) e_unk2 / 64;
+    temp_f12 = (time - s_unk0_13) / (e_unk0_13 - s_unk0_13);
+    if ((s_unk0_14 == 0) && (e_unk0_15 == 0)) {
         return knot_list[1] + ((knot_list[2] - knot_list[1]) * temp_f12);
     }
-    
-    knot_list[0] = (start_anim->unk0_14 == 1 && (start_anim - 1) >= &elem->data[0]) ?  (f32)(start_anim - 1)->unk2/64 : knot_list[1];
-    knot_list[3] = (end_anim->unk0_15 == 1 && (end_anim + 1) < &elem->data[elem->data_cnt]) ? (f32)(end_anim + 1)->unk2/64 : knot_list[2];
+
+    knot_list[0] = (s_unk0_14 == 1 && (start_anim - 1) >= &elem->data[0]) ? (f32)(bswap16(((s16*)(start_anim - 1))[1]))/64 : knot_list[1];
+    knot_list[3] = (e_unk0_15 == 1 && (end_anim + 1) < &elem->data[elem_count]) ? (f32)(bswap16(((s16*)(end_anim + 1))[1]))/64 : knot_list[2];
     return glspline_catmull_rom_interpolate(temp_f12, 4, knot_list);
 }
 
