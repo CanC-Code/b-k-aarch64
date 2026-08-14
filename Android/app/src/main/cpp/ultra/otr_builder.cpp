@@ -537,24 +537,6 @@ Java_com_bkawrapper_OtrService_runNativeOtrGeneration(
         }
     }
 
-    // -----------------------------------------------------------------------
-    // STEP 4.5: Byteswap ROM data from N64 big-endian to ARM64 little-endian
-    // Compiled code segments were zeroed; asset data needs byte swapping
-    // -----------------------------------------------------------------------
-    debug_ui(env, callback, progressMid, 88, "Byteswapping to little-endian...");
-    {
-        uint32_t* words = reinterpret_cast<uint32_t*>(romBaseBuffer);
-        size_t wordCount = romSize / 4;
-        for (size_t w = 0; w < wordCount; w++) {
-
-            words[w] = swap_uint32(words[w]);
-        }
-    }
-
-    // Undo the 32-bit swap for compressed assets, leaving them in original big-endian order.
-    for (const auto& range : g_compressedRanges) {
-        byteswap_n64(romBaseBuffer + range.first, range.second);
-    }
 
     // -----------------------------------------------------------------------
     // STEP 5: Write rom_base.bin to disk
