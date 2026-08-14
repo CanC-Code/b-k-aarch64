@@ -50,11 +50,11 @@ f32 INITIAL_CAMERA_TARGETS[3][3] = {
 
 ActorAnimationInfo banjoSleepingAnimations[] = {
     { 0x000, 0.0f },
-    { 0x24D, 9e+09f },
-    { 0x24D, 2.0f },  
-    { 0x24E, 1.0f },
-    { 0x24F, 0.6f },  
-    { 0x24D, 2.0f }
+    { ASSET_24D_ANIM_FSS_BANJO_SLEEPING_unk, 9e+09f },
+    { ASSET_24D_ANIM_FSS_BANJO_SLEEPING_unk, 2.0f },  
+    { ASSET_24E_ANIM_FSS_BANJO_SLEEPING_unk, 1.0f },
+    { ASSET_24F_ANIM_FSS_BANJO_SLEEPING_unk, 0.6f },  
+    { ASSET_24D_ANIM_FSS_BANJO_SLEEPING_unk, 2.0f }
 };
 ActorInfo gameSelect_banjoSleeping = {
     MARKER_E4_CS_BK_SLEEPING, 0x195, ASSET_532_MODEL_BANJO_KAZOOIE_CUTSCENES,
@@ -65,11 +65,11 @@ ActorInfo gameSelect_banjoSleeping = {
 
 ActorAnimationInfo banjoGameboyAnimations[] = {
     { 0x000, 0.0f }, 
-    { 0x250, 9e+09f },
-    { 0x250, 4.5f }, 
-    { 0x251, 1.0f },
-    { 0x252, 0.67f }, 
-    { 0x250, 4.5f }
+    { ASSET_250_ANIM_FSS_BANJO_GAMEBOY_unk, 9e+09f },
+    { ASSET_250_ANIM_FSS_BANJO_GAMEBOY_unk, 4.5f }, 
+    { ASSET_251_ANIM_FSS_BANJO_GAMEBOY_unk, 1.0f },
+    { ASSET_252_ANIM_FSS_BANJO_GAMEBOY_unk, 0.67f }, 
+    { ASSET_250_ANIM_FSS_BANJO_GAMEBOY_unk, 4.5f }
 };
 ActorInfo gameSelect_banjoGameboy = {
     MARKER_E5_CS_BK_GAMEBOY, 0x196, ASSET_532_MODEL_BANJO_KAZOOIE_CUTSCENES,
@@ -80,11 +80,11 @@ ActorInfo gameSelect_banjoGameboy = {
 
 ActorAnimationInfo banjoCookingAnimations[] = {
     { 0x000, 0.0f },
-    { 0x24A, 9e+09f },  
-    { 0x24A, 1.0f },
-    { 0x24B, 1.0f },  
-    { 0x24C, 1.0f },
-    { 0x24A, 1.0f }
+    { ASSET_24A_ANIM_FSS_BANJO_COOKING_unk, 9e+09f },  
+    { ASSET_24A_ANIM_FSS_BANJO_COOKING_unk, 1.0f },
+    { ASSET_24B_ANIM_FSS_BANJO_COOKING_unk, 1.0f },  
+    { ASSET_24C_ANIM_FSS_BANJO_COOKING_unk, 1.0f },
+    { ASSET_24A_ANIM_FSS_BANJO_COOKING_unk, 1.0f }
 };
 ActorInfo gameSelect_banjoCooking = {
     MARKER_E6_CS_BK_COOKING, 0x197, ASSET_532_MODEL_BANJO_KAZOOIE_CUTSCENES,

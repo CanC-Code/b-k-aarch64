@@ -11,9 +11,9 @@ void chBrentilda_update(Actor *this);
 /* .data */
 ActorAnimationInfo chBrentildaAnimations[] ={
     {0, 0.0f},
-    {0x26B, 4.0f},
-    {0x26C, 4.0f},
-    {0x26B, 4.0f},
+    {ASSET_26B_ANIM_unk, 4.0f},
+    {ASSET_26C_ANIM_unk, 4.0f},
+    {ASSET_26B_ANIM_unk, 4.0f},
 };
 ActorInfo chBrentilda = {
     MARKER_1E0_BRENTILDA, ACTOR_348_BRENTILDA, ASSET_539_MODEL_BRENTILDA,

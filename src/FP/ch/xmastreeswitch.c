@@ -8,9 +8,9 @@ void chXmasTreeSwitch_update(Actor *this);
 /* .data */
 ActorAnimationInfo D_80392400[] = {
     {0x000, 0.f},
-    {0x143, 1e+08f},
-    {0x1EF, 0.6f},
-    {0x143, 1.0f},
+    {ASSET_143_ANIM_SNOWMAN_BUTTON, 100000000},
+    {ASSET_1EF_ANIM_unk, 0.6f},
+    {ASSET_143_ANIM_SNOWMAN_BUTTON, 1.0f},
 };
 
 ActorInfo gXmasTreeSwitch = { MARKER_206_XMAS_TREE_SWITCH, ACTOR_338_XMAS_TREE_SWITCH, ASSET_486_MODEL_XMAS_TREE_SWITCH, 

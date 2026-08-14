@@ -10,11 +10,11 @@ void func_80392918(Actor *this);
 /* .data */
 ActorAnimationInfo D_80394CC0[] = {
     {0x000, 0.0f},
-    {0x28B, 8.0f},
-    {0x28D, 0.5f},
-    {0x2AC, 3.0f},
-    {0x2AD, 14.0f},
-    {0x28D, 0.5f},
+    {ASSET_28B_ANIM_unk, 8.0f},
+    {ASSET_28D_ANIM_unk, 0.5f},
+    {ASSET_2AC_ANIM_unk, 3.0f},
+    {ASSET_2AD_ANIM_unk, 14.0f},
+    {ASSET_28D_ANIM_unk, 0.5f},
 };
 
 // Gruntilda On Broomstick
