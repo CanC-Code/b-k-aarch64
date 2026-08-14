@@ -75,7 +75,7 @@ void animationFile_getBoneTransformList(AnimationFile *anim_file, f32 progress, 
     bone_id = 0;
     s16 elem_cnt = bswap16(anim_file->elem_cnt);
     for(i = 0; i < elem_cnt; i++){//L8033AAB8
-        u16 packed = bswap16(*(u16*)&tmp_s0->unk0_15);
+        u16 packed = bswap16(*(u16*)tmp_s0);
         s16 bone = (packed >> 4) & 0xFFF;
         s16 channel = packed & 0xF;
         s16 data_cnt = bswap16(tmp_s0->data_cnt);
