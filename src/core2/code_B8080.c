@@ -177,11 +177,11 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
     in_mesh = this->data; 
     out_mesh = (BKModelMesh *) model->data;
 
-    for (i = 0; i < this->count; i++) {
+    for (i = 0; i < count; i++) {
             __android_log_print(ANDROID_LOG_INFO, "BKA-MESH", "meshList_createModel loop %d: in_mesh=%p uid=%d vtx_count=%d out_mesh=%p",
                 i, in_mesh, in_mesh ? in_mesh->uid : -1, in_mesh ? in_mesh->vtx_count : -1, out_mesh);
-            out_mesh->uid = in_mesh->uid;
-            out_mesh->vtx_count = in_mesh->vtx_count;
+            out_mesh->uid = bswap16(in_mesh->uid);
+            out_mesh->vtx_count = bswap16(in_mesh->vtx_count);
             vtx_ref = (BKModelVtxRef *) out_mesh->data;
             
             for (j = 0; j < in_mesh->vtx_count; j++) {
