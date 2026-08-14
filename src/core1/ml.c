@@ -402,31 +402,7 @@ void func_80256F44(f32 vec1[3], f32 vec2[3], f32 vec3[3], f32 dst[3])
 
 f32 ml_acosf(f32 x)
 {
-    // Safe implementation: clamp input, clamp table index
-    if (x > 0.9999f) x = 0.9999f;
-    if (x < -0.9999f) x = -0.9999f;
-
-    u16 lowerIdx = 0;
-    u16 upperIdx = 10000;
-    u16 idx = 5000;
-
-    f32 x_abs = ((x >= 0) ? x : -x);
-    if (x_abs > 0.9999f) x_abs = 0.9999f;
-
-    u16 target = (u16)(x_abs * 65535.0f);
-    if (target > 65534) target = 65534;
-
-    // Binary search with hard bounds on idx
-    while ((upperIdx - lowerIdx >= 2) && (target != D_80276CB8[idx])) {
-        idx = (upperIdx + lowerIdx) / 2;
-        if (idx >= 10000) { idx = 9999; break; }
-        if (target < D_80276CB8[idx])
-            upperIdx = idx;
-        else
-            lowerIdx = idx;
-    }
-    if (idx >= 10000) idx = 9999;
-    return idx * 90.0f / 10000.0f;
+    return __builtin_acosf(x);
 }
 
 f32 func_8025715C(f32 val1, f32 val2)
