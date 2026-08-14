@@ -383,8 +383,8 @@ void dialog_update(void) {
     ret = -1;
 
     if (g_Dialog.u8.unk128_31 & 0x80) {
-        pfsManager_getFirstControllerFaceButtonState(0, controller_face_buttons);
-        func_8024E640(0, controller_side_buttons);
+        controller_copyFaceButtonsPrimary(0, controller_face_buttons);
+        controller_copySideButtonsPrimary(0, controller_side_buttons);
     } else {
         controller_copyFaceButtons(0, controller_face_buttons);
         controller_copySideButtons(0, controller_side_buttons);
@@ -594,10 +594,10 @@ void dialog_update(void) {
             if (g_Dialog.u8.unk128_31 & 0x80) {
                 break;
             }
-    
-            if (NOT((g_Dialog.u8.unk128_31 & 0x80) ? func_8024E5E8(0, 4) : func_8024E5E8(0, 3))) {
+
+            // Breaks early on L+R+B combo
+            if (NOT((g_Dialog.u8.unk128_31 & 0x80) ? controller_getHeldFramesForCombo(0, 4) : controller_getHeldFramesForCombo(0, 3)))
                 break;
-            }
     
             dialog_setState(DIALOG_STATE_6);
             break;

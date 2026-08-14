@@ -495,7 +495,7 @@ void thread5_entry(void *arg) {
             /* nothing */
         }
         else if (msg == (OSMesg) THREAD5_MESSAGE_EVENT_CONT_TIMER) {
-            pfsManager_getStartReadData();
+            joy_getStartReadData();
         }
         else if (msg >= (OSMesg) 100) { // Messages that don't contain an Event ID, but a pointer to a task structure, from thread5_sendTaskToQueue
             if (((struct ucode_task_data_s *) msg)->task_type == UCODE_TASK_TYPE_AUDIO) {
