@@ -131,7 +131,9 @@ f32 func_8033AC38(AnimationFile *this, AnimationFileElement *elem, f32 time){
     s16 s_unk2 = bswap16(((s16*)start_anim)[1]);
 
     if ((s32)time < s_unk0_13) {
-        knot_list[0] = knot_list[1] = D_803709E0[elem->unk0_3];
+        u16 elem_packed = bswap16(*(u16*)elem);
+        s16 elem_channel = elem_packed & 0xF;
+        knot_list[0] = knot_list[1] = D_803709E0[elem_channel];
         knot_list[2] = (f32) s_unk2 / 64;
         knot_list[3] = (s_unk0_15 == 1 && elem_count >= 2) ? (f32)(bswap16(((s16*)(start_anim + 1))[1]))/64 : knot_list[2];
         return glspline_catmull_rom_interpolate((time - this->unk0)/(s_unk0_13 - this->unk0), 4, knot_list);
