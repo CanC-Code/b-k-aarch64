@@ -10,15 +10,15 @@ Actor *func_80390560(ActorMarker *marker, Gfx **gfx, Mtx **mtx, Vtx **vtx);
 /* .data */
 ActorAnimationInfo D_803948E0[] = {
     {0, 0.0f},
-    {0x268, 1.6f},
+    {ASSET_268_ANIM_unk, 1.6f},
 };
 ActorAnimationInfo D_803948F0[] = {
     {0, 0.0f},
-    {0x269, 1.6f},
+    {ASSET_269_ANIM_unk, 1.6f},
 };
 ActorAnimationInfo D_80394900[] = {
     {0, 0.0f},
-    {0x26A, 1.6f},
+    {ASSET_26A_ANIM_unk, 1.6f},
 };
 ActorInfo D_80394910 = {
     MARKER_170_BLUE_EGG_REFILL_PILLOW, 0x1D8, ASSET_547_MODEL_BLUE_EGG_REFILL_PILLOW,

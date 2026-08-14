@@ -24,7 +24,7 @@ ActorAnimationInfo chPinkEggAnimations[4] = {
     {0, 0.0f},
     {0, 0.0f},
     {0, 0.0f},
-    {0x10B, 2.0f}
+    {ASSET_10B_ANIM_unk, 2.0f}
 };
 
 ActorInfo gChPinkEggLargest = {

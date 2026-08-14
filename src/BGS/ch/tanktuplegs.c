@@ -12,8 +12,8 @@ void chTanktupLeg_update(Actor *);
 
 ActorAnimationInfo chTanktupLegFrontLeftAnimations[3] = {
     {0, 0.0f},
-    {0x103, 8000000.0f},
-    {0x103, 0.75f}
+    {ASSET_103_ANIM_TANKTUP_LEGS_FRONT_LEFT, 8000000.0f},
+    {ASSET_103_ANIM_TANKTUP_LEGS_FRONT_LEFT, 0.75f}
 };
 
 ActorInfo gChTanktupLegFrontLeft = {
@@ -26,8 +26,8 @@ u8 pad_80390CCC[4] = {0};
 
 ActorAnimationInfo chTanktupLegBackLeftAnimations[3] = {
     {0, 0.0f},
-    {0x104, 8000000.0f},
-    {0x104, 0.75f}
+    {ASSET_104_ANIM_TANKTUP_LEGS_BACK_LEFT, 8000000.0f},
+    {ASSET_104_ANIM_TANKTUP_LEGS_BACK_LEFT, 0.75f}
 };
 
 ActorInfo gChTanktupLegBackLeft = {
@@ -40,8 +40,8 @@ u8 pad_80390CEC[4] = {0};
 
 ActorAnimationInfo chTanktupLegFrontRightAnimations[3] = {
     {0, 0.0f},
-    {0x105, 8000000.0f},
-    {0x105, 0.75f}
+    {ASSET_105_ANIM_TANKTUP_LEGS_FRONT_RIGHT, 8000000.0f},
+    {ASSET_105_ANIM_TANKTUP_LEGS_FRONT_RIGHT, 0.75f}
 };
 
 ActorInfo gChTanktupLegFrontRight = {
@@ -54,8 +54,8 @@ u8 pad_80390C2C[4] = {0};
 
 ActorAnimationInfo chTanktupLegBackRightAnimations[3] = {
     {0, 0.0f},
-    {0x106, 8000000.0f},
-    {0x106, 0.75f}
+    {ASSET_106_ANIM_TANKTUP_LEGS_BACK_RIGHT, 8000000.0f},
+    {ASSET_106_ANIM_TANKTUP_LEGS_BACK_RIGHT, 0.75f}
 };
 
 ActorInfo gChTanktupLegBackRight = {

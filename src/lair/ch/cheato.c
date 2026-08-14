@@ -8,7 +8,7 @@ Actor *func_80390030(ActorMarker *marker, Gfx **gfx, Mtx **mtx, Vtx **vtx);
 /* .data */
 ActorAnimationInfo D_80394860[] = {
     {0, 0.0f},
-    {0x272, 0.8f}
+    {ASSET_272_ANIM_unk, 0.8f}
 };
 ActorInfo D_80394870 = {
     MARKER_16D_CHEATO_1, 0x1D5, ASSET_54F_MODEL_CHEATO,
