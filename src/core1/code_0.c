@@ -9,16 +9,35 @@
 s32 D_80275610 = 0; // always set to 0
 s32 D_80275614 = 0;
 s32 gGlobalTimer = 0;
-u32 sDebugVar_8027561C[] = { 0x9, 0x4, 0xA, 0x3, 0xB, 0x2, 0xC, 0x5, 0x0,  0x1, 0x6, 0xD,  -1 }; // never used
+
+/**
+ * An unused Konami-esque button combo.
+ * Probably used to enable a crash debugger, like in Tooie.
+ */
+u32 sKonamiCode_8027561C[] =
+{
+    JOY_BUTTON_D_UP,
+    JOY_BUTTON_C_UP,
+    JOY_BUTTON_D_DOWN,
+    JOY_BUTTON_C_DOWN,
+    JOY_BUTTON_D_LEFT,
+    JOY_BUTTON_C_LEFT,
+    JOY_BUTTON_D_RIGHT,
+    JOY_BUTTON_C_RIGHT,
+    JOY_BUTTON_A,
+    JOY_BUTTON_B,
+    JOY_BUTTON_Z,
+    JOY_BUTTON_START,
+    JOY_BUTTON_nil
+};
+
 s32 D_80275650 = VER_SELECT(0xAD019D3C, 0xA371A8F3, 0, 0); //SM_DATA_CRC2
 s32 D_80275654 = VER_SELECT(0xD381B72F, 0xD0709154, 0, 0); //MM_DATA_CRC2
 char sDebugVar_80275658[] = VER_SELECT("HjunkDire:218755", "HjunkDire:300875", "HjunkDire:", "HjunkDire:");
 
 u32 D_8027A130; // always set to 3
 u8 pad_8027A138[0x400];
-u64 sDebugVar_8027A538; // never used
-u64 sDebugVar_8027A540; // never used
-STACK(sMainThreadStack, 6128); // The real size of the stack is unclear yet, maybe there are some out-optimized debug variables below the stack
+STACK(sMainThreadStack, 0x1800);
 OSThread sMainThread;
 s32 gBootMap;
 bool sDisableInput;
@@ -105,13 +124,13 @@ void core1_init(void) {
     rarezip_init(); //initialize decompressor's huft table
     viMgr_init();
     overlayManager_loadCore2();
-    sDebugVar_8027BEF0 = sDebugVar_8027A538;
+    sDebugVar_8027BEF0 = sMainThreadStack[0];
     heap_init();
     core1_15B30_init();
     core1_1D590_func_8025AFB0();
     allocUnusedBlock();
     assetCache_init();
-    pfsManager_init();
+    joy_thread_init();
     baMotor_init();
     audioManager_init();
     graphicsCache_init();
@@ -148,7 +167,7 @@ void mainLoop(void) {
     }
     
     if (!sDisableInput) {
-        pfsManager_update();
+        joy_update();
     }
 
     sDisableInput = FALSE;

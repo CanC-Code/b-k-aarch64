@@ -12,7 +12,7 @@ s32 eeprom_writeBlocks(s32 file, s32 offset, void *buffer, s32 count) {
     s32 ret;
 
     controller_func_8024F35C(3);
-    ret = osEepromLongWrite(pfsManager_getFrameReplyQ(), address, buffer, count * EEPROM_BLOCK_SIZE);
+    ret = osEepromLongWrite(si_getReplyQueue(), address, buffer, count * EEPROM_BLOCK_SIZE);
     controller_func_8024F35C(0);
 
     return ret;
@@ -23,7 +23,7 @@ s32 eeprom_readBlocks(s32 file, s32 offset, void *buffer, s32 count) {
     s32 ret;
 
     controller_func_8024F35C(3);
-    ret = osEepromLongRead(pfsManager_getFrameReplyQ(), address, buffer, count * EEPROM_BLOCK_SIZE);
+    ret = osEepromLongRead(si_getReplyQueue(), address, buffer, count * EEPROM_BLOCK_SIZE);
     controller_func_8024F35C(0);
 
     return ret;

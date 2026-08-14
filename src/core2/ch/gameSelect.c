@@ -24,7 +24,7 @@ extern void func_802C71F0(Actor *);
 extern void func_802C74F4(Actor *, s32, f32 );
 extern void warp_lairEnterLairFromSMLevel(s32, s32);
 extern void warp_smExitBanjosHouse(s32, s32);
-extern void controller_getJoystick(s32, f32*);
+extern void controller_copyJoystick(s32, f32*);
 
 extern char *gcpausemenu_TimeToA(int);
 extern Vec3fArray *func_803097A0(void);
@@ -406,7 +406,7 @@ void gameSelect_update(Actor *this) {
 
     controller_copySideButtons(0, side_buttons);
     controller_copyFaceButtons(0, face_buttons);
-    controller_getJoystick(0, &joystick);
+    controller_copyJoystick(0, &joystick);
 
     switch (this->state) {
         case GAME_SELECT_IDLE:

@@ -31,7 +31,7 @@ u8 D_80383190;
 /* .code */
 // func_8031C640
 bool cutscene_skipIntroCutsceneCheck(void) {
-    if ((func_8024E698(0) == 1) && (gameFile_anyNonEmpty() != 0)) {
+    if ((controller_getStartButtonSafe(0) == 1) && (gameFile_anyNonEmpty() != 0)) {
         return TRUE;
     }
     return FALSE;
@@ -39,7 +39,7 @@ bool cutscene_skipIntroCutsceneCheck(void) {
 
 // func_8031C688
 bool cutscene_skipEnterLairCutsceneCheck(void) {
-    if ((func_8024E698(0) == 1) 
+    if ((controller_getStartButtonSafe(0) == 1) 
         && ((D_8037DCCE[0] != 0) 
             || (D_8037DCCE[1] != 0) 
             || (D_8037DCCE[2] != 0))) {
@@ -52,7 +52,7 @@ bool cutscene_skipEnterLairCutsceneCheck(void) {
 bool cutscene_skipGameOverCutsceneCheck(void) {
     s32 sp24;
 
-    sp24 = func_8024E698(0);
+    sp24 = controller_getStartButtonSafe(0);
     if (mapSpecificFlags_get(0) != 0) {
         fileProgressFlag_set(FILEPROG_E1_UNKNOWN, 1);
     }
@@ -243,7 +243,7 @@ void func_8031D09C(s32 arg0, s32 arg1) {
 }
 
 void func_8031D0C0(s32 arg0, s32 arg1) {
-    if (func_8024E698(0) == 1) {
+    if (controller_getStartButtonSafe(0) == 1) {
         func_802E412C(1, 2);
         func_8025A2FC(0, 0x320);
         func_8025AB00();
