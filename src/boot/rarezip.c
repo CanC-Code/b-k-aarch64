@@ -11,7 +11,10 @@ static u32 rarezip_uncompress_file_and_update_pointers_internal(u8 **in, u8 **ou
 /// @param file Pointer to the compressed file
 /// @return Uncompressed file size in bytes
 u32 rarezip_get_uncompressed_size(u8 *file) {
-    return *((u32 *) (file + 2));
+    // N64 is big-endian, ARM64 is little-endian - need byteswap
+    u32 size;
+    memcpy(&size, file + 2, 4);
+    return __builtin_bswap32(size);
 }
 
 /// @brief Initializes the Rarezip Huff table
