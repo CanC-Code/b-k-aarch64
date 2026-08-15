@@ -6,11 +6,11 @@ static inline s16 bswap16(s16 v) { return (s16)__builtin_bswap16((u16)v); }
 s32 meshList_getVtxCount(BKMeshList *this) {
     int i;
     s32 vertex_count = 0;
-    s16 count = this->count;
+    s16 count = bswap16(this->count);
     BKMesh *mesh = this->data;
 
     for (i = 0; i < count; ++i) {
-        s16 vtx_count = mesh->vtx_count;
+        s16 vtx_count = bswap16(mesh->vtx_count);
         vertex_count += vtx_count;
         mesh = (BKMesh *) &mesh->vertices[vtx_count];
     }
@@ -20,14 +20,14 @@ s32 meshList_getVtxCount(BKMeshList *this) {
 
 BKMesh *meshList_getMesh(BKMeshList *this, s32 mesh_id) {
     int i;
-    s16 count = this->count;
+    s16 count = bswap16(this->count);
     BKMesh *mesh = this->data;
 
     for (i = 0; i < count; i++) {
-        if (mesh->uid == mesh_id) {
+        if (bswap16(mesh->uid) == mesh_id) {
             return mesh;
         }
-        mesh = (BKMesh *) &mesh->vertices[mesh->vtx_count];
+        mesh = (BKMesh *) &mesh->vertices[bswap16(mesh->vtx_count)];
     }
 
     return NULL;

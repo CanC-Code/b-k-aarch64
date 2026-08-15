@@ -1178,6 +1178,7 @@ BKCollisionList *modelbin_getCollisionList(BKModelBin *this) {
 }
 
 BKMeshList *modelbin_getMeshList(BKModelBin *this) {
+    if (this == NULL || this->mesh_list_offset == 0) return NULL;
     this = (BKModelBin*)((uintptr_t)this & 0x00FFFFFFFFFFFFFFUL);
     BKMeshList *result = modelbin_getMeshList_MACRO(this);
     return (BKMeshList*)((uintptr_t)result & 0x00FFFFFFFFFFFFFFUL);
@@ -1203,6 +1204,7 @@ BKTextureList *modelbin_getTextureList(BKModelBin *this) {
 }
 
 BKAnimTextureList *modelbin_getAnimTextureList(BKModelBin *this) {
+    if (this == NULL || this->animated_texture_list_offset == 0) return NULL;
     this = (BKModelBin*)((uintptr_t)this & 0x00FFFFFFFFFFFFFFUL);
     BKAnimTextureList *result = modelbin_getAnimTextureList_MACRO(this);
     return (BKAnimTextureList*)((uintptr_t)result & 0x00FFFFFFFFFFFFFFUL);

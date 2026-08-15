@@ -176,7 +176,7 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
             mesh_bytes[4], mesh_bytes[5], mesh_bytes[6], mesh_bytes[7]);
     }
 
-    s16 count = this->count;
+    s16 count = bswap16(this->count);
     s32 vtx_count_total = meshList_getVtxCount(this);
     model = (BKModel *) malloc(sizeof(BKModel) + (count * sizeof(BKModelMesh)) + (vtx_count_total * sizeof(BKModelVtxRef)));
     model->mesh_list = this;
@@ -188,12 +188,12 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
     for (i = 0; i < count; i++) {
             __android_log_print(ANDROID_LOG_INFO, "BKA-MESH", "meshList_createModel loop %d: in_mesh=%p uid=%d vtx_count=%d out_mesh=%p",
                 i, in_mesh, in_mesh ? in_mesh->uid : -1, in_mesh ? in_mesh->vtx_count : -1, out_mesh);
-            out_mesh->uid = in_mesh->uid;
-            out_mesh->vtx_count = in_mesh->vtx_count;
+            out_mesh->uid = bswap16(in_mesh->uid);
+            out_mesh->vtx_count = bswap16(in_mesh->vtx_count);
             vtx_ref = (BKModelVtxRef *) out_mesh->data;
             
             for (j = 0; j < in_mesh->vtx_count; j++) {
-                vtx_ref->vtx_id = in_mesh->vertices[j];
+                vtx_ref->vtx_id = bswap16(in_mesh->vertices[j]);
                 memcpy(&vtx_ref->v, &bk_vtx_list->vertices[vtx_ref->vtx_id], sizeof(Vtx));
                 vtx_ref++;
             }
