@@ -542,11 +542,11 @@ s32 code_B3A80_func_8033BDAC(enum asset_e id, void *dst, s32 size) {
     if (phi_v0 == assetCacheLength) { //asset not in cache
         return 0;
     }
-    comp_size_tmp = assetSectionRomMetaList[id + 1].offset - assetSectionRomMetaList[id].offset;
-    if (comp_size_tmp & 1) {
-        comp_size_tmp++;
+    comp_size = assetSectionRomMetaList[id + 1].offset - assetSectionRomMetaList[id].offset;
+    if (comp_size & 1) {
+        comp_size++;
     }
-    sp34 = comp_size_tmp;
+    sp34 = comp_size;
         
     if (assetSectionRomMetaList[id].compFlag & 1) {
         func_8033BAB0(id, 0, 0x10, &D_80383CB0);
@@ -558,24 +558,24 @@ s32 code_B3A80_func_8033BDAC(enum asset_e id, void *dst, s32 size) {
             var_s0 = (var_s0 - (var_s0 & 0xF)) + 0x10;
         }
 
-        if (size >= (comp_ptr + var_s0)) {
+        if (size >= (comp_size + var_s0)) {
             sp2B = 1;
             comp_ptr = (u8*)dst + var_s0;
         }
         else if(size >= var_s0) {
             sp2B = 2;
-            comp_ptr = (u8*)malloc(comp_ptr);
+            comp_ptr = (u8*)malloc(comp_size);
         }
         else{
             return 0;
         }
     }
     else{
-        var_s0 = comp_ptr;
-        if(comp_ptr & (0x10 -1)) 
-           var_s0 = (comp_ptr - (comp_ptr & (0x10 -1))) + 0x10;
+        var_s0 = comp_size;
+        if(comp_size & (0x10 -1)) 
+           var_s0 = (comp_size - (comp_size & (0x10 -1))) + 0x10;
         
-        if(size >= comp_ptr){
+        if(size >= comp_size){
             comp_ptr = (u8*)dst;
         }
         else{
