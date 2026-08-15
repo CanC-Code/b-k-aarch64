@@ -218,6 +218,7 @@ void mainThread_entry(void *arg) {
     core1_init();
     sns_write_payload_over_heap();
 
+    __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "mainThread_entry entering loop");
     while (1) {
         mainLoop();
 #ifdef __ANDROID__
