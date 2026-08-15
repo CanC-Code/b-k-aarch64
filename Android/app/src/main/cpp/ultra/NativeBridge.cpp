@@ -134,8 +134,18 @@ extern "C" {
             N64_TriggerVirtualVBlankInterrupt();
             pthread_mutex_lock(&g_vblankMutex);
         }
+        // FIXED: avoid indefinite hang if GL thread is not signalling.
+        // Use timed wait and break out.
         while (g_vblankRequested) {
-            pthread_cond_wait(&g_vblankCond, &g_vblankMutex);
+            struct timespec ts2;
+            clock_gettime(CLOCK_REALTIME, &ts2);
+            ts2.tv_nsec += 16666667;
+            if (ts2.tv_nsec >= 1000000000) { ts2.tv_sec++; ts2.tv_nsec -= 1000000000; }
+            int ret2 = pthread_cond_timedwait(&g_vblankCond, &g_vblankMutex, &ts2);
+            if (ret2 == ETIMEDOUT) {
+                g_vblankRequested = false;
+                break;
+            }
         }
 
         pthread_mutex_unlock(&g_vblankMutex);
