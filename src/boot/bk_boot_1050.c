@@ -36,4 +36,9 @@ void func_80000450(s32 arg0) {
     overlaytable_init();
 
     (&core1_main)(arg0);
+
+    // Keep boot thread alive - game threads run in background
+    while (1) {
+        sched_yield();
+    }
 }
