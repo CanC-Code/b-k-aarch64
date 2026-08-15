@@ -100,20 +100,40 @@ void boneTransformList_interpolate(BoneTransformList *this, BoneTransformList *s
 
 
 void func_8033A8F0(BoneTransformList *this, s32 bone_id, f32 arg2[4]){
-    this = (BoneTransformList*)((uintptr_t)this & 0x00FFFFFFFFFFFFFFUL);
-    if ((uintptr_t)this < 0x10000 || this->ptr == NULL || (uintptr_t)this->ptr < 0x10000 || bone_id < 0 || bone_id >= this->count) return;
+    if (this == NULL || (uintptr_t)this < 0x10000) return;
+    this = (BoneTransformList*)BKA_TRANSLATE_ADDR(this);
+    if (this == NULL || (uintptr_t)this < 0x10000) return;
+    if (this->ptr == NULL || (uintptr_t)this->ptr < 0x10000) return;
+    this->ptr = (BoneTransform*)BKA_TRANSLATE_ADDR(this->ptr);
+    if (this->ptr == NULL || (uintptr_t)this->ptr < 0x10000) return;
+    if (bone_id < 0 || bone_id >= this->count) return;
+    if (this->count > 0x6D) return; // Sanity check
     vec4f_clone(&this->ptr[bone_id], arg2);
 }
 
 void boneTransformList_setBoneScale(BoneTransformList *this, s32 bone_id, f32 scale[3]) {
-    if ((uintptr_t)this < 0x10000 || this->ptr == NULL || (uintptr_t)this->ptr < 0x10000 || bone_id < 0 || bone_id >= this->count) return;
+    if (this == NULL || (uintptr_t)this < 0x10000) return;
+    this = (BoneTransformList*)BKA_TRANSLATE_ADDR(this);
+    if (this == NULL || (uintptr_t)this < 0x10000) return;
+    if (this->ptr == NULL || (uintptr_t)this->ptr < 0x10000) return;
+    this->ptr = (BoneTransform*)BKA_TRANSLATE_ADDR(this->ptr);
+    if (this->ptr == NULL || (uintptr_t)this->ptr < 0x10000) return;
+    if (bone_id < 0 || bone_id >= this->count) return;
+    if (this->count > 0x6D) return;
     this->ptr[bone_id].scale[0] = scale[0];
     this->ptr[bone_id].scale[1] = scale[1];
     this->ptr[bone_id].scale[2] = scale[2];
 }
 
 void func_8033A968(BoneTransformList *this, s32 bone_id, f32 arg2[3]) {
-    if ((uintptr_t)this < 0x10000 || this->ptr == NULL || (uintptr_t)this->ptr < 0x10000 || bone_id < 0 || bone_id >= this->count) return;
+    if (this == NULL || (uintptr_t)this < 0x10000) return;
+    this = (BoneTransformList*)BKA_TRANSLATE_ADDR(this);
+    if (this == NULL || (uintptr_t)this < 0x10000) return;
+    if (this->ptr == NULL || (uintptr_t)this->ptr < 0x10000) return;
+    this->ptr = (BoneTransform*)BKA_TRANSLATE_ADDR(this->ptr);
+    if (this->ptr == NULL || (uintptr_t)this->ptr < 0x10000) return;
+    if (bone_id < 0 || bone_id >= this->count) return;
+    if (this->count > 0x6D) return;
     this->ptr[bone_id].unk1C[0] = arg2[0];
     this->ptr[bone_id].unk1C[1] = arg2[1];
     this->ptr[bone_id].unk1C[2] = arg2[2];
