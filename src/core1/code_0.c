@@ -216,7 +216,9 @@ void mainLoop(void){
 }
 
 void mainThread_entry(void *arg) { 
+    __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "mainThread_entry before core1_init");
     core1_init();
+    __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "mainThread_entry after core1_init");
     sns_write_payload_over_heap();
 
     __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "mainThread_entry entering loop");
