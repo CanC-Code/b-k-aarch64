@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include "../../Android/app/src/main/cpp/bka_safe_base.h"
 static inline s16 bswap16(s16 v) { return (s16)__builtin_bswap16((u16)v); }
 #include <android/log.h>
@@ -423,7 +424,7 @@ void *assetcache_get(enum asset_e assetId) {
         if (func_8025498C((u32)comp_size + uncomp_size) && !sp28) {
             sp33 = 1;
             uncompressed_file = malloc((u32)comp_size + uncomp_size + 64);
-            compressed_file = (void *)(uncompressed_file + uncomp_size);
+            compressed_file = (void *)((u8*)uncompressed_file + uncomp_size);
         } else {
             sp33 = 2;
             if (sp28) {
@@ -532,14 +533,13 @@ s32 code_B3A80_func_8033BDAC(enum asset_e id, void *dst, s32 size) {
     s32 var_s0;
     s32 sp34;
     s32 phi_v0;
-    s32 comp_ptr;
+    u8* comp_ptr;
     u8 sp2B;
-    s32 sp20;
 
     //find asset in cache
     for(phi_v0 = 0; phi_v0 < assetCacheLength && id != assetCacheAssetIdList[phi_v0]; phi_v0++);
     assetCacheCurrentIndex = phi_v0;
-    if (phi_v0 == ASSET_CACHE_SIZE) { //asset not in cache
+    if (phi_v0 == assetCacheLength) { //asset not in cache
         return 0;
     }
     comp_ptr = assetSectionRomMetaList[id + 1].offset - assetSectionRomMetaList[id].offset;
@@ -564,7 +564,7 @@ s32 code_B3A80_func_8033BDAC(enum asset_e id, void *dst, s32 size) {
         }
         else if(size >= var_s0) {
             sp2B = 2;
-            comp_ptr = malloc(comp_ptr);
+            comp_ptr = (u8*)malloc(comp_ptr);
         }
         else{
             return 0;
@@ -583,12 +583,12 @@ s32 code_B3A80_func_8033BDAC(enum asset_e id, void *dst, s32 size) {
         }
     }
     comp_size = assetSectionRomMetaList[id].offset + D_80383CCC;
-    piMgr_read((void *)comp_ptr, comp_size, sp34);
+    piMgr_read(comp_ptr, comp_size, sp34);
     if (assetSectionRomMetaList[id].compFlag & 1) {
         rarezip_inflate(comp_ptr, dst);
         osWritebackDCache(dst, assetCacheCurrentSize);
         if (sp2B == 2) {
-            free((void *)comp_ptr);
+            free(comp_ptr);
         }
     }
     return var_s0;
