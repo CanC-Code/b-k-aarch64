@@ -1,3 +1,4 @@
+#include <sched.h>
 extern void BKA_DropEngineLock(void);
 #include <ultra64.h>
 #include "core1/core1.h"
@@ -26,5 +27,10 @@ void initThread_entry(void *arg)
     mainThread_create();
     osStartThread(mainThread_get());
     BKA_DropEngineLock();
-    // Idle thread exits after setting up main thread (Android HLE)
+    
+    // Keep this thread alive to prevent the process from exiting
+    // The original had "while (1);" here
+    while (1) {
+        sched_yield();
+    }
 }
