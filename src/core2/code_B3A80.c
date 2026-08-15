@@ -52,18 +52,11 @@ f32 func_8033AA10(AnimationFile *this, s32 arg1){
     return (f32)(arg1 - this->unk0)/(f32)(this->unk2 - this->unk0);
 }
 f32 func_8033ABA0(AnimationFile *this, f32 arg1){
-    if (this == NULL) return 0.0f;
-    __android_log_print(ANDROID_LOG_INFO, "BKA-ANIM", "func_8033ABA0: this=%p arg1=%f", this, arg1);
-    this = (AnimationFile*)((uintptr_t)this & 0x00FFFFFFFFFFFFFFUL);
-    __android_log_print(ANDROID_LOG_INFO, "BKA-ANIM", "func_8033ABA0 after mask: this=%p", this);
     return this->unk0 + arg1*(this->unk2 - this->unk0);
 }
 
 void animationFile_getBoneTransformList(AnimationFile *anim_file, f32 progress, BoneTransformList *bone_transform_list){
     if (anim_file == NULL || bone_transform_list == NULL) return;
-    __android_log_print(ANDROID_LOG_INFO, "BKA-ANIM", "animationFile_getBoneTransformList raw anim_file=%p progress=%f", anim_file, progress);
-    anim_file = (AnimationFile*)BKA_TRANSLATE_ADDR(anim_file);
-    __android_log_print(ANDROID_LOG_INFO, "BKA-ANIM", "animationFile_getBoneTransformList translated anim_file=%p", anim_file);
     s32 bone_id;
     int i;
     f32 tmp_f22;
@@ -109,6 +102,7 @@ s32 func_8033AC14(AnimationFile *this){
 }
 
 s32 func_8033AC1C(AnimationFile *this){
+    return this->unk2 - this->unk0 + 1;
 }
 
 s32 animationFile_count(AnimationFile *this){
@@ -306,9 +300,32 @@ bool func_8033B388(BKSprite **sprite_ptr, BKSpriteDisplayData **arg1){
 }
 
 s32 assetcache_release(void * arg0){
-    (void)arg0;
-    // TEMPORARY NO-OP: do not free assets during startup to avoid stale pointers.
-    return 0;
+    s32 i;
+    if(arg0){
+        for(i = 0; i < assetCacheLength  && arg0 != assetCachePtrList[i]; i++);
+
+        if(i == assetCacheLength)
+            return 2;
+
+        assetCacheCurrentIndex = i;
+        if(assetCacheDependencyCount[i] == 1){
+            if(D_80383CD4[i])
+                func_803449DC(D_80383CD4[i]);
+            free(arg0);
+            assetCacheLength--;
+            assetCacheDependencyCount[i] = assetCacheDependencyCount[assetCacheLength];
+            assetCachePtrList[i] = assetCachePtrList[assetCacheLength];
+            D_80383CD4[i] = D_80383CD4[assetCacheLength];
+            assetCacheAssetIdList[i] = assetCacheAssetIdList[assetCacheLength];
+            return 0;
+        }
+        else{
+            assetCacheDependencyCount[i]--;
+            return 1;
+        }
+    } else{
+        return 3;
+    }
 }
 
 void assetcache_update_ptr(void * arg0, void* arg1){
@@ -419,7 +436,6 @@ void *assetcache_get(enum asset_e assetId) {
         uncompressed_file = malloc(comp_size + 64);
         compressed_file = uncompressed_file;
     }
-    extern int g_diag_assetId; extern void* g_diag_cfile; extern int g_diag_csize; g_diag_assetId = assetId; g_diag_cfile = compressed_file; g_diag_csize = comp_size;
     piMgr_read(compressed_file, assetSectionRomMetaList[assetId].offset + D_80383CCC, sp3C);
     if(assetSectionRomMetaList[assetId].compFlag & 0x0001){//decompress
         rarezip_inflate(compressed_file, uncompressed_file);
@@ -430,16 +446,7 @@ void *assetcache_get(enum asset_e assetId) {
             free(compressed_file);
         }
     }
-    // Evict unreferenced assets when the cache reaches its base cap.
-    if (assetCacheLength >= ASSET_CACHE_SIZE) {
-        for (int evict_i = 0; evict_i < assetCacheLength; evict_i++) {
-            if (assetCacheDependencyCount[evict_i] == 0) {
-                assetcache_release(assetCachePtrList[evict_i]);
-                evict_i = -1; // restart because the array compacts after release
-            }
-        }
-    }
-    if (assetCacheLength >= g_assetCacheCapacity) {
+    if (assetCacheLength >= g_assetCacheCapacity - 1) {
         u32 new_cap = g_assetCacheCapacity * 2;
         assetCachePtrList = (void**)realloc(assetCachePtrList, new_cap * sizeof(void*));
         D_80383CD4 = (BKSpriteDisplayData**)realloc(D_80383CD4, new_cap * sizeof(BKSpriteDisplayData*));
