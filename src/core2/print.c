@@ -377,6 +377,7 @@ void print_free(void){
 
 void print_clearPrintBufferStrings(void){
     s32 i;
+    if (print_sPrintBuffer == NULL) return;
     for(i = 0; i < PRINT_BUFFER_COUNT; i++){
         print_sPrintBuffer[i].string = NULL;
     }
