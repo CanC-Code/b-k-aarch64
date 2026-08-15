@@ -1,3 +1,4 @@
+#include "../../Android/app/src/main/cpp/bka_safe_base.h"
 #include <ultra64.h>
 #include "core1/core1.h"
 #include "functions.h"
@@ -298,6 +299,13 @@ void func_802F2D8C(Struct64s *arg0) {
 
     if ((arg0 != NULL) && (arg0->unk4 != 0)) {
         D_80380A58 = heap_get_size() - heap_get_occupied_size();
+        // Translate arg0 and its unk0 pointer if they are N64 addresses
+        if ((uintptr_t)arg0 < 0x100000000ULL) {
+            arg0 = (Struct64s*)BKA_TRANSLATE_ADDR(arg0);
+        }
+        if (arg0 != NULL && (uintptr_t)arg0->unk0 < 0x100000000ULL) {
+            arg0->unk0 = (Struct65s*)BKA_TRANSLATE_ADDR(arg0->unk0);
+        }
         for(var_s0 = arg0->unk0; var_s0 < arg0->unk0 + arg0->unk4; var_s0++){
             if (var_s0->unk23 & 1) {
                 if (var_s0->unk10(var_s0->unk0, (f32)var_s0->unk20, var_s0->unkC) == 0) {
