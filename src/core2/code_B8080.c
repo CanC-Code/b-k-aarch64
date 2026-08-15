@@ -169,6 +169,13 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
         this, bk_vtx_list, this ? this->count : -1,
         (this && bk_vtx_list) ? meshList_getVtxCount(this) : -1);
 
+    {
+        u8* mesh_bytes = (u8*)this;
+        __android_log_print(ANDROID_LOG_INFO, "BKA-MESH", "mesh raw bytes: %02X %02X %02X %02X %02X %02X %02X %02X",
+            mesh_bytes[0], mesh_bytes[1], mesh_bytes[2], mesh_bytes[3],
+            mesh_bytes[4], mesh_bytes[5], mesh_bytes[6], mesh_bytes[7]);
+    }
+
     s16 count = this->count;
     s32 vtx_count_total = meshList_getVtxCount(this);
     model = (BKModel *) malloc(sizeof(BKModel) + (count * sizeof(BKModelMesh)) + (vtx_count_total * sizeof(BKModelVtxRef)));
