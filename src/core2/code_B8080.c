@@ -1,3 +1,4 @@
+#include "../../Android/app/src/main/cpp/bka_safe_base.h"
 #define UNTAG(ptr) ((__typeof__(ptr))((uintptr_t)(ptr) & 0x00FFFFFFFFFFFFFFUL))
 #include <ultra64.h>
 static inline s16 bswap16(s16 v) { return (s16)__builtin_bswap16((u16)v); }
@@ -156,6 +157,13 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
     if (this == NULL || bk_vtx_list == NULL) return NULL;
     this = UNTAG(this);
     bk_vtx_list = UNTAG(bk_vtx_list);
+    // Translate bk_vtx_list and its vertices pointer if they are N64 addresses
+    if ((uintptr_t)bk_vtx_list < 0x100000000ULL) {
+        bk_vtx_list = (BKVertexList*)BKA_TRANSLATE_ADDR(bk_vtx_list);
+    }
+    if (bk_vtx_list != NULL && bk_vtx_list->vertices != NULL && (uintptr_t)bk_vtx_list->vertices < 0x100000000ULL) {
+        bk_vtx_list->vertices = (Vtx*)BKA_TRANSLATE_ADDR(bk_vtx_list->vertices);
+    }
     s32 temp_s1;
     BKModel *model;
     void *temp_v0;
