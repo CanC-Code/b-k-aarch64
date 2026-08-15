@@ -283,6 +283,7 @@ BKCollisionTriangle *func_802E76B0(BKCollisionList *collisionList, BKVertexList 
     f32 sp90[3][3];
     BKCollisionTriangle *result_collision;
 
+    if (collisionList == NULL || vertexList == NULL) return NULL;
     result_collision = NULL;
     temp_f20 = (f32) vertexList->global_norm;
     calculateBoundsAndDirection(startPoint, endPoint, min_bounds, max_bounds, direction_vector);
