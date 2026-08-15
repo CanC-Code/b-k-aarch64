@@ -542,11 +542,11 @@ s32 code_B3A80_func_8033BDAC(enum asset_e id, void *dst, s32 size) {
     if (phi_v0 == assetCacheLength) { //asset not in cache
         return 0;
     }
-    comp_ptr = assetSectionRomMetaList[id + 1].offset - assetSectionRomMetaList[id].offset;
-    if (comp_ptr & 1) {
-        comp_ptr++;
+    comp_size_tmp = assetSectionRomMetaList[id + 1].offset - assetSectionRomMetaList[id].offset;
+    if (comp_size_tmp & 1) {
+        comp_size_tmp++;
     }
-    sp34 = comp_ptr;
+    sp34 = comp_size_tmp;
         
     if (assetSectionRomMetaList[id].compFlag & 1) {
         func_8033BAB0(id, 0, 0x10, &D_80383CB0);
