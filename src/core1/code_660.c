@@ -75,10 +75,6 @@ void rarezip_init(void){
 }
 
 void rarezip_inflate(u8 *src, u8 *dst){
-    extern struct huft gGlobalHuffTable;
-    if (D_8027BF00 == NULL) {
-        D_8027BF00 = (struct huft *)&gGlobalHuffTable;
-    }
     _rarezip_inflate(src, dst, D_8027BF00);
 }
 
