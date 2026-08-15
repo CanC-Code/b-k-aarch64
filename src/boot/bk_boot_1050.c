@@ -1,3 +1,4 @@
+#include <sched.h>
 #include <ultra64.h>
 #include <PRinternal/piint.h>
 #include <PRinternal/macros.h>
