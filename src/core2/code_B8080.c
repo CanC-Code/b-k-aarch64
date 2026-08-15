@@ -197,13 +197,13 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
             out_mesh->vtx_count = bswap16(in_mesh->vtx_count);
             vtx_ref = (BKModelVtxRef *) out_mesh->data;
             
-            for (j = 0; j < in_mesh->vtx_count; j++) {
+            for (j = 0; j < out_mesh->vtx_count; j++) {
                 vtx_ref->vtx_id = bswap16(in_mesh->vertices[j]);
                 memcpy(&vtx_ref->v, &bk_vtx_list->vertices[vtx_ref->vtx_id], sizeof(Vtx));
                 vtx_ref++;
             }
 
-            in_mesh = (BKMesh *) &in_mesh->vertices[in_mesh->vtx_count];
+            in_mesh = (BKMesh *) &in_mesh->vertices[out_mesh->vtx_count];
             out_mesh = (BKModelMesh *) ((BKModelVtxRef *) out_mesh->data + out_mesh->vtx_count);
     }
 
