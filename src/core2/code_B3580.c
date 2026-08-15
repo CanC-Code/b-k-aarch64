@@ -1,3 +1,4 @@
+#include "../../Android/app/src/main/cpp/bka_safe_base.h"
 #include <ultra64.h>
 #include "functions.h"
 #include "variables.h"
