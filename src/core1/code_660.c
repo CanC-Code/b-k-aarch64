@@ -121,7 +121,7 @@ static int _rarezip_inflate(u8 * src, u8 * dst, struct huft_s * arg2){
     return inflate_wp;
 }
 
-static int _rarezip_uncompress(u8 **srcPtr, u8 **dstPtr, struct huft * arg2){
+static int _rarezip_uncompress(u8 **srcPtr, u8 **dstPtr, struct huft_s * arg2){
     int result;
     extern u32 inflate_wp;
     extern u32 inflate_inptr;
