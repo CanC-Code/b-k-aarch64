@@ -210,9 +210,6 @@ void mainLoop(void){
         }
     }//L8023DF70
 
-#ifdef __ANDROID__
-    BKA_FrameSyncHook();
-#endif
 }
 
 void mainThread_entry(void *arg) { 
@@ -225,6 +222,7 @@ void mainThread_entry(void *arg) {
     while (1) {
         mainLoop();
 #ifdef __ANDROID__
+        BKA_FrameSyncHook();
         if (++frame_count % 2 == 0) sched_yield();
 #endif
     }
