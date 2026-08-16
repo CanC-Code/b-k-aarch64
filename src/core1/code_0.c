@@ -1,6 +1,7 @@
 extern void BKA_FrameSyncHook(void);
 #include <ultra64.h>
 #include <android/log.h>
+#define LOG_BKA_INIT(tag) __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "core1_init: %s", tag)
 #include "core1/core1.h"
 #include "functions.h"
 #include "variables.h"
@@ -106,26 +107,27 @@ void core1_init(void) {
 #if VERSION == VERSION_PAL
      osTvType = 0;
 #endif
-    ucode_load();
-    setBootMap(getDefaultBootMap());
-    rarezip_init(); //initialize decompressor's huft table
-    viMgr_init();
-    overlayManager_loadCore2();
+    LOG_BKA_INIT("ucode_load"); ucode_load();
+    LOG_BKA_INIT("setBootMap"); setBootMap(getDefaultBootMap());
+    LOG_BKA_INIT("rarezip_init"); rarezip_init();
+    LOG_BKA_INIT("viMgr_init"); viMgr_init();
+    LOG_BKA_INIT("overlayManager_loadCore2"); overlayManager_loadCore2();
     sDebugVar_8027BEF0 = sDebugVar_8027A538;
-    heap_init();
-    core1_15B30_init();
-    dummy_func_8025AFB0();
-    allocUnusedBlock();
-    assetCache_init();
-    pfsManager_init();
-    baMotor_init();
-    audioManager_init();
-    graphicsCache_init();
-    ml_init();
-    gctransition_reset();
+    LOG_BKA_INIT("heap_init"); heap_init();
+    LOG_BKA_INIT("core1_15B30_init"); core1_15B30_init();
+    LOG_BKA_INIT("dummy_func_8025AFB0"); dummy_func_8025AFB0();
+    LOG_BKA_INIT("allocUnusedBlock"); allocUnusedBlock();
+    LOG_BKA_INIT("assetCache_init"); assetCache_init();
+    LOG_BKA_INIT("pfsManager_init"); pfsManager_init();
+    LOG_BKA_INIT("baMotor_init"); baMotor_init();
+    LOG_BKA_INIT("audioManager_init"); audioManager_init();
+    LOG_BKA_INIT("graphicsCache_init"); graphicsCache_init();
+    LOG_BKA_INIT("ml_init"); ml_init();
+    LOG_BKA_INIT("gctransition_reset"); gctransition_reset();
     D_8027A130 = 0;
     gGlobalTimer = 0;
-    func_8023DA9C(3);
+    LOG_BKA_INIT("func_8023DA9C(3)"); func_8023DA9C(3);
+    LOG_BKA_INIT("complete");
 }
 
 void globalTimer_incTimer(void) {
