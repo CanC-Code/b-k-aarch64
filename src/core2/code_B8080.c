@@ -187,7 +187,11 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
     model->mesh_list = this;
     model->vtx_list = bk_vtx_list;
 
-    in_mesh = this->data; 
+    in_mesh = this->data;
+    // Translate in_mesh data pointer if it's an N64 address
+    if ((uintptr_t)in_mesh < 0x100000000ULL) {
+        in_mesh = (BKMesh*)BKA_TRANSLATE_ADDR(in_mesh);
+    } 
     out_mesh = (BKModelMesh *) model->data;
 
     for (i = 0; i < count; i++) {
