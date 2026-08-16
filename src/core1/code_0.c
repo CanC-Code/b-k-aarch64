@@ -220,29 +220,36 @@ void mainLoop(void){
 
 }
 
-void mainThread_entry(void *arg) { 
+void mainThread_entry(void *arg) {
     __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "mainThread_entry before core1_init");
     core1_init();
     __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "mainThread_entry after core1_init");
     sns_write_payload_over_heap();
 
     __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "mainThread_entry entering loop");
-    while (1) {
-        mainLoop();
 #ifdef __ANDROID__
+    while (1) {
+        struct timespec frame_start, frame_end;
+        clock_gettime(CLOCK_MONOTONIC, &frame_start);
+        mainLoop();
         BKA_FrameSyncHook();
-        // Frame pacing - yield more aggressively to prevent ANR
+        clock_gettime(CLOCK_MONOTONIC, &frame_end);
+        long elapsed_us = (frame_end.tv_sec - frame_start.tv_sec) * 1000000L +
+                          (frame_end.tv_nsec - frame_start.tv_nsec) / 1000L;
+        const long target_us = 33333L; // 30 FPS
+        if (elapsed_us < target_us) {
+            usleep((useconds_t)(target_us - elapsed_us));
+        }
         if (++frame_count % 4 == 0) {
             sched_yield();
         }
-        // Additional yield every 60 frames for background processing
-        if (frame_count % 60 == 0) {
-            usleep(1000); // 1ms pause
-        }
-#endif
     }
+#else
+    while (1) {
+        mainLoop();
+    }
+#endif
 }
-
 void func_8023DFF0(s32 arg0){
     D_80275610 = arg0 + 1;
 }
