@@ -297,10 +297,22 @@ void func_802F2C78(Struct64s *arg0) {
 void func_802F2D8C(Struct64s *arg0) {
     Struct65s *var_s0;
 
-    if ((arg0 != NULL) && (arg0->unk4 != 0)) {
-        D_80380A58 = heap_get_size() - heap_get_occupied_size();
-        // arg0 and arg0->unk0 are host pointers from malloc - no translation needed
-        for(var_s0 = arg0->unk0; var_s0 < arg0->unk0 + arg0->unk4; var_s0++){
+    if (arg0 == NULL) return;
+
+    // Some callers may pass N64 addresses, others host pointers.
+    if ((uintptr_t)arg0 < 0x100000000ULL) {
+        arg0 = (Struct64s*)BKA_TRANSLATE_ADDR(arg0);
+    }
+    if (arg0 == NULL) return;
+    if (arg0->unk4 <= 0 || arg0->unk4 > 0x10000) return; // sanity
+
+    if (arg0->unk0 != NULL && (uintptr_t)arg0->unk0 < 0x100000000ULL) {
+        arg0->unk0 = (Struct65s*)BKA_TRANSLATE_ADDR(arg0->unk0);
+    }
+    if (arg0->unk0 == NULL) return;
+
+    D_80380A58 = heap_get_size() - heap_get_occupied_size();
+    for(var_s0 = arg0->unk0; var_s0 < arg0->unk0 + arg0->unk4; var_s0++){
             if (var_s0->unk23 & 1) {
                 if (var_s0->unk10(var_s0->unk0, (f32)var_s0->unk20, var_s0->unkC) == 0) {
                     func_802F283C(var_s0);
