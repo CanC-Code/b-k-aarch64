@@ -52,6 +52,8 @@ s32 D_80275764 = 9; //lbits
 s32 D_80275768 = 6; //dbits
 
 /* .data */
+struct huft_s *D_8027BF00;
+struct huft_s *D_8027BF20; //unk
 u8 pad_8027BF08[0x8];
 u8 *D_8027BF10; //inbuf
 u8 *D_8027BF14; //slide
