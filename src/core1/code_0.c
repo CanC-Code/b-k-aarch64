@@ -8,6 +8,7 @@ extern void BKA_FrameSyncHook(void);
 #include "gc/gctransition.h"
 #ifdef __ANDROID__
 #include <sched.h>
+#include <unistd.h>
 #endif
 
 #define MAIN_THREAD_STACK_SIZE 0x17F0
@@ -229,7 +230,14 @@ void mainThread_entry(void *arg) {
         mainLoop();
 #ifdef __ANDROID__
         BKA_FrameSyncHook();
-        if (++frame_count % 2 == 0) sched_yield();
+        // Frame pacing - yield more aggressively to prevent ANR
+        if (++frame_count % 4 == 0) {
+            sched_yield();
+        }
+        // Additional yield every 60 frames for background processing
+        if (frame_count % 60 == 0) {
+            usleep(1000); // 1ms pause
+        }
 #endif
     }
 }
