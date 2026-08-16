@@ -203,7 +203,14 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
             
             for (j = 0; j < out_mesh->vtx_count; j++) {
                 vtx_ref->vtx_id = bswap16(in_mesh->vertices[j]);
-                memcpy(&vtx_ref->v, &bk_vtx_list->vertices[vtx_ref->vtx_id], sizeof(Vtx));
+                // Bounds check - prevent reading past vertex array
+                if (vtx_ref->vtx_id >= 0 && vtx_ref->vtx_id < 0x8000) {
+                    memcpy(&vtx_ref->v, &bk_vtx_list->vertices[vtx_ref->vtx_id], sizeof(Vtx));
+                } else {
+                    // Invalid vertex ID - zero it out
+                    memset(&vtx_ref->v, 0, sizeof(Vtx));
+                    __android_log_print(ANDROID_LOG_WARN, "BKA-MESH", "Invalid vtx_id=%d at mesh %d vtx %d", vtx_ref->vtx_id, i, j);
+                }
                 vtx_ref++;
             }
 
