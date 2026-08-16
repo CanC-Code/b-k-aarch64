@@ -50,14 +50,11 @@ s32 D_80275764 = 9; //lbits
 s32 D_80275768 = 6; //dbits
 
 /* .data */
-extern struct huft_s gGlobalHuffTable;
-struct huft_s *D_8027BF00;
 u8 pad_8027BF08[0x8];
 u8 *D_8027BF10; //inbuf
 u8 *D_8027BF14; //slide
 u32 D_8027BF18; //inptr
 u32 D_8027BF1C; //wp
-struct huft_s *D_8027BF20; //unk
 u32 D_8027BF24; //bb
 u32 D_8027BF28; //bk
 u32 D_8027BF2C; //crc1

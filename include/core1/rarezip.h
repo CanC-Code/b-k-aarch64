@@ -1,3 +1,4 @@
+#include "boot/rarezip.h"
 #ifndef BANJO_KAZOOIE_CORE1_RAREZIP_H
 #define BANJO_KAZOOIE_CORE1_RAREZIP_H
 
@@ -37,12 +38,12 @@ extern u16 D_80275740[];
 extern s32 D_80275764; //lbits
 extern s32 D_80275768; //dbits
 
-extern struct huft *D_8027BF00;
+extern struct huft_s *D_8027BF00;
 extern u8 *D_8027BF10; //inbuf
 extern u8 *D_8027BF14; //slide
 extern u32 D_8027BF18; //inptr
 extern u32 D_8027BF1C; //wp
-extern struct huft *D_8027BF20; //unk
+extern struct huft_s *D_8027BF20; //unk
 extern u32 D_8027BF24; //bb
 extern u32 D_8027BF28; //bk
 extern u32 D_8027BF2C; //crc1
