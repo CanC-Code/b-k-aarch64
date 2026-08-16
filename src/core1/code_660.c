@@ -1,8 +1,9 @@
+#include "boot/rarezip.h"
 #include <ultra64.h>
 #include "core1/core1.h"
 
 
-static int _rarezip_uncompress(u8 **arg0, u8 **arg1, struct huft * arg2);
+static int _rarezip_uncompress(u8 **arg0, u8 **arg1, struct huft_s * arg2);
 
 #define COMP_HEADER_SIZE 6
 
@@ -49,21 +50,21 @@ s32 D_80275764 = 9; //lbits
 s32 D_80275768 = 6; //dbits
 
 /* .data */
-extern struct huft gGlobalHuffTable;
-struct huft *D_8027BF00;
+extern struct huft_s gGlobalHuffTable;
+struct huft_s *D_8027BF00;
 u8 pad_8027BF08[0x8];
 u8 *D_8027BF10; //inbuf
 u8 *D_8027BF14; //slide
 u32 D_8027BF18; //inptr
 u32 D_8027BF1C; //wp
-struct huft *D_8027BF20; //unk
+struct huft_s *D_8027BF20; //unk
 u32 D_8027BF24; //bb
 u32 D_8027BF28; //bk
 u32 D_8027BF2C; //crc1
 u32 D_8027BF30; //crc2
 u32 D_8027BF34; //hufts
 
-static int _rarezip_inflate(u8 * src, u8 * dst, struct huft * arg2);
+static int _rarezip_inflate(u8 * src, u8 * dst, struct huft_s * arg2);
 
 /* .code */
 s32 rarezip_get_uncompressed_size(u8 *arg0) {
@@ -90,7 +91,7 @@ void func_8023E0E8(void){
     return;
 }
 
-static int _rarezip_inflate(u8 * src, u8 * dst, struct huft * arg2){
+static int _rarezip_inflate(u8 * src, u8 * dst, struct huft_s * arg2){
     // Set boot/inflate.c globals (the version the linker keeps)
     extern u8 *inflate_inbuf;
     extern u8 *inflate_slide;
@@ -108,7 +109,7 @@ static int _rarezip_inflate(u8 * src, u8 * dst, struct huft * arg2){
     // Also set D_ globals for any code that reads them
     D_8027BF10 = inflate_inbuf;
     D_8027BF14 = inflate_slide;
-    D_8027BF20 = (struct huft *)inflate_huft;
+    D_8027BF20 = (struct huft_s *)inflate_huft;
     D_8027BF1C = 0;
     D_8027BF18 = 0;
     
