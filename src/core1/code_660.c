@@ -64,7 +64,7 @@ u32 D_8027BF34; //hufts
 static int _rarezip_inflate(u8 * src, u8 * dst, struct huft_s * arg2);
 
 /* .code */
-s32 rarezip_get_uncompressed_size(u8 *arg0) {
+u32 rarezip_get_uncompressed_size(u8 *arg0) {
     // N64 is big-endian, ARM64 is little-endian - need byteswap
     s32 size;
     memcpy(&size, arg0 + 2, 4);
