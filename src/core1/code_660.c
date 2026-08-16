@@ -1,4 +1,6 @@
 #include "boot/rarezip.h"
+
+extern struct huft_s gGlobalHuffTable;
 #include <ultra64.h>
 #include "core1/core1.h"
 
