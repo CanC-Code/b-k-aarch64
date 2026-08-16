@@ -322,7 +322,6 @@ void func_802F2D8C(Struct64s *arg0) {
             }
         }
         func_802F2740(arg0);
-    }
 }
 
 
