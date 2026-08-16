@@ -114,7 +114,7 @@ static int _rarezip_inflate(u8 * src, u8 * dst, struct huft_s * arg2){
     D_8027BF1C = 0;
     D_8027BF18 = 0;
     
-    inflate();
+    bk_inflate();
     
     // Sync back
     D_8027BF1C = inflate_wp;

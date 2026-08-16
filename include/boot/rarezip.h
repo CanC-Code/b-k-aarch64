@@ -24,6 +24,6 @@ u32 rarezip_get_uncompressed_size(u8 *file);
 void rarezip_init(void);
 u32 rarezip_uncompress_file(u8 *in, u8 *out);
 void rarezip_uncompress_file_and_update_pointers(u8 **in, u8 **out);
-s32 inflate(void);
+s32 bk_inflate(void);
 
 #endif

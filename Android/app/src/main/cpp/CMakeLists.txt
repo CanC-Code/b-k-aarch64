@@ -40,6 +40,7 @@ if(NOT EXCLUDE_GAME_SRC)
             list(APPEND GAME_SOURCES ${F})
         endif()
     endforeach()
+    list(REMOVE_ITEM GAME_SOURCES "${REPO_ROOT}/src/core1/inflate.c")
 endif()
 
 add_library(bkawrapper SHARED ${CPP_BRIDGE_SOURCES} ${C_BRIDGE_SOURCES} ${GAME_SOURCES})

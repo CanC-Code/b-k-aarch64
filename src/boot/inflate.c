@@ -530,7 +530,7 @@ static s32 inflate_block(s32 *e) {
 }
 
 /* decompress an inflated entry */
-s32 inflate(void) {
+s32 bk_inflate(void) {
     s32 e;      /* last block flag */
     s32 r;      /* result code */
     u32 h;      /* maximum struct huft_s's malloc'ed */
