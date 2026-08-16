@@ -1,4 +1,5 @@
 #include <sched.h>
+#include <unistd.h>
 extern void BKA_DropEngineLock(void);
 #include <ultra64.h>
 #include "core1/core1.h"
@@ -31,6 +32,6 @@ void initThread_entry(void *arg)
     // Keep this thread alive to prevent the process from exiting
     // The original had "while (1);" here
     while (1) {
-        sched_yield();
+        usleep(1000);
     }
 }

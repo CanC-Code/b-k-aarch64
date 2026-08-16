@@ -1,4 +1,5 @@
 #include <sched.h>
+#include <unistd.h>
 #include <ultra64.h>
 #include <PRinternal/piint.h>
 #include <PRinternal/macros.h>
@@ -39,6 +40,6 @@ void func_80000450(s32 arg0) {
 
     // Keep boot thread alive - game threads run in background
     while (1) {
-        sched_yield();
+        usleep(1000);
     }
 }
