@@ -9,6 +9,7 @@ extern void BKA_FrameSyncHook(void);
 #ifdef __ANDROID__
 #include <sched.h>
 #include <unistd.h>
+#include <time.h>
 #endif
 
 #define MAIN_THREAD_STACK_SIZE 0x17F0
