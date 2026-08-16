@@ -139,6 +139,12 @@ static int frame_count = 0;
 #endif
 void mainLoop(void){
     s32 x, y;
+#ifdef __ANDROID__
+    static int mainLoopCount = 0;
+    if (++mainLoopCount <= 5) {
+        __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "mainLoop iteration %d - D_8027A130=%d", mainLoopCount, D_8027A130);
+    }
+#endif
     s32 r, g, b, a;
     u16 tmp;
     u16 rgba;
