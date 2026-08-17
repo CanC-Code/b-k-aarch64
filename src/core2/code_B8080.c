@@ -182,8 +182,31 @@ BKModel *meshList_createModel(BKMeshList *this, BKVertexList *bk_vtx_list) {
     }
 
     s16 count = bswap16(this->count);
-    s32 vtx_count_total = meshList_getVtxCount(this);
+    if (count < 0 || count > 0x4000) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-MESH", "meshList_createModel: bad count=%d", count);
+        return NULL;
+    }
+    // Compute total vertex count with byteswapped vtx_count and sanity limit
+    s32 vtx_count_total = 0;
+    BKMesh *tmp_mesh = this->data;
+    for (s32 tmp_i = 0; tmp_i < count; tmp_i++) {
+        s16 v = bswap16(tmp_mesh->vtx_count);
+        if (v < 0 || v > 0x2000) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-MESH", "meshList_createModel: bad vtx_count=%d at mesh %d", v, tmp_i);
+            return NULL;
+        }
+        vtx_count_total += v;
+        tmp_mesh = (BKMesh *)&tmp_mesh->vertices[v];
+    }
+    if (vtx_count_total < 0 || vtx_count_total > 0x10000) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-MESH", "meshList_createModel: bad total vtx=%d", vtx_count_total);
+        return NULL;
+    }
     model = (BKModel *) malloc(sizeof(BKModel) + (count * sizeof(BKModelMesh)) + (vtx_count_total * sizeof(BKModelVtxRef)));
+    if (model == NULL) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-MESH", "meshList_createModel: malloc failed");
+        return NULL;
+    }
     model->mesh_list = this;
     model->vtx_list = bk_vtx_list;
 
