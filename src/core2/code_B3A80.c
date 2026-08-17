@@ -508,7 +508,7 @@ void assetCache_init(void){
     g_assetCacheCapacity = ASSET_CACHE_SIZE;
     assetCacheLength = 0;
     assetSectionRomHeader = (AssetROMHead *)malloc(sizeof(AssetROMHead));
-    D_80383CC8 = (u32)assets_ROM_START;
+    D_80383CC8 = assets_ROM_START;
     piMgr_read(assetSectionRomHeader, D_80383CC8, sizeof(AssetROMHead));
     __android_log_print(ANDROID_LOG_INFO, "BKA-META", "raw count=0x%08X unk4=0x%08X",
         assetSectionRomHeader->count, assetSectionRomHeader->unk4);

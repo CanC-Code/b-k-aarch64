@@ -101,7 +101,6 @@ int soundfont1tbl_ROM_START  = 0;
 int soundfont2ctl_ROM_START  = 0;
 int soundfont2ctl_ROM_END    = 0;
 int soundfont2tbl_ROM_START  = 0;
-int assets_ROM_START         = 0x5E90;
 int boot_bk_boot_ROM_START   = 0;
 int boot_bk_boot_ROM_END     = 0;
 int n_aspMainTextStart        = 0;

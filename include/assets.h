@@ -16,6 +16,6 @@ typedef struct asset_file_meta_s{
 } AssetFileMeta;
 
 
-extern u8 assets_ROM_START[]; //rom file asset bin;
+#define assets_ROM_START 0x5E90
 
 #endif
