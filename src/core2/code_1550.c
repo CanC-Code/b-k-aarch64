@@ -54,20 +54,27 @@ static void __animBinCache_initPersistent(void){
 
 static void __animBinCache_loadAll(void){
     s32 i;
+    __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "animBinCache: loadAll start");
     for(i = 0; i < 0x2CA; i++){
         if(animBinCache[i].persist){
+            __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "animBinCache: loadAll before get i=%d", i);
             animBinCache_get(i);
+            __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "animBinCache: loadAll after get i=%d", i);
         }
     }
+    __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "animBinCache: loadAll done");
 }
 
 AnimationFile *animBinCache_get(enum asset_e asset_id){
+    __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "animBinCache: get start id=%d", asset_id);
     if (asset_id < 0 || asset_id >= ANIM_BIN_CACHE_SIZE) {
         __android_log_print(ANDROID_LOG_INFO, "BKA-ANIMCACHE", "asset_id=%d OUT OF RANGE", asset_id);
         return NULL;
     }
     if(animBinCache[asset_id].ptr == NULL){
+        __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "animBinCache: get calling assetcache_get id=%d", asset_id);
         animBinCache[asset_id].ptr = (AnimationFile *) assetcache_get(asset_id);
+        __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "animBinCache: get assetcache_get returned id=%d", asset_id);
         __android_log_print(ANDROID_LOG_INFO, "BKA-ANIMCACHE", "loaded asset_id=%d ptr=%p", asset_id, animBinCache[asset_id].ptr);
     } else {
         __android_log_print(ANDROID_LOG_INFO, "BKA-ANIMCACHE", "cached asset_id=%d ptr=%p", asset_id, animBinCache[asset_id].ptr);
