@@ -96,6 +96,10 @@ void file_getNBytes(File *file, u8 *dst, s32 cnt) {
 
 void file_getFloat(File *file, f32 *dst) {
     file_read(file, dst, sizeof(f32));
+    u32 tmp;
+    memcpy(&tmp, dst, 4);
+    tmp = __builtin_bswap32(tmp);
+    memcpy(dst, &tmp, 4);
 }
 
 void file_getNFloat(File *file, f32 *dst, s32 cnt) {
@@ -108,6 +112,7 @@ void file_getNFloat(File *file, f32 *dst, s32 cnt) {
 
 void file_getWord(File *file, s32 *dst) {
     file_read(file, dst, sizeof(s32));
+    *dst = (s32)__builtin_bswap32((u32)*dst);
 }
 
 void file_getNWords(File *file, s32 *dst, s32 cnt) {
@@ -153,6 +158,7 @@ void file_read(File *file, void *dst, s32 len) {
 
 void file_getShort(File *file, s16 *dst) {
     file_read(file, dst, sizeof(s16));
+    *dst = (s16)__builtin_bswap16((u16)*dst);
 }
 
 void file_getNShorts(File *file, s16 *dst, s32 cnt) {
