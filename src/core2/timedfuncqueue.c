@@ -270,6 +270,9 @@ void timedJiggySpawn(f32 time, s32 jiggyId, f32 *position){
 }
 
 bool timedFuncQueue_is_empty(void){
+    if (D_80383380.ptr == NULL) {
+        timedFuncQueue_init();
+    }
     return !vector_size(D_80383380.ptr);
 }
 
@@ -281,6 +284,9 @@ void timedFuncQueue_flush(void){
     TimedFunction *iPtr;
     TimedFunction iFunc;
 
+    if (D_80383380.ptr == NULL) {
+        timedFuncQueue_init();
+    }
     while(vector_size(D_80383380.ptr) > 0){
         iPtr = vector_getBegin(D_80383380.ptr);
         memcpy(&iFunc, iPtr, sizeof(TimedFunction));
@@ -306,6 +312,9 @@ void timedFuncQueue_update(void){
     TimedFunction *iPtr;
     TimedFunction iFunc;
 
+    if (D_80383380.ptr == NULL) {
+        timedFuncQueue_init();
+    }
     if(vector_size(D_80383380.ptr) == 0)
         return;
 
