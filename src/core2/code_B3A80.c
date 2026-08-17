@@ -73,6 +73,7 @@ void animationFile_getBoneTransformList(AnimationFile *anim_file, f32 progress, 
         u16 packed = bswap16(*(u16*)tmp_s0);
         s16 bone = (packed >> 4) & 0xFFF;
         s16 channel = packed & 0xF;
+        if (channel > 2) channel = 0; // clamp to valid transform channels
         s16 data_cnt = bswap16(tmp_s0->data_cnt);
         if(bone != bone_id){
             if(bone_id != 0)
