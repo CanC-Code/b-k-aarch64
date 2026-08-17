@@ -360,7 +360,7 @@ int gsworld_getEnableDraw(void)         { return sEnableDraw; }
 
 // Huffman table
 struct huft_s { unsigned char e, b; unsigned short n; };
-struct huft_s gGlobalHuffTable[1];
+struct huft_s gGlobalHuffTable[4096];
 
 // Inflate globals
 u32 inflate_crc1, inflate_crc2;
