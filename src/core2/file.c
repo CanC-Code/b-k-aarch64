@@ -125,11 +125,11 @@ void file_read(File *file, void *dst, s32 len) {
 
     if (file->mode == FILE_MODE_2_FROM_ASSET) {
         memcpy(dst, file->asset_current_ptr, len);
-        file->asset_current_ptr = (void *) ((u32)file->asset_current_ptr + len);
+        file->asset_current_ptr = (u8 *)file->asset_current_ptr + len;
     }
     else if (file->mode == FILE_MODE_3_FROM_MEMORY) {
         memcpy(dst, file->current_ptr, len);
-        file->current_ptr = (void *) ((u32)file->current_ptr + len);
+        file->current_ptr = (u8 *)file->current_ptr + len;
     }
     else if (file->mode == FILE_MODE_4_ALLOCATED) { // why does it write in read function?
         if ((u8 *) file->end_ptr < (u8 *) file->current_ptr + len) {
