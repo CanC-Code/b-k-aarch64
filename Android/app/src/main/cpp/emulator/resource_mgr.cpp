@@ -522,6 +522,15 @@ void ResourceMgr_HandleDma(void* dramAddr, uint32_t devAddr, uint32_t size) {
     if (tempBuf) {
         ssize_t bytesRead = pread(fd, tempBuf, size, romOffset);
         fclose(f);
+        if ((romOffset & 0xFFFFF000) == 0x5000 || romOffset == 0x5E90 || romOffset == 0x5E94) {
+            __android_log_print(ANDROID_LOG_INFO, "BKA-PI",
+                "ROM read @0x%08X size=%u first16: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
+                romOffset, size,
+                tempBuf[0], tempBuf[1], tempBuf[2], tempBuf[3],
+                tempBuf[4], tempBuf[5], tempBuf[6], tempBuf[7],
+                tempBuf[8], tempBuf[9], tempBuf[10], tempBuf[11],
+                tempBuf[12], tempBuf[13], tempBuf[14], tempBuf[15]);
+        }
         if (bytesRead > 0) {
             memcpy(dramAddr, tempBuf, (size_t)bytesRead);
             if ((size_t)bytesRead < size)
