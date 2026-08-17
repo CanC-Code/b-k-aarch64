@@ -1,4 +1,6 @@
 #include <ultra64.h>
+#include <android/log.h>
+#define LOG_BKA_INIT(tag) __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "func_802E4214: %s", tag)
 #include "core1/core1.h"
 #include "functions.h"
 #include "variables.h"
@@ -369,45 +371,46 @@ void func_802E4170(void){
 }
 
 void func_802E4214(enum map_e map_id){
+    LOG_BKA_INIT("start");
     D_8037E8E0.transition = TRANSITION_0_NONE;
     D_8037E8E0.unk19 = D_8037E8E0.unk18 = 0;
     D_8037E8E0.map = D_8037E8E0.exit = D_8037E8E0.unk17 = 0;
     D_8037E8E0.unk1B = D_8037E8E0.unk1A = 0;
     D_8037E8E0.unkC = FALSE;
     D_8037E8E0.unk1C = 0;
-    savedata_init();
-    sns_save_and_update_global_data();
-    func_8030D86C();
-    coMusicPlayer_init();
-    func_80322764();
-    timedFuncQueue_init();
-    func_802F9CD8();
-    func_8031B62C();
-    if(!func_802E4A08())
-        print_init();
-    func_802E5F38();
-    defragManager_init();
-    modelRender_init();
-    depthbuffer_enable(TRUE);
-    animCache_init();
-    viewport_reset();
-    viewport_setNearAndFar(1.0f, 10000.0f);
-    rand_reset();
-    scissorBox_setDefault();
-    func_80253FE8();
-    time_reset();
-    func_8033DC04();
-    clearScoreStates();
+    LOG_BKA_INIT("savedata_init"); savedata_init();
+    LOG_BKA_INIT("sns_save_and_update_global_data"); sns_save_and_update_global_data();
+    LOG_BKA_INIT("func_8030D86C"); func_8030D86C();
+    LOG_BKA_INIT("coMusicPlayer_init"); coMusicPlayer_init();
+    LOG_BKA_INIT("func_80322764"); func_80322764();
+    LOG_BKA_INIT("timedFuncQueue_init"); timedFuncQueue_init();
+    LOG_BKA_INIT("func_802F9CD8"); func_802F9CD8();
+    LOG_BKA_INIT("func_8031B62C"); func_8031B62C();
+    if(!func_802E4A08()) { LOG_BKA_INIT("print_init"); print_init(); }
+    LOG_BKA_INIT("func_802E5F38"); func_802E5F38();
+    LOG_BKA_INIT("defragManager_init"); defragManager_init();
+    LOG_BKA_INIT("modelRender_init"); modelRender_init();
+    LOG_BKA_INIT("depthbuffer_enable"); depthbuffer_enable(TRUE);
+    LOG_BKA_INIT("animCache_init"); animCache_init();
+    LOG_BKA_INIT("viewport_reset"); viewport_reset();
+    LOG_BKA_INIT("viewport_setNearAndFar"); viewport_setNearAndFar(1.0f, 10000.0f);
+    LOG_BKA_INIT("rand_reset"); rand_reset();
+    LOG_BKA_INIT("scissorBox_setDefault"); scissorBox_setDefault();
+    LOG_BKA_INIT("func_80253FE8"); func_80253FE8();
+    LOG_BKA_INIT("time_reset"); time_reset();
+    LOG_BKA_INIT("func_8033DC04"); func_8033DC04();
+    LOG_BKA_INIT("clearScoreStates"); clearScoreStates();
     D_8037E8E0.game_mode = GAME_MODE_2_UNKNOWN;
     D_8037E8E0.unk8 = 0.0f;
     time_setDeltaReal_sec(0.0f);
     time_setDeltaReal_frames(0);
-    func_803216D0(map_id);
-    func_8030AFA0(map_id);
-    func_802E3854();
-    func_802E38E8(map_id, 0, 0);
+    LOG_BKA_INIT("func_803216D0(map_id)"); func_803216D0(map_id);
+    LOG_BKA_INIT("func_8030AFA0(map_id)"); func_8030AFA0(map_id);
+    LOG_BKA_INIT("func_802E3854"); func_802E3854();
+    LOG_BKA_INIT("func_802E38E8"); func_802E38E8(map_id, 0, 0);
     D_8037E8E0.unk0 = 0;
-    game_setMode(GAME_MODE_3_NORMAL,1);
+    LOG_BKA_INIT("game_setMode"); game_setMode(GAME_MODE_3_NORMAL,1);
+    LOG_BKA_INIT("complete");
 }
 
 void func_802E4384(void){
