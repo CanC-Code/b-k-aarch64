@@ -511,17 +511,32 @@ void assetCache_init(void){
     assetSectionRomHeader = (AssetROMHead *)malloc(sizeof(AssetROMHead));
     D_80383CC8 = assets_ROM_START;
     piMgr_read(assetSectionRomHeader, D_80383CC8, sizeof(AssetROMHead));
-    __android_log_print(ANDROID_LOG_INFO, "BKA-META", "raw count=0x%08X unk4=0x%08X",
+
+    // Byteswap header fields (N64 big-endian -> host little-endian)
+    assetSectionRomHeader->count = __builtin_bswap32(assetSectionRomHeader->count);
+    assetSectionRomHeader->unk4  = __builtin_bswap32(assetSectionRomHeader->unk4);
+
+    __android_log_print(ANDROID_LOG_INFO, "BKA-META", "swapped count=0x%08X unk4=0x%08X",
         assetSectionRomHeader->count, assetSectionRomHeader->unk4);
-    assetSectionRomMetaList = (AssetFileMeta *)malloc(assetSectionRomHeader->count*sizeof(AssetFileMeta));
-    piMgr_read(assetSectionRomMetaList, D_80383CC8 + sizeof(AssetROMHead),assetSectionRomHeader->count*sizeof(AssetFileMeta));
-    __android_log_print(ANDROID_LOG_INFO, "BKA-META", "raw meta[0] offset=0x%08X comp=%d unk6=%d",
+
+    assetSectionRomMetaList = (AssetFileMeta *)malloc(assetSectionRomHeader->count * sizeof(AssetFileMeta));
+    piMgr_read(assetSectionRomMetaList, D_80383CC8 + sizeof(AssetROMHead),
+               assetSectionRomHeader->count * sizeof(AssetFileMeta));
+
+    for (u32 _i = 0; _i < assetSectionRomHeader->count; _i++) {
+        assetSectionRomMetaList[_i].offset = __builtin_bswap32(assetSectionRomMetaList[_i].offset);
+        assetSectionRomMetaList[_i].compFlag = (s16)__builtin_bswap16((u16)assetSectionRomMetaList[_i].compFlag);
+        assetSectionRomMetaList[_i].unk6 = (s16)__builtin_bswap16((u16)assetSectionRomMetaList[_i].unk6);
+    }
+
+    __android_log_print(ANDROID_LOG_INFO, "BKA-META", "swapped meta[0] offset=0x%08X comp=%d unk6=%d",
         assetSectionRomMetaList[0].offset, assetSectionRomMetaList[0].compFlag, assetSectionRomMetaList[0].unk6);
-    __android_log_print(ANDROID_LOG_INFO, "BKA-META", "raw meta[1] offset=0x%08X comp=%d unk6=%d",
+    __android_log_print(ANDROID_LOG_INFO, "BKA-META", "swapped meta[1] offset=0x%08X comp=%d unk6=%d",
         assetSectionRomMetaList[1].offset, assetSectionRomMetaList[1].compFlag, assetSectionRomMetaList[1].unk6);
-    __android_log_print(ANDROID_LOG_INFO, "BKA-META", "raw meta[2] offset=0x%08X comp=%d unk6=%d",
+    __android_log_print(ANDROID_LOG_INFO, "BKA-META", "swapped meta[2] offset=0x%08X comp=%d unk6=%d",
         assetSectionRomMetaList[2].offset, assetSectionRomMetaList[2].compFlag, assetSectionRomMetaList[2].unk6);
-    D_80383CCC = D_80383CC8 + sizeof(AssetROMHead) + assetSectionRomHeader->count*sizeof(AssetFileMeta);
+
+    D_80383CCC = D_80383CC8 + sizeof(AssetROMHead) + assetSectionRomHeader->count * sizeof(AssetFileMeta);
 }
 
 s32 asset_getCompressedSize(enum asset_e arg0){
