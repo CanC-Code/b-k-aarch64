@@ -49,6 +49,7 @@ void func_8033BAB0(enum asset_e asset_id, s32 offset, s32 size, void *dst_ptr);
 
 /* .core2 */
 f32 func_8033AA10(AnimationFile *this, s32 arg1){
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-BONE", "func_8033AFB8 entry\n");
     if(arg1 == this->unk2)
         return 0.999999f;
     return (f32)(arg1 - this->unk0)/(f32)(this->unk2 - this->unk0);
