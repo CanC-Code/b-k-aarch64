@@ -3,6 +3,7 @@
 #include "variables.h"
 
 #include "core2/timedfunc.h"
+#include <android/log.h>
 
 void ncStaticCamera_exit(void);
 void ncStaticCamera_setToNode(s32);
@@ -301,8 +302,10 @@ void timedFuncQueue_free(void){
 }
 
 void timedFuncQueue_init(void){
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-TFQ", "timedFuncQueue_init before ptr=%p\n", D_80383380.ptr);
     D_80383380.ptr = vector_new(0x70, 0x10);
     D_80383380.time = 0.0f;
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-TFQ", "timedFuncQueue_init after ptr=%p\n", D_80383380.ptr);
 }
 
 /* 
@@ -313,9 +316,19 @@ void timedFuncQueue_update(void){
     TimedFunction *iPtr;
     TimedFunction iFunc;
 
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-TFQ", "timedFuncQueue_update enter ptr=%p\n", D_80383380.ptr);
+
     if (D_80383380.ptr == NULL) {
-        timedFuncQueue_init();
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-TFQ", "timedFuncQueue_update NULL ptr, initializing\n");
+        D_80383380.ptr = vector_new(0x70, 0x10);
+        D_80383380.time = 0.0f;
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-TFQ", "timedFuncQueue_update after init ptr=%p\n", D_80383380.ptr);
     }
+    if (D_80383380.ptr == NULL) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-TFQ", "timedFuncQueue_update vector_new returned NULL, aborting update\n");
+        return;
+    }
+
     if(vector_size(D_80383380.ptr) == 0)
         return;
 
