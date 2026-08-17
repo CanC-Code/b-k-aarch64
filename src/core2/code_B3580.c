@@ -3,6 +3,7 @@
 #include "functions.h"
 #include "variables.h"
 #include "animation.h"
+#include <android/log.h>
 
 
 extern void func_803458E4(f32[4], f32[4], f32[4], f32);
@@ -101,6 +102,7 @@ void boneTransformList_interpolate(BoneTransformList *this, BoneTransformList *s
 
 
 void func_8033A8F0(BoneTransformList *this, s32 bone_id, f32 arg2[4]){
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-BONE", "func_8033A8F0 entry\n");
     if (this == NULL) return;
     if ((uintptr_t)this < 0x100000000ULL) this = (BoneTransformList*)BKA_TRANSLATE_ADDR(this);
     if (this == NULL) return;
