@@ -510,8 +510,16 @@ void assetCache_init(void){
     assetSectionRomHeader = (AssetROMHead *)malloc(sizeof(AssetROMHead));
     D_80383CC8 = (u32)assets_ROM_START;
     piMgr_read(assetSectionRomHeader, D_80383CC8, sizeof(AssetROMHead));
+    __android_log_print(ANDROID_LOG_INFO, "BKA-META", "raw count=0x%08X unk4=0x%08X",
+        assetSectionRomHeader->count, assetSectionRomHeader->unk4);
     assetSectionRomMetaList = (AssetFileMeta *)malloc(assetSectionRomHeader->count*sizeof(AssetFileMeta));
     piMgr_read(assetSectionRomMetaList, D_80383CC8 + sizeof(AssetROMHead),assetSectionRomHeader->count*sizeof(AssetFileMeta));
+    __android_log_print(ANDROID_LOG_INFO, "BKA-META", "raw meta[0] offset=0x%08X comp=%d unk6=%d",
+        assetSectionRomMetaList[0].offset, assetSectionRomMetaList[0].compFlag, assetSectionRomMetaList[0].unk6);
+    __android_log_print(ANDROID_LOG_INFO, "BKA-META", "raw meta[1] offset=0x%08X comp=%d unk6=%d",
+        assetSectionRomMetaList[1].offset, assetSectionRomMetaList[1].compFlag, assetSectionRomMetaList[1].unk6);
+    __android_log_print(ANDROID_LOG_INFO, "BKA-META", "raw meta[2] offset=0x%08X comp=%d unk6=%d",
+        assetSectionRomMetaList[2].offset, assetSectionRomMetaList[2].compFlag, assetSectionRomMetaList[2].unk6);
     D_80383CCC = D_80383CC8 + sizeof(AssetROMHead) + assetSectionRomHeader->count*sizeof(AssetFileMeta);
 }
 
