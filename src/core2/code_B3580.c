@@ -102,9 +102,9 @@ void boneTransformList_interpolate(BoneTransformList *this, BoneTransformList *s
 
 void func_8033A8F0(BoneTransformList *this, s32 bone_id, f32 arg2[4]){
     if (this == NULL) return;
-    this = (BoneTransformList*)BKA_TRANSLATE_ADDR(this);
+    if ((uintptr_t)this < 0x100000000ULL) this = (BoneTransformList*)BKA_TRANSLATE_ADDR(this);
     if (this == NULL || this->ptr == NULL) return;
-    this->ptr = (BoneTransform*)BKA_TRANSLATE_ADDR(this->ptr);
+    if ((uintptr_t)this->ptr < 0x100000000ULL) this->ptr = (BoneTransform*)BKA_TRANSLATE_ADDR(this->ptr);
     if (this->ptr == NULL) return;
     if (bone_id < 0 || bone_id >= this->count) return;
     vec4f_clone(&this->ptr[bone_id], arg2);
@@ -112,9 +112,9 @@ void func_8033A8F0(BoneTransformList *this, s32 bone_id, f32 arg2[4]){
 
 void boneTransformList_setBoneScale(BoneTransformList *this, s32 bone_id, f32 scale[3]) {
     if (this == NULL) return;
-    this = (BoneTransformList*)BKA_TRANSLATE_ADDR(this);
+    if ((uintptr_t)this < 0x100000000ULL) this = (BoneTransformList*)BKA_TRANSLATE_ADDR(this);
     if (this == NULL || this->ptr == NULL) return;
-    this->ptr = (BoneTransform*)BKA_TRANSLATE_ADDR(this->ptr);
+    if ((uintptr_t)this->ptr < 0x100000000ULL) this->ptr = (BoneTransform*)BKA_TRANSLATE_ADDR(this->ptr);
     if (this->ptr == NULL) return;
     if (bone_id < 0 || bone_id >= this->count) return;
     this->ptr[bone_id].scale[0] = scale[0];
@@ -124,9 +124,9 @@ void boneTransformList_setBoneScale(BoneTransformList *this, s32 bone_id, f32 sc
 
 void func_8033A968(BoneTransformList *this, s32 bone_id, f32 arg2[3]) {
     if (this == NULL) return;
-    this = (BoneTransformList*)BKA_TRANSLATE_ADDR(this);
+    if ((uintptr_t)this < 0x100000000ULL) this = (BoneTransformList*)BKA_TRANSLATE_ADDR(this);
     if (this == NULL || this->ptr == NULL) return;
-    this->ptr = (BoneTransform*)BKA_TRANSLATE_ADDR(this->ptr);
+    if ((uintptr_t)this->ptr < 0x100000000ULL) this->ptr = (BoneTransform*)BKA_TRANSLATE_ADDR(this->ptr);
     if (this->ptr == NULL) return;
     if (bone_id < 0 || bone_id >= this->count) return;
     this->ptr[bone_id].unk1C[0] = arg2[0];
