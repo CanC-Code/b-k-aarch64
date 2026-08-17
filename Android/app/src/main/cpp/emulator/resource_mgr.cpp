@@ -438,27 +438,8 @@ void ResourceMgr_HandleDma(void* dramAddr, uint32_t devAddr, uint32_t size) {
     static char path[512];
     uint32_t relativeRomOffset = devAddr & 0x0FFFFFFF;
 
-    // --- PATH 1: Try pre-extracted asset file ---
-    snprintf(path, sizeof(path), "%sasset_%08X.bin", g_assetDir.c_str(), relativeRomOffset);
-    FILE* f = fopen(path, "rb");
-    if (!f) {
-        snprintf(path, sizeof(path), "%sasset_%08X.bin", g_assetDir.c_str(), devAddr);
-        f = fopen(path, "rb");
-    }
-
-    if (f) {
-        int fd1 = fileno(f);
-        ssize_t bytesRead = pread(fd1, dramAddr, size, 0);
-        fclose(f);
-        if (bytesRead > 0) {
-            if ((size_t)bytesRead < size)
-                memset((uint8_t*)dramAddr + bytesRead, 0, size - bytesRead);
-        } else {
-            memset(dramAddr, 0, size);
-        }
-        sched_yield();
-        return;
-    }
+    // --- PATH 1: Disabled: always use rom_base.bin to avoid stale pre-extracted asset files ---
+    // (Stale zero-byte asset files caused wrong metadata and decompression hangs.)
 
     // --- PATH 2: Host pointer → host pointer DMA ---
     // The decompressor (func_80000594 → func_80000618) passes buffer pointers
