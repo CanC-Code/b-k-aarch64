@@ -104,7 +104,7 @@ static int _rarezip_inflate(u8 * src, u8 * dst, struct huft_s * arg2){
     inflate_slide = (u8 *)((uintptr_t)dst & 0xFFFFFFFFFFFFULL);
     inflate_huft = (struct huft_s *)((uintptr_t)arg2 & 0xFFFFFFFFFFFFULL);
     if (inflate_huft == NULL) {
-        inflate_huft = gGlobalHuffTable;
+        inflate_huft = &gGlobalHuffTable;
     }
     inflate_inbuf += COMP_HEADER_SIZE;
     inflate_wp = 0;
