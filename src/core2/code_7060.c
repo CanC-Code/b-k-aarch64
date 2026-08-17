@@ -1,4 +1,6 @@
 #include <ultra64.h>
+#include <android/log.h>
+#define LOG_BKA_INIT(tag) __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "func_8028E4B0: %s", tag)
 #include "functions.h"
 #include "variables.h"
 #include "core2/statetimer.h"
@@ -182,44 +184,57 @@ void func_8028E4B0(void) {
     s32 sp24[3];
     s32 sp20;
 
+    LOG_BKA_INIT("start");
     D_8037BFBA = TRUE;
     D_8037BFB9 = FALSE;
-    bsmethods_reset();
+    LOG_BKA_INIT("bsmethods_reset"); bsmethods_reset();
     sp20 = gsworld_getExit();
     D_8037BFB8 = 0;
-    playerPosition_set(D_803636C0);
+    LOG_BKA_INIT("playerPosition_set"); playerPosition_set(D_803636C0);
+    LOG_BKA_INIT("early checks");
     if (volatileFlag_get(VOLATILE_FLAG_E) || func_802D686C() || (sp20 == 0x65)){
+        LOG_BKA_INIT("early return");
         return;
     }
     if (sp20 == 0x63) {
+        LOG_BKA_INIT("case 0x63: func_8028F85C");
         func_8028F85C(D_8037BFC0);
         yaw_set(D_8037BFCC);
         D_8037BFBC = (s32) D_8037BFD0;
         D_8037BFB8 = 1;
+        LOG_BKA_INIT("case 0x63: func_80295A8C");
         func_80295A8C();
         bsStoredState_setTrot(FALSE);
         baflag_clear(BA_FLAG_16_FLYING);
         yaw_setIdeal(D_8037BFCC);
         yaw_applyIdeal();
     } else if (func_8028DFF0(sp20, sp24)) {
-            func_8028E0F0(sp20, sp24);
+        LOG_BKA_INIT("calling func_8028E0F0 (first)");
+        func_8028E0F0(sp20, sp24);
+        LOG_BKA_INIT("returned from func_8028E0F0");
     } else {
+        LOG_BKA_INIT("calling func_8028E440");
         sp20 = func_8028E440(sp24);
         if (sp20 != -1) {
+            LOG_BKA_INIT("calling func_8028E0F0 (second)");
             func_8028E0F0(sp20, sp24);
+            LOG_BKA_INIT("returned from func_8028E0F0 (second)");
         }
     }
     if (D_80363694 != 0) {
         D_80363694--;
         if (D_80363694 == 0) {
+            LOG_BKA_INIT("restore position");
             func_8028F85C(D_80363698);
             player_setRotation(D_803636A4);
         }
     }
     if (D_803636B0) {
         D_803636B0 = FALSE;
+        LOG_BKA_INIT("restore void out pos");
         func_8028F85C(D_803636B4);
     }
+    LOG_BKA_INIT("complete");
 }
 
 void func_8028E644(void){
