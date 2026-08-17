@@ -57,6 +57,7 @@ TimedFunction* __timedFuncQueue_insert(f32, s32, void *funcPtr, s32, s32, s32, s
 void func_80324BA0(s32);
 
 void func_802BE720(void);
+void timedFuncQueue_init(void);
 
 /* .bss */
 TimedFunctionArray D_80383380;
