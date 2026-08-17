@@ -7,6 +7,7 @@
 #include "prop.h"
 
 #include "core2/dustemitter.h"
+#include <android/log.h>
 
 extern void func_803012F8(void);
 extern void __baMarker_8028BA00(s32);
@@ -885,11 +886,21 @@ void __baMarker_resolveCollision(Prop *other_prop){
 
 void baMarker_init(void){
     f32 sp1C[3];
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-MARKER", "baMarker_init entry\n");
     playerPosition_get(sp1C);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-MARKER", "baMarker_init position=%f %f %f baModel_80291AAC=%p\n", sp1C[0], sp1C[1], sp1C[2], baModel_80291AAC);
     playerMarker = func_8032FBE4(sp1C, baModel_80291AAC, 1, 0);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-MARKER", "baMarker_init after func_8032FBE4 playerMarker=%p\n", playerMarker);
+    if (playerMarker == NULL) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-MARKER", "baMarker_init playerMarker is NULL\n");
+        return;
+    }
     playerMarker->unk2C_1 = 1;
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-MARKER", "baMarker_init after playerMarker->unk2C_1\n");
     marker_setCollisionScripts(playerMarker, NULL, func_80291634, func_80291610);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-MARKER", "baMarker_init after marker_setCollisionScripts\n");
     func_803300B8(playerMarker, baMarker_8028D7B8);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-MARKER", "baMarker_init after func_803300B8\n");
     baflag_clear(BA_FLAG_1_ON_FLIGHT_PAD);
     baflag_clear(BA_FLAG_2_ON_SPRING_PAD);
     baflag_clear(BA_FLAG_8);
@@ -897,7 +908,8 @@ void baMarker_init(void){
     func_8033D2F4();
     D_8037BF8C = 0;
     D_8037BF90 = 0xff;
-    
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-MARKER", "baMarker_init complete\n");
+
 }
 
 void baMarker_free(void){
