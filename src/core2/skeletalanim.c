@@ -3,6 +3,7 @@
 #include "variables.h"
 
 #include "animation.h"
+#include "core2/bonetransform.h"
 
 extern void animationFile_getBoneTransformList(void *, f32, BoneTransformList *);
 extern void boneTransformList_interpolate(BoneTransformList *, BoneTransformList *, BoneTransformList *, f32);
