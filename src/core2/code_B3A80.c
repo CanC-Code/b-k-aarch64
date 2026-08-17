@@ -49,7 +49,7 @@ void func_8033BAB0(enum asset_e asset_id, s32 offset, s32 size, void *dst_ptr);
 
 /* .core2 */
 f32 func_8033AA10(AnimationFile *this, s32 arg1){
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-BONE", "func_8033AFB8 entry\n");
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-BONE", "func_8033AFB8 entry this=%p bone_id=%d\n", bone_transform_list, bone_id);
     if(arg1 == this->unk2)
         return 0.999999f;
     return (f32)(arg1 - this->unk0)/(f32)(this->unk2 - this->unk0);
@@ -59,6 +59,7 @@ f32 func_8033ABA0(AnimationFile *this, f32 arg1){
 }
 
 void animationFile_getBoneTransformList(AnimationFile *anim_file, f32 progress, BoneTransformList *bone_transform_list){
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-BONE", "animFile_getBoneTransformList anim_file=%p bone_transform_list=%p progress=%f\n", anim_file, bone_transform_list, progress);
     if (anim_file == NULL || bone_transform_list == NULL) return;
     s32 bone_id;
     int i;
@@ -188,7 +189,7 @@ f32 func_8033AC38(AnimationFile *this, AnimationFileElement *elem, f32 time){
 }
 
 void func_8033AFB8(BoneTransformList *bone_transform_list, s32 bone_id, f32 arg2[3][3]){
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-BONE", "func_8033AFB8 entry\n");
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-BONE", "func_8033AFB8 entry this=%p bone_id=%d\n", bone_transform_list, bone_id);
     f32 sp18[8];
     sp18[4] = sp18[5] = sp18[6] = sp18[7] = 0.0f;
     func_80345CD4(sp18, arg2[0]);
