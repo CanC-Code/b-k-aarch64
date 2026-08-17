@@ -87,20 +87,32 @@ void func_802E3854(void){
 }
 
 void func_802E38E8(enum map_e map, s32 exit, s32 reset_on_load){
+    LOG_BKA_INIT("func_802E38E8: start");
     if(reset_on_load || level_get() != map_getLevel(map)){
+        LOG_BKA_INIT("func_802E38E8: func_8030AFD8(1)");
         func_8030AFD8(1);
+        LOG_BKA_INIT("func_802E38E8: func_80321854");
         func_80321854();
+        LOG_BKA_INIT("func_802E38E8: func_803216D0(map)");
         func_803216D0(map); //load_map_asm
+        LOG_BKA_INIT("func_802E38E8: func_8030AFA0(map)");
         func_8030AFA0(map);
     }
     else{
+        LOG_BKA_INIT("func_802E38E8: func_8030AFD8(1) (else)");
         func_8030AFD8(1);
+        LOG_BKA_INIT("func_802E38E8: func_8030AFA0(map) (else)");
         func_8030AFA0(map);
     }
+    LOG_BKA_INIT("func_802E38E8: func_802FA508");
     func_802FA508();
+    LOG_BKA_INIT("func_802E38E8: gsworld_set");
     gsworld_set(map, exit, 0);
+    LOG_BKA_INIT("func_802E38E8: func_802E3800");
     func_802E3800();
+    LOG_BKA_INIT("func_802E38E8: func_8033DC10");
     func_8033DC10();
+    LOG_BKA_INIT("func_802E38E8: complete");
 }
 
 void func_802E398C(s32 arg0) {
