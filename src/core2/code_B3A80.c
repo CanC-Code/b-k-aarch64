@@ -2,6 +2,7 @@
 #include "../../Android/app/src/main/cpp/bka_safe_base.h"
 static inline s16 bswap16(s16 v) { return (s16)__builtin_bswap16((u16)v); }
 #include <android/log.h>
+#define LOG_BKA_ACACHE(tag, ...) __android_log_print(ANDROID_LOG_INFO, "BKA-ACACHE", tag, ##__VA_ARGS__)
 #include <ultra64.h>
 #include "functions.h"
 #include "variables.h"
