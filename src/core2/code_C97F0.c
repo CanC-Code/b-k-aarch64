@@ -1,4 +1,6 @@
 #include <ultra64.h>
+#include <android/log.h>
+#define LOG_BKA_INIT(tag) __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "func_80350BFC: %s", tag)
 #include "core1/core1.h"
 #include "functions.h"
 #include "variables.h"
@@ -177,14 +179,22 @@ void func_80350BC8(void){
 }
 
 void func_80350BFC(void) {
+    LOG_BKA_INIT("start");
+    LOG_BKA_INIT("calling func_803507CC");
     D_80386170.unk4 = func_803507CC(gsworld_getMap());
+    LOG_BKA_INIT("func_803507CC returned %p", (void*)D_80386170.unk4);
     if (D_80386170.unk4 != NULL) {
+        LOG_BKA_INIT("calling func_80350780");
         D_80386170.unk0 = func_80350780(D_80386170.unk4->unk10);
+        LOG_BKA_INIT("func_80350780 returned %p", (void*)D_80386170.unk0);
+        LOG_BKA_INIT("calling assetcache_get(0x882)");
         D_80386170.unk8 = assetcache_get(0x882);
+        LOG_BKA_INIT("assetcache_get returned %p", (void*)D_80386170.unk8);
         ml_vec3f_set_length(D_80386170.unk4->unk4, (2*(f32)gFramebufferWidth) / 2);
         D_8038617C.unk0 = 1;
         D_8038617C.unk1 = 0;
     }
+    LOG_BKA_INIT("complete");
 }
 
 void func_80350CA4(void) {
