@@ -1,4 +1,6 @@
 #include <ultra64.h>
+#include <android/log.h>
+#define LOG_BKA_INIT(tag) __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "gsworld_set: %s", tag)
 #include "core1/core1.h"
 #include "functions.h"
 #include "variables.h"
@@ -192,85 +194,87 @@ void gsworld_free(void) {
 }
 
 void gsworld_set(enum map_e map, s32 exit, bool reload) {
+    LOG_BKA_INIT("start");
     sGsWorldData.unk0 = 3;
     sGsWorldData.map = map;
     sGsWorldData.exit = exit;
-    leveloverlay_init();
+    LOG_BKA_INIT("leveloverlay_init"); leveloverlay_init();
     gsworld_setEnableUpdate(TRUE);
     gsworld_setEnableDraw(TRUE);
-    func_802D2CB8();
-    core1_7090_alloc();
+    LOG_BKA_INIT("func_802D2CB8"); func_802D2CB8();
+    LOG_BKA_INIT("core1_7090_alloc"); core1_7090_alloc();
     if (gsworld_getMap() == MAP_8E_GL_FURNACE_FUN) {
-        func_8038E7C4();
+        LOG_BKA_INIT("func_8038E7C4"); func_8038E7C4();
     }
     if (!func_80322914()) {
-        musicTrack_load(core2_9B650_getMusicTrackFromMap(sGsWorldData.map));
+        LOG_BKA_INIT("musicTrack_load"); musicTrack_load(core2_9B650_getMusicTrackFromMap(sGsWorldData.map));
     }
-    func_80320B84();
-    AnimTextureListCache_init();
-    func_8034C97C();
-    func_8030A078();
-    func_8031B718();
-    playerModel_set();
+    LOG_BKA_INIT("func_80320B84"); func_80320B84();
+    LOG_BKA_INIT("AnimTextureListCache_init"); AnimTextureListCache_init();
+    LOG_BKA_INIT("func_8034C97C"); func_8034C97C();
+    LOG_BKA_INIT("func_8030A078"); func_8030A078();
+    LOG_BKA_INIT("func_8031B718"); func_8031B718();
+    LOG_BKA_INIT("playerModel_set"); playerModel_set();
     if (!func_802E4A08()) {
-        itemPrint_init();
+        LOG_BKA_INIT("itemPrint_init"); itemPrint_init();
     }
-    dialogBin_initialize();
-    spawnQueue_malloc();
-    func_803329AC();
-    func_80350BFC();
-    func_80323190();
-    func_80332894();
-    func_803305AC();
-    func_8031F9E8();
-    func_80323230();
-    commonParticleType_init();
-    animBinCache_init();
-    animsprite_init();
-    func_80344C50();
-    func_8033F9C0();
-    ncCameraNodeList_init();
-    nccamera_init();
-    partEmitMgr_init();
-    pem_setAllInactive();
-    pem_initDependencies();
-    func_802F7D30();
-    propModelList_init();
-    lighting_init();
-    sky_reset();
-    func_803343D0();
-    cubeList_init();
-    func_802FA69C();
-    commonParticle_init();
+    LOG_BKA_INIT("dialogBin_initialize"); dialogBin_initialize();
+    LOG_BKA_INIT("spawnQueue_malloc"); spawnQueue_malloc();
+    LOG_BKA_INIT("func_803329AC"); func_803329AC();
+    LOG_BKA_INIT("func_80350BFC"); func_80350BFC();
+    LOG_BKA_INIT("func_80323190"); func_80323190();
+    LOG_BKA_INIT("func_80332894"); func_80332894();
+    LOG_BKA_INIT("func_803305AC"); func_803305AC();
+    LOG_BKA_INIT("func_8031F9E8"); func_8031F9E8();
+    LOG_BKA_INIT("func_80323230"); func_80323230();
+    LOG_BKA_INIT("commonParticleType_init"); commonParticleType_init();
+    LOG_BKA_INIT("animBinCache_init"); animBinCache_init();
+    LOG_BKA_INIT("animsprite_init"); animsprite_init();
+    LOG_BKA_INIT("func_80344C50"); func_80344C50();
+    LOG_BKA_INIT("func_8033F9C0"); func_8033F9C0();
+    LOG_BKA_INIT("ncCameraNodeList_init"); ncCameraNodeList_init();
+    LOG_BKA_INIT("nccamera_init"); nccamera_init();
+    LOG_BKA_INIT("partEmitMgr_init"); partEmitMgr_init();
+    LOG_BKA_INIT("pem_setAllInactive"); pem_setAllInactive();
+    LOG_BKA_INIT("pem_initDependencies"); pem_initDependencies();
+    LOG_BKA_INIT("func_802F7D30"); func_802F7D30();
+    LOG_BKA_INIT("propModelList_init"); propModelList_init();
+    LOG_BKA_INIT("lighting_init"); lighting_init();
+    LOG_BKA_INIT("sky_reset"); sky_reset();
+    LOG_BKA_INIT("func_803343D0"); func_803343D0();
+    LOG_BKA_INIT("cubeList_init"); cubeList_init();
+    LOG_BKA_INIT("func_802FA69C"); func_802FA69C();
+    LOG_BKA_INIT("commonParticle_init"); commonParticle_init();
     if (!reload) {
-        gsworld_load(map);
+        LOG_BKA_INIT("gsworld_load"); gsworld_load(map);
     }
-    func_80305990(0);
-    func_8030C740();
-    gcdialog_init();
-    mapSpecificFlags_clearAll();
-    func_803411B0();
-    spawnQueue_reset();
-    leveloverlay_initCallback_NotFP();
-    func_8028E4B0();
-    leveloverlay_initCallback_OnlyFP();
-    func_80323120();
-    func_803223AC();
-    bundle_reset();
-    func_8034F774();
-    func_80350174();
-    gcparade_init();
-    func_80351998();
-    func_802BC2CC(sGsWorldData.exit);
-    func_802D63D4();
-    func_80255A04();
-    func_802D6948();
+    LOG_BKA_INIT("func_80305990"); func_80305990(0);
+    LOG_BKA_INIT("func_8030C740"); func_8030C740();
+    LOG_BKA_INIT("gcdialog_init"); gcdialog_init();
+    LOG_BKA_INIT("mapSpecificFlags_clearAll"); mapSpecificFlags_clearAll();
+    LOG_BKA_INIT("func_803411B0"); func_803411B0();
+    LOG_BKA_INIT("spawnQueue_reset"); spawnQueue_reset();
+    LOG_BKA_INIT("leveloverlay_initCallback_NotFP"); leveloverlay_initCallback_NotFP();
+    LOG_BKA_INIT("func_8028E4B0"); func_8028E4B0();
+    LOG_BKA_INIT("leveloverlay_initCallback_OnlyFP"); leveloverlay_initCallback_OnlyFP();
+    LOG_BKA_INIT("func_80323120"); func_80323120();
+    LOG_BKA_INIT("func_803223AC"); func_803223AC();
+    LOG_BKA_INIT("bundle_reset"); bundle_reset();
+    LOG_BKA_INIT("func_8034F774"); func_8034F774();
+    LOG_BKA_INIT("func_80350174"); func_80350174();
+    LOG_BKA_INIT("gcparade_init"); gcparade_init();
+    LOG_BKA_INIT("func_80351998"); func_80351998();
+    LOG_BKA_INIT("func_802BC2CC"); func_802BC2CC(sGsWorldData.exit);
+    LOG_BKA_INIT("func_802D63D4"); func_802D63D4();
+    LOG_BKA_INIT("func_80255A04"); func_80255A04();
+    LOG_BKA_INIT("func_802D6948"); func_802D6948();
     if (!func_802E4A08()) {
-        print_resetBoldFontTexture();
+        LOG_BKA_INIT("print_resetBoldFontTexture"); print_resetBoldFontTexture();
     }
     if (map != MAP_1F_CS_START_RAREWARE) {
-        func_8024F150();
+        LOG_BKA_INIT("func_8024F150"); func_8024F150();
     }
+    LOG_BKA_INIT("complete");
 }
 
 void gsworld_reload(void) {
