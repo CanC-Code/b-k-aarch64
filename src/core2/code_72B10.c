@@ -184,6 +184,10 @@ void func_802FA0F8(void){
     f32 f20;
     struct4Es *iPtr;
 
+    if (D_803810A0 == NULL) {
+        func_802F9CD8();
+    }
+
     tick = time_getDelta();
     startPtr = vector_getBegin(D_803810A0);
     endPtr = vector_getEnd(D_803810A0);
