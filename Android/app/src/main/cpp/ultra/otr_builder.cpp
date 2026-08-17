@@ -411,6 +411,14 @@ Java_com_bkawrapper_OtrService_runNativeOtrGeneration(
     if (romSize >= 4) {
         memcpy(romBaseBuffer, romData, 4);
     }
+    if (romSize > 0x5EA0) {
+        __android_log_print(ANDROID_LOG_INFO, "BKA_OTR",
+            "Asset table dump @0x5E80: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
+            romData[0x5E80], romData[0x5E81], romData[0x5E82], romData[0x5E83],
+            romData[0x5E84], romData[0x5E85], romData[0x5E86], romData[0x5E87],
+            romData[0x5E88], romData[0x5E89], romData[0x5E8A], romData[0x5E8B],
+            romData[0x5E8C], romData[0x5E8D], romData[0x5E8E], romData[0x5E8F]);
+    }
 
     // -----------------------------------------------------------------------
     // STEP 3: Parse Splat YAML directly instead of binary manifest
