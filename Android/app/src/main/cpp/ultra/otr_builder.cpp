@@ -547,6 +547,19 @@ Java_com_bkawrapper_OtrService_runNativeOtrGeneration(
 
 
     // -----------------------------------------------------------------------
+    // DEBUG: Dump bytes at asset table offset before writing
+    if (romSize > 0x5EA0) {
+        __android_log_print(ANDROID_LOG_INFO, "BKA_ATBL",
+            "romData[0x5E90..0x5E97]: %02X %02X %02X %02X %02X %02X %02X %02X",
+            romData[0x5E90], romData[0x5E91], romData[0x5E92], romData[0x5E93],
+            romData[0x5E94], romData[0x5E95], romData[0x5E96], romData[0x5E97]);
+        __android_log_print(ANDROID_LOG_INFO, "BKA_ATBL",
+            "romBaseBuffer[0x5E90..0x5E97]: %02X %02X %02X %02X %02X %02X %02X %02X",
+            romBaseBuffer[0x5E90], romBaseBuffer[0x5E91], romBaseBuffer[0x5E92], romBaseBuffer[0x5E93],
+            romBaseBuffer[0x5E94], romBaseBuffer[0x5E95], romBaseBuffer[0x5E96], romBaseBuffer[0x5E97]);
+    }
+
+    // -----------------------------------------------------------------------
     // STEP 5: Write rom_base.bin to disk
     // -----------------------------------------------------------------------
     debug_ui(env, callback, progressMid, 90, "Writing rom_base.bin...");
