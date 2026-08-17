@@ -440,6 +440,7 @@ void ResourceMgr_HandleDma(void* dramAddr, uint32_t devAddr, uint32_t size) {
 
     // --- PATH 1: Disabled: always use rom_base.bin to avoid stale pre-extracted asset files ---
     // (Stale zero-byte asset files caused wrong metadata and decompression hangs.)
+    FILE* f;
 
     // --- PATH 2: Host pointer → host pointer DMA ---
     // The decompressor (func_80000594 → func_80000618) passes buffer pointers
