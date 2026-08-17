@@ -415,7 +415,7 @@ void gsworld_load(enum map_e map_id) {
     core1_15B30_sendMesg3ToRenderThread();
 
     f = file_openMap(map_id);
-    LOG_BKA_INIT("gsworld_load: file_openMap returned %p", (void*)f);
+    __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "gsworld_load: file_openMap returned %p", (void*)f);
 
     if (!f) return;
     while (!file_isNextByteExpected(f, GS_WORLD_START_INDICATOR_0_END)) {
