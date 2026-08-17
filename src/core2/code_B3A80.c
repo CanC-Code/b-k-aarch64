@@ -390,30 +390,35 @@ void assetcache_func_8033B788(void) {
 }
 
 void *assetcache_get(enum asset_e assetId) {
-    s32 comp_size;//sp_44
+    s32 comp_size;
     s32 i;
-    volatile s32 sp3C; //sp3C
-    s32 uncomp_size; //sp38
-    void *uncompressed_file;//sp34
-    u8 sp33; //sp33
-    void *compressed_file;//sp2C
+    volatile s32 sp3C;
+    s32 uncomp_size;
+    void *uncompressed_file;
+    u8 sp33;
+    void *compressed_file;
     bool sp28;
-    
+
+    __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "assetcache_get: START assetId=%d", assetId);
     sp28 = D_80370A1C;
     D_80370A1C = FALSE;
+
     for(i = 0; i < assetCacheLength && assetId != assetCacheAssetIdList[i]; i++);
     assetCacheCurrentIndex = i;
-        
-    if(i < assetCacheLength){ //asset exists in array;
+
+    if(i < assetCacheLength){
         assetCacheDependencyCount[i]++;
+        __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "assetcache_get: CACHE HIT assetId=%d", assetId);
         return assetCachePtrList[i];
     }
-    comp_size = assetSectionRomMetaList[assetId+1].offset - assetSectionRomMetaList[assetId].offset;
-    if(comp_size & 1) 
-        comp_size++;
-    sp3C = comp_size;
 
-    if(assetSectionRomMetaList[assetId].compFlag & 0x0001){//compressed
+    comp_size = assetSectionRomMetaList[assetId+1].offset - assetSectionRomMetaList[assetId].offset;
+    if(comp_size & 1) comp_size++;
+    sp3C = comp_size;
+    __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "assetcache_get: comp_size=%d", comp_size);
+
+    if(assetSectionRomMetaList[assetId].compFlag & 0x0001){
+        __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "assetcache_get: COMPRESSED assetId=%d, reading header", assetId);
         func_8033BAB0(assetId, 0, 0x10, &D_80383CB0);
         assetCacheCurrentSize = rarezip_get_uncompressed_size(&D_80383CB0);
         uncomp_size = assetCacheCurrentSize;
@@ -421,11 +426,13 @@ void *assetcache_get(enum asset_e assetId) {
             uncomp_size -= uncomp_size & 0xF;
             uncomp_size += 0x10;
         }
-        
+        __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "assetcache_get: uncomp_size=%d", uncomp_size);
+
         if (func_8025498C((u32)comp_size + uncomp_size) && !sp28) {
             sp33 = 1;
             uncompressed_file = malloc((u32)comp_size + uncomp_size + 64);
             compressed_file = (void *)((u8*)uncompressed_file + uncomp_size);
+            __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "assetcache_get: single alloc uncomp=%p comp=%p", uncompressed_file, compressed_file);
         } else {
             sp33 = 2;
             if (sp28) {
@@ -433,14 +440,22 @@ void *assetcache_get(enum asset_e assetId) {
             }
             uncompressed_file = malloc(uncomp_size);
             compressed_file = malloc(comp_size);
+            __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "assetcache_get: double alloc uncomp=%p comp=%p", uncompressed_file, compressed_file);
         }
-    } else { //uncompressed
+    } else {
         uncompressed_file = malloc(comp_size + 64);
         compressed_file = uncompressed_file;
+        __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "assetcache_get: UNCOMPRESSED assetId=%d ptr=%p", assetId, uncompressed_file);
     }
+
+    __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "assetcache_get: before piMgr_read assetId=%d", assetId);
     piMgr_read(compressed_file, assetSectionRomMetaList[assetId].offset + D_80383CCC, sp3C);
-    if(assetSectionRomMetaList[assetId].compFlag & 0x0001){//decompress
+    __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "assetcache_get: after piMgr_read assetId=%d", assetId);
+
+    if(assetSectionRomMetaList[assetId].compFlag & 0x0001){
+        __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "assetcache_get: before bk_inflate assetId=%d", assetId);
         rarezip_inflate(compressed_file, uncompressed_file);
+        __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "assetcache_get: after bk_inflate assetId=%d", assetId);
 
         uncompressed_file = (void*)realloc(uncompressed_file, assetCacheCurrentSize);
         osWritebackDCache(uncompressed_file, assetCacheCurrentSize);
@@ -448,6 +463,7 @@ void *assetcache_get(enum asset_e assetId) {
             free(compressed_file);
         }
     }
+
     if (assetCacheLength >= g_assetCacheCapacity - 1) {
         u32 new_cap = g_assetCacheCapacity * 2;
         assetCachePtrList = (void**)realloc(assetCachePtrList, new_cap * sizeof(void*));
@@ -466,9 +482,10 @@ void *assetcache_get(enum asset_e assetId) {
     D_80383CD4[assetCacheLength] = 0;
     assetCacheAssetIdList[assetCacheLength] = assetId;
     assetCacheLength++;
+
+    __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "assetcache_get: COMPLETE assetId=%d", assetId);
     return uncompressed_file;
 }
-
 void func_8033BAB0(enum asset_e asset_id, s32 offset, s32 size, void *dst_ptr) {
     piMgr_read(dst_ptr, assetSectionRomMetaList[asset_id].offset + D_80383CCC + offset, size);
 }
