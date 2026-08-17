@@ -2,6 +2,7 @@
 #include "core1/core1.h"
 #include "functions.h"
 #include "variables.h"
+#include <math.h>
 
 #define LENGTH_SQ_VEC4F(v) (v[0]*v[0] + v[1]*v[1] + v[2]*v[2] + v[3]*v[3])
 
@@ -205,11 +206,21 @@ void func_80345C78(f32 arg0[4], f32 arg1[3]) {
 }
 
 void func_80345CD4(f32 arg0[4], f32 arg1[4]){
-    mlMtxIdent();
-    mlMtxRotRoll(arg1[2]);
-    mlMtxRotYaw(arg1[1]);
-    mlMtxRotPitch(arg1[0]);
-    func_80345A44(arg0, mlMtx_get_stack_pointer());
+    // Direct Euler (pitch, yaw, roll) -> quaternion.
+    // Original used mlMtxRot* + func_80345A44, but those helpers
+    // were corrupting the caller's stack on ARM64.
+    f32 pitch = arg1[0] * 0.5f;
+    f32 yaw   = arg1[1] * 0.5f;
+    f32 roll  = arg1[2] * 0.5f;
+
+    f32 sp = sinf(pitch), cp = cosf(pitch);
+    f32 sy = sinf(yaw),   cy = cosf(yaw);
+    f32 sr = sinf(roll),  cr = cosf(roll);
+
+    arg0[0] = sp * cy * cr - cp * sy * sr;
+    arg0[1] = cp * sy * cr + sp * cy * sr;
+    arg0[2] = cp * cy * sr - sp * sy * cr;
+    arg0[3] = cp * cy * cr + sp * sy * sr;
 }
 
 void func_80345D30(f32 arg0[4], f32 arg1[4], f32 arg2[4]) {
