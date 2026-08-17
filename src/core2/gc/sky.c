@@ -1,4 +1,6 @@
 #include <ultra64.h>
+#include <android/log.h>
+#define LOG_BKA_INIT(tag) __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "sky_reset: %s", tag)
 #include "core1/core1.h"
 #include "functions.h"
 #include "variables.h"
@@ -110,21 +112,31 @@ void sky_free(void){
 void sky_reset(void){
     int i;
 
+    LOG_BKA_INIT("start");
     gcSky.sky_info = sky_getMapSkyInfo(gsworld_getMap());
+    LOG_BKA_INIT("got sky_info");
     for(i = 0; i< 3; i++){
+        LOG_BKA_INIT("loop start");
         gcSky.model[i] = NULL;
         gcSky.model_bins[i] = NULL;
         if(gcSky.sky_info->sky_list[i].model_id){
+            LOG_BKA_INIT("calling assetcache_get");
             gcSky.model_bins[i] = assetcache_get(gcSky.sky_info->sky_list[i].model_id);
+            LOG_BKA_INIT("assetcache_get returned");
             if(gcSky.model_bins[i] && modelbin_getMeshList(gcSky.model_bins[i])){
+                LOG_BKA_INIT("calling meshList_createModel");
                 gcSky.model[i] = meshList_createModel(modelbin_getMeshList(gcSky.model_bins[i]), modelbin_getVtxList( gcSky.model_bins[i]));
+                LOG_BKA_INIT("meshList_createModel returned");
                 if (gcSky.model[i] != NULL) {
+                    LOG_BKA_INIT("calling func_8034C6DC");
                     func_8034C6DC(gcSky.model[i]);
+                    LOG_BKA_INIT("func_8034C6DC returned");
                 }
             }
         }
     }
     gcSky.timer = 0.0f;
+    LOG_BKA_INIT("complete");
 }
 
 void sky_update(void){
