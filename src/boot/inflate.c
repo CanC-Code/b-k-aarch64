@@ -56,6 +56,7 @@ u8 *inflate_inbuf;
 u8 *inflate_slide;
 u32 inflate_inptr;
 u32 inflate_wp;
+u32 inflate_out_limit = 0;
 struct huft_s *inflate_huft;
 static u32 bb;
 static u32 bk;
@@ -300,6 +301,7 @@ static s32 inflate_codes(struct huft_s *tl, struct huft_s *td, s32 bl, s32 bd)
             
             /* do the copy */
             do {
+                if (w >= inflate_out_limit) return 4;
                 tmp =  inflate_slide[d++];
                 inflate_slide[w++] = tmp;
                 inflate_crc1 += tmp;
@@ -342,6 +344,7 @@ static s32 inflate_stored(void) {
 
     /* read and output the compressed data */
     while (n--) {
+        if (w >= inflate_out_limit) return 4;
         NEEDBITS(8)
         inflate_slide[w++] = (u8) b;
         inflate_crc1 += b & 0xFF;

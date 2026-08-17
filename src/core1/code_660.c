@@ -99,6 +99,7 @@ static int _rarezip_inflate(u8 * src, u8 * dst, struct huft_s * arg2){
     extern struct huft_s *inflate_huft;
     extern u32 inflate_inptr;
     extern u32 inflate_wp;
+    extern u32 inflate_out_limit;
     
     inflate_inbuf = (u8 *)((uintptr_t)src & 0xFFFFFFFFFFFFULL);
     inflate_slide = (u8 *)((uintptr_t)dst & 0xFFFFFFFFFFFFULL);
@@ -106,6 +107,7 @@ static int _rarezip_inflate(u8 * src, u8 * dst, struct huft_s * arg2){
     if (inflate_huft == NULL) {
         inflate_huft = &gGlobalHuffTable;
     }
+    inflate_out_limit = rarezip_get_uncompressed_size(src);
     inflate_inbuf += COMP_HEADER_SIZE;
     inflate_wp = 0;
     inflate_inptr = 0;
@@ -129,6 +131,7 @@ static int _rarezip_inflate(u8 * src, u8 * dst, struct huft_s * arg2){
 static int _rarezip_uncompress(u8 **srcPtr, u8 **dstPtr, struct huft_s * arg2){
     int result;
     extern u32 inflate_wp;
+    extern u32 inflate_out_limit;
     extern u32 inflate_inptr;
     
     result = _rarezip_inflate(*srcPtr, *dstPtr, arg2);
