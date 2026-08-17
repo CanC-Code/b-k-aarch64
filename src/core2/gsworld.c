@@ -411,24 +411,33 @@ Opens the setup file and reads the contents.
 void gsworld_load(enum map_e map_id) {
     File *f;
 
+    LOG_BKA_INIT("gsworld_load: start");
     core1_15B30_sendMesg3ToRenderThread();
 
     f = file_openMap(map_id);
+    LOG_BKA_INIT("gsworld_load: file_openMap returned %p", (void*)f);
 
     if (!f) return;
     while (!file_isNextByteExpected(f, GS_WORLD_START_INDICATOR_0_END)) {
         if (file_isNextByteExpected(f, GS_WORLD_START_INDICATOR_2_UNUSED)) {
-            /* NO OP */
+            LOG_BKA_INIT("gsworld_load: unused section");
         } else if (file_isNextByteExpected(f, GS_WORLD_START_INDICATOR_1_CUBES)) {
+            LOG_BKA_INIT("gsworld_load: before cubeList_fromFile");
             cubeList_fromFile(f);
+            LOG_BKA_INIT("gsworld_load: after cubeList_fromFile");
         } else if (file_isNextByteExpected(f, GS_WORLD_START_INDICATOR_3_CAMERAS)) {
+            LOG_BKA_INIT("gsworld_load: before ncCameraNodeList_fromFile");
             ncCameraNodeList_fromFile(f);
+            LOG_BKA_INIT("gsworld_load: after ncCameraNodeList_fromFile");
         } else if (file_isNextByteExpected(f, GS_WORLD_START_INDICATOR_4_LIGHTING)) {
+            LOG_BKA_INIT("gsworld_load: before lightingVectorList_fromFile");
             lightingVectorList_fromFile(f);
+            LOG_BKA_INIT("gsworld_load: after lightingVectorList_fromFile");
         }
     }
 
     file_close(f);
+    LOG_BKA_INIT("gsworld_load: complete");
 }
 
 void gsworld_stub3(enum map_e map) {}
