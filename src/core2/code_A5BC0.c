@@ -1261,10 +1261,10 @@ ActorMarker * marker_init(s32 *pos, MarkerDrawFunc draw_func, int arg2, int mark
 
 ActorMarker * func_8032FB80(f32 *pos, MarkerDrawFunc arg1, int arg2, enum asset_e model_id, int arg4){
     s32 sp24[3];
-    sp24[0] = pos[0];
-    sp24[1] = pos[1];
-    sp24[2] = pos[2];
-    marker_init(sp24, arg1, arg2, model_id, arg4);
+    sp24[0] = (s32)pos[0];
+    sp24[1] = (s32)pos[1];
+    sp24[2] = (s32)pos[2];
+    return marker_init(sp24, arg1, arg2, model_id, arg4);
 }
 
 ActorMarker * func_8032FBE4(f32 *pos, MarkerDrawFunc arg1, int arg2, enum asset_e model_id){
