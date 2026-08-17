@@ -54,23 +54,32 @@ void func_8023DA74(void){
 }
 
 void func_8023DA9C(s32 arg0){
+    LOG_BKA_INIT("func_8023DA9C: core1_15B30_sendMesg3ToRenderThread");
     core1_15B30_sendMesg3ToRenderThread();
+    LOG_BKA_INIT("func_8023DA9C: viMgr_clearFramebuffers");
     viMgr_clearFramebuffers();
     if (D_8027A130 == 4){
+        LOG_BKA_INIT("func_8023DA9C: func_802E3580");
         func_802E3580();
     }
     if (D_8027A130 == 3){
+        LOG_BKA_INIT("func_8023DA9C: func_802E4170");
         func_802E4170();
     }
+    LOG_BKA_INIT("func_8023DA9C: func_8023DA74");
     func_8023DA74();
     D_8027A130 = arg0;
     if (D_8027A130 == 3){
+        LOG_BKA_INIT("func_8023DA9C: func_802E4214");
         func_802E4214(gBootMap);
     }
     if (D_8027A130 == 4){
+        LOG_BKA_INIT("func_8023DA9C: dummy_func_802E35D0");
         dummy_func_802E35D0();
     }
+    LOG_BKA_INIT("func_8023DA9C: ucode_stub1");
     ucode_stub1();
+    LOG_BKA_INIT("func_8023DA9C: complete");
 }
 
 s32 globalTimer_getTimeMasked(s32 mask) {
