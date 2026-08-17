@@ -188,9 +188,12 @@ f32 func_8033AC38(AnimationFile *this, AnimationFileElement *elem, f32 time){
 }
 
 void func_8033AFB8(BoneTransformList *bone_transform_list, s32 bone_id, f32 arg2[3][3]){
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-BONE", "func_8033AFB8 entry\n");
     f32 sp18[4]; 
     func_80345CD4(sp18, arg2[0]);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-BONE", "func_8033AFB8 before func_8033A8F0 call\n");
     func_8033A8F0(bone_transform_list, bone_id, sp18);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-BONE", "func_8033AFB8 after func_8033A8F0 call\n");
     boneTransformList_setBoneScale(bone_transform_list, bone_id, arg2[1]);
     func_8033A968(bone_transform_list, bone_id, arg2[2]);
 }
