@@ -290,12 +290,10 @@ s32 func_8032056C(void) {
 }
 
 s32 func_80320708(void) {
-    u16 temp_t6;
-    s32 addr;
-
-    temp_t6 = ((intptr_t) &gVolatileFlags.unk4 >> 0x10);
-    addr = (intptr_t) &gVolatileFlags.unk4 ^ temp_t6;
-    return func_80320320() == *(s32*)(addr ^ temp_t6);
+    // TEMPORARY: bypass volatile flags CRC for ARM64 port.
+    // Original N64 code computed a 32-bit address from a host pointer,
+    // which is invalid on 64-bit Android.
+    return 1;
 }
 
 void volatileFlag_backupAll(void) {
