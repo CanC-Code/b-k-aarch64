@@ -128,6 +128,15 @@ BKSpriteTextureBlock **func_802E4D8C(BKSprite *sprite) {
     frame = sprite_getFramePtr(sprite, 0);
     chunk_cnt = (s16)__builtin_bswap16((u16)frame->chunkCnt);
 
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-FONT",
+        "func_802E4D8C: sprite=%p frame=%p chunk_cnt=%d\n", sprite, frame, chunk_cnt);
+
+    if (chunk_cnt < 0 || chunk_cnt > 1024) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-FONT",
+            "func_802E4D8C: invalid chunk_cnt=%d, aborting\n", chunk_cnt);
+        return NULL;
+    }
+
     chunkPtrArray = (BKSpriteTextureBlock **)malloc((chunk_cnt + 1)*sizeof(BKSpriteTextureBlock *));
     if (chunkPtrArray == NULL) return NULL;
 
@@ -157,11 +166,25 @@ s32 func_802E4E54(u8 font_id) {
         D_8037E900->unk4[sp24].font_id = font_id;
         D_8037E900->unk4[sp24].font_bin = (BKSprite *)assetcache_get(font_id + 0x6E9);
         D_8037E900->unk4[sp24].letter_texture = func_802E4D8C(D_8037E900->unk4[sp24].font_bin);
+        if (D_8037E900->unk4[sp24].letter_texture == NULL) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-FONT",
+                "func_802E4E54: letter_texture is NULL for font_id=%d\n", font_id);
+            return -1;
+        }
         {
-            s16 letter_w = (s16)__builtin_bswap16((u16)D_8037E900->unk4[sp24].letter_texture['W' - 0x21]->x);
-            s16 letter_h = (s16)__builtin_bswap16((u16)D_8037E900->unk4[sp24].letter_texture['W' - 0x21]->y);
+            BKSpriteTextureBlock *letter_w_block = D_8037E900->unk4[sp24].letter_texture['W' - 0x21];
+            if (letter_w_block == NULL) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-FONT",
+                    "func_802E4E54: letter_texture['W'-0x21] is NULL\n");
+                return -1;
+            }
+            s16 letter_w = (s16)__builtin_bswap16((u16)letter_w_block->x);
+            s16 letter_h = (s16)__builtin_bswap16((u16)letter_w_block->y);
             D_8037E900->unk4[sp24].half_width = letter_w / 2;
             D_8037E900->unk4[sp24].height = letter_h;
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-FONT",
+                "func_802E4E54: font_id=%d half_width=%d height=%d\n",
+                font_id, D_8037E900->unk4[sp24].half_width, D_8037E900->unk4[sp24].height);
         }
     }
     func_802E6820(5);
