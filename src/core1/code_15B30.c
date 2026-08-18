@@ -1,6 +1,9 @@
 #include <ultra64.h>
 #include "core1/core1.h"
 
+extern void thread5_startF3DEXTask(struct ucode_task_data_s *task_data);
+extern void thread5_startL3DEXTask(struct ucode_task_data_s *task_data);
+
 static Gfx *sGfxStack[2] = { NULL, NULL };
 s32 gFramebufferWidth = DEFAULT_FRAMEBUFFER_WIDTH;
 s32 gFramebufferHeight = DEFAULT_FRAMEBUFFER_HEIGHT;
@@ -124,7 +127,9 @@ void core1_15B30_addF3DEXTaskData(Gfx *start, Gfx *end, s32 flags) {
     task_data->data_ptr = (u64 *) start;
     task_data->data_ptr_end = (u64 *) end;
 
-    thread5_sendTaskToQueue((OSMesg) task_data);
+    // ANDROID: Execute F3DEX synchronously. Thread5 message dispatch is unreliable
+    // in the HLE path, and the software RDP needs to run immediately.
+    thread5_startF3DEXTask(task_data);
 }
 
 void core1_15B30_addF3DEXTaskData_0(Gfx *start, Gfx *end) {
@@ -148,7 +153,9 @@ void core1_15B30_addL3DEXTaskData(Gfx *start, Gfx *end, s32 flags) {
     task_data->data_ptr = (u64 *) start;
     task_data->data_ptr_end = (u64 *) end;
 
-    thread5_sendTaskToQueue((OSMesg) task_data);
+    // ANDROID: Execute L3DEX synchronously. Thread5 message dispatch is unreliable
+    // in the HLE path, and the software RDP needs to run immediately.
+    thread5_startL3DEXTask(task_data);
 }
 
 void core1_15B30_addL3DEXTaskData_0(Gfx *start, Gfx *end) {
