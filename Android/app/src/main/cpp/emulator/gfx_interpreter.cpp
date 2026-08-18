@@ -599,6 +599,10 @@ static void Cmd_DL(GfxCommand cmd, GfxCommand** outCmd, size_t* outRemaining) {
 // =======================================================================
 
 void RSP_ProcessGfxTask(OSTask* tp) {
+    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+        "RSP_ProcessGfxTask called tp=%p type=%d data=%p size=%u",
+        tp, tp ? tp->t.type : -1, tp ? tp->t.data_ptr : nullptr, tp ? tp->t.data_size : 0);
+
     if (!tp || !tp->t.data_ptr || tp->t.data_size == 0) return;
     if (tp->t.type != 1) return;  // M_GFXTASK
     
