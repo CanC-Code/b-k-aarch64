@@ -44,6 +44,7 @@ static void RDP_InitState() {
     s_rdp.primR = s_rdp.primG = s_rdp.primB = s_rdp.primA = 255;
     s_rdp.envR = s_rdp.envG = s_rdp.envB = s_rdp.envA = 255;
     s_rdp.blendR = s_rdp.blendG = s_rdp.blendB = 255; s_rdp.blendA = 255;
+    s_rdp.fillR = s_rdp.fillG = s_rdp.fillB = 255; s_rdp.fillA = 255;
     s_rdp.fogR = s_rdp.fogG = s_rdp.fogB = 255; s_rdp.fogA = 255;
     s_rdp.activeTile = 0;
     s_rdp.textureEnabled = false;
@@ -247,6 +248,14 @@ static void Cmd_SetEnvColor(GfxCommand cmd) {
     s_rdp.envG = (cmd.w1 >> 16) & 0xFF;
     s_rdp.envB = (cmd.w1 >> 8) & 0xFF;
     s_rdp.envA = cmd.w1 & 0xFF;
+}
+
+static void Cmd_SetFillColor(GfxCommand cmd) {
+    uint16_t c = cmd.w1 & 0xFFFF; // drawRectangle2D packs RGBA5551 into both halves
+    s_rdp.fillR = ((c >> 11) & 0x1F) << 3;
+    s_rdp.fillG = ((c >> 6) & 0x1F) << 3;
+    s_rdp.fillB = ((c >> 1) & 0x1F) << 3;
+    s_rdp.fillA = (c & 1) ? 255 : 0;
 }
 
 static void Cmd_SetOtherModeL(GfxCommand cmd) {
@@ -521,7 +530,7 @@ static void Cmd_FillRect(GfxCommand cmd) {
     lrx = std::min(lrx, FB_WIDTH); lry = std::min(lry, FB_HEIGHT);
     if (ulx >= lrx || uly >= lry) return;
     
-    uint16_t color = RGBA8_TO_RGB565(s_rdp.blendR, s_rdp.blendG, s_rdp.blendB);
+    uint16_t color = RGBA8_TO_RGB565(s_rdp.fillR, s_rdp.fillG, s_rdp.fillB);
     int activeFb = getActiveFramebuffer();
     uint16_t* fb = gFramebuffers[activeFb];
     for (int32_t y = uly; y < lry; y++)
@@ -618,6 +627,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xE6: // G_RDPLOADSYNC
                 break;
             
+            case 0xF7: Cmd_SetFillColor(c); break;
             case 0xFA: Cmd_SetPrimColor(c); break;
             case 0xFB: Cmd_SetEnvColor(c); break;
             case 0xE2: Cmd_SetOtherModeL(c); break;

@@ -37,6 +37,7 @@ typedef struct {
     uint8_t primR, primG, primB, primA;
     uint8_t envR, envG, envB, envA;
     uint8_t blendR, blendG, blendB, blendA;
+    uint8_t fillR, fillG, fillB, fillA;
     uint8_t fogR, fogG, fogB, fogA;
     
     // RDP modes
