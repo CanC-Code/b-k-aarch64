@@ -80,13 +80,6 @@ void ml_vec3f_yaw_rotate_copy(float* dst, const float* src, float yaw) {
    Matrix
 ========================= */
 
-void mlMtxIdent(float mtx[4][4]) {
-    memset(mtx, 0, sizeof(float) * 16);
-    mtx[0][0] = 1.0f;
-    mtx[1][1] = 1.0f;
-    mtx[2][2] = 1.0f;
-    mtx[3][3] = 1.0f;
-}
 
 /* =========================
    Math Helpers
