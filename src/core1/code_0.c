@@ -195,9 +195,16 @@ void mainLoop(void){
             func_80255524();
             func_80255ACC();
             spawnQueue_func_802C3A18();
-            if(func_802E4424())
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-LOOP", "before func_802E4424\n");
+            if(func_802E4424()) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-LOOP", "func_802E4424 returned TRUE, calling game_draw\n");
                 game_draw(FALSE);
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-LOOP", "game_draw returned\n");
+            } else {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-LOOP", "func_802E4424 returned FALSE, skip draw\n");
+            }
             spawnQueue_flush();
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-LOOP", "after spawnQueue_flush\n");
             break;
     }//L8023DE34
 
