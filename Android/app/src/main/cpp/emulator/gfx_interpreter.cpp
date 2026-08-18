@@ -621,7 +621,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     size_t cmdCount = tp->t.data_size / sizeof(GfxCommand);
     size_t remaining = cmdCount;
     s_frameCount++;
-    bool logFrame = (s_frameCount <= 10);
+    bool logFrame = (s_frameCount <= 30);
 
     __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
         "Frame %d — %u commands", s_frameCount, (unsigned)cmdCount);
@@ -632,7 +632,7 @@ while (remaining > 0) {
         GfxCommand c = *cmd;
         uint8_t opcode = GFX_OPCODE(c);
         
-        if (logFrame && s_frameCount <= 2)
+        if (logFrame)
             LOGI("BKA_GFX: cmd[%zu] op=0x%02X w0=0x%08X w1=0x%08X",
                  cmdCount - remaining, opcode, c.w0, c.w1);
         
