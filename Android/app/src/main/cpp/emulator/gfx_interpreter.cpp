@@ -522,6 +522,19 @@ static void Cmd_MoveMem(GfxCommand cmd) {
 }
 
 // =======================================================================
+// G_MTX - Load matrix (opcode 0xBC)
+// F3DEX2 format: w0 = [G_MTX:8][flag:8][param:16], w1 = matrix address
+// For our initial implementation, we treat the matrix as modelview.
+// =======================================================================
+static void Cmd_Mtx(GfxCommand cmd) {
+    uint32_t addr = cmd.w1 & 0x0FFFFFFF;
+    if (!gN64_RDRAM || addr == 0) return;
+
+    // Load the matrix from RDRAM into the modelview matrix.
+    Matrix_LoadFromN64(s_rdp.modelview, gN64_RDRAM + addr);
+}
+
+// =======================================================================
 // G_FILLRECT - Solid color rectangle fill
 // =======================================================================
 static void Cmd_FillRect(GfxCommand cmd) {
@@ -659,10 +672,12 @@ while (remaining > 0) {
             case 0xE4: case 0xE5: Cmd_TexRect(c); break;
             
             // NEW: 3D commands
+            case 0x00: break;                      // NOOP / padding
             case 0x01: Cmd_Vtx(c); break;           // G_VTX
             case 0xBF: Cmd_Tri1(c); break;          // G_TRI1 (F3DEX)
             case 0xB1: Cmd_Tri2(c); break;          // G_TRI2 (F3DEX)
             case 0xDC: Cmd_MoveMem(c); break;       // G_MOVEMEM
+            case 0xBC: Cmd_Mtx(c); break;           // G_MTX
             
             case 0xDE: Cmd_DL(c, &cmd, &remaining); continue; // G_DL
             case 0xDF: // G_ENDDL
