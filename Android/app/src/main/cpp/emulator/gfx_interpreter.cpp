@@ -77,11 +77,16 @@ static void Matrix_MultVec(const BKMatrix m, float x, float y, float z, float w,
 
 // Load N64 fixed-point matrix (int16_t[4][4] with 32-bit integer parts)
 static void Matrix_LoadFromN64(BKMatrix dst, const void* src) {
-    const int16_t* m = (const int16_t*)src;
+    const uint8_t* bytes = (const uint8_t*)src;
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
-            // N64 matrix: int16[4][4] where each row is 8 bytes
-            int32_t val = (int32_t)((m[(i*4+j)*2] << 16) | (uint16_t)m[(i*4+j)*2+1]);
+            // N64 matrix entries are 32-bit fixed-point (16.16), stored big-endian.
+            uint32_t raw = ((uint32_t)bytes[0] << 24) |
+                           ((uint32_t)bytes[1] << 16) |
+                           ((uint32_t)bytes[2] << 8)  |
+                           ((uint32_t)bytes[3]);
+            bytes += 4;
+            int32_t val = (int32_t)raw;
             dst[i][j] = (float)val / 65536.0f;
         }
     }
