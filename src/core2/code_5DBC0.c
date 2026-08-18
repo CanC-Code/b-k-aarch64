@@ -561,32 +561,7 @@ void func_802E6800(s32 arg0){
 }
 
 void func_802E6820(s32 arg0) {
-    BKSprite *prev_sprite_ptr;
-    s32 chunk_count;
-    s32 i_chunk;
-    s32 var_s5;
-    s32 var_s6;
-
-    if (D_8037E900 != NULL) {
-        for(var_s6 = 0; var_s6 < arg0; var_s6++){
-            D_8037E900 = (struct5DBC0s *) defrag(D_8037E900);
-            D_8037E900->unk0 = (struct5DBC0_1s *)defrag(D_8037E900->unk0);
-            D_8037E900->unk4 = (struct5DBC0_2s *)defrag(D_8037E900->unk4);
-            D_8037E900->string = (char *)defrag(D_8037E900->string);
-            for(var_s5 = 0; var_s5 < D_8037E900->unk10; var_s5++) {
-                if (D_8037E900->unk4[var_s5].letter_texture != NULL) {
-                    D_8037E900->unk4[var_s5].letter_texture = (BKSpriteTextureBlock **)defrag(D_8037E900->unk4[var_s5].letter_texture);
-                }
-                
-                prev_sprite_ptr = D_8037E900->unk4[var_s5].font_bin;
-                if (D_8037E900->unk4[var_s5].font_bin != NULL) {
-                    chunk_count = (s16)__builtin_bswap16((u16)sprite_getFramePtr(prev_sprite_ptr, 0U)->chunkCnt);
-                    D_8037E900->unk4[var_s5].font_bin = (BKSprite *)defrag_asset(D_8037E900->unk4[var_s5].font_bin);
-                    for(i_chunk = 0; i_chunk < chunk_count; i_chunk++){
-                        D_8037E900->unk4[var_s5].letter_texture[i_chunk] = (BKSpriteTextureBlock *)((uintptr_t)D_8037E900->unk4[var_s5].letter_texture[i_chunk] - (uintptr_t)prev_sprite_ptr + (uintptr_t)D_8037E900->unk4[var_s5].font_bin);
-                    }
-                }
-            }
-        }
-    }
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-FONT", "func_802E6820: SKIPPING font defrag relocation (temporary no-op)\n");
+    return;
 }
+
