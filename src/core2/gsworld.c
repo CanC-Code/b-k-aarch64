@@ -31,6 +31,9 @@ enum gsWorldStartIndicators {
 void gsworld_draw(Gfx** gfx, Mtx **mtx, Vtx **vtx) {
     f32 near, far;
 
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-DRAW",
+        "gsworld_draw entry: sEnableDraw=%d\n", sEnableDraw);
+
     if (!sEnableDraw) {
         drawRectangle2D(gfx, 0, 0, gFramebufferWidth, gFramebufferHeight, 0, 0, 0);
         core2_34790_getClipDistances(&near, &far);
