@@ -118,17 +118,26 @@ BKSpriteTextureBlock **func_802E4D8C(BKSprite *sprite) {
     BKSpriteFrame *frame;
     BKSpriteTextureBlock **chunkPtrArray;
     BKSpriteTextureBlock *chunk;
-    s32 var_v1;
+    uintptr_t var_v1;
     s32 i;
     s32 chunk_size;
+    s16 chunk_cnt;
+    s16 w;
+    s16 h;
 
     frame = sprite_getFramePtr(sprite, 0);
-    chunkPtrArray = (BKSpriteTextureBlock **)malloc((frame->chunkCnt + 1)*4);
+    chunk_cnt = (s16)__builtin_bswap16((u16)frame->chunkCnt);
+
+    chunkPtrArray = (BKSpriteTextureBlock **)malloc((chunk_cnt + 1)*sizeof(BKSpriteTextureBlock *));
+    if (chunkPtrArray == NULL) return NULL;
+
     chunk = (BKSpriteTextureBlock *)(frame + 1);
-    for (i = 0; i < frame->chunkCnt; i++) {
+    for (i = 0; i < chunk_cnt; i++) {
+        w = (s16)__builtin_bswap16((u16)chunk->w);
+        h = (s16)__builtin_bswap16((u16)chunk->h);
         chunkPtrArray[i] = chunk;
-        chunk_size = (chunk->w * chunk->h);
-        var_v1 = (s32)(chunk + 1);
+        chunk_size = (s32)w * (s32)h;
+        var_v1 = (uintptr_t)(chunk + 1);
         while ((var_v1 % 8)) {var_v1++;}
         chunk = (BKSpriteTextureBlock *)(var_v1 + chunk_size);
     }
@@ -148,8 +157,12 @@ s32 func_802E4E54(u8 font_id) {
         D_8037E900->unk4[sp24].font_id = font_id;
         D_8037E900->unk4[sp24].font_bin = (BKSprite *)assetcache_get(font_id + 0x6E9);
         D_8037E900->unk4[sp24].letter_texture = func_802E4D8C(D_8037E900->unk4[sp24].font_bin);
-        D_8037E900->unk4[sp24].half_width = D_8037E900->unk4[sp24].letter_texture['W' - 0x21]->x/2;
-        D_8037E900->unk4[sp24].height = D_8037E900->unk4[sp24].letter_texture['W' - 0x21]->y;
+        {
+            s16 letter_w = (s16)__builtin_bswap16((u16)D_8037E900->unk4[sp24].letter_texture['W' - 0x21]->x);
+            s16 letter_h = (s16)__builtin_bswap16((u16)D_8037E900->unk4[sp24].letter_texture['W' - 0x21]->y);
+            D_8037E900->unk4[sp24].half_width = letter_w / 2;
+            D_8037E900->unk4[sp24].height = letter_h;
+        }
     }
     func_802E6820(5);
     return sp24;
