@@ -638,18 +638,12 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
     RDP_InitState();
 
-    struct DListFrame {
-        uint8_t *ptr;
-        uint8_t *end;
-    };
-
-    DListFrame stack[64];
-    int depth = 0;
     uint8_t *cur = (uint8_t*)tp->t.data_ptr;
     uint8_t *cur_end = cur + tp->t.data_size;
 
-    const size_t MAX_CMDS = 100000;
+    const size_t MAX_CMDS = 2000;
     size_t total = 0;
+    int zero_run = 0;
 
     while (cur + sizeof(GfxCommand) <= cur_end) {
         if (++total > MAX_CMDS) {
@@ -664,11 +658,22 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
         if (s_frameCount <= 3) {
             __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-                "cmd[%zu] depth=%d op=0x%02X w0=0x%08X w1=0x%08X",
-                total - 1, depth, opcode, c.w0, c.w1);
+                "cmd[%zu] op=0x%02X w0=0x%08X w1=0x%08X",
+                total - 1, opcode, c.w0, c.w1);
         }
 
         cur += sizeof(GfxCommand);
+
+        if (opcode == 0x00) {
+            zero_run++;
+            if (zero_run >= 16) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "zero-run break at cmd %zu", total - 1);
+                break;
+            }
+        } else {
+            zero_run = 0;
+        }
 
         switch (opcode) {
             case 0x00:
@@ -690,8 +695,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xED:
             case 0xFF:
             case 0x03:
-                // Geometry mode / cull / matrix-pop / other state:
-                // Ignore for now; triangles may still render with identity matrices.
                 break;
 
             case 0x01: Cmd_Vtx(c); break;
@@ -700,31 +703,14 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xDC: Cmd_MoveMem(c); break;
 
             case 0x06:
-            case 0xDE: {
-                uint32_t addr = c.w1 & 0x0FFFFFFF;
-                if (addr != 0 && gN64_RDRAM != nullptr && depth < 63) {
-                    stack[depth].ptr = cur;
-                    stack[depth].end = cur_end;
-                    depth++;
-                    cur = gN64_RDRAM + addr;
-                    // For nested DLs, use a conservative end based on RDRAM size.
-                    // This avoids runaway while allowing recursion.
-                    cur_end = gN64_RDRAM + 0x7FFFFF;
-                }
+            case 0xDE:
+                // Do not recurse into nested DLs for now.
                 break;
-            }
 
             case 0xDF:
-                if (depth > 0) {
-                    depth--;
-                    cur = stack[depth].ptr;
-                    cur_end = stack[depth].end;
-                } else {
-                    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-                        "ENDDL top-level, vertices=%d", s_rdp.dmemVertexCount);
-                    return;
-                }
-                break;
+                __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+                    "ENDDL at cmd %zu, vertices=%d", total - 1, s_rdp.dmemVertexCount);
+                return;
 
             case 0xE1:
             case 0xF1:
@@ -737,7 +723,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             default:
                 if (s_frameCount <= 3)
                     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                        "Unhandled op=0x%02X at offset %zu", opcode, total - 1);
+                        "Unhandled op=0x%02X at cmd %zu", opcode, total - 1);
                 break;
         }
     }
