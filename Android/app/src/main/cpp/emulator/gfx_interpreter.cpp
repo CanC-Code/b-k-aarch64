@@ -600,7 +600,7 @@ static void Cmd_DL(GfxCommand cmd, GfxCommand** outCmd, size_t* outRemaining) {
 
 void RSP_ProcessGfxTask(OSTask* tp) {
     if (!tp || !tp->t.data_ptr || tp->t.data_size == 0) return;
-    if (tp->t.type != 0) return;
+    if (tp->t.type != 1) return;  // M_GFXTASK
     
     RDP_InitState();
     
