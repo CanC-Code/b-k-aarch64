@@ -557,10 +557,10 @@ void func_802E6820(s32 arg0) {
                 
                 prev_sprite_ptr = D_8037E900->unk4[var_s5].font_bin;
                 if (D_8037E900->unk4[var_s5].font_bin != NULL) {
-                    chunk_count = sprite_getFramePtr(prev_sprite_ptr, 0U)->chunkCnt;
+                    chunk_count = (s16)__builtin_bswap16((u16)sprite_getFramePtr(prev_sprite_ptr, 0U)->chunkCnt);
                     D_8037E900->unk4[var_s5].font_bin = (BKSprite *)defrag_asset(D_8037E900->unk4[var_s5].font_bin);
                     for(i_chunk = 0; i_chunk < chunk_count; i_chunk++){
-                        D_8037E900->unk4[var_s5].letter_texture[i_chunk] = ((u32)(((s32)D_8037E900->unk4[var_s5].letter_texture[i_chunk] - (s32)prev_sprite_ptr)) + (u32)D_8037E900->unk4[var_s5].font_bin);
+                        D_8037E900->unk4[var_s5].letter_texture[i_chunk] = (BKSpriteTextureBlock *)((uintptr_t)D_8037E900->unk4[var_s5].letter_texture[i_chunk] - (uintptr_t)prev_sprite_ptr + (uintptr_t)D_8037E900->unk4[var_s5].font_bin);
                     }
                 }
             }
