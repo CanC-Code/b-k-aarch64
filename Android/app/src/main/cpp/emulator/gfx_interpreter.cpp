@@ -628,6 +628,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         return;
     }
 
+    // Debug hex dump first 16 bytes
     {
         const unsigned char *p = (const unsigned char*)tp->t.data_ptr;
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -638,32 +639,38 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
     RDP_InitState();
 
-    GfxCommand* cmd = (GfxCommand*)tp->t.data_ptr;
-    size_t cmdCount = tp->t.data_size / sizeof(GfxCommand);
-    size_t remaining = cmdCount;
-    s_frameCount++;
-    bool logFrame = (s_frameCount <= 30);
+    // The display list is an array of 8-byte Gfx commands.
+    // Use bounded pointer with max command count to avoid runaway.
+    uint8_t *start_ptr = (uint8_t*)tp->t.data_ptr;
+    uint8_t *end_ptr = start_ptr + tp->t.data_size;
+    uint8_t *cmd_ptr = start_ptr;
 
-    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-        "Frame %d — %u commands", s_frameCount, (unsigned)cmdCount);
+    const size_t MAX_TOTAL_COMMANDS = 100000;
+    size_t total_processed = 0;
 
-    if (logFrame) LOGI("BKA_GFX: Frame %d — %zu commands", s_frameCount, cmdCount);
+    while (cmd_ptr + sizeof(GfxCommand) <= end_ptr) {
+        if (++total_processed > MAX_TOTAL_COMMANDS) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "runaway display list: exceeded %u commands", (unsigned)MAX_TOTAL_COMMANDS);
+            break;
+        }
 
-while (remaining > 0) {
-        GfxCommand c = *cmd;
+        GfxCommand c;
+        memcpy(&c, cmd_ptr, sizeof(GfxCommand));
         uint8_t opcode = GFX_OPCODE(c);
-        
-        if (logFrame)
-            LOGI("BKA_GFX: cmd[%zu] op=0x%02X w0=0x%08X w1=0x%08X",
-                 cmdCount - remaining, opcode, c.w0, c.w1);
-        
+
+        if (s_frameCount <= 3) {
+            __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+                "cmd[%zu] op=0x%02X w0=0x%08X w1=0x%08X",
+                (size_t)(cmd_ptr - start_ptr) / sizeof(GfxCommand), opcode, c.w0, c.w1);
+        }
+
+        cmd_ptr += sizeof(GfxCommand);
+
         switch (opcode) {
-            case 0xC0: // G_NOOP
-            case 0xE8: // G_RDPTILESYNC
-            case 0xE7: // G_RDPPIPESYNC
-            case 0xE6: // G_RDPLOADSYNC
+            case 0xC0: case 0xE8: case 0xE7: case 0xE6: case 0x00:
                 break;
-            
+
             case 0xF7: Cmd_SetFillColor(c); break;
             case 0xFA: Cmd_SetPrimColor(c); break;
             case 0xFB: Cmd_SetEnvColor(c); break;
@@ -678,32 +685,40 @@ while (remaining > 0) {
             case 0xF4: Cmd_LoadTile(c); break;
             case 0xF6: Cmd_FillRect(c); break;
             case 0xE4: case 0xE5: Cmd_TexRect(c); break;
-            
-            // NEW: 3D commands
-            case 0x00: break;                      // NOOP / padding
-            case 0x01: Cmd_Vtx(c); break;           // G_VTX
-            case 0xBF: Cmd_Tri1(c); break;          // G_TRI1 (F3DEX)
-            case 0xB1: Cmd_Tri2(c); break;          // G_TRI2 (F3DEX)
-            case 0xDC: Cmd_MoveMem(c); break;       // G_MOVEMEM
-            case 0xBC: Cmd_Mtx(c); break;           // G_MTX
-            
-            case 0x06: case 0xDE: Cmd_DL(c, &cmd, &remaining); continue; // G_DL / F3DEX2 jump
-            case 0xDF: // G_ENDDL
-                if (logFrame) LOGI("BKA_GFX: ENDDL — %zu cmds, %d vertices", 
-                                   cmdCount - remaining, s_rdp.dmemVertexCount);
+
+            case 0x01: Cmd_Vtx(c); break;
+            case 0xBF: Cmd_Tri1(c); break;
+            case 0xB1: Cmd_Tri2(c); break;
+            case 0xDC: Cmd_MoveMem(c); break;
+            case 0xBC: Cmd_Mtx(c); break;
+
+            case 0x06: case 0xDE: {
+                uint32_t addr = c.w1 & 0x0FFFFFFF;
+                if (addr != 0 && gN64_RDRAM != nullptr) {
+                    // Recursively process the sub display list with a short max depth.
+                    // For safety, we do not actually recurse here; just skip nested DL
+                    // by continuing the current loop. This prevents runaway jumps.
+                    // A proper implementation would use a stack, but we first confirm
+                    // the command stream alignment.
+                }
+                break;
+            }
+
+            case 0xDF:
+                __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+                    "ENDDL at offset %zu, vertices=%d",
+                    (size_t)(cmd_ptr - start_ptr) / sizeof(GfxCommand), s_rdp.dmemVertexCount);
                 return;
-            
-            case 0xE1: case 0xF1: break; // G_RDPHALF_1/2
-            case 0xF0: break; // G_LOADTLUT
-            case 0x02: break; // G_MODIFYVTX (stub)
-            case 0xDB: break; // G_MOVEWORD (stub)
-            case 0xDA: break; // G_POPMTX (stub)
-            
+
+            case 0xE1: case 0xF1: case 0xF0: case 0x02: case 0xDB: case 0xDA:
+                break;
+
             default:
-                if (logFrame && s_frameCount <= 3)
-                    LOGW("BKA_GFX: Unhandled op=0x%02X at cmd %zu", opcode, cmdCount - remaining);
+                if (s_frameCount <= 3)
+                    __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                        "Unhandled op=0x%02X at offset %zu", opcode,
+                        (size_t)(cmd_ptr - start_ptr) / sizeof(GfxCommand));
                 break;
         }
-        cmd++; remaining--;
     }
 }
