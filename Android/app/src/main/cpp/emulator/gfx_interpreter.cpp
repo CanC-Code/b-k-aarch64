@@ -679,7 +679,7 @@ while (remaining > 0) {
             case 0xDC: Cmd_MoveMem(c); break;       // G_MOVEMEM
             case 0xBC: Cmd_Mtx(c); break;           // G_MTX
             
-            case 0xDE: Cmd_DL(c, &cmd, &remaining); continue; // G_DL
+            case 0x06: case 0xDE: Cmd_DL(c, &cmd, &remaining); continue; // G_DL / F3DEX2 jump
             case 0xDF: // G_ENDDL
                 if (logFrame) LOGI("BKA_GFX: ENDDL — %zu cmds, %d vertices", 
                                    cmdCount - remaining, s_rdp.dmemVertexCount);
