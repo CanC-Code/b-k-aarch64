@@ -1,6 +1,7 @@
 #include <ultra64.h>
 #include "functions.h"
 #include "variables.h"
+#include <android/log.h>
 
 typedef struct {
     void *unk0;
@@ -311,6 +312,13 @@ void func_802E57E0(struct5DBC0_1s *arg0, Gfx **gfx) {
 void func_802E5C98(Gfx **gfx) {
     int i;
 
+    if (D_8037E900 == NULL || D_8037E900->unk0 == NULL) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-PRINT",
+            "func_802E5C98: D_8037E900=%p unk0=%p\n",
+            D_8037E900, D_8037E900 ? D_8037E900->unk0 : NULL);
+        return;
+    }
+
     gDPPipeSync((*gfx)++);
     gSPClearGeometryMode((*gfx)++, G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
     gSPTexture((*gfx)++, 0, 0, 0, G_TX_RENDERTILE, G_OFF);
@@ -334,6 +342,12 @@ void func_802E5C98(Gfx **gfx) {
 }
 
 void func_802E5F10(Gfx **gfx) {
+    if (D_8037E900 == NULL) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-PRINT", "func_802E5F10: D_8037E900 NULL, initializing\n");
+        D_8037E900 = func_802E4B50();
+        func_802E4E54(0);
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-PRINT", "func_802E5F10: after init D_8037E900=%p\n", D_8037E900);
+    }
     func_802E5C98(gfx);
     func_802E5188();
 }
