@@ -4,6 +4,7 @@
 #include "core1/core1.h"
 #include "core2/core2.h"
 #include "animation.h"
+#include <android/log.h>
 
 #define ARRAYLEN(x) (sizeof(x) / sizeof((x)[0]))
 
@@ -1133,7 +1134,15 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
         modelRenderRotation[0] = modelRenderRotation[1] = modelRenderRotation[2] = 0.0f;
     }
 
-    modelRender_executeGeoCmds(gfx, mtx, modelbin_getGeoCmdList_MACRO(model_bin));
+    {
+        BKGeoCmd *geoCmd = modelbin_getGeoCmdList_MACRO(model_bin);
+        s32 raw_offset = model_bin->geo_list_offset;
+        s32 swapped_offset = __builtin_bswap32((u32)raw_offset);
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-MODEL",
+            "modelRender_draw: model_bin=%p raw_geo_off=0x%08x swapped=0x%08x geoCmd=%p\n",
+            model_bin, raw_offset, swapped_offset, geoCmd);
+        modelRender_executeGeoCmds(gfx, mtx, geoCmd);
+    }
     gSPPopMatrix((*gfx)++, G_MTX_MODELVIEW);
 
     if (modelRenderCallback.post_draw != NULL) {
