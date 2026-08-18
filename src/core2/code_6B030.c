@@ -333,16 +333,26 @@ void func_802F2ED0(Struct64s *arg0, Gfx **gfx, Mtx **mtx, Vtx **vtx) {
     Struct65s *phi_s0;
     f32 sp38[3];
 
-    if (arg0 != NULL && arg0->unk4) {
-        viewport_getRotation_vec3f(sp38);
-        mlMtxIdent();
-        mlMtxRotPitch(-sp38[0]);
-        mlMtxRotYaw(-sp38[1]);
-        mlMtxGet(&D_80380A18);
-        for(phi_s0 = arg0->unk0; phi_s0 < arg0->unk0 + arg0->unk4; phi_s0++){
-            if (phi_s0->unk23 & 1) {
-                func_802F1FC0(phi_s0, gfx, mtx, vtx);
-            }
+    if (arg0 == NULL) return;
+    if ((uintptr_t)arg0 < 0x100000000ULL) {
+        arg0 = (Struct64s*)BKA_TRANSLATE_ADDR(arg0);
+    }
+    if (arg0 == NULL) return;
+    if (arg0->unk4 <= 0 || arg0->unk4 > 0x10000) return;
+
+    if (arg0->unk0 != NULL && (uintptr_t)arg0->unk0 < 0x100000000ULL) {
+        arg0->unk0 = (Struct65s*)BKA_TRANSLATE_ADDR(arg0->unk0);
+    }
+    if (arg0->unk0 == NULL) return;
+
+    viewport_getRotation_vec3f(sp38);
+    mlMtxIdent();
+    mlMtxRotPitch(-sp38[0]);
+    mlMtxRotYaw(-sp38[1]);
+    mlMtxGet(&D_80380A18);
+    for(phi_s0 = arg0->unk0; phi_s0 < arg0->unk0 + arg0->unk4; phi_s0++){
+        if (phi_s0->unk23 & 1) {
+            func_802F1FC0(phi_s0, gfx, mtx, vtx);
         }
     }
 }
