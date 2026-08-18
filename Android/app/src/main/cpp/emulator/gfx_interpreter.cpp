@@ -603,20 +603,27 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         "RSP_ProcessGfxTask called tp=%p type=%d data=%p size=%u",
         tp, tp ? tp->t.type : -1, tp ? tp->t.data_ptr : nullptr, tp ? tp->t.data_size : 0);
 
-    if (!tp || !tp->t.data_ptr || tp->t.data_size == 0) return;
-    if (tp->t.type != 1) return;  // M_GFXTASK
-    
+    if (!tp || !tp->t.data_ptr || tp->t.data_size == 0) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "early return: tp=%p data=%p size=%u",
+            tp, tp ? tp->t.data_ptr : nullptr, tp ? tp->t.data_size : 0);
+        return;
+    }
+
     RDP_InitState();
-    
+
     GfxCommand* cmd = (GfxCommand*)tp->t.data_ptr;
     size_t cmdCount = tp->t.data_size / sizeof(GfxCommand);
     size_t remaining = cmdCount;
     s_frameCount++;
     bool logFrame = (s_frameCount <= 10);
-    
+
+    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+        "Frame %d — %u commands", s_frameCount, (unsigned)cmdCount);
+
     if (logFrame) LOGI("BKA_GFX: Frame %d — %zu commands", s_frameCount, cmdCount);
-    
-    while (remaining > 0) {
+
+while (remaining > 0) {
         GfxCommand c = *cmd;
         uint8_t opcode = GFX_OPCODE(c);
         
