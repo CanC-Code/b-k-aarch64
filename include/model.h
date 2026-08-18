@@ -433,7 +433,7 @@ BKVertexList *modelbin_getVtxList(BKModelBin *this);
 BKCameraAreaList *modelbin_getCameraAreaList(BKModelBin *this);
 
 #define modelbin_getGeoCmdList_MACRO(this)          ((BKGeoCmd *)            (((u8 *) (this)) + bswap32((((BKModelBin *) (this))->geo_list_offset))))
-#define modelbin_getTextureList_MACRO(this)         ((BKTextureList *)       (((u8 *) (this)) + bswap16((((BKModelBin *) (this))->texture_list_offset))))
+#define modelbin_getTextureList_MACRO(this)         ((BKTextureList *)       (((u8 *) (this)) + (s32)__builtin_bswap16((u16)(((BKModelBin *) (this))->texture_list_offset))))
 #define modelbin_getGfxList_MACRO(this)             ((BKGfxList *)           (((u8 *) (this)) + bswap32((((BKModelBin *) (this))->gfx_list_offset))))
 #define modelbin_getVtxList_MACRO(this)             ((BKVertexList *)        (((u8 *) (this)) + bswap32((((BKModelBin *) (this))->vtx_list_offset))))
 #define modelbin_getUnk14List_MACRO(this)           ((BKModelUnk14List *)    (((u8 *) (this)) + bswap32((((BKModelBin *) (this))->unk14_list_offset))))
