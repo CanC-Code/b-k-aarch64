@@ -116,12 +116,9 @@ extern "C" {
         if (++hookCount <= 3 || hookCount % 60 == 0)
             LOGI("BKA-FrameSync: frame %d", hookCount);
 
-        // TEMPORARY NON-BLOCKING FRAME SYNC:
-        // Bypass vblank wait and duplicate lock to allow the engine loop
-        // to run continuously while we debug rendering correctness.
-        BKA_DropEngineLock();
-        usleep(1000);
-        BKA_ClaimEngineLock();
+        // TEMPORARY NO-OP FRAME SYNC:
+        // Main thread already owns the engine lock, so we simply return.
+        // This keeps the main loop running while we debug rendering.
     }
 }
 
