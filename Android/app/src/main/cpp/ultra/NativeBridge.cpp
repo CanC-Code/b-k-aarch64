@@ -112,52 +112,15 @@ extern "C" {
     extern int getActiveFramebuffer(void);
 
     void BKA_FrameSyncHook(void) {
-    static int hookCount = 0; if (++hookCount <= 3 || hookCount % 60 == 0) LOGI("BKA-FrameSync: frame %d", hookCount);
-        extern int g_diag_null_task; if (g_diag_null_task) { LOGI("BKA-RDP: NULL task_data detected!"); g_diag_null_task = 0; }
-        extern int g_diag_mesh_count; extern void* g_diag_mesh_ptr; if (g_diag_mesh_count) { LOGI("BKA-MESH: count=%d ptr=%p", g_diag_mesh_count, g_diag_mesh_ptr); g_diag_mesh_count = 0; }
-        extern int g_diag_thread5_loop; static int _last_t5loop = 0; if (g_diag_thread5_loop != _last_t5loop) { LOGI("BKA-RDP: Thread5 loop count=%d", g_diag_thread5_loop); _last_t5loop = g_diag_thread5_loop; }
-        pthread_mutex_lock(&g_vblankMutex);
-        g_vblankRequested = true;
+        static int hookCount = 0;
+        if (++hookCount <= 3 || hookCount % 60 == 0)
+            LOGI("BKA-FrameSync: frame %d", hookCount);
 
+        // TEMPORARY NON-BLOCKING FRAME SYNC:
+        // Bypass vblank wait and duplicate lock to allow the engine loop
+        // to run continuously while we debug rendering correctness.
         BKA_DropEngineLock();
-
-
-        // 16ms timeout prevents ANR if GL thread is blocked
-        struct timespec ts;
-        clock_gettime(CLOCK_REALTIME, &ts);
-        ts.tv_nsec += 16666667;
-        if (ts.tv_nsec >= 1000000000) { ts.tv_sec++; ts.tv_nsec -= 1000000000; }
-        int ret = pthread_cond_timedwait(&g_vblankCond, &g_vblankMutex, &ts);
-        if (ret == ETIMEDOUT) {
-            g_vblankRequested = false;
-            pthread_mutex_unlock(&g_vblankMutex);
-            N64_TriggerVirtualVBlankInterrupt();
-            pthread_mutex_lock(&g_vblankMutex);
-        }
-        // FIXED: avoid indefinite hang if GL thread is not signalling.
-        // Use timed wait and break out.
-        while (g_vblankRequested) {
-            struct timespec ts2;
-            clock_gettime(CLOCK_REALTIME, &ts2);
-            ts2.tv_nsec += 16666667;
-            if (ts2.tv_nsec >= 1000000000) { ts2.tv_sec++; ts2.tv_nsec -= 1000000000; }
-            int ret2 = pthread_cond_timedwait(&g_vblankCond, &g_vblankMutex, &ts2);
-            if (ret2 == ETIMEDOUT) {
-                g_vblankRequested = false;
-                break;
-            }
-        }
-
-        pthread_mutex_unlock(&g_vblankMutex);
-
-        pthread_mutex_lock(&g_windowMutex);
-        while (g_nativeWindow == nullptr) {
-            pthread_cond_wait(&g_windowCond, &g_windowMutex);
-        }
-        pthread_mutex_unlock(&g_windowMutex);
-
-        BKA_ClaimEngineLock();
-
+        usleep(1000);
         BKA_ClaimEngineLock();
     }
 }
