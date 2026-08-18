@@ -638,17 +638,31 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
     RDP_InitState();
 
+    struct DListFrame {
+        uint8_t *ptr;
+        uint8_t *end;
+    };
+
+    DListFrame stack[64];
+    int depth = 0;
     uint8_t *cur = (uint8_t*)tp->t.data_ptr;
     uint8_t *cur_end = cur + tp->t.data_size;
 
-    const size_t MAX_CMDS = 2000;
+    const size_t MAX_TOTAL_CMDS = 20000;
+    const size_t MAX_DL_CMDS = 5000;
     size_t total = 0;
+    size_t dl_cmds = 0;
     int zero_run = 0;
 
     while (cur + sizeof(GfxCommand) <= cur_end) {
-        if (++total > MAX_CMDS) {
+        if (++total > MAX_TOTAL_CMDS) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                "runaway display list: exceeded %u commands", (unsigned)MAX_CMDS);
+                "runaway display list: exceeded %u total commands", (unsigned)MAX_TOTAL_CMDS);
+            break;
+        }
+        if (++dl_cmds > MAX_DL_CMDS) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "runaway display list: exceeded %u commands in current DL", (unsigned)MAX_DL_CMDS);
             break;
         }
 
@@ -658,8 +672,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
         if (s_frameCount <= 3) {
             __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-                "cmd[%zu] op=0x%02X w0=0x%08X w1=0x%08X",
-                total - 1, opcode, c.w0, c.w1);
+                "cmd[%zu] depth=%d op=0x%02X w0=0x%08X w1=0x%08X",
+                total - 1, depth, opcode, c.w0, c.w1);
         }
 
         cur += sizeof(GfxCommand);
@@ -668,7 +682,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             zero_run++;
             if (zero_run >= 16) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                    "zero-run break at cmd %zu", total - 1);
+                    "zero-run break at cmd %zu, depth=%d", total - 1, depth);
                 break;
             }
         } else {
@@ -681,9 +695,12 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xE8:
             case 0xE7:
             case 0xE6:
-                break;
-
-            case 0xBC: Cmd_Mtx(c); break;
+            case 0xE1:
+            case 0xF1:
+            case 0xF0:
+            case 0x02:
+            case 0xDB:
+            case 0xDA:
             case 0xBD:
             case 0xBE:
             case 0xBB:
@@ -697,27 +714,56 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0x03:
                 break;
 
+            case 0xF7: Cmd_SetFillColor(c); break;
+            case 0xFA: Cmd_SetPrimColor(c); break;
+            case 0xFB: Cmd_SetEnvColor(c); break;
+            case 0xE2: Cmd_SetOtherModeL(c); break;
+            case 0xE3: Cmd_SetOtherModeH(c); break;
+            case 0xFC: Cmd_SetCombine(c); break;
+            case 0xD7: Cmd_Texture(c); break;
+            case 0xF5: Cmd_SetTile(c); break;
+            case 0xF2: Cmd_SetTileSize(c); break;
+            case 0xFD: Cmd_SetTImg(c); break;
+            case 0xF3: Cmd_LoadBlock(c); break;
+            case 0xF4: Cmd_LoadTile(c); break;
+            case 0xF6: Cmd_FillRect(c); break;
+            case 0xE4: case 0xE5: Cmd_TexRect(c); break;
+
             case 0x01: Cmd_Vtx(c); break;
             case 0xBF: Cmd_Tri1(c); break;
             case 0xB1: Cmd_Tri2(c); break;
             case 0xDC: Cmd_MoveMem(c); break;
+            case 0xBC: Cmd_Mtx(c); break;
 
             case 0x06:
-            case 0xDE:
-                // Do not recurse into nested DLs for now.
+            case 0xDE: {
+                uint32_t addr = c.w1 & 0x0FFFFFFF;
+                if (addr != 0 && gN64_RDRAM != nullptr && depth < 63) {
+                    stack[depth].ptr = cur;
+                    stack[depth].end = cur_end;
+                    depth++;
+                    cur = gN64_RDRAM + addr;
+                    // Use a conservative upper bound for nested DL; zero-run and
+                    // command caps prevent runaway.
+                    cur_end = gN64_RDRAM + 0x7FFFFF;
+                    dl_cmds = 0;
+                    zero_run = 0;
+                }
                 break;
+            }
 
             case 0xDF:
-                __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-                    "ENDDL at cmd %zu, vertices=%d", total - 1, s_rdp.dmemVertexCount);
-                return;
-
-            case 0xE1:
-            case 0xF1:
-            case 0xF0:
-            case 0x02:
-            case 0xDB:
-            case 0xDA:
+                if (depth > 0) {
+                    depth--;
+                    cur = stack[depth].ptr;
+                    cur_end = stack[depth].end;
+                    dl_cmds = 0;
+                    zero_run = 0;
+                } else {
+                    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+                        "ENDDL top-level, vertices=%d", s_rdp.dmemVertexCount);
+                    return;
+                }
                 break;
 
             default:
