@@ -628,7 +628,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         return;
     }
 
-    // Debug hex dump first 16 bytes
     {
         const unsigned char *p = (const unsigned char*)tp->t.data_ptr;
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -639,85 +638,106 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
     RDP_InitState();
 
-    // The display list is an array of 8-byte Gfx commands.
-    // Use bounded pointer with max command count to avoid runaway.
-    uint8_t *start_ptr = (uint8_t*)tp->t.data_ptr;
-    uint8_t *end_ptr = start_ptr + tp->t.data_size;
-    uint8_t *cmd_ptr = start_ptr;
+    struct DListFrame {
+        uint8_t *ptr;
+        uint8_t *end;
+    };
 
-    const size_t MAX_TOTAL_COMMANDS = 100000;
-    size_t total_processed = 0;
+    DListFrame stack[64];
+    int depth = 0;
+    uint8_t *cur = (uint8_t*)tp->t.data_ptr;
+    uint8_t *cur_end = cur + tp->t.data_size;
 
-    while (cmd_ptr + sizeof(GfxCommand) <= end_ptr) {
-        if (++total_processed > MAX_TOTAL_COMMANDS) {
+    const size_t MAX_CMDS = 100000;
+    size_t total = 0;
+
+    while (cur + sizeof(GfxCommand) <= cur_end) {
+        if (++total > MAX_CMDS) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                "runaway display list: exceeded %u commands", (unsigned)MAX_TOTAL_COMMANDS);
+                "runaway display list: exceeded %u commands", (unsigned)MAX_CMDS);
             break;
         }
 
         GfxCommand c;
-        memcpy(&c, cmd_ptr, sizeof(GfxCommand));
+        memcpy(&c, cur, sizeof(GfxCommand));
         uint8_t opcode = GFX_OPCODE(c);
 
         if (s_frameCount <= 3) {
             __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-                "cmd[%zu] op=0x%02X w0=0x%08X w1=0x%08X",
-                (size_t)(cmd_ptr - start_ptr) / sizeof(GfxCommand), opcode, c.w0, c.w1);
+                "cmd[%zu] depth=%d op=0x%02X w0=0x%08X w1=0x%08X",
+                total - 1, depth, opcode, c.w0, c.w1);
         }
 
-        cmd_ptr += sizeof(GfxCommand);
+        cur += sizeof(GfxCommand);
 
         switch (opcode) {
-            case 0xC0: case 0xE8: case 0xE7: case 0xE6: case 0x00:
+            case 0x00:
+            case 0xC0:
+            case 0xE8:
+            case 0xE7:
+            case 0xE6:
                 break;
 
-            case 0xF7: Cmd_SetFillColor(c); break;
-            case 0xFA: Cmd_SetPrimColor(c); break;
-            case 0xFB: Cmd_SetEnvColor(c); break;
-            case 0xE2: Cmd_SetOtherModeL(c); break;
-            case 0xE3: Cmd_SetOtherModeH(c); break;
-            case 0xFC: Cmd_SetCombine(c); break;
-            case 0xD7: Cmd_Texture(c); break;
-            case 0xF5: Cmd_SetTile(c); break;
-            case 0xF2: Cmd_SetTileSize(c); break;
-            case 0xFD: Cmd_SetTImg(c); break;
-            case 0xF3: Cmd_LoadBlock(c); break;
-            case 0xF4: Cmd_LoadTile(c); break;
-            case 0xF6: Cmd_FillRect(c); break;
-            case 0xE4: case 0xE5: Cmd_TexRect(c); break;
+            case 0xBC: Cmd_Mtx(c); break;
+            case 0xBD:
+            case 0xBE:
+            case 0xBB:
+            case 0xBA:
+            case 0xB9:
+            case 0xB8:
+            case 0xB7:
+            case 0xB6:
+            case 0xED:
+            case 0xFF:
+            case 0x03:
+                // Geometry mode / cull / matrix-pop / other state:
+                // Ignore for now; triangles may still render with identity matrices.
+                break;
 
             case 0x01: Cmd_Vtx(c); break;
             case 0xBF: Cmd_Tri1(c); break;
             case 0xB1: Cmd_Tri2(c); break;
             case 0xDC: Cmd_MoveMem(c); break;
-            case 0xBC: Cmd_Mtx(c); break;
 
-            case 0x06: case 0xDE: {
+            case 0x06:
+            case 0xDE: {
                 uint32_t addr = c.w1 & 0x0FFFFFFF;
-                if (addr != 0 && gN64_RDRAM != nullptr) {
-                    // Recursively process the sub display list with a short max depth.
-                    // For safety, we do not actually recurse here; just skip nested DL
-                    // by continuing the current loop. This prevents runaway jumps.
-                    // A proper implementation would use a stack, but we first confirm
-                    // the command stream alignment.
+                if (addr != 0 && gN64_RDRAM != nullptr && depth < 63) {
+                    stack[depth].ptr = cur;
+                    stack[depth].end = cur_end;
+                    depth++;
+                    cur = gN64_RDRAM + addr;
+                    // For nested DLs, use a conservative end based on RDRAM size.
+                    // This avoids runaway while allowing recursion.
+                    cur_end = gN64_RDRAM + 0x7FFFFF;
                 }
                 break;
             }
 
             case 0xDF:
-                __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-                    "ENDDL at offset %zu, vertices=%d",
-                    (size_t)(cmd_ptr - start_ptr) / sizeof(GfxCommand), s_rdp.dmemVertexCount);
-                return;
+                if (depth > 0) {
+                    depth--;
+                    cur = stack[depth].ptr;
+                    cur_end = stack[depth].end;
+                } else {
+                    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+                        "ENDDL top-level, vertices=%d", s_rdp.dmemVertexCount);
+                    return;
+                }
+                break;
 
-            case 0xE1: case 0xF1: case 0xF0: case 0x02: case 0xDB: case 0xDA:
+            case 0xE1:
+            case 0xF1:
+            case 0xF0:
+            case 0x02:
+            case 0xDB:
+            case 0xDA:
                 break;
 
             default:
                 if (s_frameCount <= 3)
                     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                        "Unhandled op=0x%02X at offset %zu", opcode,
-                        (size_t)(cmd_ptr - start_ptr) / sizeof(GfxCommand));
+                        "Unhandled op=0x%02X at offset %zu", opcode, total - 1);
                 break;
         }
     }
