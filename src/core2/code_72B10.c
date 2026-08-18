@@ -1,6 +1,7 @@
 #include <ultra64.h>
 #include "functions.h"
 #include "variables.h"
+#include <android/log.h>
 
 f32 sfx_randf2(f32, f32);
 
@@ -188,6 +189,11 @@ void func_802FA0F8(void){
         func_802F9CD8();
     }
 
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-SFX", "func_802FA0F8 enter D_803810A0=%p\n", D_803810A0);
+    if (D_803810A0 == NULL) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-SFX", "func_802FA0F8 D_803810A0 NULL, skipping\n");
+        return;
+    }
     tick = time_getDelta();
     startPtr = vector_getBegin(D_803810A0);
     endPtr = vector_getEnd(D_803810A0);
