@@ -373,15 +373,15 @@ void func_8032D510(Cube *cube, Gfx **gfx, Mtx **mtx, Vtx **vtx){
     iOffset = 0;
     for(i = 0; i < cube->prop2Cnt; i++){//L8032D5A0
         iOffset = i * 0xC;
-        iProp = (Prop *)((s32)cube->prop2Ptr + iOffset);
-        tmp_v0.word = *(u32 *)((s32)iProp + 0x8);
+        iProp = (Prop *)((uintptr_t)cube->prop2Ptr + iOffset);
+        tmp_v0.word = *(u32 *)((uintptr_t)iProp + 0x8);
         if(!tmp_v0.unk4){
         
         }else{
             if(!tmp_v0.unk1){
                 func_8032CD60(iProp);
             }
-            tmp_v0.word = *(u32 *)((s32)iProp + 0x8);
+            tmp_v0.word = *(u32 *)((uintptr_t)iProp + 0x8);
             if(tmp_v0.unk0){//actorProp;
                 if(iProp->actorProp.marker->unk40_22){
                     markerPtr = (ActorMarker **)vector_pushBackNew(&D_80383550);
@@ -460,7 +460,7 @@ s32 func_8032D9C0(Cube *cube, Prop* prop){
             func_80305CD8(func_803058C0(prop->position_y), -1);
         }
         if((prop - cube->prop2Ptr) < (cube->prop2Cnt - 1)){
-            memcpy(prop, prop + 1, (s32)(&cube->prop2Ptr[cube->prop2Cnt-1]) - (s32)(prop));
+            memcpy(prop, prop + 1, (size_t)((uintptr_t)(&cube->prop2Ptr[cube->prop2Cnt-1]) - (uintptr_t)(prop)));
         }
         cube->prop2Cnt--;
         if(cube->prop2Cnt){
@@ -483,7 +483,7 @@ void func_8032DB2C(Cube *cube, NodeProp *arg1) {
 
     sp24 = arg1 - cube->prop1Ptr;
     if (sp24 < cube->prop1Cnt - 1) {
-        memcpy(arg1, arg1 + 1, (s32)&cube->prop1Ptr[cube->prop1Cnt] - (s32)arg1 - sizeof(NodeProp));
+        memcpy(arg1, arg1 + 1, (size_t)((uintptr_t)&cube->prop1Ptr[cube->prop1Cnt] - (uintptr_t)arg1) - sizeof(NodeProp));
     }
     if (sp24 < cube->unk0_4) {
         cube->unk0_4--;
