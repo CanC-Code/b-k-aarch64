@@ -4,7 +4,6 @@
 #include <ultra64.h>
 #include "bool.h"
 
-static inline u16 bswap16(u16 v) { return (u16)__builtin_bswap16(v); }
 static inline u32 bswap32(u32 v) { return __builtin_bswap32(v); }
 
 /* Model header
