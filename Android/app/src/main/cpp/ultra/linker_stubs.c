@@ -71,7 +71,7 @@ void rmonPrintf(const char *fmt, ...) {}
 s32  osContGetReadData(void *pad) { extern void *gN64_ControllerData; if (pad && gN64_ControllerData) { memcpy(pad, gN64_ControllerData, 4); __android_log_print(ANDROID_LOG_INFO, "BKA_INPUT", "osContGetReadData: button=0x%04x stick_x=%d stick_y=%d", ((u16*)pad)[0], ((s8*)pad)[2], ((s8*)pad)[3]); } return 0; }
 s32  osContInit(void *mq, void *status, void *pad) { if (status) ((u8*)status)[0] = 0x80; if (pad) ((u8*)pad)[0] = 0x80; return 0; }
 s32  osContSetCh(u8 ch) { return 0; }
-s32  osContStartReadData(void *mq) { extern s32 osSendMesg(void *mq, void *msg, s32 flag); if (mq) osSendMesg(mq, (void*)1, 0); return 0; }
+s32  osContStartReadData(void *mq) { __android_log_print(ANDROID_LOG_INFO, "BKA_INPUT", "osContStartReadData called mq=%p", mq); extern s32 osSendMesg(void *mq, void *msg, s32 flag); if (mq) osSendMesg(mq, (void*)1, 0); return 0; }
 s32  osPiReadIo(u32 devAddr, u32 *data) { *data = 0; return 0; }
 void guOrtho(void *m) {}
 void guTranslate(void *m, f32 x, f32 y, f32 z) {}
