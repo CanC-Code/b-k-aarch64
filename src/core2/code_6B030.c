@@ -247,7 +247,7 @@ void *func_802F2AEC(void) {
         };
     }
     D_80368AB4++;
-    temp_v0 = malloc(8);
+    temp_v0 = malloc(sizeof(Struct64s));
     if (temp_v0 == NULL) {
         return NULL;
     }
