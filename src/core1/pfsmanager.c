@@ -143,7 +143,19 @@ void pfsManager_update(void) {
 
     D_802812D0.stick_x = pfsManagerContPadData[0].stick_x;
     D_802812D0.stick_y = pfsManagerContPadData[0].stick_y;
-    D_802812D0.button = pfsManagerContPadData[0].button;
+
+    {
+        extern struct { unsigned short button; signed char stick_x; signed char stick_y; unsigned char errno_val; } gN64_ControllerData[4];
+        if ((void *)gN64_ControllerData != 0) {
+            pfsManagerContPadData[0].button = gN64_ControllerData[0].button;
+            pfsManagerContPadData[0].stick_x = gN64_ControllerData[0].stick_x;
+            pfsManagerContPadData[0].stick_y = gN64_ControllerData[0].stick_y;
+            D_802812D0.button = pfsManagerContPadData[0].button;
+            D_802812D0.stick_x = pfsManagerContPadData[0].stick_x;
+            D_802812D0.stick_y = pfsManagerContPadData[0].stick_y;
+        }
+    }
+
     if ((getGameMode() == GAME_MODE_6_FILE_PLAYBACK) 
         || (getGameMode() == GAME_MODE_7_ATTRACT_DEMO)
         || (getGameMode() == GAME_MODE_8_BOTTLES_BONUS)
