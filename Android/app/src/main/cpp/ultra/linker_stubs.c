@@ -65,7 +65,7 @@ unsigned long long gspL3DEX_fifoDataStart[1];
 s32  alSeqGetTicks(void *seq) { return 0; }
 void alSeqSetLoc(void *seq, s32 loc) {}
 void rmonPrintf(const char *fmt, ...) {}
-s32  osContGetReadData(void *pad) { return 0; }
+s32  osContGetReadData(void *pad) { extern void *gN64_ControllerData; if (pad && gN64_ControllerData) memcpy(pad, gN64_ControllerData, 4); return 0; }
 s32  osContInit(void *mq, void *status, void *pad) { return 0; }
 s32  osContSetCh(u8 ch) { return 0; }
 s32  osContStartReadData(void *mq) { return 0; }
