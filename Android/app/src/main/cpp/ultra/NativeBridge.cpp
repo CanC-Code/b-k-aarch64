@@ -242,7 +242,6 @@ Java_com_bkawrapper_NativeBridge_nativeGameBoot(JNIEnv* env, jclass clazz,
         if (pthread_create(&gameThread, &attr, game_thread_fn, nullptr) == 0) {
             pthread_detach(gameThread);
             g_engineThreadActive = true;
-    pthread_mutex_lock(&g_inputMutex); g_inputMirror.button = 0x1000; pthread_mutex_unlock(&g_inputMutex);
             LOGI("NativeBridge: Engine thread spawned and bound to waiting sequence state.");
         } else {
             LOGE("NativeBridge: FATAL ERROR - Engine execution context thread creation failed.");
