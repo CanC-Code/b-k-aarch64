@@ -146,10 +146,19 @@ void pfsManager_update(void) {
 
     {
         extern struct { unsigned short button; signed char stick_x; signed char stick_y; unsigned char errno_val; } gN64_ControllerData[4];
+        static int autoStartCounter = 20;
+        if (autoStartCounter > 0) {
+            pfsManagerContPadData[0].button = 0x1000; // Start held for 20 frames
+            autoStartCounter--;
+            __android_log_print(ANDROID_LOG_INFO, "BKA_INPUT", "AUTO START: frame %d", 20 - autoStartCounter);
+        }
         if ((void *)gN64_ControllerData != 0) {
             pfsManagerContPadData[0].button = gN64_ControllerData[0].button;
             pfsManagerContPadData[0].stick_x = gN64_ControllerData[0].stick_x;
             pfsManagerContPadData[0].stick_y = gN64_ControllerData[0].stick_y;
+            if (pfsManagerContPadData[0].button != 0) {
+                __android_log_print(ANDROID_LOG_INFO, "BKA_INPUT", "TOUCH INPUT: button=0x%04x", pfsManagerContPadData[0].button);
+            }
             D_802812D0.button = pfsManagerContPadData[0].button;
             D_802812D0.stick_x = pfsManagerContPadData[0].stick_x;
             D_802812D0.stick_y = pfsManagerContPadData[0].stick_y;
