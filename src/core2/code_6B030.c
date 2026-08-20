@@ -410,6 +410,6 @@ void func_802F3300(void) {
     }
 }
 
-s32 func_802F3364(s32 arg0){
+void *func_802F3364(void *arg0){
     return arg0;
 }
