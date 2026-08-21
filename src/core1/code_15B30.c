@@ -127,6 +127,10 @@ void core1_15B30_addF3DEXTaskData(Gfx *start, Gfx *end, s32 flags) {
     task_data->data_ptr = (u64 *) start;
     task_data->data_ptr_end = (u64 *) end;
 
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+        "addF3DEXTaskData start=%p end=%p bytes=%d flags=0x%x",
+        start, end, (int)((char*)end - (char*)start), flags);
+
     // ANDROID: Execute F3DEX synchronously. Thread5 message dispatch is unreliable
     // in the HLE path, and the software RDP needs to run immediately.
     thread5_startF3DEXTask(task_data);
