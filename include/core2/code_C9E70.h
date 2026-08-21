@@ -1,10 +1,10 @@
-#ifndef __CORE2_C9E70_H__
-#define __CORE2_C9E70_H__
+#ifndef BANJO_KAZOOIE_CORE2_C9E70_H
+#define BANJO_KAZOOIE_CORE2_C9E70_H
 
 #include <ultra64.h>
 #include "structs.h"
 
-#include "gc/zoombox.h"
+#include "core2/gc/zoombox.h"
 
 typedef struct {
     union{

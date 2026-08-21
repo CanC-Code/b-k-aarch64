@@ -1,3 +1,6 @@
+#ifndef BANJO_KAZOOIE_CORE2_CH_GAMESELECT_H
+#define BANJO_KAZOOIE_CORE2_CH_GAMESELECT_H
+
 typedef enum {
     GAME_SELECT_INITIALIZE = 1,
     GAME_SELECT_IDLE = 2,
@@ -6,3 +9,5 @@ typedef enum {
     GAME_SELECT_ERASE_CONFIRMATION = 5,
     GAME_SELECT_DONE = 6
 } GameSelectState;
+
+#endif

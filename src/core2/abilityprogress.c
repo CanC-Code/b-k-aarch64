@@ -2,14 +2,14 @@
 #include "functions.h"
 #include "variables.h"
 
-#include "core2/abilityprogress.h"
+#include "core2/core2.h"
 
 // Special note: The learned abilities and used abilities IDs are different!
 
-s32 learnedAbilities;
-s32 usedAbilities;
+u32 learnedAbilities;
+u32 usedAbilities;
 
-void ability_use(enum ability_used ability) {
+void ability_setUsedWithDialog(enum ability_used_e ability) {
     s32 dialog_id;
     bool play_ding;
 
@@ -22,42 +22,42 @@ void ability_use(enum ability_used ability) {
     }
 
     switch (ability) {
-        case ABILITY_USED_JUMP:
+        case ABILITY_USED_0_JUMP:
             mapSpecificFlags_set(SM_SPECIFIC_FLAG_8_ABILITY_HOLD_A_JUMP_HIGHER_UNLOCKED, TRUE);
             play_ding = TRUE;
             break;
 
-        case ABILITY_USED_FLAP:
+        case ABILITY_USED_1_FLAP:
             mapSpecificFlags_set(SM_SPECIFIC_FLAG_9_ABILITY_FEATHERY_UNLOCKED, TRUE);
             play_ding = TRUE;
             break;
 
-        case ABILITY_USED_FLIP:
+        case ABILITY_USED_2_FLIP:
             mapSpecificFlags_set(SM_SPECIFIC_FLAG_A_ABILITY_FLIP_UNLOCKED, TRUE);
             play_ding = TRUE;
             break;
 
-        case ABILITY_USED_SWIM:
+        case ABILITY_USED_3_SWIM:
             if (gsworld_getMap() == MAP_1_SM_SPIRAL_MOUNTAIN) {
                 dialog_id = ASSET_DFC_BOTTLES_UNDERWATER_TUTORIAL;
             }
             break;
 
-        case ABILITY_USED_CLIMB:
+        case ABILITY_USED_4_CLIMB:
             if (gsworld_getMap() == MAP_1_SM_SPIRAL_MOUNTAIN) {
                 dialog_id = ASSET_E02_DIALOG_BOTTLES_CLIMB_OTHER;
             }
             break;
 
-        case ABILITY_USED_BEAK_BARGE:
+        case ABILITY_USED_5_BEAK_BARGE:
             if (gsworld_getMap() == MAP_1_SM_SPIRAL_MOUNTAIN) {
                 dialog_id = ASSET_E05_DIALOG_BOTTLES_KAZOOIE_BARGE;
             }
             break;
 
-        case ABILITY_USED_SLIDE:
+        case ABILITY_USED_6_SLIDE:
             play_ding = FALSE;
-            if (!ability_isUnlocked(ABILITY_10_TALON_TROT)) {
+            if (!player_isAbilityUnlocked(ABILITY_10_TALON_TROT)) {
                 if (gsworld_getMap() == MAP_2_MM_MUMBOS_MOUNTAIN) {
                     dialog_id = ASSET_B4D_DIALOG_BOTTLES_MM_SLIP_ON_HILL;
                 } else {
@@ -68,12 +68,12 @@ void ability_use(enum ability_used ability) {
             }
             break;
 
-        case ABILITY_USED_FLY:
+        case ABILITY_USED_8_FLY:
             dialog_id = ASSET_A26_DIALOG_NEED_RED_FEATHERS_TO_FLY;
             break;
 
-        case ABILITY_USED_EGG:
-        case ABILITY_USED_SHOCK:
+        case ABILITY_USED_7_EGG:
+        case ABILITY_USED_9_SHOCK:
             break;
     }
 
@@ -88,42 +88,42 @@ void ability_use(enum ability_used ability) {
     usedAbilities |= (1 << ability);
 }
 
-int ability_hasUsed(enum ability_used ability) {
+bool ability_hasUsed(enum ability_used_e ability) {
     return (1 << ability) & usedAbilities;
 }
 
-void ability_setHasUsed(enum ability_used ability) {
+void ability_setUsed(enum ability_used_e ability) {
     usedAbilities |= (1 << ability);
 }
 
-int ability_hasLearned(enum ability_e ability) {
+bool ability_hasLearned(enum ability_e ability) {
     return (1 << ability) & learnedAbilities;
 }
 
-s32 ability_getAllLearned(void) {
+u32 ability_getAllLearned(void) {
     return learnedAbilities;
 }
 
-void ability_debug(void) { }
+void ability_debug(void) {}
 
 void ability_clearAll(void) {
     learnedAbilities = 0;
     usedAbilities = 0;
 }
 
-void ability_setLearned(enum ability_e ability, bool hasLearned) {
-    if (hasLearned) {
+void ability_setLearned(enum ability_e ability, bool has_learned) {
+    if (has_learned) {
         learnedAbilities |= (1 << ability);
     } else {
         learnedAbilities &= ~(1 << ability);
     }
 }
 
-void ability_setAllLearned(s32 val) {
+void ability_setAllLearned(u32 val) {
     learnedAbilities = val;
 }
 
-void ability_setAllUsed(s32 val) {
+void ability_setAllUsed(u32 val) {
     usedAbilities = val;
 }
 

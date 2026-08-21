@@ -1,6 +1,6 @@
 #include <ultra64.h>
 #include "bool.h"
-#include "model.h"
+#include "core2/model.h"
 
 bool cameraAreaList_searchForEntryInBounds(BKCameraAreaList *this, u8 *id, u32 count) {
     BKCameraArea *data_ptr = this->data;

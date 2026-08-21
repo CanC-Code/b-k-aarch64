@@ -212,7 +212,7 @@ void mainLoop(void) {
         D_80275610 = 0;
     }
 
-    if (!func_8032056C() || !levelSpecificFlags_validateCRC1() || !dummy_func_80320240()) {
+    if (!volatileflag_func_8032056C() || !levelSpecificFlags_validateCRC1() || !volatileflag_stub1()) {
         //render weird CRC failure image
         for (y = 30; y < gFramebufferHeight - 30; y++) {
             for (x = 20; x < 235; x++) {

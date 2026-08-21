@@ -1,11 +1,11 @@
-#include "snackerctl.h"
+#include "core2/snackerctl.h"
 
 #include <ultra64.h>
 #include "functions.h"
 #include "variables.h"
 #include "version.h"
 
-#include "ch/snacker.h"
+#include "core2/ch/snacker.h"
 
 // ToDo: move to assets_e
 #define SNACKER_BB_DIALOG_0 VER_SELECT(0xe26, 0xa68, 0, 0)

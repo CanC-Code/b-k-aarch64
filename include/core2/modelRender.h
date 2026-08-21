@@ -4,7 +4,7 @@
 #include <ultra64.h>
 #include "core2/code_C31A0.h"
 #include "core2/animmtxlist.h"
-#include "model.h"
+#include "core2/model.h"
 
 enum model_render_depth_mode_e {
     MODEL_RENDER_DEPTH_NONE,

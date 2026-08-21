@@ -120,7 +120,7 @@ void bsslide_update(void){
 
 void bsslide_end(void) {
     if (level_get() != 6) {
-        ability_use(ABILITY_USED_SLIDE);
+        ability_setUsedWithDialog(ABILITY_USED_6_SLIDE);
     }
 
     pitch_setIdeal(0.0f);

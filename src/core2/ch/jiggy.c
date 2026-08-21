@@ -2,7 +2,7 @@
 #include "functions.h"
 #include "variables.h"
 #include "enums.h"
-#include "jiggy.h"
+#include "core2/ch/jiggy.h"
 #include "core2/commonParticle.h"
 
 extern void func_802BE720(void);

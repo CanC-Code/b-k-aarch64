@@ -11,7 +11,6 @@ extern void fxRipple_802F363C(f32);
 extern void func_802F9D38(s32);
 extern void func_802EE2E8(Actor *arg0, s32 arg1, s32 cnt, s32 arg3, f32 arg4, f32 arg5, f32 arg6);
 extern void gcquiz_func_80319EA4(void);
-extern void fileProgressFlag_set(enum file_progress_e, bool);
 
 void chMMMBreakableWooden_update(Actor *this);
 void gWorldExitPad_update(Actor *this);

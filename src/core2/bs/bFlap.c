@@ -196,7 +196,7 @@ void bsbflap_update(void){
 }
 
 void bsbflap_end(void) {
-    ability_use(ABILITY_USED_FLAP);
+    ability_setUsedWithDialog(ABILITY_USED_1_FLAP);
     baphysics_reset_gravity();
     baphysics_reset_terminal_velocity();
     modelAppendages_setKazooiesUpperHalfVisibilityAndTimer(0, 0.2f);

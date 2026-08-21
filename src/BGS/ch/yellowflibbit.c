@@ -398,7 +398,7 @@ void chYellowFlibbit_update(Actor *this) {
     local->unk20[1] = (0.2 < (f64) local->unk20[1]) ? randf2(-3.0f, -1.0f) : local->unk20[1];
 
     if(this->state == CH_YELLOW_FLIBBIT_STATE_1_IDLE_NOT_SPAWNED){
-        if(mapSpecificFlags_getClear(BGS_SPECIFIC_FLAG_12_FROG_MINIGAME_BATTLE_ACTIVE)){
+        if(mapSpecificFlags_getAndReset(BGS_SPECIFIC_FLAG_12_FROG_MINIGAME_BATTLE_ACTIVE)){
             chYellowFlibbit_setState(this, CH_YELLOW_FLIBBIT_STATE_2_APPEARING);
             return;
         }

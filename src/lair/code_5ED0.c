@@ -2,8 +2,8 @@
 #include "functions.h"
 #include "variables.h"
 
-#include "../core2/gc/zoombox.h"
-#include "../core2/code_C9E70.h"
+#include "core2/gc/zoombox.h"
+#include "core2/code_C9E70.h"
 #include "core2/nc/camera.h"
 
 
@@ -64,9 +64,6 @@ extern void quizQuestionAskedBitfield_set(u32, int); // ff_isAsked_flag_set
 extern int quizQuestionAskedBitfield_get(u32); // ff_isAsked_flag_get
 
 extern void model_getMeshCenter(BKModel *model, s32 mesh_id, s16 [3]); //! $a2 type unk
-
-extern void ability_setAllLearned(s32);  // set unlocked moves bitfield
-extern s32  ability_getAllLearned(void); // get unlocked moves bitfield
 
 extern s32  item_getCount(s32); // item count get
 extern void item_adjustByDiffWithoutHud(s32, s32); // item count set

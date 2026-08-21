@@ -2,11 +2,10 @@
 #include "functions.h"
 #include "variables.h"
 
-#include "snacker.h"
+#include "core2/ch/snacker.h"
 
 extern f32 func_80309B24(f32[3]);
 extern void func_80328FF0(Actor *, f32);
-extern void mapSpecificFlags_setN(s32, s32, s32);
 
 typedef enum {
     CH_SNACKER_OPA_0_APPEAR,

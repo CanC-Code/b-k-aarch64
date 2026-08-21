@@ -1,0 +1,9 @@
+#ifndef BANJO_KAZOOIE_CORE2_BA_IFRAME_H
+#define BANJO_KAZOOIE_CORE2_BA_IFRAME_H
+
+typedef enum {
+    IFRAME_NONE = 1,
+    IFRAME_INVICIBLE = 3
+} IFrameState;
+
+#endif

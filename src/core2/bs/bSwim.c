@@ -332,7 +332,7 @@ void bsbswim_ow_end(void) {
 }
 
 void bsSwim_dive_init(void) {
-    ability_use(ABILITY_USED_SWIM);
+    ability_setUsedWithDialog(ABILITY_USED_3_SWIM);
     baanim_playForDuration_once(ASSET_3C_ANIM_BSSWIM_DIVE_ENTER, 1.0f);
     func_802A7140();
     yaw_setVelocityBounded(500.0f, 5.0f);

@@ -2,7 +2,7 @@
 #include "functions.h"
 #include "variables.h"
 #include "math.h"
-#include "model.h"
+#include "core2/model.h"
 
 #define ABS_F(s) (((s) >= 0.0f) ? (s) : -(s))
 

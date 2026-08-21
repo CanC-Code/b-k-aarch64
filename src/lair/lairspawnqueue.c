@@ -650,7 +650,7 @@ void func_803867A8(Actor *this) {
         this->unk158[0] = func_803866D8(0);
         this->unk158[1] = func_803866D8(1);
         if (volatileFlag_get(VOLATILE_FLAG_86_SANDCASTLE_SHOCKSPRING_JUMP_UNLOCKED)) {
-            ability_unlock(ABILITY_D_SHOCK_JUMP);
+            player_unlockAbility(ABILITY_D_SHOCK_JUMP);
             fileProgressFlag_set(FILEPROG_C6_LAIR_JUMP_PAD_SWITCH_PRESSED, TRUE);
             fileProgressFlag_set(FILEPROG_C7_LAIR_JUMP_PAD_ACTIVE, TRUE);
         }
@@ -751,7 +751,7 @@ void func_80386D78(Actor *this) {
     if (!this->volatile_initialized) {
         this->volatile_initialized = TRUE;
         if (volatileFlag_get(VOLATILE_FLAG_8A_SANDCASTLE_FLIGHT_UNLOCKED)) {
-            ability_unlock(ABILITY_9_FLIGHT);
+            player_unlockAbility(ABILITY_9_FLIGHT);
             mapSpecificFlags_set(0, TRUE);
             this->lifetime_value = 0.0f;
             this->position[1] = this->unk1C[1];
@@ -968,7 +968,7 @@ void func_80387730(Actor *this) {
         this->unk1C[1] = 0.0f;
         this->unk1C[2] = 3.5f;
     }
-    if (!fileProgressFlag_get(this->actorTypeSpecificField + FILEPROG_39_CCW_OPEN) && ability_isUnlocked(ABILITY_13_1ST_NOTEDOOR)) {
+    if (!fileProgressFlag_get(this->actorTypeSpecificField + FILEPROG_39_CCW_OPEN) && player_isAbilityUnlocked(ABILITY_13_1ST_NOTEDOOR)) {
         player_getPosition(spAC);
         if ((ml_vec3f_distance(spAC, this->position) < 500.0f) && (gcdialog_getCurrentTextId() != 0xF64)) {
             code_73640_printItemCount(ITEM_C_NOTE);

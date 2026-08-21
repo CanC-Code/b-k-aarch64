@@ -9,7 +9,7 @@
 #include "core2/ba/drone.h"
 #include "core2/ba/physics.h"
 
-#include "snackerctl.h"
+#include "core2/snackerctl.h"
 
 extern bool player_isInHorizontalRadius(f32[3], f32);
 extern bool player_isInVerticalRange(f32[3], f32);
@@ -612,7 +612,7 @@ bool player_isInFirstPersonView(void){
     return baflag_isTrue(BA_FLAG_17_FIRST_PERSON_VIEW);
 }
 
-bool ability_isUnlocked(enum ability_e uid){
+bool player_isAbilityUnlocked(enum ability_e uid){
     return ability_hasLearned(uid);
 }
 
@@ -676,7 +676,7 @@ bool player_setCarryObjectPoseInCylinder(f32 position[3], f32 radius, f32 vert_r
     return FALSE;
 }
 
-void ability_unlock(enum ability_e uid){
+void player_unlockAbility(enum ability_e uid){
     ability_setLearned(uid, TRUE);
 }
 

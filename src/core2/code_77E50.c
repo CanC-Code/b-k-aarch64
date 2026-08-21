@@ -1,6 +1,6 @@
 #include <ultra64.h>
 #include "core1/core1.h"
-#include "model.h"
+#include "core2/model.h"
 
 void model_copyFramebufferBlockToTexture(BKTextureList *texture_list, s32 index, s32 x_offset, s32 y_offset) {
     u16 *texture_data_ptr;

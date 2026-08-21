@@ -165,7 +165,7 @@ void bsjump_update(void){
 
 void bsjump_end(void) {
     if (ability_hasLearned(ABILITY_A_HOLD_A_JUMP_HIGHER)) {
-        ability_use(ABILITY_USED_JUMP);
+        ability_setUsedWithDialog(ABILITY_USED_0_JUMP);
     }
 
     if (bs_getNextState() != BS_11_BPECK) {

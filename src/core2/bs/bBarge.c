@@ -177,7 +177,7 @@ void bsbarge_update(void){
 }
 
 void bsbarge_end(void) {
-    ability_use(ABILITY_USED_BEAK_BARGE);
+    ability_setUsedWithDialog(ABILITY_USED_5_BEAK_BARGE);
     modelAppendages_setKazooiesUpperHalfVisibility(FALSE);
     D_8037D2A6 = 0;
 }
