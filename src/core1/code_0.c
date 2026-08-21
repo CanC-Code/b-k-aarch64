@@ -173,6 +173,7 @@ void mainLoop(void){
         globalTimer_incTimer();
     }
     
+    __android_log_print(ANDROID_LOG_INFO, "BKA_INPUT", "mainLoop before pfsManager_update, sDisableInput=%d", sDisableInput);
     if (!sDisableInput) {
         pfsManager_update();
     }

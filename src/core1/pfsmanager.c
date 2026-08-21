@@ -129,6 +129,7 @@ void controller_getJoystick(s32 controller_index, f32 dst[2]){
 }
 
 void pfsManager_update(void) {
+    __android_log_print(ANDROID_LOG_INFO, "BKA_INPUT", "pfsManager_update ENTER");
     int j;
     int i;
     u32 sp5C;
