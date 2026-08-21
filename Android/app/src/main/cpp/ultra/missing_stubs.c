@@ -489,7 +489,7 @@ void controller_copyFaceButtons(void) {}
 
 // Additional stubs for excluded files
 void gctransition_reset(void) {}
-void pfsManager_update(void) {}
+// removed duplicate pfsManager_update
 void baMotor_80250C08(void) {}
 void audioManager_getExtraDMAMesg(void) {}
 void *audioManager_getDMANotifyMesgQueue(void) { return NULL; }
