@@ -150,7 +150,7 @@ void bsbshock_init(void){
     sfxsource_playHighPriority(SFX_E_SHOCKSPRING_BOING);
     modelAppendages_setKazooiesFeetAndShoesVisibility(TRUE);
     modelAppendages_setKazooiesUpperHalfVisibility(TRUE);
-    ability_use(ABILITY_USED_SHOCK);
+    ability_setUsedWithDialog(ABILITY_USED_9_SHOCK);
     baModel_80292158(-50.0f);
     playerPosition_addY(-50.0f);
     D_8037D381 = 0;

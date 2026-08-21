@@ -1,5 +1,5 @@
 #include <ultra64.h>
-#include "model.h"
+#include "core2/model.h"
 
 void *textureList_getDataPtr(BKTextureList *this) {
     return (void *) &this->texture_infos[this->count];

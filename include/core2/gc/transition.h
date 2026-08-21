@@ -1,5 +1,7 @@
-#ifndef __GC_TRANSITION__
-#define __GC_TRANSITION__
+#ifndef BANJO_KAZOOIE_CORE2_GC_TRANSITION_H
+#define BANJO_KAZOOIE_CORE2_GC_TRANSITION_H
+
+#include <ultra64.h>
 
 void gctransition_defrag(void);
 void gctransition_draw(Gfx **gfx, Mtx **mtx, Vtx **vtx);

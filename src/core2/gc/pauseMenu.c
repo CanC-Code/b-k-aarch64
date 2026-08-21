@@ -3,7 +3,7 @@
 #include "functions.h"
 #include "variables.h"
 
-#include "zoombox.h"
+#include "core2/gc/zoombox.h"
 
 #ifndef MIN
 #define MIN(s, t) (((s) < t)?(s):(t))
@@ -25,7 +25,6 @@ typedef struct struct_1A_s {
 
 extern void gameSelect_saveAndExit(void);
 extern void func_802E412C(s32, s32);
-void volatileFlag_set(enum volatile_flags_e, s32);
 f32 func_8024DE1C(f32, f32, f32 *, f32 *);
 void func_80310D2C(void);
 
@@ -35,7 +34,6 @@ s32 getGameMode(void);
 void func_802DC5B8(void);
 void func_802DC560(s32, s32);
 s32 controller_getStartButton(s32 controller_index);
-bool fileProgressFlag_get(enum file_progress_e);
 enum map_e gsworld_getMap(void);
 bool func_802FD2D4(void);
 bool func_802FC3C4(void);

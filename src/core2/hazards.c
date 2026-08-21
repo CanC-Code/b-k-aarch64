@@ -4,7 +4,7 @@
 
 #include "core2/ba/timer.h"
 #include "core2/statetimer.h"
-#include "ba/iFrame.h"
+#include "core2/ba/iFrame.h"
 
 extern BKCollisionTriangle *func_8029463C(void);
 

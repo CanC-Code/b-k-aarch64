@@ -2,7 +2,7 @@
 #include "functions.h"
 #include "variables.h"
 #include "core2/statetimer.h"
-#include "iFrame.h"
+#include "core2/ba/iFrame.h"
 
 /* .bss */
 u8 iFrameState;

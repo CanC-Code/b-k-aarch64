@@ -1,3 +1,6 @@
+#ifndef BANJO_KAZOOIE_CORE2_GC_DIALOG_H
+#define BANJO_KAZOOIE_CORE2_GC_DIALOG_H
+
 enum {
     DIALOG_BOTTOM = 0,
     DIALOG_TOP = 1
@@ -14,3 +17,5 @@ typedef enum {
     DIALOG_STATE_7 = 7,
     DIALOG_STATE_8 = 8
 } DialogState;
+
+#endif

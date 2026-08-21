@@ -5,7 +5,7 @@
 #include "bs_funcs.h"
 #include "core2/statetimer.h"
 #include "core2/ba/physics.h"
-#include "snackerctl.h"
+#include "core2/snackerctl.h"
 
 u8 D_80363820 = 0;
 

@@ -44,7 +44,7 @@ void bseggass_update(void) {
             func_8030E760(SFX_3E_POOP_NOISE, 1.4f, 28000);
             commonParticle_new(COMMON_PARTICLE_4_EGG_ASS, 1);
             item_dec(ITEM_D_EGGS);
-            ability_use(ABILITY_USED_EGG);
+            ability_setUsedWithDialog(ABILITY_USED_7_EGG);
         }
         if ((anctrl_isAt(plyr_mvmt,  0.4885f)) &&  (D_8037D2E1 < D_8037D2E0)) {
             anctrl_setStart(plyr_mvmt, 0.349f);

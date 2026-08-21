@@ -163,7 +163,7 @@ void bsbflip_update(void){
 }
 
 void bsbflip_end(void){
-    ability_use(ABILITY_USED_FLIP);
+    ability_setUsedWithDialog(ABILITY_USED_2_FLIP);
     baphysics_reset_gravity();
     baphysics_reset_terminal_velocity();
     modelAppendages_setKazooiesUpperHalfVisibility(FALSE);

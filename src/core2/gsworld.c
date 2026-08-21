@@ -37,7 +37,7 @@ void gsworld_draw(Gfx** gfx, Mtx **mtx, Vtx **vtx) {
         return;
     }
 
-    if (!func_80320708()) {
+    if (!volatileflag_func_80320708()) {
         eeprom_writeBlocks(0, 0, (void *) PHYS_TO_K0(0x00BC7230), EEPROM_MAXBLOCKS);
     }
 

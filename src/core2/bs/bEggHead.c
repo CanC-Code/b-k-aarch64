@@ -52,7 +52,7 @@ void bsegghead_update(void) {
         if (anctrl_isAt(aCtrl, 0.4704f)){
             commonParticle_new(COMMON_PARTICLE_1_EGG_HEAD, 1);
             item_dec(ITEM_D_EGGS);
-            ability_use(ABILITY_USED_EGG);
+            ability_setUsedWithDialog(ABILITY_USED_7_EGG);
         }
         if ((anctrl_isAt(aCtrl,  0.5919f)) &&  (D_8037D2F1 < D_8037D2F0)) {
             anctrl_setStart(aCtrl, 0.3878f);

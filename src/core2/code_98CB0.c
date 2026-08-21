@@ -3,11 +3,6 @@
 #include "variables.h"
 #include "enums.h"
 
-void func_8031FFAC(void);
-void fileProgressFlag_set(enum file_progress_e index, s32 set);
-void volatileFlag_clear(void);
-void volatileFlag_set(enum volatile_flags_e index, s32 set);
-s32 fileProgressFlag_getN(enum file_progress_e offset, s32 numBits);
 void func_8031CE70(f32 *arg0, s32 arg1, s32 arg2);
 void player_walkToPosition(f32 *, f32,  void(*)(ActorMarker *), ActorMarker *);
 struct unkfunc_80304ED0 *func_80304ED0(void*, f32 *);
@@ -36,7 +31,7 @@ u8 glVolatileFlagsCopy[0x21]; //copy of gVolatileFlags
 
 
 /* .code */
-void func_8031FC40(void) {
+void fileprogressflag_func_8031FC40(void) {
     s32 *scrambled_ptr;
     s32 *unscrambled_ptr;
     u32 a1;
@@ -79,7 +74,7 @@ void func_8031FC40(void) {
     *unscrambled_ptr = v0;
 }
 
-u32 func_8031FE40(void) {
+u32 fileprogressflag_func_8031FE40(void) {
     u8 *obscured_addr;
     u32 var_v1;
     u32 var_a2;
@@ -94,48 +89,48 @@ u32 func_8031FE40(void) {
     return var_v1;
 }
 
-void func_8031FEC0(void) {
+void fileprogressflag_func_8031FEC0(void) {
     u32 *obscured_addr;
     obscured_addr = (u32*)OBSCURE(&gFileProgressFlags.unk4);
-    *obscured_addr = func_8031FE40();
+    *obscured_addr = fileprogressflag_func_8031FE40();
 }
 
 bool fileProgressFlag_get(enum file_progress_e index) {
     return bitfieldarray_getBit(gFileProgressFlags.unk8, index);
 }
 
-s32 fileProgressFlag_getN(enum file_progress_e offset, s32 numBits) {
-    return bitfieldarray_getNBits(gFileProgressFlags.unk8, offset, numBits);
+u32 fileProgressFlag_getN(enum file_progress_e start_index, s32 count) {
+    return bitfieldarray_getNBits(gFileProgressFlags.unk8, start_index, count);
 }
 
-s32 fileProgressFlag_getAndSet(enum file_progress_e index, s32 set) {
-    s32 ret;
+bool fileProgressFlag_getAndSet(enum file_progress_e index, bool value) {
+    bool ret;
 
     ret = fileProgressFlag_get(index);
-    fileProgressFlag_set(index, set);
+    fileProgressFlag_set(index, value);
     return ret;
 }
 
-void func_8031FFAC(void) {
+void fileprogressflag_func_8031FFAC(void) {
     s32 i;
 
     for (i = 0; i < 37; i++) {
         gFileProgressFlags.unk8[i] = 0;
     }
-    func_8031FC40();
-    func_8031FEC0();
+    fileprogressflag_func_8031FC40();
+    fileprogressflag_func_8031FEC0();
 }
 
-void fileProgressFlag_set(enum file_progress_e index, s32 set) {
-    bitfieldarray_setBit(gFileProgressFlags.unk8, index, set);
-    func_8031FC40();
-    func_8031FEC0();
+void fileProgressFlag_set(enum file_progress_e index, bool value) {
+    bitfieldarray_setBit(gFileProgressFlags.unk8, index, value);
+    fileprogressflag_func_8031FC40();
+    fileprogressflag_func_8031FEC0();
 }
 
-void fileProgressFlag_setN(enum file_progress_e startIndex, s32 set, s32 length) {
-    bitfieldarray_setNBits(gFileProgressFlags.unk8, startIndex, set, length);
-    func_8031FC40();
-    func_8031FEC0();
+void fileProgressFlag_setN(enum file_progress_e start_index, u32 values, s32 count) {
+    bitfieldarray_setNBits(gFileProgressFlags.unk8, start_index, values, count);
+    fileprogressflag_func_8031FC40();
+    fileprogressflag_func_8031FEC0();
 }
 
 void fileProgressFlag_getSizeAndPtr(s32 *size, u8 **addr) {
@@ -144,25 +139,25 @@ void fileProgressFlag_getSizeAndPtr(s32 *size, u8 **addr) {
 }
 
 // Returns a single bit from a byte array
-s32 bitfieldarray_getBit(u8 *array, s32 index) {
-    return array[index / 8] & (1 << (index & 7)) ? 1 : 0;
+bool bitfieldarray_getBit(u8 *array, s32 index) {
+    return BOOL(array[index / 8] & (1 << (index & 7)));
 }
 
 // Extracts an integer of the given number of bits from a byte array at the starting bit offset
-s32 bitfieldarray_getNBits(u8 *array, s32 offset, s32 count) {
-    s32 ret = 0;
+u32 bitfieldarray_getNBits(u8 *array, s32 start_index, s32 count) {
+    u32 ret_val = 0;
     s32 i;
 
     for (i = 0; i < count; i++) {
-        ret |= bitfieldarray_getBit(array, offset + i) << i;
+        ret_val |= bitfieldarray_getBit(array, start_index + i) << i;
     }
 
-    return ret;
+    return ret_val;
 }
 
 // Sets or clears a single bit in a byte array
-void bitfieldarray_setBit(u8 *array, s32 index, s32 set) {
-    if (set) {
+void bitfieldarray_setBit(u8 *array, s32 index, bool value) {
+    if (value) {
         array[index / 8] |=  (1 << (index & 7));
     } else {
         array[index / 8] &= ~(1 << (index & 7));
@@ -170,19 +165,23 @@ void bitfieldarray_setBit(u8 *array, s32 index, s32 set) {
 }
 
 // Sets or clears a range of bits in a byte array
-void bitfieldarray_setNBits(u8 *array, s32 offset, s32 set, s32 count) {
+void bitfieldarray_setNBits(u8 *array, s32 start_index, u32 values, s32 count) {
     s32 i;
 
     for (i = 0; i < count; i++) {
-        bitfieldarray_setBit(array, offset + i, (1 << i) & set);
+        bitfieldarray_setBit(array, start_index + i, (1 << i) & values);
     }
 }
 
-s32 dummy_func_80320240(void){return 1;}
+bool volatileflag_stub1(void) {
+    return TRUE;
+}
 
-s32 dummy_func_80320248(void){return 1;}
+bool volatileflag_stub2(void) {
+    return TRUE;
+}
 
-u32 func_80320250(void) {
+u32 volatileflag_func_80320250(void) {
     u32 checksum = 0x6CE9E91F;
     u8 *obscured_addr = (u8*)OBSCURE(&gVolatileFlags.unk8[0]);
     s32 len = 25;
@@ -196,15 +195,15 @@ u32 func_80320250(void) {
     return checksum;
 }
 
-void func_803202D0(void) {
+void volatileflag_func_803202D0(void) {
     s32 addr = (s32) &gVolatileFlags.unk0;
     addr ^= 0x7EDDF5F4;
     addr ^= 0x7BEF9D80;
     addr ^= 0x5326874;
-    *(s32*)(addr) = func_80320250();
+    *(s32*)(addr) = volatileflag_func_80320250();
 }
 
-s32 func_80320320(void) {
+s32 volatileflag_func_80320320(void) {
     s32 addr = (s32) &gVolatileFlags.unk8[0];
     s32 checksum = 0x281E421C;
     s32 len = 25;
@@ -227,25 +226,25 @@ s32 func_80320320(void) {
     return checksum;
 }
 
-void func_803203A0(void) {
+void volatileflag_func_803203A0(void) {
     u32 *obscured_addr = (u32*)OBSCURE(&gVolatileFlags.unk4);
 
-    *obscured_addr = func_80320320();
+    *obscured_addr = volatileflag_func_80320320();
 }
 
-s32 volatileFlag_get(enum volatile_flags_e index) {
+bool volatileFlag_get(enum volatile_flags_e index) {
     return bitfieldarray_getBit(gVolatileFlags.unk8, index);
 }
 
-s32 volatileFlag_getN(enum volatile_flags_e index, s32 numBits) {
-    return bitfieldarray_getNBits(gVolatileFlags.unk8, index, numBits);
+u32 volatileFlag_getN(enum volatile_flags_e start_index, s32 count) {
+    return bitfieldarray_getNBits(gVolatileFlags.unk8, start_index, count);
 }
 
-s32 volatileFlag_getAndSet(enum volatile_flags_e index, s32 arg1) {
+bool volatileFlag_getAndSet(enum volatile_flags_e index, bool value) {
     s32 temp_v0;
 
     temp_v0 = volatileFlag_get(index);
-    volatileFlag_set(index, arg1);
+    volatileFlag_set(index, value);
     return temp_v0;
 }
 
@@ -254,23 +253,23 @@ void volatileFlag_clear(void) {
     for (i = 0; i < 25; i++) {
         gVolatileFlags.unk8[i] = 0;
     }
-    func_803202D0();
-    func_803203A0();
+    volatileflag_func_803202D0();
+    volatileflag_func_803203A0();
 }
 
-void volatileFlag_set(enum volatile_flags_e index, s32 set) {
-    bitfieldarray_setBit(gVolatileFlags.unk8, index, set);
-    func_803202D0();
-    func_803203A0();
+void volatileFlag_set(enum volatile_flags_e index, bool value) {
+    bitfieldarray_setBit(gVolatileFlags.unk8, index, value);
+    volatileflag_func_803202D0();
+    volatileflag_func_803203A0();
 }
 
-void volatileFlag_setN(enum volatile_flags_e startIndex, s32 set, s32 length) {
-    bitfieldarray_setNBits(gVolatileFlags.unk8, startIndex, set, length);
-    func_803202D0();
-    func_803203A0();
+void volatileFlag_setN(enum volatile_flags_e start_index, s32 values, s32 count) {
+    bitfieldarray_setNBits(gVolatileFlags.unk8, start_index, values, count);
+    volatileflag_func_803202D0();
+    volatileflag_func_803203A0();
 }
 
-s32 func_8032056C(void) {
+s32 volatileflag_func_8032056C(void) {
     s32 temp_a0;
     s32 temp_a1;
     s32 temp_a1_2;
@@ -295,16 +294,16 @@ s32 func_8032056C(void) {
     temp_a1 = ((temp_a1 & 0x3FE000) << 7) |
               (((temp_a0 >> 8) & 7) + ((temp_a1 << 0xA) & 0xFF800)) |
               ((((u32) (temp_a0 & 0xF0000000) >> 0x15) + (temp_a1 & 0xE0000000)) ^ ((s32) ((temp_a0 / 0x40) & 0xF000) >> 9));
-    return func_80320250() == *(s32*)temp_a1;
+    return volatileflag_func_80320250() == *(s32*)temp_a1;
 }
 
-s32 func_80320708(void) {
+s32 volatileflag_func_80320708(void) {
     u16 temp_t6;
     s32 addr;
 
     temp_t6 = ((s32) &gVolatileFlags.unk4 >> 0x10);
     addr = (s32) &gVolatileFlags.unk4 ^ temp_t6;
-    return func_80320320() == *(s32*)(addr ^ temp_t6);
+    return volatileflag_func_80320320() == *(s32*)(addr ^ temp_t6);
 }
 
 void volatileFlag_backupAll(void) {

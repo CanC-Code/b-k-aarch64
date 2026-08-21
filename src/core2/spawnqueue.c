@@ -5,7 +5,7 @@
 #include "actor.h"
 #include "prop.h"
 #include "functions.h"
-#include "ch/snacker.h"
+#include "core2/ch/snacker.h"
 
 void spawnQueue_unlock(void);
 void spawnQueue_lock(void);

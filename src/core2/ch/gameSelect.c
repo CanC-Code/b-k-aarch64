@@ -1,12 +1,12 @@
 #include <ultra64.h>
 #include "functions.h"
 #include "variables.h"
-#include "gameSelect.h"
+#include "core2/ch/gameSelect.h"
 
 #include "core2/modelRender.h"
 
-#include "../gc/zoombox.h"
-#include "../code_C9E70.h"
+#include "core2/gc/zoombox.h"
+#include "core2/code_C9E70.h"
 
 #ifndef ABS
 #define	ABS(d)		((d) >= 0) ? (d) : -(d)

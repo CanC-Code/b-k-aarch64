@@ -81,15 +81,15 @@ s32 chSmBottlesDialogIndex = 0;
  * @brief Checks if any Spiral Mountain abilities have been learned
  */
 bool __chSmBottles_isAnySpiralMountainAbilityLearned(void) {
-    return ability_isUnlocked(ABILITY_F_DIVE) ||
-           ability_isUnlocked(ABILITY_4_CLAW_SWIPE) ||
-           ability_isUnlocked(ABILITY_C_ROLL) ||
-           ability_isUnlocked(ABILITY_B_RATATAT_RAP) ||
-           ability_isUnlocked(ABILITY_0_BARGE) ||
-           ability_isUnlocked(ABILITY_A_HOLD_A_JUMP_HIGHER) ||
-           ability_isUnlocked(ABILITY_7_FEATHERY_FLAP) ||
-           ability_isUnlocked(ABILITY_8_FLAP_FLIP) ||
-           ability_isUnlocked(ABILITY_5_CLIMB);
+    return player_isAbilityUnlocked(ABILITY_F_DIVE) ||
+           player_isAbilityUnlocked(ABILITY_4_CLAW_SWIPE) ||
+           player_isAbilityUnlocked(ABILITY_C_ROLL) ||
+           player_isAbilityUnlocked(ABILITY_B_RATATAT_RAP) ||
+           player_isAbilityUnlocked(ABILITY_0_BARGE) ||
+           player_isAbilityUnlocked(ABILITY_A_HOLD_A_JUMP_HIGHER) ||
+           player_isAbilityUnlocked(ABILITY_7_FEATHERY_FLAP) ||
+           player_isAbilityUnlocked(ABILITY_8_FLAP_FLIP) ||
+           player_isAbilityUnlocked(ABILITY_5_CLIMB);
 }
 
 /**
@@ -97,31 +97,31 @@ bool __chSmBottles_isAnySpiralMountainAbilityLearned(void) {
  * played when the player uses an ability for the first time.
  */
 void __chSmBottles_setHasUsedSpiralMountainAbilities(void) {
-    ability_unlock(ABILITY_3_CAMERA_CONTROL);
-    ability_setHasUsed(ABILITY_USED_JUMP);
-    ability_setHasUsed(ABILITY_USED_FLAP);
-    ability_setHasUsed(ABILITY_USED_FLIP);
-    ability_setHasUsed(ABILITY_USED_SWIM);
-    ability_setHasUsed(ABILITY_USED_CLIMB);
-    ability_setHasUsed(ABILITY_USED_BEAK_BARGE);
-    ability_setHasUsed(ABILITY_USED_CLAW);
-    ability_setHasUsed(ABILITY_USED_TWIRL);
-    ability_setHasUsed(ABILITY_USED_PECK);
+    player_unlockAbility(ABILITY_3_CAMERA_CONTROL);
+    ability_setUsed(ABILITY_USED_0_JUMP);
+    ability_setUsed(ABILITY_USED_1_FLAP);
+    ability_setUsed(ABILITY_USED_2_FLIP);
+    ability_setUsed(ABILITY_USED_3_SWIM);
+    ability_setUsed(ABILITY_USED_4_CLIMB);
+    ability_setUsed(ABILITY_USED_5_BEAK_BARGE);
+    ability_setUsed(ABILITY_USED_B_CLAW);
+    ability_setUsed(ABILITY_USED_C_TWIRL);
+    ability_setUsed(ABILITY_USED_A_PECK);
 }
 
 /**
  * @brief Unlocks all of the Spiral Mountain moves.
  */
 void __chSmBottles_skipIntroTutorial(void) {
-    ability_unlock(ABILITY_F_DIVE);
-    ability_unlock(ABILITY_4_CLAW_SWIPE);
-    ability_unlock(ABILITY_C_ROLL);
-    ability_unlock(ABILITY_B_RATATAT_RAP);
-    ability_unlock(ABILITY_0_BARGE);
-    ability_unlock(ABILITY_A_HOLD_A_JUMP_HIGHER);
-    ability_unlock(ABILITY_7_FEATHERY_FLAP);
-    ability_unlock(ABILITY_8_FLAP_FLIP);
-    ability_unlock(ABILITY_5_CLIMB);
+    player_unlockAbility(ABILITY_F_DIVE);
+    player_unlockAbility(ABILITY_4_CLAW_SWIPE);
+    player_unlockAbility(ABILITY_C_ROLL);
+    player_unlockAbility(ABILITY_B_RATATAT_RAP);
+    player_unlockAbility(ABILITY_0_BARGE);
+    player_unlockAbility(ABILITY_A_HOLD_A_JUMP_HIGHER);
+    player_unlockAbility(ABILITY_7_FEATHERY_FLAP);
+    player_unlockAbility(ABILITY_8_FLAP_FLIP);
+    player_unlockAbility(ABILITY_5_CLIMB);
     __chSmBottles_setHasUsedSpiralMountainAbilities();
     mapSpecificFlags_set(SM_SPECIFIC_FLAG_3_ALL_SM_ABILITIES_LEARNED, TRUE);
 }
@@ -304,7 +304,7 @@ void __chSmBottles_textCallback(ActorMarker *marker, enum asset_e text_id, s32 a
 void __chSmBottles_getRefresherDialog(Actor *this, s32 *text_id, s32 *text_flags) {
     // Selects the learn and refresh dialogs.
     // Gives the player the ability if not learned.
-    if (ability_isUnlocked(chSmBottlesDialogTable[this->actorTypeSpecificField - SM_BOTTLES_ID_TO_TABLE_SHIFT].ability)) {
+    if (player_isAbilityUnlocked(chSmBottlesDialogTable[this->actorTypeSpecificField - SM_BOTTLES_ID_TO_TABLE_SHIFT].ability)) {
         if (fileProgressFlag_get(FILEPROG_DB_SKIPPED_TUTORIAL)) {
             *text_id = chSmBottlesDialogIndex + ASSET_E0A_DIALOG_BOTTLES_REFUSE_HELP_1;
             chSmBottlesDialogIndex++;
@@ -318,14 +318,14 @@ void __chSmBottles_getRefresherDialog(Actor *this, s32 *text_id, s32 *text_flags
             *text_flags |= 1;
             *text_id = chSmBottlesDialogTable[this->actorTypeSpecificField - SM_BOTTLES_ID_TO_TABLE_SHIFT].refresher_text_id;
 
-            if (*text_id == ASSET_DFE_DIALOG_BOTTLES_DIVE_REFRESHER && !ability_hasUsed(ABILITY_USED_SWIM)) {
+            if (*text_id == ASSET_DFE_DIALOG_BOTTLES_DIVE_REFRESHER && !ability_hasUsed(ABILITY_USED_3_SWIM)) {
                 *text_id = ASSET_DFD_DIALOG_BOTTLES_SWIM_LEARN;
             }
         }
     }
     else {//L803895C0
         *text_id = chSmBottlesDialogTable[this->actorTypeSpecificField - SM_BOTTLES_ID_TO_TABLE_SHIFT].teach_text_id;
-        ability_unlock(chSmBottlesDialogTable[this->actorTypeSpecificField - SM_BOTTLES_ID_TO_TABLE_SHIFT].ability);
+        player_unlockAbility(chSmBottlesDialogTable[this->actorTypeSpecificField - SM_BOTTLES_ID_TO_TABLE_SHIFT].ability);
     }
 }
 
@@ -387,7 +387,7 @@ void __chSmBottles_talk(Actor *this) {
             break;
 
         case CH_SM_MOLE_ID_4_ATTACK_TUTORIAL://L80389848
-            if (!(ability_isUnlocked(ABILITY_4_CLAW_SWIPE) && ability_isUnlocked(ABILITY_C_ROLL) && ability_isUnlocked(ABILITY_B_RATATAT_RAP))) {//L803898D4
+            if (!(player_isAbilityUnlocked(ABILITY_4_CLAW_SWIPE) && player_isAbilityUnlocked(ABILITY_C_ROLL) && player_isAbilityUnlocked(ABILITY_B_RATATAT_RAP))) {//L803898D4
                 mapSpecificFlags_set(SM_SPECIFIC_FLAG_4, TRUE);
             }
             else {//L803898E4
@@ -396,7 +396,7 @@ void __chSmBottles_talk(Actor *this) {
             break;
 
         case CH_SM_MOLE_ID_6_JUMP_TUTORIAL://L803898A0
-            if (!(ability_isUnlocked(ABILITY_A_HOLD_A_JUMP_HIGHER) && ability_isUnlocked(ABILITY_7_FEATHERY_FLAP) && ability_isUnlocked(ABILITY_8_FLAP_FLIP))) {//L803898D4
+            if (!(player_isAbilityUnlocked(ABILITY_A_HOLD_A_JUMP_HIGHER) && player_isAbilityUnlocked(ABILITY_7_FEATHERY_FLAP) && player_isAbilityUnlocked(ABILITY_8_FLAP_FLIP))) {//L803898D4
                 mapSpecificFlags_set(SM_SPECIFIC_FLAG_E, TRUE);
             }
             else {//L803898E4
@@ -526,7 +526,7 @@ void chSmBottles_update(Actor *this) {
                     break;
                 }
 
-                sp34 = (chSmBottlesDialogTable[this->actorTypeSpecificField - SM_BOTTLES_ID_TO_TABLE_SHIFT].ability + 1) && ability_isUnlocked(chSmBottlesDialogTable[this->actorTypeSpecificField - SM_BOTTLES_ID_TO_TABLE_SHIFT].ability);
+                sp34 = (chSmBottlesDialogTable[this->actorTypeSpecificField - SM_BOTTLES_ID_TO_TABLE_SHIFT].ability + 1) && player_isAbilityUnlocked(chSmBottlesDialogTable[this->actorTypeSpecificField - SM_BOTTLES_ID_TO_TABLE_SHIFT].ability);
 
                 if (!sp34 && this->actorTypeSpecificField != CH_SM_MOLE_ID_1_INTRO || fileProgressFlag_get(FILEPROG_DB_SKIPPED_TUTORIAL) == FALSE || chSmBottlesDialogIndex < 6) {
                     if (this->actorTypeSpecificField != CH_SM_MOLE_ID_8_BRIDGE || !fileProgressFlag_get(FILEPROG_FC_DEFEAT_GRUNTY)) {
