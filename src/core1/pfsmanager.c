@@ -152,12 +152,12 @@ void pfsManager_update(void) {
         static int autoStartCounter = 0;
         autoStartCounter++;
         if ((autoStartCounter % 60) == 0) {
-            gN64_ControllerData[0].button = 0x1000; // pulse Start for one frame
+            gN64_ControllerData[0].button = 0x8000; // pulse A for one frame
         } else {
             gN64_ControllerData[0].button = 0;
         }
         if ((autoStartCounter % 60) == 0) {
-            __android_log_print(ANDROID_LOG_INFO, "BKA_INPUT", "START PULSE at frame %d", autoStartCounter);
+            __android_log_print(ANDROID_LOG_INFO, "BKA_INPUT", "A PULSE at frame %d", autoStartCounter);
         }
         if ((void *)gN64_ControllerData != 0) {
             pfsManagerContPadData[0].button = gN64_ControllerData[0].button;
