@@ -148,7 +148,7 @@ void pfsManager_update(void) {
 
     {
         extern struct { unsigned short button; signed char stick_x; signed char stick_y; unsigned char errno_val; } gN64_ControllerData[4];
-        static int autoStartCounter = 20;
+        static int autoStartCounter = 120;
         if (autoStartCounter > 0) {
             pfsManagerContPadData[0].button = 0x1000; // Start held for 20 frames
             autoStartCounter--;
