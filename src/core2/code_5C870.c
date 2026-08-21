@@ -440,6 +440,7 @@ void func_802E4384(void){
 }
 
 bool func_802E4424(void) {
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "func_802E4424 entry");
     s32 sp1C;
     u8 temp_v0;
 
