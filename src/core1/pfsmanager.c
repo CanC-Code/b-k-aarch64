@@ -149,11 +149,15 @@ void pfsManager_update(void) {
 
     {
         extern struct { unsigned short button; signed char stick_x; signed char stick_y; unsigned char errno_val; } gN64_ControllerData[4];
-        static int autoStartCounter = 120;
-        if (autoStartCounter > 0) {
-            gN64_ControllerData[0].button = 0x1000; // Start held for 20 frames
-            autoStartCounter--;
-            __android_log_print(ANDROID_LOG_INFO, "BKA_INPUT", "AUTO START: frame %d", 20 - autoStartCounter);
+        static int autoStartCounter = 0;
+        autoStartCounter++;
+        if ((autoStartCounter % 60) == 0) {
+            gN64_ControllerData[0].button = 0x1000; // pulse Start for one frame
+        } else {
+            gN64_ControllerData[0].button = 0;
+        }
+        if ((autoStartCounter % 60) == 0) {
+            __android_log_print(ANDROID_LOG_INFO, "BKA_INPUT", "START PULSE at frame %d", autoStartCounter);
         }
         if ((void *)gN64_ControllerData != 0) {
             pfsManagerContPadData[0].button = gN64_ControllerData[0].button;
