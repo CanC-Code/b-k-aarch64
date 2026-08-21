@@ -1,4 +1,5 @@
 #include <ultra64.h>
+#include <android/log.h>
 #include "core1/core1.h"
 
 extern void thread5_startF3DEXTask(struct ucode_task_data_s *task_data);
