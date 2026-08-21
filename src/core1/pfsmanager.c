@@ -145,6 +145,7 @@ void pfsManager_update(void) {
 
     D_802812D0.stick_x = pfsManagerContPadData[0].stick_x;
     D_802812D0.stick_y = pfsManagerContPadData[0].stick_y;
+    D_802812D0.button = pfsManagerContPadData[0].button;
 
     {
         extern struct { unsigned short button; signed char stick_x; signed char stick_y; unsigned char errno_val; } gN64_ControllerData[4];

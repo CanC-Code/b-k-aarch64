@@ -173,7 +173,7 @@ void mainLoop(void){
         globalTimer_incTimer();
     }
     
-    __android_log_print(ANDROID_LOG_INFO, "BKA_INPUT", "mainLoop before pfsManager_update, sDisableInput=%d", sDisableInput);
+    __android_log_print(ANDROID_LOG_INFO, "BKA_INPUT", "mainLoop before update sDisableInput=%d D_8027A130=%d gameMode=%d", sDisableInput, D_8027A130, getGameMode());
     if (!sDisableInput) {
         pfsManager_update();
     }
