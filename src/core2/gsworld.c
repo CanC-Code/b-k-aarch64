@@ -205,6 +205,9 @@ void gsworld_free(void) {
 
 void gsworld_set(enum map_e map, s32 exit, bool reload) {
     LOG_BKA_INIT("start");
+    if (map == MAP_1F_CS_START_RAREWARE) {
+        map = MAP_1_SM_SPIRAL_MOUNTAIN;
+    }
     sGsWorldData.unk0 = 3;
     sGsWorldData.map = map;
     sGsWorldData.exit = exit;
