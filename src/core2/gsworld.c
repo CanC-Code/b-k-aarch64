@@ -429,6 +429,9 @@ void gsworld_load(enum map_e map_id) {
 
     f = file_openMap(map_id);
     __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "gsworld_load: file_openMap returned %p", (void*)f);
+    // TEMPORARY: skip world file parsing to bypass cubeList_fromFile hang
+    if (f) file_close(f);
+    return;
 
     if (!f) return;
     while (!file_isNextByteExpected(f, GS_WORLD_START_INDICATOR_0_END)) {
