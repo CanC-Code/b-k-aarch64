@@ -527,8 +527,9 @@ static void Cmd_MoveMem(GfxCommand cmd) {
 // For our initial implementation, we treat the matrix as modelview.
 // =======================================================================
 static void Cmd_Mtx(GfxCommand cmd) {
-    uint32_t addr = cmd.w1 & 0x0FFFFFFF;
-    if (!gN64_RDRAM || addr == 0) return;
+    uint32_t raw_addr = cmd.w1;
+    uint32_t addr = raw_addr & 0x0FFFFFFF;
+    if (!gN64_RDRAM || addr == 0 || addr > 0x7FFFFF) return;
 
     // Load the matrix from RDRAM into the modelview matrix.
     Matrix_LoadFromN64(s_rdp.modelview, gN64_RDRAM + addr);
@@ -737,8 +738,9 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
             case 0x06:
             case 0xDE: {
-                uint32_t addr = c.w1 & 0x0FFFFFFF;
-                if (addr != 0 && gN64_RDRAM != nullptr && depth < 63) {
+                uint32_t raw_addr = c.w1;
+                uint32_t addr = raw_addr & 0x0FFFFFFF;
+                if (addr != 0 && addr <= 0x7FFFFF && gN64_RDRAM != nullptr && depth < 63) {
                     stack[depth].ptr = cur;
                     stack[depth].end = cur_end;
                     depth++;
