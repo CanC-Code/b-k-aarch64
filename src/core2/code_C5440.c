@@ -203,6 +203,7 @@ void func_8034C9B0(int arg0){
 }
 
 void * func_8034C9D4(void){
+    return NULL; // TEMPORARY skip mesh transforms to avoid pointer truncation crash
     struct1Ds *iPtr;
     struct1Ds *endPtr = vector_getEnd(D_80386140.unk4);
 
