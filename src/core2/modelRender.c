@@ -1,4 +1,5 @@
 #include <ultra64.h>
+#include <math.h>
 #include "functions.h"
 #include "variables.h"
 #include "core1/core1.h"
@@ -900,6 +901,14 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
     D_80370990 = FALSE;
 
     viewport_getPosition_vec3f(modelRenderCameraPosition);
+
+    // TEMPORARY: sanitize camera position for missing world data
+    if (isnan(modelRenderCameraPosition[0]) || isnan(modelRenderCameraPosition[1]) || isnan(modelRenderCameraPosition[2])) {
+        modelRenderCameraPosition[0] = 0.0f;
+        modelRenderCameraPosition[1] = 1000.0f;
+        modelRenderCameraPosition[2] = 0.0f;
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "modelRender_draw: sanitized camera position");
+    }
     viewport_getRotation_vec3f(modelRenderCameraRotation);
 
     if(D_80383758.unk18){
