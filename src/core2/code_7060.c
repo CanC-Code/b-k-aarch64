@@ -215,6 +215,7 @@ void func_8028E4B0(void) {
     } else {
         LOG_BKA_INIT("calling func_8028E440");
         sp20 = func_8028E440(sp24);
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "func_8028E4B0: func_8028E440 returned %d", sp20);
         if (sp20 != -1) {
             LOG_BKA_INIT("calling func_8028E0F0 (second)");
             func_8028E0F0(sp20, sp24);
