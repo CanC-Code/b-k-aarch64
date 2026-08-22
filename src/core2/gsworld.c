@@ -1,6 +1,5 @@
 #include <ultra64.h>
 #include <android/log.h>
-extern ActorArray *suBaddieActorArray;
 #define LOG_BKA_INIT(tag) __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "gsworld_set: %s", tag)
 #include "core1/core1.h"
 #include "functions.h"
@@ -9,6 +8,8 @@ extern ActorArray *suBaddieActorArray;
 #include "core2/anim/sprite.h"
 #include <core2/file.h>
 #include "core2/particle.h"
+#include "prop.h"
+extern ActorArray *suBaddieActorArray;
 
 struct gsworld_data_s {
     s32 unk0; // probably game_mode_e
