@@ -877,6 +877,7 @@ void modelRender_executeGeoCmds(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data)
 }
 
 BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation[3], f32 scale, f32*arg5, BKModelBin* model_bin) {
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "modelRender_draw ENTER model_bin=%p", model_bin);
     f32 camera_focus[3];
     f32 camera_focus_distance;
     f32 padEC;
@@ -891,6 +892,7 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
     f32 padB8;
     
     if ((!model_bin && !sSecondaryModelData.model_id) || (model_bin && sSecondaryModelData.model_id)) {
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "modelRender_draw EARLY RETURN 1: model_bin mismatch");
         modelRender_reset();
         return NULL;
     }
@@ -927,6 +929,7 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
         || ((camera_focus[1] < -17000.0f) || (17000.0f < camera_focus[1]))
         || ((camera_focus[2] < -17000.0f) || (17000.0f < camera_focus[2]))
     ){
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "modelRender_draw EARLY RETURN 2: camera_focus=%.1f %.1f %.1f", camera_focus[0], camera_focus[1], camera_focus[2]);
         modelRender_reset();
         return 0;
     }
@@ -962,12 +965,14 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
     }
 
     if(D_80383708 <= camera_focus_distance){
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "modelRender_draw EARLY RETURN 3: D_80383708=%f camera_focus_distance=%f", D_80383708, camera_focus_distance);
         modelRender_reset();
         return 0;
     }
 
     D_80370990 = (D_80383704) ? viewport_func_8024DB50(object_position, spD0*scale) : TRUE;
     if (!D_80370990) {
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "modelRender_draw EARLY RETURN 4: frustum culled");
         modelRender_reset();
         return 0;
     }
