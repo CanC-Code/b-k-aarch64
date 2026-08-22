@@ -635,11 +635,9 @@ void func_8030A078(void) {
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "func_8030A078: after func_8034C6DC");
     }
 
-    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "func_8030A078: early return for opaque-only test");
-    return;
 
     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "func_8030A078: model_bin_xlu=%p", mapModel.model_bin_xlu);
-    if (mapModel.model_bin_xlu != NULL) {
+    if (mapModel.model_bin_xlu != NULL && mapModel.model_bin_xlu->mesh_list_offset != 0) {
         sp24 = modelbin_getMeshList(mapModel.model_bin_xlu);
     }
     else{
