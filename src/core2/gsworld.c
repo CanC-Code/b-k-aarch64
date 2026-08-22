@@ -1,5 +1,6 @@
 #include <ultra64.h>
 #include <android/log.h>
+extern ActorArray *suBaddieActorArray;
 #define LOG_BKA_INIT(tag) __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "gsworld_set: %s", tag)
 #include "core1/core1.h"
 #include "functions.h"
