@@ -630,9 +630,12 @@ void func_8030A078(void) {
             "func_8030A078: sp24 is NULL; model_opa remains NULL");
     }
     if (mapModel.model_opa != NULL) {
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "func_8030A078: before func_8034C6DC");
         func_8034C6DC(mapModel.model_opa);
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "func_8030A078: after func_8034C6DC");
     }
 
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "func_8030A078: model_bin_xlu=%p", mapModel.model_bin_xlu);
     if (mapModel.model_bin_xlu != NULL) {
         sp24 = modelbin_getMeshList(mapModel.model_bin_xlu);
     }
