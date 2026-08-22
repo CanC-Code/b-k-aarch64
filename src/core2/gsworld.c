@@ -42,6 +42,11 @@ void gsworld_draw(Gfx** gfx, Mtx **mtx, Vtx **vtx) {
         return;
     }
 
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+        "gsworld_draw actors: suBaddieActorArray=%p cnt=%d map=%d",
+        suBaddieActorArray, suBaddieActorArray ? suBaddieActorArray->cnt : -1,
+        gsworld_getMap());
+
     if (!func_80320708()) {
         eeprom_writeBlocks(0, 0, (void *) PHYS_TO_K0(0x00BC7230), EEPROM_MAXBLOCKS);
     }

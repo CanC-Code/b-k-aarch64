@@ -249,6 +249,7 @@ void func_8028E668(f32 arg0[3], f32 arg1, f32 arg2, f32 arg3) {
 
 
 void player_draw(Gfx **gfx, Mtx **mtx, Vtx **vtx) {
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "player_draw entry");
     if (D_8037BFB8) {
         eggShatter_draw(gfx, mtx, vtx);
         baModel_draw(gfx, mtx, vtx);

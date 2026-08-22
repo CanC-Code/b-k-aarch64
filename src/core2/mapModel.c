@@ -1,4 +1,5 @@
 #include <ultra64.h>
+#include <android/log.h>
 #include "functions.h"
 #include "variables.h"
 
@@ -236,6 +237,7 @@ f32 func_80308FDC(f32 arg0[3], u32 arg1) {
 }
 
 void mapModel_opa_draw(Gfx **gfx, Mtx **mtx, Vtx **vtx) {
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "mapModel_opa_draw entry");
     s32 temp_a0;
     if (!mapModel.model_opa) return;
 
