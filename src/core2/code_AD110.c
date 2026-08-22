@@ -285,8 +285,8 @@ extern void warp_ccwExitSpringNabnutWindow(s32, s32);
 extern void warp_ccwExitSummerNabnutWindow(s32, s32);
 extern void warp_ccwExitAutumnNabnutWindow(s32, s32);
 extern void warp_ccwExitWinterNabnutWindow(s32, s32);
-extern void warp_gvEnterSNSChamper(s32, s32);
-extern void warp_gvExitSNSChamper(s32, s32);
+extern void warp_gvEnterSNSChamber(s32, s32);
+extern void warp_gvExitSNSChamber(s32, s32);
 extern void warp_lairEnterLairFromSMLevel(s32, s32);
 
 extern void func_802C1674(NodeProp *, ActorMarker *);
@@ -389,8 +389,8 @@ void * sWarpFunctions[] = {
     warp_rbbExitAnchorRoom, warp_rbbEnterAnchorRoom, warp_mmmEnterWellBottom, warp_mmmExitWellBottom,
     warp_mmmEnterBathroomFromLoggo, warp_mmmEnterLoggo, warp_ccwEnterLevel, warp_ccwEnterSpringNabnutWindow,
     warp_ccwEnterSummerNabnutWindow, warp_ccwEnterAutumnNabnutWindow, warp_ccwEnterWinterNabnutWindow, warp_ccwExitSpringNabnutWindow,
-    warp_ccwExitSummerNabnutWindow, warp_ccwExitAutumnNabnutWindow, warp_ccwExitWinterNabnutWindow, warp_gvEnterSNSChamper,
-    warp_gvExitSNSChamper, warp_lairEnterLairFromSMLevel, func_80334430, func_80334430,
+    warp_ccwExitSummerNabnutWindow, warp_ccwExitAutumnNabnutWindow, warp_ccwExitWinterNabnutWindow, warp_gvEnterSNSChamber,
+    warp_gvExitSNSChamber, warp_lairEnterLairFromSMLevel, func_80334430, func_80334430,
     func_80334430, func_80334430, func_80334430, func_80334430,
     func_80334430, func_80334430, func_80334430,
 };

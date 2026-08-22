@@ -52,12 +52,12 @@ enum asset_e playerModel_get(void){
                 case MAP_1B_MMM_MAD_MONSTER_MANSION:
                 case MAP_27_FP_FREEZEEZY_PEAK:
                 case MAP_31_RBB_RUSTY_BUCKET_BAY:
-                case 0x32:
+                case MAP_32_STUB_LL_LAVA_LEVEL:
                 case MAP_43_CCW_SPRING:
                 case MAP_44_CCW_SUMMER:
                 case MAP_45_CCW_AUTUMN:
                 case MAP_46_CCW_WINTER:
-                case 0x56:
+                case MAP_56_STUB_ML_MINE_LEVEL:
                     return ASSET_34D_MODEL_BANJOKAZOOIE_LOW_POLY;
                     
                 default:

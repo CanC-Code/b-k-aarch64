@@ -81,35 +81,39 @@ void cutscenetrigger_check(s32 cs_map, s32 arg1, s32 return_map, s32 return_exit
 }
 
 //check cutscene interrupts
-s32 cutscenetrigger_update(void){
-    cutscenetrigger_check(MAP_86_CS_SPIRAL_MOUNTAIN_4,        0, MAP_89_CS_INTRO_BANJOS_HOUSE_2,  -1, NULL);
-    cutscenetrigger_check(MAP_7D_CS_SPIRAL_MOUNTAIN_1,        0, MAP_7C_CS_INTRO_BANJOS_HOUSE_1,  -1, NULL);
-    cutscenetrigger_check(MAP_7C_CS_INTRO_BANJOS_HOUSE_1,     0, MAP_86_CS_SPIRAL_MOUNTAIN_4,     -1, NULL);
-    cutscenetrigger_check(MAP_89_CS_INTRO_BANJOS_HOUSE_2,     0, MAP_1_SM_SPIRAL_MOUNTAIN,      0x12, NULL);
-    cutscenetrigger_check(MAP_85_CS_SPIRAL_MOUNTAIN_3,        0, MAP_7B_CS_INTRO_GL_DINGPOT_1,    -1, NULL);
-    cutscenetrigger_check(MAP_7B_CS_INTRO_GL_DINGPOT_1,       1, MAP_81_CS_INTRO_GL_DINGPOT_2,    -1, NULL);
-    cutscenetrigger_check(MAP_81_CS_INTRO_GL_DINGPOT_2,       0, MAP_7D_CS_SPIRAL_MOUNTAIN_1,     -1, NULL);
-    cutscenetrigger_check(MAP_82_CS_ENTERING_GL_MACHINE_ROOM, 0, MAP_69_GL_MM_LOBBY,            0x12, cutscene_skipEnterLairCutsceneCheck);
-    cutscenetrigger_check(MAP_83_CS_GAME_OVER_MACHINE_ROOM,   0, MAP_1F_CS_START_RAREWARE,        -1, cutscene_skipGameOverCutsceneCheck);
-    cutscenetrigger_check(MAP_87_CS_SPIRAL_MOUNTAIN_5,        0, MAP_88_CS_SPIRAL_MOUNTAIN_6,     -1, NULL);
-    cutscenetrigger_check(MAP_94_CS_INTRO_SPIRAL_7,           0, MAP_8E_GL_FURNACE_FUN,            4, NULL);
-    cutscenetrigger_check(MAP_88_CS_SPIRAL_MOUNTAIN_6,        1, MAP_96_CS_END_BEACH_1,           -1, NULL);
-    cutscenetrigger_check(MAP_98_CS_END_SPIRAL_MOUNTAIN_1,    0, MAP_1F_CS_START_RAREWARE,        -1, NULL);
-    cutscenetrigger_check(MAP_99_CS_END_SPIRAL_MOUNTAIN_2,    0, MAP_1F_CS_START_RAREWARE,        -1, NULL);
-    cutscenetrigger_check(MAP_20_CS_END_NOT_100,              0, MAP_98_CS_END_SPIRAL_MOUNTAIN_1, -1, NULL);
-    cutscenetrigger_check(MAP_95_CS_END_ALL_100,              0, MAP_99_CS_END_SPIRAL_MOUNTAIN_2, -1, NULL);
-    cutscenetrigger_check(MAP_97_CS_END_BEACH_2,              0, MAP_99_CS_END_SPIRAL_MOUNTAIN_2, -1, cutscene_skipBeachCutsceneCheck);
-    cutscenetrigger_check(MAP_85_CS_SPIRAL_MOUNTAIN_3,      0xC, MAP_1_SM_SPIRAL_MOUNTAIN,      0x12, cutscene_skipIntroCutsceneCheck);
-    cutscenetrigger_check(MAP_7B_CS_INTRO_GL_DINGPOT_1,     0xC, MAP_1_SM_SPIRAL_MOUNTAIN,      0x12, cutscene_skipIntroCutsceneCheck);
-    cutscenetrigger_check(MAP_81_CS_INTRO_GL_DINGPOT_2,     0xC, MAP_1_SM_SPIRAL_MOUNTAIN,      0x12, cutscene_skipIntroCutsceneCheck);
-    cutscenetrigger_check(MAP_7D_CS_SPIRAL_MOUNTAIN_1,      0xC, MAP_1_SM_SPIRAL_MOUNTAIN,      0x12, cutscene_skipIntroCutsceneCheck);
-    cutscenetrigger_check(MAP_7C_CS_INTRO_BANJOS_HOUSE_1,   0xC, MAP_1_SM_SPIRAL_MOUNTAIN,      0x12, cutscene_skipIntroCutsceneCheck);
-    cutscenetrigger_check(MAP_86_CS_SPIRAL_MOUNTAIN_4,      0xC, MAP_1_SM_SPIRAL_MOUNTAIN,      0x12, cutscene_skipIntroCutsceneCheck);
-    cutscenetrigger_check(MAP_89_CS_INTRO_BANJOS_HOUSE_2,   0xC, MAP_1_SM_SPIRAL_MOUNTAIN,      0x12, cutscene_skipIntroCutsceneCheck);
-    if(gsworld_getMap() == MAP_95_CS_END_ALL_100 && mapSpecificFlags_get(1)){
+s32 cutscenetrigger_update(void)
+{
+    cutscenetrigger_check(MAP_86_CS_SPIRAL_MOUNTAIN_4,        0, MAP_89_CS_INTRO_BANJOS_HOUSE_2,                          -1, NULL);
+    cutscenetrigger_check(MAP_7D_CS_SPIRAL_MOUNTAIN_1,        0, MAP_7C_CS_INTRO_BANJOS_HOUSE_1,                          -1, NULL);
+    cutscenetrigger_check(MAP_7C_CS_INTRO_BANJOS_HOUSE_1,     0, MAP_86_CS_SPIRAL_MOUNTAIN_4,                             -1, NULL);
+    cutscenetrigger_check(MAP_89_CS_INTRO_BANJOS_HOUSE_2,     0, MAP_1_SM_SPIRAL_MOUNTAIN,             WARP_SM_12_FROM_HOUSE, NULL);
+    cutscenetrigger_check(MAP_85_CS_SPIRAL_MOUNTAIN_3,        0, MAP_7B_CS_INTRO_GL_DINGPOT_1,                            -1, NULL);
+    cutscenetrigger_check(MAP_7B_CS_INTRO_GL_DINGPOT_1,       1, MAP_81_CS_INTRO_GL_DINGPOT_2,                            -1, NULL);
+    cutscenetrigger_check(MAP_81_CS_INTRO_GL_DINGPOT_2,       0, MAP_7D_CS_SPIRAL_MOUNTAIN_1,                             -1, NULL);
+    cutscenetrigger_check(MAP_82_CS_ENTERING_GL_MACHINE_ROOM, 0, MAP_69_GL_MM_LOBBY,            WARP_GL_MM_LOBBY_12_ENTRANCE, cutscene_skipEnterLairCutsceneCheck);
+    cutscenetrigger_check(MAP_83_CS_GAME_OVER_MACHINE_ROOM,   0, MAP_1F_CS_START_RAREWARE,                                -1, cutscene_skipGameOverCutsceneCheck);
+    cutscenetrigger_check(MAP_87_CS_SPIRAL_MOUNTAIN_5,        0, MAP_88_CS_SPIRAL_MOUNTAIN_6,                             -1, NULL);
+    cutscenetrigger_check(MAP_94_CS_INTRO_SPIRAL_7,           0, MAP_8E_GL_FURNACE_FUN,                                    4, NULL);
+    cutscenetrigger_check(MAP_88_CS_SPIRAL_MOUNTAIN_6,        1, MAP_96_CS_END_BEACH_1,                                   -1, NULL);
+    cutscenetrigger_check(MAP_98_CS_END_SPIRAL_MOUNTAIN_1,    0, MAP_1F_CS_START_RAREWARE,                                -1, NULL);
+    cutscenetrigger_check(MAP_99_CS_END_SPIRAL_MOUNTAIN_2,    0, MAP_1F_CS_START_RAREWARE,                                -1, NULL);
+    cutscenetrigger_check(MAP_20_CS_END_NOT_100,              0, MAP_98_CS_END_SPIRAL_MOUNTAIN_1,                         -1, NULL);
+    cutscenetrigger_check(MAP_95_CS_END_ALL_100,              0, MAP_99_CS_END_SPIRAL_MOUNTAIN_2,                         -1, NULL);
+    cutscenetrigger_check(MAP_97_CS_END_BEACH_2,              0, MAP_99_CS_END_SPIRAL_MOUNTAIN_2,                         -1, cutscene_skipBeachCutsceneCheck);
+    cutscenetrigger_check(MAP_85_CS_SPIRAL_MOUNTAIN_3,      0xC, MAP_1_SM_SPIRAL_MOUNTAIN,             WARP_SM_12_FROM_HOUSE, cutscene_skipIntroCutsceneCheck);
+    cutscenetrigger_check(MAP_7B_CS_INTRO_GL_DINGPOT_1,     0xC, MAP_1_SM_SPIRAL_MOUNTAIN,             WARP_SM_12_FROM_HOUSE, cutscene_skipIntroCutsceneCheck);
+    cutscenetrigger_check(MAP_81_CS_INTRO_GL_DINGPOT_2,     0xC, MAP_1_SM_SPIRAL_MOUNTAIN,             WARP_SM_12_FROM_HOUSE, cutscene_skipIntroCutsceneCheck);
+    cutscenetrigger_check(MAP_7D_CS_SPIRAL_MOUNTAIN_1,      0xC, MAP_1_SM_SPIRAL_MOUNTAIN,             WARP_SM_12_FROM_HOUSE, cutscene_skipIntroCutsceneCheck);
+    cutscenetrigger_check(MAP_7C_CS_INTRO_BANJOS_HOUSE_1,   0xC, MAP_1_SM_SPIRAL_MOUNTAIN,             WARP_SM_12_FROM_HOUSE, cutscene_skipIntroCutsceneCheck);
+    cutscenetrigger_check(MAP_86_CS_SPIRAL_MOUNTAIN_4,      0xC, MAP_1_SM_SPIRAL_MOUNTAIN,             WARP_SM_12_FROM_HOUSE, cutscene_skipIntroCutsceneCheck);
+    cutscenetrigger_check(MAP_89_CS_INTRO_BANJOS_HOUSE_2,   0xC, MAP_1_SM_SPIRAL_MOUNTAIN,             WARP_SM_12_FROM_HOUSE, cutscene_skipIntroCutsceneCheck);
+
+    if (gsworld_getMap() == MAP_95_CS_END_ALL_100 && mapSpecificFlags_get(1))
+    {
         func_8034B9E4();
         mapSpecificFlags_set(1, 0);
     }
+
     return 0;
 }
 
@@ -138,9 +142,15 @@ void func_8031CC40(enum map_e map_id, s32 arg1) {
     func_8031CB50(map_id, arg1, 0);
 }
 
+#define _func_8031CC60(map, entry) \
+    func_8031CC60(((map) << 8) + (entry))
+
 void func_8031CC60(s32 arg0) {
     func_8031CB50(arg0 >> 8, arg0 & 0xFF, 1);
 }
+
+#define _func_8031CC8C(nodepos, map, entry) \
+    func_8031CC8C((nodepos), ((map) << 8) + (entry))
 
 void func_8031CC8C(s32 arg0, s32 arg1) {
     // arg1 = MAP_ID + ENTRY_ID
@@ -160,7 +170,7 @@ void func_8031CC8C(s32 arg0, s32 arg1) {
 }
 
 void func_8031CD20(s32 arg0, s32 arg1, s32 arg2) {
-    func_8031CC8C(arg0, (arg1 << 8) + arg2);
+    _func_8031CC8C(arg0, arg1, arg2);
 }
 
 void func_8031CD44(enum map_e arg0, s32 arg1, f32 arg2, f32 yaw, s32 arg4) {
@@ -247,278 +257,275 @@ void func_8031D0C0(s32 arg0, s32 arg1) {
 }
 
 void warp_mmEnterMumbosHut(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0E01);
+    _func_8031CC8C(arg0, MAP_E_MM_MUMBOS_SKULL, WARP_MM_MUMBOS_HUT_1_ENTRANCE);
 }
 
 void warp_mmExitMumbosHut(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0201);
+    _func_8031CC8C(arg0, MAP_2_MM_MUMBOS_MOUNTAIN, WARP_MM_1_MUMBOS_HUT);
 }
 
 void warp_mmEnterTickersTowerLower(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0C02);
+    _func_8031CC8C(arg0, MAP_C_MM_TICKERS_TOWER, WARP_MM_TICKERS_TOWER_2_BOTTOM);
 }
 
 void warp_mmExitTickersTowerLower(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0202);
+    _func_8031CC8C(arg0, MAP_2_MM_MUMBOS_MOUNTAIN, WARP_MM_2_TOWER_BOTTOM);
 }
 
 void warp_mmEnterTickersTowerUpper(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0C01);
+    _func_8031CC8C(arg0, MAP_C_MM_TICKERS_TOWER, WARP_MM_TICKERS_TOWER_1_TOP);
 }
 
 void warp_mmExitTickersTowerUpper(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0203);
+    _func_8031CC8C(arg0, MAP_2_MM_MUMBOS_MOUNTAIN, WARP_MM_3_TOWER_TOP);
 }
 
 void warp_csNintendoLogo(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1E00);
+    _func_8031CC8C(arg0, MAP_1E_CS_START_NINTENDO, 0);
 }
 
 void warp_gvEnterWaterPyramidLower(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1506);
+    _func_8031CC8C(arg0, MAP_15_GV_WATER_PYRAMID, WARP_GV_WATER_PYRAMID_6_LOWER_EXIT);
 }
 
 void warp_gvEnterRubeePyramid(s32 arg0, s32 arg1) {
     item_set(ITEM_6_HOURGLASS, 0);
     core1_7090_freeSfxSource(1);
-    func_8031CC8C(arg0, 0x1607);
+    _func_8031CC8C(arg0, MAP_16_GV_RUBEES_CHAMBER, WARP_GV_RUBEE_PYRAMID_7_ENTRANCE);
 }
 
 void warp_gvEnterMatchingPyramid(s32 arg0, s32 arg1) {
     item_set(ITEM_6_HOURGLASS, 0);
-    func_8031CC8C(arg0, 0x1301);
+    _func_8031CC8C(arg0, MAP_13_GV_MEMORY_GAME, WARP_GV_MEMORY_PYRAMID_1_ENTRANCE);
 }
 
 void warp_gvEnterWaterPyramidUpper(s32 arg0, s32 arg1) {
     core1_7090_freeSfxSource(0);
     volatileFlag_set(VOLATILE_FLAG_AC_GV_TRAPDOOR_MISSED, 1);
-    func_8031CC8C(arg0, 0x1502);
+    _func_8031CC8C(arg0, MAP_15_GV_WATER_PYRAMID, WARP_GV_WATER_PYRAMID_2_TOP);
 }
 
 void warp_gvEnterMazePyramid(s32 arg0, s32 arg1) {
-    if (fileProgressFlag_getN(FILEPROG_F8_KING_SANDYBUTT_PYRAMID_STATE, 2) == 3) {
-        func_8031CC8C(arg0, 0x1401);
-    }
+    if (fileProgressFlag_getN(FILEPROG_F8_KING_SANDYBUTT_PYRAMID_STATE, 2) == 3)
+        _func_8031CC8C(arg0, MAP_14_GV_SANDYBUTTS_MAZE, WARP_GV_MAZE_PYRAMID_1_ENTRANCE);
 }
 
 void warp_gvExitMatchingPyramid(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1203);
+    _func_8031CC8C(arg0, MAP_12_GV_GOBIS_VALLEY, WARP_GV_3_MEMORY_PYRAMID);
 }
 
 void warp_gvExitMazePyramid(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1204);
+    _func_8031CC8C(arg0, MAP_12_GV_GOBIS_VALLEY, WARP_GV_4_MAZE_PYRAMID_FRONT);
 }
 
 void warp_gvExitWaterPyramidLower(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1205);
+    _func_8031CC8C(arg0, MAP_12_GV_GOBIS_VALLEY, WARP_GV_5_WATER_PYRAMID);
 }
 
 void warp_gvExitRubeePyramid(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1206);
+    _func_8031CC8C(arg0, MAP_12_GV_GOBIS_VALLEY, WARP_GV_6_RUBEE_PYRAMID);
 }
 
 void warp_bgsEnterTanktup(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1101);
+    _func_8031CC8C(arg0, MAP_11_BGS_TIPTUP, WARP_BGS_TIPTUP_1_ENTRANCE);
 }
 
 void warp_bgsExitTanktup(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0D03);
+    _func_8031CC8C(arg0, MAP_D_BGS_BUBBLEGLOOP_SWAMP, WARP_BGS_3_TURTLE);
 }
 
 void warp_bgsExitVileRightNostril(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0D04);
+    _func_8031CC8C(arg0, MAP_D_BGS_BUBBLEGLOOP_SWAMP, WARP_BGS_4_CROC_LEFT);
 }
 
 void warp_bgsExitVileLeftNostril(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0D05);
+    _func_8031CC8C(arg0, MAP_D_BGS_BUBBLEGLOOP_SWAMP, WARP_BGS_5_CROC_RIGHT);
 }
 
 void warp_ttcEnterSandcastle(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0A01);
+    _func_8031CC8C(arg0, MAP_A_TTC_SANDCASTLE, WARP_TCC_SANDCASTLE_1_ENTRANCE);
 }
 
 void warp_ttcStairAlcoveDown(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x070F);
+    _func_8031CC8C(arg0, MAP_7_TTC_TREASURE_TROVE_COVE, WARP_TTC_F_CLIFFSIDE_STAIRS);
 }
 
 void warp_ttcStairAlcoveUp(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x070E);
+    _func_8031CC8C(arg0, MAP_7_TTC_TREASURE_TROVE_COVE, WARP_TTC_E_ISLAND_TOP_STAIRS);
 }
 
 void warp_ttcEnterBlubbersShipUpper(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0505);
+    _func_8031CC8C(arg0, MAP_5_TTC_BLUBBERS_SHIP, WARP_TCC_BLUBBERS_SHIP_5_TOP_HATCH);
 }
 
 void warp_ttcEnterBlubbersShipSide(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0506);
+    _func_8031CC8C(arg0, MAP_5_TTC_BLUBBERS_SHIP, WARP_TCC_BLUBBERS_SHIP_6_SIDE_HATCH);
 }
 
 void warp_ttcExitLighthouseTop(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0708);
+    _func_8031CC8C(arg0, MAP_7_TTC_TREASURE_TROVE_COVE, WARP_TTC_8_LIGHTHOUSE_TOP);
 }
 
 void warp_ttcExitSandcastle(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0703);
+    _func_8031CC8C(arg0, MAP_7_TTC_TREASURE_TROVE_COVE, WARP_TTC_3_SANDCASTLE);
 }
 
 // Unused
 void func_8031D550(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0704);
+    _func_8031CC8C(arg0, MAP_7_TTC_TREASURE_TROVE_COVE, WARP_TTC_4_WORLD_ENTRANCE);
 }
 
 // Unused
 void func_8031D574(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0705);
+    _func_8031CC8C(arg0, MAP_7_TTC_TREASURE_TROVE_COVE, WARP_TTC_5_UNKNOWN);
 }
 
 void warp_ttcExitBlubbersShipUpper(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0706);
+    _func_8031CC8C(arg0, MAP_7_TTC_TREASURE_TROVE_COVE, WARP_TTC_6_SHIP_TOP_HATCH);
 }
 
 void warp_ttcExitBlubbersShipSide(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0707);
+    _func_8031CC8C(arg0, MAP_7_TTC_TREASURE_TROVE_COVE, WARP_TTC_7_SHIP_SIDE_HATCH);
 }
 
 // Unused
 void warp_ttcExitLighthouseTopUnused(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0708);
+    _func_8031CC8C(arg0, MAP_7_TTC_TREASURE_TROVE_COVE, WARP_TTC_8_LIGHTHOUSE_TOP);
 }
 
 // Unused
 void func_8031D604(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0709);
+    _func_8031CC8C(arg0, MAP_7_TTC_TREASURE_TROVE_COVE, WARP_TTC_9_UNKNOWN);
 }
 
 void func_8031D628(s32 arg0, s32 arg1) {
     Actor *actor;
 
-    actor = actorArray_findActorFromActorId(0x13E);
-    if (actor) {
+    actor = actorArray_findActorFromActorId(ACTOR_13E_LIGHTHOUSE_DOOR);
+    if (actor)
         marker_despawn(actor->marker);
-    }
+
     func_8031CB50(MAP_7_TTC_TREASURE_TROVE_COVE, WARP_TTC_C_LIGHTHOUSE_BOTTOM, 0);
 }
 
 void warp_mmmEnterDiningRoomDoor(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x2601);
+    _func_8031CC8C(arg0, MAP_26_MMM_NAPPERS_ROOM, WARP_MMM_DINING_1_FRONT_ENTRANCE);
 }
 
 void warp_mmmEnterDiningRoomChimney(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x2602);
+    _func_8031CC8C(arg0, MAP_26_MMM_NAPPERS_ROOM, WARP_MMM_DINING_2_CHIMNEY);
 }
 
 void warp_mmmEnterWellTop(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x2501);
+    _func_8031CC8C(arg0, MAP_25_MMM_WELL, WARP_MMM_WELL_1_TOP_ENTRANCE);
 }
 
 void warp_mmmEnterTumblarShed(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x2401);
+    _func_8031CC8C(arg0, MAP_24_MMM_TUMBLARS_SHED, WARP_MMM_SHED_1_ENTRANCE);
 }
 
 void warp_mmmEnterCellar(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1D01);
+    _func_8031CC8C(arg0, MAP_1D_MMM_CELLAR, WARP_MMM_CELLAR_1_ENTRANCE);
 }
 
 void warp_mmmEnterRedFeatherRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x2A01);
+    _func_8031CC8C(arg0, MAP_2A_MMM_FEATHER_ROOM, WARP_MMM_RED_FEATHER_1_ENTRANCE);
 }
 
 void warp_mmmEnterBlueEggRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x2801);
+    _func_8031CC8C(arg0, MAP_28_MMM_EGG_ROOM, WARP_MMM_EGG_1_ENTRANCE);
 }
 
 void warp_mmmEnterNoteRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x2901);
+    _func_8031CC8C(arg0, MAP_29_MMM_NOTE_ROOM, WARP_MMM_NOTE_1_ENTRANCE);
 }
 
 void warp_mmmEnterBrokenFloorboardRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x2E01);
+    _func_8031CC8C(arg0, MAP_2E_MMM_HONEYCOMB_ROOM, 0x1);
 }
 
 void warp_mmmEnterBedroom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x2D01);
+    _func_8031CC8C(arg0, MAP_2D_MMM_BEDROOM, WARP_MMM_BEDROOM_1_ENTRANCE);
 }
 
 void warp_mmmEnterBathroomWindow(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x2C01);
+    _func_8031CC8C(arg0, MAP_2C_MMM_BATHROOM, WARP_MMM_BATHROOM_1_ENTRANCE);
 }
 
 void warp_mmmExitDiningRoomDoor(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1B01);
+    _func_8031CC8C(arg0, MAP_1B_MMM_MAD_MONSTER_MANSION, WARP_MMM_1_MANSION_DOOR);
 }
 
-// Unsure
 void func_8031D820(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1B02);
+    _func_8031CC8C(arg0, MAP_1B_MMM_MAD_MONSTER_MANSION, WARP_MMM_2_stubbed);
 }
 
 void warp_mmmExitWellTop(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1B03);
+    _func_8031CC8C(arg0, MAP_1B_MMM_MAD_MONSTER_MANSION, WARP_MMM_3_WELL_TOP);
 }
 
 void warp_mmmExitTumblarShed(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1B04);
+    _func_8031CC8C(arg0, MAP_1B_MMM_MAD_MONSTER_MANSION, WARP_MMM_4_SHED);
 }
 
 void warp_mmmExitChurchFrontDoor(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1B05);
+    _func_8031CC8C(arg0, MAP_1B_MMM_MAD_MONSTER_MANSION, WARP_MMM_5_CHURCH_DOOR);
 }
 
 void warp_mmmExitChurchSecretRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1B06);
+    _func_8031CC8C(arg0, MAP_1B_MMM_MAD_MONSTER_MANSION, WARP_MMM_6_CHURCH_WINDOW);
 }
 
-// Unsure
 void func_8031D8D4(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1B07);
+    _func_8031CC8C(arg0, MAP_1B_MMM_MAD_MONSTER_MANSION, WARP_MMM_7_CHIMNEY);
 }
 
 void warp_mmmExitRainBarrelBottom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1B08);
+    _func_8031CC8C(arg0, MAP_1B_MMM_MAD_MONSTER_MANSION, WARP_MMM_8_DRAINPIPE_BOTTOM);
 }
 
 void warp_mmmExitCellar(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1B09);
+    _func_8031CC8C(arg0, MAP_1B_MMM_MAD_MONSTER_MANSION, WARP_MMM_9_CELLAR);
 }
 
 void warp_mmmExitRedFeatherRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1B0A);
+    _func_8031CC8C(arg0, MAP_1B_MMM_MAD_MONSTER_MANSION, WARP_MMM_A_F1_RED_FEATHER_WINDOW);
 }
 
 void warp_mmmExitBlueEggRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1B0B);
+    _func_8031CC8C(arg0, MAP_1B_MMM_MAD_MONSTER_MANSION, WARP_MMM_B_F1_EGG_WINDOW);
 }
 
 void warp_mmmExitBathroomWindow(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1B0C);
+    _func_8031CC8C(arg0, MAP_1B_MMM_MAD_MONSTER_MANSION, WARP_MMM_C_F2_BATHROOM_WINDOW);
 }
 
 void warp_mmmExitBrokenFloorboardRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1B0D);
+    _func_8031CC8C(arg0, MAP_1B_MMM_MAD_MONSTER_MANSION, WARP_MMM_D_F2_GOLD_FEATHER_WINDOW);
 }
 
 void warp_mmmExitBedroom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1B0E);
+    _func_8031CC8C(arg0, MAP_1B_MMM_MAD_MONSTER_MANSION, WARP_MMM_E_F3_BEDROOM_WINDOW);
 }
 
 void warp_mmmExitNoteRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1B0F);
+    _func_8031CC8C(arg0, MAP_1B_MMM_MAD_MONSTER_MANSION, WARP_MMM_F_F3_NOTE_WINDOW);
 }
 
 void warp_mmmChurchTowerUp(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1B10);
+    _func_8031CC8C(arg0, MAP_1B_MMM_MAD_MONSTER_MANSION, WARP_MMM_10_CHURCH_TOP);
 }
 
 void warp_mmmChurchTowerDown(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1B11);
+    _func_8031CC8C(arg0, MAP_1B_MMM_MAD_MONSTER_MANSION, WARP_MMM_11_CHURCH_CLOCK);
 }
 
 void warp_mmmExitMumbosHut(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1B12);
+    _func_8031CC8C(arg0, MAP_1B_MMM_MAD_MONSTER_MANSION, WARP_MMM_12_MUMBOS_HUT);
 }
 
 void warp_mmmEnterChurchSecretRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x2B01);
+    _func_8031CC8C(arg0, MAP_2B_MMM_SECRET_CHURCH_ROOM, WARP_MMM_CHURCH_WINDOW_1_ENTRANCE);
 }
 
 void func_8031DAA8(enum map_e arg0, s32 arg1) {
@@ -533,24 +540,23 @@ void func_8031DAE0(s32 arg0, s32 arg1) {
         mapSpecificFlags_set(2, 1);
         coMusicPlayer_playMusic(COMUSIC_3B_MINIGAME_VICTORY, 0x6D60);
         func_8028F918(1);
-        timedFunc_set_2(1.8f, &func_8031DAA8, 0x1C, 1);
+        timedFunc_set_2(1.8f, &func_8031DAA8, MAP_1C_MMM_CHURCH, WARP_MMM_CHURCH_1_ENTRANCE);
         func_802D6924();
     }
 }
 
 // Unused
 void warp_mmmEnterMumbosHutUnused(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3001);
+    _func_8031CC8C(arg0, MAP_30_MMM_MUMBOS_SKULL, WARP_MMM_MUMBOS_HUT_1_ENTRANCE);
 }
 
 void warp_mmmEnterMumbosHut(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3001);
+    _func_8031CC8C(arg0, MAP_30_MMM_MUMBOS_SKULL, WARP_MMM_MUMBOS_HUT_1_ENTRANCE);
 }
 
 void warp_mmmEnterRainBarrel(s32 arg0, s32 arg1) {
-    if (player_getTransformation() == TRANSFORM_3_PUMPKIN) {
-        func_8031CC8C(arg0, arg1 + 0x2F00);
-    }
+    if (player_getTransformation() == TRANSFORM_3_PUMPKIN)
+        _func_8031CC8C(arg0, MAP_2F_MMM_WATERDRAIN_BARREL, arg1);
 }
 
 void func_8031DBE8(void) {
@@ -572,9 +578,8 @@ void warp_mmmEnterRainBarrelBottom(s32 arg0, s32 arg1) {
 }
 
 void warp_bgsEnterMrVileNostril(s32 arg0, s32 arg1) {
-    if (player_getTransformation() == TRANSFORM_5_CROC) {
-        func_8031CC8C(arg0, arg1 + 0x1000);
-    }
+    if (player_getTransformation() == TRANSFORM_5_CROC)
+        _func_8031CC8C(arg0, MAP_10_BGS_MR_VILE, arg1);
 }
 
 void warp_bgsEnterMrVileRightNostril(s32 arg0, s32 arg1) {
@@ -586,139 +591,137 @@ void warp_bgsEnterMrVileLeftNostril(s32 arg0, s32 arg1) {
 }
 
 void warp_bgsEnterTanktupConditional(s32 arg0, s32 arg1) {
-    if (func_8038F570() != 0) {
-        func_8031CC8C(arg0, 0x1101);
-    }
+    if (func_8038F570() != 0)
+        _func_8031CC8C(arg0, MAP_11_BGS_TIPTUP, WARP_BGS_TIPTUP_1_ENTRANCE);
 }
 
 void warp_ttcEnterNippersShell(s32 arg0, s32 arg1) {
-    if (chNipper_isInState7() != 0) {
-        func_8031CC8C(arg0, 0x601);
-    }
+    if (chNipper_isInState7() != 0)
+        _func_8031CC8C(arg0, MAP_6_TTC_NIPPERS_SHELL, WARP_TCC_NIPPERS_SHELL_1_ENTRANCE);
 }
 
 void warp_ccExitWonderwingRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x2203);
+    _func_8031CC8C(arg0, MAP_22_CC_INSIDE_CLANKER, WARP_CC_INSIDE_CLANKER_3_GOLD_FEATHER_ENTRANCE);
 }
 
 void warp_ccEnterClankerBelly(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x2201);
+    _func_8031CC8C(arg0, MAP_22_CC_INSIDE_CLANKER, WARP_CC_INSIDE_CLANKER_1_TOP);
 }
 
 void warp_ccEnterClankerMouth(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x2202);
+    _func_8031CC8C(arg0, MAP_22_CC_INSIDE_CLANKER, WARP_CC_INSIDE_CLANKER_2_MOUTH_ROOFTOP);
 }
 
 void warp_ccEnterWonderwingRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x2301);
+    _func_8031CC8C(arg0, MAP_23_CC_GOLDFEATHER_ROOM, WARP_CC_GOLD_FEATHER_1_ENTRANCE);
 }
 
 void warp_mmEnterLevel(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0205);
+    _func_8031CC8C(arg0, MAP_2_MM_MUMBOS_MOUNTAIN, WARP_MM_5_WORLD_ENTRACE);
 }
 
 void warp_gvEnterJinxy(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1A02);
+    _func_8031CC8C(arg0, MAP_1A_GV_INSIDE_JINXY, WARP_GV_INSIDE_JINXY_2_ENTRANCE);
 }
 
 void warp_gvExitJinxy(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1202);
+    _func_8031CC8C(arg0, MAP_12_GV_GOBIS_VALLEY, WARP_GV_2_JINXY_SPHINX);
 }
 
 void warp_rbbEnterCaptainsRoomWindow(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3F01);
+    _func_8031CC8C(arg0, MAP_3F_RBB_CAPTAINS_CABIN, WARP_RBB_CAPTAIN_CABIN_1_ENTRANCE);
 }
 
 void warp_rbbEnterCabinRoomWindow(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3901);
+    _func_8031CC8C(arg0, MAP_39_RBB_CREW_CABIN, WARP_RBB_CREW_CABIN_1_ENTRANCE);
 }
 
 void warp_rbbEnterEngineRoomPipe(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3404);
+    _func_8031CC8C(arg0, MAP_34_RBB_ENGINE_ROOM, WARP_RBB_ENGINE_4_PIPE_ENTRANCE);
 }
 
 void warp_rbbEnterEngineRoomDoor(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3401);
+    _func_8031CC8C(arg0, MAP_34_RBB_ENGINE_ROOM, WARP_RBB_ENGINE_1_ENTRANCE);
 }
 
 void warp_rbbEnterKitchenPipe(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3C01);
+    _func_8031CC8C(arg0, MAP_3C_RBB_KITCHEN, WARP_RBB_KITCHEN_1_ENTRANCE);
 }
 
 void warp_rbbEnterNavigationRoomWindow(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3D01);
+    _func_8031CC8C(arg0, MAP_3D_RBB_NAVIGATION_ROOM, WARP_RBB_NAVIGATION_1_ENTRANCE);
 }
 
 void warp_rbbEnterBoomBoxPipe(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3B01);
+    _func_8031CC8C(arg0, MAP_3B_RBB_STORAGE_ROOM, WARP_RBB_STORAGE_1_ENTRANCE);
 }
 
 void warp_rbbEnterChumpWarehouseWindow(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3502);
+    _func_8031CC8C(arg0, MAP_35_RBB_WAREHOUSE, WARP_RBB_WAREHOUSE_2_WINDOW);
 }
 
 void warp_rbbEnterBoatRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3601);
+    _func_8031CC8C(arg0, MAP_36_RBB_BOATHOUSE, WARP_RBB_BOAT_1_ENTRANCE);
 }
 
 void warp_rbbEnterChompaContainer(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3701);
+    _func_8031CC8C(arg0, MAP_37_RBB_CONTAINER_1, WARP_RBB_CONTAINER_1_ENTRANCE);
 }
 
 void warp_rbbEnterSeamanGrublinContainer(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3E01);
+    _func_8031CC8C(arg0, MAP_3E_RBB_CONTAINER_2, WARP_RBB_CONTAINER_2_ENTRANCE);
 }
 
 void warp_rbbEnterBoomBoxContainer(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3801);
+    _func_8031CC8C(arg0, MAP_38_RBB_CONTAINER_3, WARP_RBB_CONTAINER_3_ENTRANCE);
 }
 
 void warp_rbbExitCaptainsRoomWindow(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3101);
+    _func_8031CC8C(arg0, MAP_31_RBB_RUSTY_BUCKET_BAY, WARP_RBB_1_CAPTAIN_ROOM_WINDOW);
 }
 
 void warp_rbbExitCabinRoomWindow(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3102);
+    _func_8031CC8C(arg0, MAP_31_RBB_RUSTY_BUCKET_BAY, WARP_RBB_2_CREW_ROOM_WINDOW);
 }
 
 void warp_rbbExitEngineRoomPipe(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3103);
+    _func_8031CC8C(arg0, MAP_31_RBB_RUSTY_BUCKET_BAY, WARP_RBB_3_ENGINE_SWITCH_PIPE);
 }
 
 void warp_rbbExitKitchenPipe(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3104);
+    _func_8031CC8C(arg0, MAP_31_RBB_RUSTY_BUCKET_BAY, WARP_RBB_4_KITCHEN_PIPE);
 }
 
 void warp_rbbExitNavigationRoomWindow(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3105);
+    _func_8031CC8C(arg0, MAP_31_RBB_RUSTY_BUCKET_BAY, WARP_RBB_5_NAV_ROOM_PIPE);
 }
 
 void warp_rbbExitBoomBoxPipe(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3106);
+    _func_8031CC8C(arg0, MAP_31_RBB_RUSTY_BUCKET_BAY, WARP_RBB_6_STORAGE_PIPE);
 }
 
 void warp_rbbExitEngineRoomDoor(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3107);
+    _func_8031CC8C(arg0, MAP_31_RBB_RUSTY_BUCKET_BAY, WARP_RBB_7_ENGINE_ENTRANCE);
 }
 
 void warp_rbbExitBoatRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3108);
+    _func_8031CC8C(arg0, MAP_31_RBB_RUSTY_BUCKET_BAY, WARP_RBB_8_BOAT_ROOM);
 }
 
 void warp_rbbExitChompaContainer(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3109);
+    _func_8031CC8C(arg0, MAP_31_RBB_RUSTY_BUCKET_BAY, WARP_RBB_9_FIRST_CONTAINER);
 }
 
 void warp_rbbExitSeamanGrublinContainer(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x310A);
+    _func_8031CC8C(arg0, MAP_31_RBB_RUSTY_BUCKET_BAY, WARP_RBB_A_SECOND_CONTAINER);
 }
 
 void warp_rbbExitBoomBoxContainer(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x310B);
+    _func_8031CC8C(arg0, MAP_31_RBB_RUSTY_BUCKET_BAY, WARP_RBB_B_THIRD_CONTAINER);
 }
 
 void warp_rbbExitBossBoomBoxRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x310C);
+    _func_8031CC8C(arg0, MAP_31_RBB_RUSTY_BUCKET_BAY, WARP_RBB_C_AFTER_BOSS);
 }
 
 void warp_rbbEnterBossBoomBoxRoom(s32 arg0, s32 arg1) {
@@ -741,689 +744,681 @@ void func_8031E204(NodeProp *node, s32 arg1, s32 arg2){
 }
 
 void warp_rbbEnterChumpWarehouseDoor(NodeProp *node, ActorMarker *marker){
-    func_8031E204(node, MAP_35_RBB_WAREHOUSE, 0x1);
+    func_8031E204(node, MAP_35_RBB_WAREHOUSE, WARP_RBB_WAREHOUSE_1_DOOR);
 }
 
 void warp_rbbExitChumpWarehouseDoor(NodeProp *node, ActorMarker *marker){
-    func_8031E204(node, MAP_31_RBB_RUSTY_BUCKET_BAY, 0xd);
+    func_8031E204(node, MAP_31_RBB_RUSTY_BUCKET_BAY, WARP_RBB_D_FISH_WAREHOUSE);
 }
 
-// Unknown
 void func_8031E308(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3206);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_6);
 }
 
 // Unknown
 void func_8031E32C(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x5200);
+    _func_8031CC8C(arg0, MAP_52_STUB_LL_TEMPLE, WARP_LL_TEMPLE_0);
 }
 
 // Unknown
 void func_8031E350(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x5100);
+    _func_8031CC8C(arg0, MAP_51_STUB_LL_SWIM, WARP_LL_SWIM_0);
 }
 
 // Unknown
 void func_8031E374(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x5101);
+    _func_8031CC8C(arg0, MAP_51_STUB_LL_SWIM, WARP_LL_SWIM_1);
 }
 
 // Unknown
 void func_8031E398(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4200);
+    _func_8031CC8C(arg0, MAP_42_STUB_LL_TIPTUPS_CAVE, WARP_LL_TIPTUPS_CAVE_0);
 }
 
 // Unknown
 void func_8031E3BC(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3201);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_1);
 }
 
 // Unknown
 void func_8031E3E0(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3202);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_2);
 }
 
 // Unknown
 void func_8031E404(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3203);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_3);
 }
 
 // Unknown
 void func_8031E428(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3204);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_4);
 }
 
 // Unknown
 void func_8031E44C(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3205);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_5);
 }
 
 // Unknown
 void func_8031E470(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3207);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_7);
 }
 
 // Unknown
 void func_8031E494(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3208);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_8);
 }
 
 // Unknown
 void func_8031E4B8(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3209);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_9);
 }
 
 // Unknown
 void func_8031E4DC(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x320A);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_A);
 }
 
 // Unknown
 void func_8031E500(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x320B);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_B);
 }
 
 // Unknown
 void func_8031E524(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x320C);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_C);
 }
 
 // Unknown
 void func_8031E548(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x320D);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_D);
 }
 
 // Unknown
 void func_8031E56C(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x320E);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_E);
 }
 
 // Unknown
 void func_8031E590(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x320F);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_F);
 }
 
 // Unknown
 void func_8031E5B4(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3210);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_10);
 }
 
 // Unknown
 void func_8031E5D8(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3211);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_11);
 }
 
 // Unknown
 void func_8031E5FC(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3212);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_12);
 }
 
 // Unknown
 void func_8031E620(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3213);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_13);
 }
 
 // Unknown
 void func_8031E644(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3214);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_14);
 }
 
 // Unknown
 void func_8031E668(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3215);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_15);
 }
 
 // Unknown
 void func_8031E68C(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3216);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_16);
 }
 
 // Unknown
 void func_8031E6B0(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3217);
+    _func_8031CC8C(arg0, MAP_32_STUB_LL_LAVA_LEVEL, WARP_LL_17);
 }
 
 void warp_ccwExitWinterToHub(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4001);
+    _func_8031CC8C(arg0, MAP_40_CCW_HUB, WARP_CCW_1_WINTER);
 }
 
 void warp_ccwExitSpringToHub(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4002);
+    _func_8031CC8C(arg0, MAP_40_CCW_HUB, WARP_CCW_2_SPRING);
 }
 
 void warp_ccwExitSummerToHub(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4003);
+    _func_8031CC8C(arg0, MAP_40_CCW_HUB, WARP_CCW_3_SUMMER);
 }
 
 void warp_ccwExitAutumnToHub(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4004);
+    _func_8031CC8C(arg0, MAP_40_CCW_HUB, WARP_CCW_4_AUTUMN);
 }
 
 void warp_ccwEnterWinter(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4601);
+    _func_8031CC8C(arg0, MAP_46_CCW_WINTER, WARP_CCW_WINTER_1_ENTRANCE);
 }
 
 void warp_ccwEnterSpring(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4301);
+    _func_8031CC8C(arg0, MAP_43_CCW_SPRING, WARP_CCW_SPRING_1_ENTRANCE);
 }
 
 void warp_ccwEnterSummer(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4401);
+    _func_8031CC8C(arg0, MAP_44_CCW_SUMMER, WARP_CCW_SUMMER_1_ENTRANCE);
 }
 
 void warp_ccwEnterAutumn(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4501);
+    _func_8031CC8C(arg0, MAP_45_CCW_AUTUMN, WARP_CCW_AUTUMN_1_ENTRANCE);
 }
 
 void warp_gvExitSandybuttMazeBack(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1207);
+    _func_8031CC8C(arg0, MAP_12_GV_GOBIS_VALLEY, WARP_GV_7_MAZE_PYRAMID_BACK);
 }
 
 void warp_bgsExitMumbosHut(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0D06);
+    _func_8031CC8C(arg0, MAP_D_BGS_BUBBLEGLOOP_SWAMP, WARP_BGS_6_MUMBOS_HUT);
 }
 
 void warp_bgsEnterMumbosHut(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4701);
+    _func_8031CC8C(arg0, MAP_47_BGS_MUMBOS_SKULL, WARP_BGS_MUMBOS_HUT_1_ENTRANCE);
 }
 
 void warp_ttcEnterLevel(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0704);
+    _func_8031CC8C(arg0, MAP_7_TTC_TREASURE_TROVE_COVE, WARP_TTC_4_WORLD_ENTRANCE);
 }
 
 void warp_ccEnterLevel(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0B05);
+    _func_8031CC8C(arg0, MAP_B_CC_CLANKERS_CAVERN, WARP_CC_5_WORLD_ENTRANCE);
 }
 
 void warp_bgsEnterLevel(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x0D02);
+    _func_8031CC8C(arg0, MAP_D_BGS_BUBBLEGLOOP_SWAMP, WARP_BGS_2_WORLD_ENTRANCE);
 }
 
 void warp_gvEnterLevel(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1208);
+    _func_8031CC8C(arg0, MAP_12_GV_GOBIS_VALLEY, WARP_GV_8_WORLD_ENTRANCE);
 }
 
 void warp_mmmEnterLevel(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x1B14);
+    _func_8031CC8C(arg0, MAP_1B_MMM_MAD_MONSTER_MANSION, WARP_MMM_14_WORLD_ENTRANCE);
 }
 
 void warp_rbbEnterLevel(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3110);
+    _func_8031CC8C(arg0, MAP_31_RBB_RUSTY_BUCKET_BAY, WARP_RBB_10_WORLD_ENTRANCE);
 }
 
 void warp_ttcExitNipper(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x070A);
+    _func_8031CC8C(arg0, MAP_7_TTC_TREASURE_TROVE_COVE, WARP_TTC_A_NIPPER);
 }
 
 void warp_ttcEnterSpringMumbosHut(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4A01);
+    _func_8031CC8C(arg0, MAP_4A_CCW_SPRING_MUMBOS_SKULL, WARP_CCW_MUMBOS_HUT_SPRING_1_ENTRANCE);
 }
 
 void warp_ttcEnterSummerMumbosHut(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4B01);
+    _func_8031CC8C(arg0, MAP_4B_CCW_SUMMER_MUMBOS_SKULL, WARP_CCW_MUMBOS_HUT_SUMMER_1_ENTRANCE);
 }
 
 void warp_ttcEnterAutumnMumbosHut(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4C01);
+    _func_8031CC8C(arg0, MAP_4C_CCW_AUTUMN_MUMBOS_SKULL, WARP_CCW_MUMBOS_HUT_AUTUMN_1_ENTRANCE);
 }
 
 void warp_ttcEnterWinterMumbosHut(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4D01);
+    _func_8031CC8C(arg0, MAP_4D_CCW_WINTER_MUMBOS_SKULL, WARP_CCW_MUMBOS_HUT_WINTER_1_ENTRANCE);
 }
 
 void warp_ttcExitSpringMumbosHut(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4309);
+    _func_8031CC8C(arg0, MAP_43_CCW_SPRING, WARP_CCW_SPRING_9_MUMBOS_HUT);
 }
 
 void warp_ttcExitSummerMumbosHut(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4409);
+    _func_8031CC8C(arg0, MAP_44_CCW_SUMMER, WARP_CCW_SUMMER_9_MUMBOS_HUT);
 }
 
 void warp_ttcExitAutumnMumbosHut(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4509);
+    _func_8031CC8C(arg0, MAP_45_CCW_AUTUMN, WARP_CCW_AUTUMN_9_MUMBOS_HUT);
 }
 
 void warp_ttcExitWinterMumbosHut(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4609);
+    _func_8031CC8C(arg0, MAP_46_CCW_WINTER, WARP_CCW_WINTER_9_MUMBOS_HUT);
 }
 
 void warp_ccwEnterSpringWhipcrackRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6501);
+    _func_8031CC8C(arg0, MAP_65_CCW_SPRING_WHIPCRACK_ROOM, WARP_CCW_WHIPCRACK_SPRING_1_ENTRANCE);
 }
 
 void warp_ccwEnterSummerWhipcrackRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6601);
+    _func_8031CC8C(arg0, MAP_66_CCW_SUMMER_WHIPCRACK_ROOM, WARP_CCW_WHIPCRACK_SUMMER_1_ENTRANCE);
 }
 
 void warp_ccwEnterAutumnWhipcrackRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6701);
+    _func_8031CC8C(arg0, MAP_67_CCW_AUTUMN_WHIPCRACK_ROOM, WARP_CCW_WHIPCRACK_AUTUMN_1_ENTRANCE);
 }
 
 void warp_ccwEnterWinterWhipcrackRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6801);
+    _func_8031CC8C(arg0, MAP_68_CCW_WINTER_WHIPCRACK_ROOM, WARP_CCW_WHIPCRACK_WINTER_1_ENTRANCE);
 }
 
 void warp_ccwExitSpringWhipcrackRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4308);
+    _func_8031CC8C(arg0, MAP_43_CCW_SPRING, WARP_CCW_SPRING_8_WHIPCRACK);
 }
 
 void warp_ccwExitSummerWhipcrackRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4408);
+    _func_8031CC8C(arg0, MAP_44_CCW_SUMMER, WARP_CCW_SUMMER_8_WHIPCRACK);
 }
 
 void warp_ccwExitAutumnWhipcrackRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4508);
+    _func_8031CC8C(arg0, MAP_45_CCW_AUTUMN, WARP_CCW_AUTUMN_8_WHIPCRACK);
 }
 
 void warp_ccwExitWinterWhipcrackRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4608);
+    _func_8031CC8C(arg0, MAP_46_CCW_WINTER, WARP_CCW_WINTER_8_WHIPCRACK);
 }
 
 void warp_ccwEnterSpringNabnutDoor(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x5E01);
+    _func_8031CC8C(arg0, MAP_5E_CCW_SPRING_NABNUTS_HOUSE, WARP_CCW_NABNUT_SPRING_1_DOOR);
 }
 
 void warp_ccwEnterSummerNabnutDoor(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x5F01);
+    _func_8031CC8C(arg0, MAP_5F_CCW_SUMMER_NABNUTS_HOUSE, WARP_CCW_NABNUT_SUMMER_1_DOOR);
 }
 
 void warp_ccwEnterAutumnNabnutDoor(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6001);
+    _func_8031CC8C(arg0, MAP_60_CCW_AUTUMN_NABNUTS_HOUSE, WARP_CCW_NABNUT_AUTUMN_1_DOOR);
 }
 
 void warp_ccwExitSpringNabnutDoor(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4307);
+    _func_8031CC8C(arg0, MAP_43_CCW_SPRING, WARP_CCW_SPRING_7_NABNUT_DOOR);
 }
 
 void warp_ccwExitSummerNabnutDoor(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4407);
+    _func_8031CC8C(arg0, MAP_44_CCW_SUMMER, WARP_CCW_SUMMER_7_NABNUT_DOOR);
 }
 
 void warp_ccwExitAutumnNabnutDoor(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4507);
+    _func_8031CC8C(arg0, MAP_45_CCW_AUTUMN, WARP_CCW_AUTUMN_7_NABNUT_DOOR);
 }
 
 void warp_ccwExitWinterNabnutDoor(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4607);
+    _func_8031CC8C(arg0, MAP_46_CCW_WINTER, WARP_CCW_WINTER_7_NABNUT_DOOR_stubbed);
 }
 
 void warp_ccwEnterWinterAcornStorage(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6201);
+    _func_8031CC8C(arg0, MAP_62_CCW_WINTER_HONEYCOMB_ROOM, WARP_CCW_ATTIC_WINTER_1_ENTRANCE);
 }
 
 void warp_ccwEnterAutumnFloodedAttic(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6301);
+    _func_8031CC8C(arg0, MAP_63_CCW_AUTUMN_NABNUTS_WATER_SUPPLY, WARP_CCW_WATER_ROOM_AUTUMN_1_ENTRANCE);
 }
 
 void warp_ccwEnterWinterFloodedAttic(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6401);
+    _func_8031CC8C(arg0, MAP_64_CCW_WINTER_NABNUTS_WATER_SUPPLY, WARP_CCW_WATER_ROOM_WINTER_1_ENTRANCE);
 }
 
 void warp_ccwExitWinterAcornStorage(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4606);
+    _func_8031CC8C(arg0, MAP_46_CCW_WINTER, WARP_CCW_WINTER_6_NABNUT_WINDOW_UPPER);
 }
 
 void warp_ccwExitAutumnFloodedAttic(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4506);
+    _func_8031CC8C(arg0, MAP_45_CCW_AUTUMN, WARP_CCW_AUTUMN_6_ATTIC);
 }
 
 void warp_ccwExitWinterFloodedAttic(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4605);
+    _func_8031CC8C(arg0, MAP_46_CCW_WINTER, WARP_CCW_WINTER_5_ATTIC);
 }
 
 void warp_fpEnterMumbosHut(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4801);
+    _func_8031CC8C(arg0, MAP_48_FP_MUMBOS_SKULL, WARP_FP_MUMBOS_HUT_1_ENTRANCE);
 }
 
 void warp_fpEnterBoggyIgloo(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4101);
+    _func_8031CC8C(arg0, MAP_41_FP_BOGGYS_IGLOO, WARP_FP_BOGGYS_IGLOO_1_ENTRANCE);
 }
 
 void warp_fpEnterXmasTree(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x5301);
+    _func_8031CC8C(arg0, MAP_53_FP_CHRISTMAS_TREE, WARP_FP_CHRISTMAS_TREE_1_ENTRANCE);
 }
 
 void warp_fpExitMumbosHut(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x2707);
+    _func_8031CC8C(arg0, MAP_27_FP_FREEZEEZY_PEAK, WARP_FP_7_MUMBOS_HUT);
 }
 
 void warp_fpExitBoggyIgloo(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x2708);
+    _func_8031CC8C(arg0, MAP_27_FP_FREEZEEZY_PEAK, WARP_FP_8_IGLOO);
 }
 
 void warp_fpExitXmasTree(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x2709);
+    _func_8031CC8C(arg0, MAP_27_FP_FREEZEEZY_PEAK, WARP_FP_9_TREE_BOTTOM);
 }
 
 void warp_lairEnterGVLobbyFromPointingStatueRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6E01);
+    _func_8031CC8C(arg0, MAP_6E_GL_GV_LOBBY, WARP_GL_GV_LOBBY_1_LOWER_ENTRANCE);
 }
 
 void warp_lairEnterMMLobbyFromPuzzlesRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6901);
+    _func_8031CC8C(arg0, MAP_69_GL_MM_LOBBY, WARP_GL_MM_LOBBY_1_NOTE_DOOR);
 }
 
 void warp_lairEnterFPLobbyFromGVLobby(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6F01);
+    _func_8031CC8C(arg0, MAP_6F_GL_FP_LOBBY, WARP_GL_FP_LOBBY_1_LOWER_ENTRANCE);
 }
 
 void warp_lairEnterGVLobbyFromFPLobby(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6E02);
+    _func_8031CC8C(arg0, MAP_6E_GL_GV_LOBBY, WARP_GL_GV_LOBBY_2_HIGHER_EXIT);
 }
 
 void warp_lairEnterGVLobbyFromGVLevel(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6E03);
+    _func_8031CC8C(arg0, MAP_6E_GL_GV_LOBBY, WARP_GL_GV_LOBBY_3_GV_ENTRANCE);
 }
 
 void warp_lairEnterMMLobbyFromMMLevel(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6902);
+    _func_8031CC8C(arg0, MAP_69_GL_MM_LOBBY, WARP_GL_MM_LOBBY_2_MM_ENTRANCE);
 }
 
 // Unknown
 void func_8031EF20(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6903);
+    _func_8031CC8C(arg0, MAP_69_GL_MM_LOBBY, WARP_GL_MM_LOBBY_3_stubbed);
 }
 
 void warp_lairEnterPuzzlesRoomFromMMLobby(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6A01);
+    _func_8031CC8C(arg0, MAP_6A_GL_TTC_AND_CC_PUZZLE, WARP_GL_TTC_PUZZLE_1_LOWER_ENTRANCE);
 }
 
 void warp_lairEnterPointingStatueRoomFromGVLobbyNoteDoor(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7101);
+    _func_8031CC8C(arg0, MAP_71_GL_STATUE_ROOM, WARP_GL_STATUE_ROOM_1_HIGHER_EXIT);
 }
 
 void warp_lairEnterPuzzlesRoomFromCCWPuzzleRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6A02);
+    _func_8031CC8C(arg0, MAP_6A_GL_TTC_AND_CC_PUZZLE, WARP_GL_TTC_PUZZLE_2_HIGHER_EXIT);
 }
 
 void warp_lairEnterCCWPuzzleRoomFromPuzzlesRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6B01);
+    _func_8031CC8C(arg0, MAP_6B_GL_180_NOTE_DOOR, WARP_GL_CCW_PUZZLE_1_LOWER_ENTRANCE);
 }
 
 void warp_lairEnterCCWPuzzleRoomFromRedCauldronRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6B02);
+    _func_8031CC8C(arg0, MAP_6B_GL_180_NOTE_DOOR, WARP_GL_CCW_PUZZLE_2_PIPE_ROOM);
 }
 
 void warp_lairEnterRedCauldronRoomFromCCWPuzzleRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6C01);
+    _func_8031CC8C(arg0, MAP_6C_GL_RED_CAULDRON_ROOM, WARP_GL_PIPE_ROOM_1_ENTRANCE);
 }
 
 void warp_lairEnterCCWPuzzleRoomFromTTCLobby(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6B03);
+    _func_8031CC8C(arg0, MAP_6B_GL_180_NOTE_DOOR, WARP_GL_CCW_PUZZLE_3_TO_TTC);
 }
 
 void warp_lairEnterTTCLobbyFromCCWPuzzleRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6D01);
+    _func_8031CC8C(arg0, MAP_6D_GL_TTC_LOBBY, WARP_GL_TTC_LOBBY_1_ENTRANCE);
 }
 
 void warp_lairEnterCCWPuzzleRoomFromCCLobby(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6B04);
+    _func_8031CC8C(arg0, MAP_6B_GL_180_NOTE_DOOR, WARP_GL_CCW_PUZZLE_4_TO_CC);
 }
 
 void warp_lairEnterCCLobbyFromCCWPuzzleRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7001);
+    _func_8031CC8C(arg0, MAP_70_GL_CC_LOBBY, WARP_GL_CC_LOBBY_1_ENTRANCE);
 }
 
 void warp_lairEnterCCLobbyFromCCLevel(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7002);
+    _func_8031CC8C(arg0, MAP_70_GL_CC_LOBBY, WARP_GL_CC_LOBBY_2_CC_ENTRANCE);
 }
 
 void warp_fpEnterLevel(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x2701);
+    _func_8031CC8C(arg0, MAP_27_FP_FREEZEEZY_PEAK, WARP_FP_1_WORLD_ENTRANCE);
 }
 
 // Unknown
 void func_8031F0F4(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6F03);
+    _func_8031CC8C(arg0, MAP_6F_GL_FP_LOBBY, WARP_GL_FP_LOBBY_3_stubbed);
 }
 
 // Unknown
 void func_8031F118(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6F04);
+    _func_8031CC8C(arg0, MAP_6F_GL_FP_LOBBY, WARP_GL_FP_LOBBY_4_stubbed);
 }
 
 void warp_lairEnterCCWPuzzleFromPointingGruntyStatueRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6B05);
+    _func_8031CC8C(arg0, MAP_6B_GL_180_NOTE_DOOR, WARP_GL_CCW_PUZZLE_5_NOTE_DOOR);
 }
 
 void warp_lairEnterPointingGruntyStatueFromCCWPuzzleRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7102);
+    _func_8031CC8C(arg0, MAP_71_GL_STATUE_ROOM, WARP_GL_STATUE_ROOM_2_LOWER_ENTRANCE);
 }
 
 void warp_lairEnterGVPuzzleRoomFromMMMLobby(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7401);
+    _func_8031CC8C(arg0, MAP_74_GL_GV_PUZZLE, WARP_GL_GV_PUZZLE_1_TO_MMM);
 }
 
 void warp_lairEnterMMMLobbyFromGVPuzzleRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7501);
+    _func_8031CC8C(arg0, MAP_75_GL_MMM_LOBBY, WARP_GL_MMM_LOBBY_1_ENTRANCE);
 }
 
 void warp_lairEnterGVPuzzleRoomFromFPLobby(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7402);
+    _func_8031CC8C(arg0, MAP_74_GL_GV_PUZZLE, WARP_GL_GV_PUZZLE_2_ENTRANCE);
 }
 
 void warp_lairFPLobbyFromGVPuzzleRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6F05);
+    _func_8031CC8C(arg0, MAP_6F_GL_FP_LOBBY, WARP_GL_FP_LOBBY_5_MOUTH_EXIT);
 }
 
 void warp_lairEnterPointingGruntyStatueFromBGSLobby(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7103);
+    _func_8031CC8C(arg0, MAP_71_GL_STATUE_ROOM, WARP_GL_STATUE_ROOM_3_TO_BGS);
 }
 
 void warp_lairEnterBGSLobbyFromPointingGruntyStatueRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7201);
+    _func_8031CC8C(arg0, MAP_72_GL_BGS_LOBBY, WARP_GL_BGS_LOBBY_1_ENTRANCE);
 }
 
 void warp_lairEnterCryptFromMMMLobby(s32 arg0, s32 arg1) {
-    if (player_getTransformation() == TRANSFORM_3_PUMPKIN) {
-        func_8031CC8C(arg0, 0x7A01);
-    }
+    if (player_getTransformation() == TRANSFORM_3_PUMPKIN)
+        _func_8031CC8C(arg0, MAP_7A_GL_CRYPT, WARP_GL_COFFIN_ROOM_1_ENTRANCE);
 }
 
 void warp_lairEnterMMMLobbyFromCrypt(s32 arg0, s32 arg1) {
-    if (player_getTransformation() == TRANSFORM_3_PUMPKIN) {
-        func_8031CC8C(arg0, 0x7503);
-    }
+    if (player_getTransformation() == TRANSFORM_3_PUMPKIN)
+        _func_8031CC8C(arg0, MAP_75_GL_MMM_LOBBY, WARP_GL_MMM_LOBBY_3_COFFIN);
 }
 
 void warp_fpExitWozzasCave(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x2706);
+    _func_8031CC8C(arg0, MAP_27_FP_FREEZEEZY_PEAK, WARP_FP_6_WOZZA_CAVE);
 }
 
 void warp_fpEnterWozzasCave(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7F01);
+    _func_8031CC8C(arg0, MAP_7F_FP_WOZZAS_CAVE, WARP_FP_WOZZAS_CAVE_1_ENTRANCE);
 }
 
 void warp_lairEnterBGSLobbyFromBGSLevel(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7202);
+    _func_8031CC8C(arg0, MAP_72_GL_BGS_LOBBY, WARP_GL_BGS_LOBBY_2_BGS_ENTRANCE);
 }
 
 void warp_lairEnter640NoteDoorRoomFromFPLobby(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7601);
+    _func_8031CC8C(arg0, MAP_76_GL_640_NOTE_DOOR, WARP_GL_WATER_SWITCH_ROOM_1_LOWER_ENTRANCE);
 }
 
 void warp_lairEnter640NoteDoorRoomFromCCWLobbyTokenEntrance(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7602);
+    _func_8031CC8C(arg0, MAP_76_GL_640_NOTE_DOOR, WARP_GL_WATER_SWITCH_ROOM_2_CCW_LOBBY_MUMBO_TOKEN);
 }
 
 void warp_lairEnter640NoteDoorRoomFromCCWLobbyDoorEntrance(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7603);
+    _func_8031CC8C(arg0, MAP_76_GL_640_NOTE_DOOR, WARP_GL_WATER_SWITCH_ROOM_3_CCW_LOBBY);
 }
 
 void warp_lairEnter640NoteDoorRoomFromRBBLobby(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7604);
+    _func_8031CC8C(arg0, MAP_76_GL_640_NOTE_DOOR, WARP_GL_WATER_SWITCH_ROOM_4_UNDERWATER_EXIT);
 }
 
 void warp_lairRBBLobbyFrom640NoteDoorRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7701);
+    _func_8031CC8C(arg0, MAP_77_GL_RBB_LOBBY, WARP_GL_RBB_LOBBY_1_LOWER_ENTRANCE);
 }
 
 void warp_lairCCWLobbyFrom640NoteDoorRoomDoorEntrance(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7901);
+    _func_8031CC8C(arg0, MAP_79_GL_CCW_LOBBY, WARP_GL_CCW_LOBBY_1_WHIPCRACK_ENTRANCE);
 }
 
 void warp_lairCCWLobbyFrom640NoteDoorRoomTokenEntrance(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7902);
+    _func_8031CC8C(arg0, MAP_79_GL_CCW_LOBBY, WARP_GL_CCW_LOBBY_2_HIGHER_ENTRANCE);
 }
 
 void warp_ccwEnterSummerZubbaHive(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x5A02);
+    _func_8031CC8C(arg0, MAP_5A_CCW_SUMMER_ZUBBA_HIVE, WARP_CCW_BEEHIVE_SUMMER_2_TOP);
 }
 
 void warp_ccwEnterAutumnZubbaHive(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x5C02);
+    _func_8031CC8C(arg0, MAP_5C_CCW_AUTUMN_ZUBBA_HIVE, WARP_CCW_BEEHIVE_AUTUMN_2_TOP);
 }
 
 void warp_ccwExitSpringZubbaHive(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4306);
+    _func_8031CC8C(arg0, MAP_43_CCW_SPRING, WARP_CCW_SPRING_6_ZUBBA_HIVE_FRONT);
 }
 
 void warp_ccwExitSummerZubbaHive(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4406);
+    _func_8031CC8C(arg0, MAP_44_CCW_SUMMER, WARP_CCW_SUMMER_6_ZUBBA_HIVE_TOP);
 }
 
 void warp_ccwExitAutumnZubbaHive(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4505);
+    _func_8031CC8C(arg0, MAP_45_CCW_AUTUMN, WARP_CCW_AUTUMN_5_ZUBBA_HIVE_TOP);
 }
 
 void warp_ccwEnterSpringZubbaHive(s32 arg0, s32 arg1) {
-    if (player_getTransformation() == TRANSFORM_6_BEE) {
-        func_8031CC8C(arg0, 0x5B01);
-    }
+    if (player_getTransformation() == TRANSFORM_6_BEE)
+        _func_8031CC8C(arg0, MAP_5B_CCW_SPRING_ZUBBA_HIVE, WARP_CCW_BEEHIVE_SPRING_1_ENTRANCE);
 }
 
 void warp_lairEnterFPLobbyFrom640NoteDoorRoom(s32 arg0, s32 arg1) {
     item_set(ITEM_6_HOURGLASS, 0);
-    func_8031CC8C(arg0, 0x6F02);
+    _func_8031CC8C(arg0, MAP_6F_GL_FP_LOBBY, WARP_GL_FP_LOBBY_2_HIGHEST_EXIT);
 }
 
 void warp_lairEnterRBBLobbyFromRBBLevel(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7702);
+    _func_8031CC8C(arg0, MAP_77_GL_RBB_LOBBY, WARP_GL_RBB_LOBBY_2_RBB_ENTRANCE);
 }
 
 void warp_lairEnterRBBLobbyFromRBBPuzzleRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7703);
+    _func_8031CC8C(arg0, MAP_77_GL_RBB_LOBBY, WARP_GL_RBB_LOBBY_3_UNDERWATER_EXIT);
 }
 
 void warp_lairEnterRBBLobbyFromMMMPuzzleRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7704);
+    _func_8031CC8C(arg0, MAP_77_GL_RBB_LOBBY, WARP_GL_RBB_LOBBY_4_HIGHER_EXIT);
 }
 
 void warp_lairEnterMMMPuzzleFromRBBLobby(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7801);
+    _func_8031CC8C(arg0, MAP_78_GL_RBB_AND_MMM_PUZZLE, WARP_GL_MMM_PUZZLE_1_UNDERWATER_ENTRANCE);
 }
 
 void warp_lairEnterRBBPuzzleFromRBBLobby(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7802);
+    _func_8031CC8C(arg0, MAP_78_GL_RBB_AND_MMM_PUZZLE, WARP_GL_MMM_PUZZLE_2_HIGHER_ENTRANCE);
 }
 
 void warp_lairEnterCCWLobbyFromFurnaceFunPath(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7903);
+    _func_8031CC8C(arg0, MAP_79_GL_CCW_LOBBY, WARP_GL_CCW_LOBBY_3_FURNACE_EXIT);
 }
 
 void warp_lairEnterFurnaceFunPathFromCCWLobby(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x8001);
+    _func_8031CC8C(arg0, MAP_80_GL_FF_ENTRANCE, WARP_GL_FURNACE_FUN_PATH_1_ENTRANCE);
 }
 
 void warp_smEnterBanjosHouse(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x8C01);
+    _func_8031CC8C(arg0, MAP_8C_SM_BANJOS_HOUSE, WARP_SM_BANJOS_HOUSE_1_ENTRANCE);
 }
 
 void warp_smExitBanjosHouse(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x112);
+    _func_8031CC8C(arg0, MAP_1_SM_SPIRAL_MOUNTAIN, WARP_SM_12_FROM_HOUSE);
 }
 
 void warp_lairEnterMMLobbyFromSMLevel(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6912);
+    _func_8031CC8C(arg0, MAP_69_GL_MM_LOBBY, WARP_GL_MM_LOBBY_12_ENTRANCE);
 }
 
 void warp_smExitLair(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x113);
+    _func_8031CC8C(arg0, MAP_1_SM_SPIRAL_MOUNTAIN, WARP_SM_13_LAIR_ENTRANCE);
 }
 
 void warp_rbbExitAnchorRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x3113);
+    _func_8031CC8C(arg0, MAP_31_RBB_RUSTY_BUCKET_BAY, WARP_RBB_13_ANCHOR_ROOM);
 }
 
 void warp_rbbEnterAnchorRoom(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x8B04);
+    _func_8031CC8C(arg0, MAP_8B_RBB_ANCHOR_ROOM, WARP_RBB_ANCHOR_4_SWITCH);
 }
 
 void warp_mmmEnterWellBottom(s32 arg0, s32 arg1) {
-    if (player_getTransformation() == TRANSFORM_3_PUMPKIN) {
-        func_8031CC8C(arg0, 0x2504);
-    }
+    if (player_getTransformation() == TRANSFORM_3_PUMPKIN)
+        _func_8031CC8C(arg0, MAP_25_MMM_WELL, WARP_MMM_WELL_4_BOTTOM_ENTRANCE);
 }
 
 void warp_mmmExitWellBottom(s32 arg0, s32 arg1) {
-    if (player_getTransformation() == TRANSFORM_3_PUMPKIN) {
-        func_8031CC8C(arg0, 0x1B13);
-    }
+    if (player_getTransformation() == TRANSFORM_3_PUMPKIN)
+        _func_8031CC8C(arg0, MAP_1B_MMM_MAD_MONSTER_MANSION, WARP_MMM_13_WELL_BOTTOM);
 }
 
 void warp_mmmEnterBathroomFromLoggo(s32 arg0, s32 arg1) {
-    if (player_getTransformation() == TRANSFORM_3_PUMPKIN) {
-        func_8031CC8C(arg0, 0x2C04);
-    }
+    if (player_getTransformation() == TRANSFORM_3_PUMPKIN)
+        _func_8031CC8C(arg0, MAP_2C_MMM_BATHROOM, WARP_MMM_BATHROOM_4_LOGGO);
 }
 
 void warp_mmmEnterLoggo(s32 arg0, s32 arg1) {
-    if (player_getTransformation() == TRANSFORM_3_PUMPKIN) {
-        func_8031CC60(0x8D04);
-    }
+    if (player_getTransformation() == TRANSFORM_3_PUMPKIN)
+        _func_8031CC60(MAP_8D_MMM_INSIDE_LOGGO, WARP_MMM_SEPTIC_TANK_4_ENTRANCE);
 }
 
 // Unused
 void func_8031F80C(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7502);
+    _func_8031CC8C(arg0, MAP_75_GL_MMM_LOBBY, WARP_GL_MMM_LOBBY_2_MMM_ENTRANCE);
 }
 
 void warp_lairTTCLobbyFromTTCLevel(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6D04);
+    _func_8031CC8C(arg0, MAP_6D_GL_TTC_LOBBY, WARP_GL_TTC_LOBBY_4_TTC_ENTRANCE);
 }
 
 void warp_lairCCWLobbyFromCCWLevel(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x7906);
+    _func_8031CC8C(arg0, MAP_79_GL_CCW_LOBBY, WARP_GL_CCW_LOBBY_6_CCW_ENTRANCE);
 }
 
 void warp_ccwEnterLevel(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4007);
+    _func_8031CC8C(arg0, MAP_40_CCW_HUB, WARP_CCW_7_WORLD_ENTRANCE);
 }
 
 void warp_lairFPLobbyFromFPLevel(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6F06);
+    _func_8031CC8C(arg0, MAP_6F_GL_FP_LOBBY, WARP_GL_FP_LOBBY_6_FP_ENTRANCE);
 }
 
 void warp_ccwEnterSpringNabnutWindow(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x5E02);
+    _func_8031CC8C(arg0, MAP_5E_CCW_SPRING_NABNUTS_HOUSE, WARP_CCW_NABNUT_SPRING_2_WINDOW);
 }
 
 void warp_ccwEnterSummerNabnutWindow(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x5F02);
+    _func_8031CC8C(arg0, MAP_5F_CCW_SUMMER_NABNUTS_HOUSE, WARP_CCW_NABNUT_SUMMER_2_WINDOW);
 }
 
 void warp_ccwEnterAutumnNabnutWindow(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6002);
+    _func_8031CC8C(arg0, MAP_60_CCW_AUTUMN_NABNUTS_HOUSE, WARP_CCW_NABNUT_AUTUMN_2_WINDOW);
 }
 
 void warp_ccwEnterWinterNabnutWindow(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x6102);
+    _func_8031CC8C(arg0, MAP_61_CCW_WINTER_NABNUTS_HOUSE, WARP_CCW_NABNUT_WINTER_2_WINDOW);
 }
 
 void warp_ccwExitSpringNabnutWindow(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4304);
+    _func_8031CC8C(arg0, MAP_43_CCW_SPRING, WARP_CCW_SPRING_4_NABNUT_WINDOW);
 }
 
 void warp_ccwExitSummerNabnutWindow(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4404);
+    _func_8031CC8C(arg0, MAP_44_CCW_SUMMER, WARP_CCW_SUMMER_4_NABNUT_WINDOW);
 }
 
 void warp_ccwExitAutumnNabnutWindow(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4504);
+    _func_8031CC8C(arg0, MAP_45_CCW_AUTUMN, WARP_CCW_AUTUMN_4_NABNUT_WINDOW);
 }
 
 void warp_ccwExitWinterNabnutWindow(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x4604);
+    _func_8031CC8C(arg0, MAP_46_CCW_WINTER, WARP_CCW_WINTER_4_NABNUT_WINDOW);
 }
 
 void func_8031F9E0(void){}
@@ -1437,50 +1432,50 @@ void func_8031F9F4(s32 arg0){
 }
 
 void warp_ttcExitSharkfoodIsland(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x780);
+    _func_8031CC8C(arg0, MAP_7_TTC_TREASURE_TROVE_COVE, WARP_TTC_80_SHARKFOOD_ISLAND);
 }
 
-void warp_gvEnterSNSChamper(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x9205);
+void warp_gvEnterSNSChamber(s32 arg0, s32 arg1) {
+    _func_8031CC8C(arg0, MAP_92_GV_SNS_CHAMBER, WARP_GV_EGG_ROOM_5_ENTRANCE);
 }
 
-void warp_gvExitSNSChamper(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x120A);
+void warp_gvExitSNSChamber(s32 arg0, s32 arg1) {
+    _func_8031CC8C(arg0, MAP_12_GV_GOBIS_VALLEY, WARP_GV_A_EGG_ROOM);
 }
 
 void warp_lairEnterDingpotRoomFromFurnaceFun(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x9305);
+    _func_8031CC8C(arg0, MAP_93_GL_DINGPOT, WARP_GL_TOWER_5_ENTRANCE);
 }
 
 // warp_lairEnterFurnaceFunFrom?
 void func_8031FA90(s32 arg0, s32 arg1) {
-    func_8031CC8C(arg0, 0x8E05);
+    _func_8031CC8C(arg0, MAP_8E_GL_FURNACE_FUN, WARP_GL_FURNACE_FUN_5_TO_TOWER);
 }
 
 void func_8031FAB4(s32 arg0, s32 arg1) {
     if ((fileProgressFlag_get(FILEPROG_FC_DEFEAT_GRUNTY) != 0) && (jiggyscore_total() == 100)) {
         // Beach Cutscene
-        func_8031CC8C(arg0, 0x9501);
+        _func_8031CC8C(arg0, MAP_95_CS_END_ALL_100, 1);
     } else {
         // Final Battle
-        func_8031CC8C(arg0, 0x9001);
+        _func_8031CC8C(arg0, MAP_90_GL_BATTLEMENTS, 1);
     }
 }
 
 void warp_lairEnterLairFromSMLevel(s32 arg0, s32 arg1) {
     if (fileProgressFlag_get(FILEPROG_BD_ENTER_LAIR_CUTSCENE) != 0) {
         // MM Lobby
-        func_8031CC8C(arg0, 0x6912);
+        _func_8031CC8C(arg0, MAP_69_GL_MM_LOBBY, WARP_GL_MM_LOBBY_12_ENTRANCE);
     } else {
         fileProgressFlag_set(FILEPROG_BD_ENTER_LAIR_CUTSCENE, 1);
         // Enter Lair Cutscene
-        func_8031CC8C(arg0, 0x8204);
+        _func_8031CC8C(arg0, MAP_82_CS_ENTERING_GL_MACHINE_ROOM, 4);
     }
 }
 
 void func_8031FB6C(s32 arg0, s32 arg1) {
     func_8030E6D4(SFX_7C_CHEBOOF);
-    func_8031CC8C(arg0, 0x7104);
+    _func_8031CC8C(arg0, MAP_71_GL_STATUE_ROOM, WARP_GL_STATUE_ROOM_4_CEILING_EXIT);
 }
 
 void clearScoreStates(void) {
