@@ -440,7 +440,7 @@ BKCameraAreaList *modelbin_getCameraAreaList(BKModelBin *this);
 #define modelbin_getAnimationList_MACRO(this)       ((BKAnimationList *)     (((u8 *) (this)) + bswap32((((BKModelBin *) (this))->animation_list_offset))))
 #define modelbin_getCollisionList_MACRO(this)       ((BKCollisionList *)     (((u8 *) (this)) + bswap32((((BKModelBin *) (this))->collision_list_offset))))
 #define modelbin_getCameraAreaList_MACRO(this)      ((BKCameraAreaList *)    (((u8 *) (this)) + bswap32((((BKModelBin *) (this))->camera_area_list_offset))))
-#define modelbin_getMeshList_MACRO(this)            ((BKMeshList *)          (((u8 *) (this)) + (((BKModelBin *) (this))->mesh_list_offset)))
+#define modelbin_getMeshList_MACRO(this)            ((BKMeshList *)          (((u8 *) (this)) + bswap32((((BKModelBin *) (this))->mesh_list_offset))))
 #define modelbin_getAnimVerticesList_MACRO(this)    ((BKAnimVerticesList *)  (((u8 *) (this)) + bswap32((((BKModelBin *) (this))->anim_vertices_list_offset))))
 #define modelbin_getAnimTextureList_MACRO(this)     ((BKAnimTextureList *)   (((u8 *) (this)) + bswap32((((BKModelBin *) (this))->animated_texture_list_offset))))
 

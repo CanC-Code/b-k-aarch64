@@ -1198,6 +1198,8 @@ BKCollisionList *modelbin_getCollisionList(BKModelBin *this) {
 }
 
 BKMeshList *modelbin_getMeshList(BKModelBin *this) {
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "modelbin_getMeshList: this=%p mesh_list_offset=0x%x vtx_list_offset=0x%x", this, this ? this->mesh_list_offset : 0, this ? this->vtx_list_offset : 0);
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "modelbin_getMeshList: this=%p mesh_list_offset=0x%x vtx_list_offset=0x%x", this, this ? this->mesh_list_offset : 0, this ? this->vtx_list_offset : 0);
     if (this == NULL || this->mesh_list_offset == 0) return NULL;
     this = (BKModelBin*)((uintptr_t)this & 0x00FFFFFFFFFFFFFFUL);
     BKMeshList *result = modelbin_getMeshList_MACRO(this);
