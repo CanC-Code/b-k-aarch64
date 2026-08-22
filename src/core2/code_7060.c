@@ -185,6 +185,7 @@ void func_8028E4B0(void) {
     s32 sp20;
 
     LOG_BKA_INIT("start");
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "func_8028E4B0 ENTER");
     D_8037BFBA = TRUE;
     D_8037BFB9 = FALSE;
     LOG_BKA_INIT("bsmethods_reset"); bsmethods_reset();

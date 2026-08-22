@@ -589,6 +589,7 @@ enum asset_e mapModel_getOpaModelId(void){
 }
 
 void func_8030A078(void) {
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "func_8030A078 ENTER");
     BKMeshList *sp24;
     MapModelDescription *description;
 
@@ -599,7 +600,13 @@ void func_8030A078(void) {
     description = _mapModel_mapIdToDescription(gsworld_getMap());;
     mapModel.description = description;
     mapModel.scale = (f32) description->scale;
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+        "func_8030A078: map=%d opa_model_id=0x%x xlu_model_id=0x%x",
+        gsworld_getMap(), description->opa_model_id, description->xlu_model_id);
     mapModel.model_bin_opa = (BKModelBin *)assetcache_get(mapModel.description->opa_model_id);
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+        "func_8030A078: model_bin_opa=%p collision_opa=%p",
+        mapModel.model_bin_opa, mapModel.model_bin_opa ? modelbin_getCollisionList(mapModel.model_bin_opa) : NULL);
     mapModel.collision_opa = modelbin_getCollisionList(mapModel.model_bin_opa);
     mapModel.unk20 = 0;
     if (mapModel.description->xlu_model_id != 0) {
@@ -610,10 +617,17 @@ void func_8030A078(void) {
         mapModel.collision_xlu = NULL;
     }
     sp24 = modelbin_getMeshList(mapModel.model_bin_opa);
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+        "func_8030A078: sp24=%p vtxList=%p",
+        sp24, mapModel.model_bin_opa ? modelbin_getVtxList(mapModel.model_bin_opa) : NULL);
     if (sp24 != NULL) {
         mapModel.model_opa = meshList_createModel(sp24, modelbin_getVtxList(mapModel.model_bin_opa));
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+            "func_8030A078: model_opa created=%p", mapModel.model_opa);
     } else {
         mapModel.model_opa = NULL;
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "func_8030A078: sp24 is NULL; model_opa remains NULL");
     }
     if (mapModel.model_opa != NULL) {
         func_8034C6DC(mapModel.model_opa);
