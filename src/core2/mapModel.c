@@ -239,6 +239,10 @@ f32 func_80308FDC(f32 arg0[3], u32 arg1) {
 void mapModel_opa_draw(Gfx **gfx, Mtx **mtx, Vtx **vtx) {
     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "mapModel_opa_draw entry");
     s32 temp_a0;
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+        "mapModel_opa_draw: model_opa=%p model_bin_opa=%p func_80320708=%d crc2=%d dummy=%d",
+        mapModel.model_opa, mapModel.model_bin_opa,
+        func_80320708(), levelSpecificFlags_validateCRC2(), dummy_func_80320248());
     if (!mapModel.model_opa) return;
 
     if (func_80320708() && levelSpecificFlags_validateCRC2() && dummy_func_80320248()) {
