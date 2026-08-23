@@ -966,9 +966,19 @@ void modelRender_geoCmd_CAMERA(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data) 
 }
 
 void modelRender_executeGeoCmds(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data) {
+    static int s_geo_log_count = 0;
     while (TRUE) {
-        u32 cmd_index = __builtin_bswap32(data->cmd);
-        s32 next_offset = (s32)__builtin_bswap32((u32)data->next_offset);
+        u32 raw_cmd = *(u32*)&data->cmd;
+        u32 raw_next = *(u32*)&data->next_offset;
+        u32 cmd_index = __builtin_bswap32(raw_cmd);
+        s32 next_offset = (s32)__builtin_bswap32(raw_next);
+
+        if (s_geo_log_count < 30) {
+            __android_log_print(ANDROID_LOG_INFO, "BKA-MODEL",
+                "geoCmd: data=%p raw_cmd=0x%08x raw_next=0x%08x cmd=%u next=0x%08x\n",
+                data, raw_cmd, raw_next, cmd_index, next_offset);
+            s_geo_log_count++;
+        }
 
         if (cmd_index >= ARRAYLEN(sGeoCmdList)) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA-MODEL",
