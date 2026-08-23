@@ -582,15 +582,15 @@ static void Cmd_MoveMem(GfxCommand cmd) {
 // For our initial implementation, we treat the matrix as modelview.
 // =======================================================================
 static void Cmd_MoveWord(GfxCommand cmd) {
-    uint32_t index = (cmd.w0 >> 8) & 0xFF;
-    uint32_t offset = cmd.w0 & 0xFF;
+    uint32_t index = cmd.w0 & 0xFF;
+    uint32_t offset = (cmd.w0 >> 8) & 0xFFFF;
     uint32_t data = cmd.w1;
 
     if (index == 0x06) { // G_MW_SEGMENT
         uint32_t segment = (offset / 4) & 0x0F;
         s_rdp.segmentBase[segment] = data;
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-            "Cmd_MoveWord SEGMENT seg=%u base=0x%08X", segment, data);
+            "Cmd_MoveWord SEGMENT seg=%u offset=0x%04X base=0x%08X", segment, offset, data);
     }
 }
 
