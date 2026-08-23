@@ -34,7 +34,42 @@ void alEvtqNew(void *evtq, void *items, s32 itemCount) {}
 void osInitialize(void) {}
 u64  osGetTime(void) { return 0; }
 u32  osViClock(void) { return 0; }
-u32  osVirtualToPhysical(void *vaddr) { return (u32)(unsigned long)vaddr; }
+#define BKA_ADDR_MAP_SIZE 8192
+static uint32_t s_bka_addr_key[BKA_ADDR_MAP_SIZE];
+static void    *s_bka_addr_ptr[BKA_ADDR_MAP_SIZE];
+static int       s_bka_addr_count = 0;
+
+void bka_store_addr_mapping(uint32_t key, void *ptr) {
+    int i;
+    if (key == 0 || ptr == 0) return;
+    for (i = 0; i < s_bka_addr_count; i++) {
+        if (s_bka_addr_key[i] == key) {
+            s_bka_addr_ptr[i] = ptr;
+            return;
+        }
+    }
+    if (s_bka_addr_count < BKA_ADDR_MAP_SIZE) {
+        s_bka_addr_key[s_bka_addr_count] = key;
+        s_bka_addr_ptr[s_bka_addr_count] = ptr;
+        s_bka_addr_count++;
+    }
+}
+
+void *bka_lookup_addr_mapping(uint32_t key) {
+    int i;
+    for (i = 0; i < s_bka_addr_count; i++) {
+        if (s_bka_addr_key[i] == key) {
+            return s_bka_addr_ptr[i];
+        }
+    }
+    return 0;
+}
+
+u32  osVirtualToPhysical(void *vaddr) {
+    u32 key = (u32)(uintptr_t)vaddr;
+    bka_store_addr_mapping(key, vaddr);
+    return key;
+}
 
 // Graphics
 void guMtxIdentF(void *mf) {}

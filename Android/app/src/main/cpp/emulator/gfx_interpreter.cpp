@@ -13,6 +13,33 @@ extern "C" {
     uint16_t gFramebuffers[2][FB_WIDTH * FB_HEIGHT];
     int getActiveFramebuffer(void);
     uint8_t* gN64_RDRAM;
+    void* bka_lookup_addr_mapping(uint32_t key);
+}
+
+static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
+    if (addr == 0) return nullptr;
+
+    uint32_t mask = addr & 0x0FFFFFFF;
+
+    // Physical RDRAM and standard N64 segments.
+    if (mask < 0x1000000) {
+        return gN64_RDRAM ? gN64_RDRAM + mask : nullptr;
+    }
+    if (addr >= 0x80000000u && addr < 0x81000000u) {
+        return gN64_RDRAM ? gN64_RDRAM + (addr - 0x80000000u) : nullptr;
+    }
+    if (addr >= 0xA0000000u && addr < 0xA1000000u) {
+        return gN64_RDRAM ? gN64_RDRAM + (addr - 0xA0000000u) : nullptr;
+    }
+
+    // Otherwise addr is a low-32-bit ARM64 host pointer captured by
+    // osVirtualToPhysical. Look it up in the mapping table.
+    void* p = bka_lookup_addr_mapping(addr);
+    if (p) return (uint8_t*)p;
+
+    __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+        "RDP_TranslateAddr: unmapped addr=0x%08X", addr);
+    return nullptr;
 }
 
 static RDPState s_rdp;
@@ -318,7 +345,7 @@ static void Cmd_SetTImg(GfxCommand cmd) {
     s_rdp.texFmt  = (cmd.w0 >> 21) & 0x7;
     s_rdp.texSize = (cmd.w0 >> 19) & 0x3;
     s_rdp.texWidth = (cmd.w0 >> 9) & 0x3FF;
-    s_rdp.texAddr = gN64_RDRAM + (cmd.w1 & 0x0FFFFFFF);
+    s_rdp.texAddr = RDP_TranslateAddr(cmd.w1);
 }
 
 static void Cmd_LoadTile(GfxCommand cmd) {
@@ -392,7 +419,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
         return;
     }
     
-    uint8_t* src = gN64_RDRAM + addr;
+    uint8_t* src = RDP_TranslateAddr(addr);
     for (uint32_t i = 0; i < n; i++) {
         BKVertex* v = &s_rdp.dmem[v0 + i];
         // N64 Vtx format (16 bytes): ob[3](6 bytes), flag(2), tc[2](4), cn[4](4)
@@ -517,7 +544,7 @@ static void Cmd_MoveMem(GfxCommand cmd) {
         } else {
             target = &s_rdp.modelview;
         }
-        Matrix_LoadFromN64(*target, gN64_RDRAM + addr);
+        Matrix_LoadFromN64(*target, RDP_TranslateAddr(addr));
     }
 }
 
@@ -532,7 +559,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
     if (!gN64_RDRAM || addr == 0 || addr > 0x7FFFFF) return;
 
     // Load the matrix from RDRAM into the modelview matrix.
-    Matrix_LoadFromN64(s_rdp.modelview, gN64_RDRAM + addr);
+    Matrix_LoadFromN64(s_rdp.modelview, RDP_TranslateAddr(addr));
 }
 
 // =======================================================================
@@ -609,7 +636,7 @@ static void Cmd_TexRect(GfxCommand cmd) {
 // =======================================================================
 static void Cmd_DL(GfxCommand cmd, GfxCommand** outCmd, size_t* outRemaining) {
     uint32_t addr = cmd.w1;
-    *outCmd = (GfxCommand*)(gN64_RDRAM + (addr & 0x0FFFFFFF));
+    *outCmd = (GfxCommand*)RDP_TranslateAddr(addr);
     *outRemaining = 0xFFFFFFFF;
 }
 
@@ -740,14 +767,15 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xDE: {
                 uint32_t raw_addr = c.w1;
                 uint32_t addr = raw_addr & 0x0FFFFFFF;
-                if (addr != 0 && addr <= 0x7FFFFF && gN64_RDRAM != nullptr && depth < 63) {
+                uint8_t *sub = RDP_TranslateAddr(addr);
+                if (sub != nullptr && depth < 63) {
                     stack[depth].ptr = cur;
                     stack[depth].end = cur_end;
                     depth++;
-                    cur = gN64_RDRAM + addr;
+                    cur = sub;
                     // Use a conservative upper bound for nested DL; zero-run and
                     // command caps prevent runaway.
-                    cur_end = gN64_RDRAM + 0x7FFFFF;
+                    cur_end = cur + 0x7FFFFF;
                     dl_cmds = 0;
                     zero_run = 0;
                 }
