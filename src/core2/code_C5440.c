@@ -2,25 +2,25 @@
 #include "functions.h"
 #include "variables.h"
 
-extern void func_8034CF74(void *arg0, s32 arg1, s32 arg2, s32 arg3);
-extern void func_8034D170(void *arg0, s32 arg1, s32 arg2, s32 arg3);
-extern void func_8034DD74(void *arg0, s32 arg1, s32 arg2, s32 arg3);
-extern void func_8034E6A8(void *arg0, s32 arg1, s32 arg2, s32 arg3);
-extern void func_8034CB64(void *arg0, s32 arg1, s32 arg2, s32 arg3);
-extern void func_8034EE2C(void *arg0, s32 arg1, s32 arg2, s32 arg3);
-extern void func_8034CD30(void *arg0, s32 arg1, s32 arg2, s32 arg3);
-extern void func_8034F250(void *arg0, s32 arg1, s32 arg2, s32 arg3);
-extern void func_8034F570(void *arg0, s32 arg1, s32 arg2, s32 arg3);
+extern void func_8034CF74(void *arg0, s32 arg1, BKModel *arg2, s32 arg3);
+extern void func_8034D170(void *arg0, s32 arg1, BKModel *arg2, s32 arg3);
+extern void func_8034DD74(void *arg0, s32 arg1, BKModel *arg2, s32 arg3);
+extern void func_8034E6A8(void *arg0, s32 arg1, BKModel *arg2, s32 arg3);
+extern void func_8034CB64(void *arg0, s32 arg1, BKModel *arg2, s32 arg3);
+extern void func_8034EE2C(void *arg0, s32 arg1, BKModel *arg2, s32 arg3);
+extern void func_8034CD30(void *arg0, s32 arg1, BKModel *arg2, s32 arg3);
+extern void func_8034F250(void *arg0, s32 arg1, BKModel *arg2, s32 arg3);
+extern void func_8034F570(void *arg0, s32 arg1, BKModel *arg2, s32 arg3);
 
-extern void func_8034CF90(void *arg0, s32 arg1, s32 arg2);
-extern void func_8034D194(void *arg0, s32 arg1, s32 arg2);
-extern void func_8034E26C(void *arg0, s32 arg1, s32 arg2);
-extern void func_8034E8E4(void *arg0, s32 arg1, s32 arg2);
-extern void func_8034CB9C(void *arg0, s32 arg1, s32 arg2);
-extern void func_8034EF60(void *arg0, s32 arg1, s32 arg2);
-extern void func_8034CD8C(void *arg0, s32 arg1, s32 arg2);
-extern void func_8034F268(void *arg0, s32 arg1, s32 arg2);
-extern void func_8034F5B0(void *arg0, s32 arg1, s32 arg2);
+extern void func_8034CF90(void *arg0, BKModel *arg1, s32 arg2);
+extern void func_8034D194(void *arg0, BKModel *arg1, s32 arg2);
+extern void func_8034E26C(void *arg0, BKModel *arg1, s32 arg2);
+extern void func_8034E8E4(void *arg0, BKModel *arg1, s32 arg2);
+extern void func_8034CB9C(void *arg0, BKModel *arg1, s32 arg2);
+extern void func_8034EF60(void *arg0, BKModel *arg1, s32 arg2);
+extern void func_8034CD8C(void *arg0, BKModel *arg1, s32 arg2);
+extern void func_8034F268(void *arg0, BKModel *arg1, s32 arg2);
+extern void func_8034F5B0(void *arg0, BKModel *arg1, s32 arg2);
 
 extern void func_8034CF6C(void *arg0);
 extern void func_8034D168(void *arg0);
@@ -45,8 +45,8 @@ typedef struct struct_1D_s{
 }struct1Ds;
 
 typedef struct struct_1E_s{
-    void (* unk0)(void * arg0, s32 arg1, s32 arg2, s32 arg3);
-    void (* unk4)(void * arg0, s32 arg1, s32 arg2);
+    void (* unk0)(void * arg0, s32 arg1, BKModel *arg2, s32 arg3);
+    void (* unk4)(void * arg0, BKModel *arg1, s32 arg2);
     void (* unk8)(void * arg0);
 }struct1Es;
 
