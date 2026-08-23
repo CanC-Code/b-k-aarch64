@@ -28,7 +28,7 @@ typedef struct {
 typedef float BKMatrix[4][4];
 
 // Gfx command (8 bytes, same as N64 Gfx)
-typedef struct { uint32_t w0; uint32_t w1; uint32_t w2; uint32_t w3; } GfxCommand;
+typedef struct { uint32_t w0; uint32_t w1; } GfxCommand;
 #define GFX_OPCODE(cmd) (((cmd).w0 >> 24) & 0xFF)
 
 // RDP state (extended from original)
