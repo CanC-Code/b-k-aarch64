@@ -462,6 +462,30 @@ BKGeoCmdFunc sGeoCmdList[] = {
     modelRender_geoCmd_TEXWRAP
 };
 
+static uintptr_t s_geo_visited[16384];
+static int s_geo_visited_count = 0;
+
+static void modelRender_executeGeoCmds_reset_visited(void) {
+    s_geo_visited_count = 0;
+}
+
+static bool modelRender_geo_should_bswap(uintptr_t addr) {
+    int i;
+    for (i = 0; i < s_geo_visited_count; i++) {
+        if (s_geo_visited[i] == addr) {
+            return false;
+        }
+    }
+    if (s_geo_visited_count < (int)(sizeof(s_geo_visited) / sizeof(s_geo_visited[0]))) {
+        s_geo_visited[s_geo_visited_count++] = addr;
+    } else {
+        __android_log_print(ANDROID_LOG_WARN, "BKA-MODEL",
+            "geo visited buffer overflow; allowing duplicate byteswap for addr=%p\n",
+            (void*)addr);
+    }
+    return true;
+}
+
 static f32 bswapf32(f32 value) {
     union { f32 f; u32 u; } tmp;
     tmp.f = value;
@@ -995,7 +1019,9 @@ void modelRender_executeGeoCmds(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data)
             return;
         }
 
-        modelRender_geoCmd_bswap(data, cmd_index);
+        if (modelRender_geo_should_bswap((uintptr_t)data)) {
+            modelRender_geoCmd_bswap(data, cmd_index);
+        }
 
         sGeoCmdList[cmd_index](gfx, mtx, data);
 
@@ -1288,6 +1314,8 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
     }
 
     {
+        modelRender_executeGeoCmds_reset_visited();
+
         BKGeoCmd *geoCmd = modelbin_getGeoCmdList_MACRO(model_bin);
         s32 raw_offset = model_bin->geo_list_offset;
         s32 swapped_offset = __builtin_bswap32((u32)raw_offset);
