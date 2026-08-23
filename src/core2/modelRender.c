@@ -473,7 +473,7 @@ static bool modelRender_geo_should_bswap(uintptr_t addr) {
     int i;
     for (i = 0; i < s_geo_visited_count; i++) {
         if (s_geo_visited[i] == addr) {
-            return false;
+            return 0;
         }
     }
     if (s_geo_visited_count < (int)(sizeof(s_geo_visited) / sizeof(s_geo_visited[0]))) {
@@ -483,7 +483,7 @@ static bool modelRender_geo_should_bswap(uintptr_t addr) {
             "geo visited buffer overflow; allowing duplicate byteswap for addr=%p\n",
             (void*)addr);
     }
-    return true;
+    return 1;
 }
 
 static f32 bswapf32(f32 value) {
