@@ -222,7 +222,7 @@ void *func_802F2AEC(void) {
 
 
     if (D_80368AB4 == 0) {
-        D_80368AB0 = malloc(0x10);
+        D_80368AB0 = malloc(2 * sizeof(Struct_core2_6B030_0));
         if (D_80368AB0 == NULL) {
             return NULL;
         }
