@@ -16,6 +16,8 @@ extern "C" {
     void* bka_lookup_addr_mapping(uint32_t key);
 }
 
+static RDPState s_rdp;
+
 static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     if (addr == 0) return nullptr;
 
@@ -64,7 +66,6 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     return (uint8_t*)host;
 }
 
-static RDPState s_rdp;
 static int s_frameCount = 0;
 
 // =======================================================================
