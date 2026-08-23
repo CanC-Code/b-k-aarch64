@@ -19,12 +19,17 @@ extern "C" {
 static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     if (addr == 0) return nullptr;
 
-    uint32_t mask = addr & 0x0FFFFFFF;
+    // If osVirtualToPhysical stored this exact low-32 key, use the original
+    // 64-bit host pointer first. This prevents misclassifying host low-32
+    // values that happen to resemble N64 segment addresses.
+    void* p = bka_lookup_addr_mapping(addr);
+    if (p) return (uint8_t*)p;
 
-    // Physical RDRAM and standard N64 segments.
-    if (mask < 0x1000000) {
-        return gN64_RDRAM ? gN64_RDRAM + mask : nullptr;
+    // Physical RDRAM.
+    if (addr < 0x1000000u) {
+        return gN64_RDRAM ? gN64_RDRAM + addr : nullptr;
     }
+    // Cached/uncached KSEG0/KSEG1 mirrors of RDRAM.
     if (addr >= 0x80000000u && addr < 0x81000000u) {
         return gN64_RDRAM ? gN64_RDRAM + (addr - 0x80000000u) : nullptr;
     }
@@ -32,14 +37,8 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         return gN64_RDRAM ? gN64_RDRAM + (addr - 0xA0000000u) : nullptr;
     }
 
-    // Otherwise addr is a low-32-bit ARM64 host pointer captured from
-    // GBI commands (gSPMatrix/gSPVertex/etc). These pointers normally
-    // begin with 0x7c... on this Android process, so try to reconstruct
-    // the host pointer from the low 32 bits before failing.
-    void* p = bka_lookup_addr_mapping(addr);
-    if (p) return (uint8_t*)p;
-
-    // 0x09D59680 -> 0x7c09D59680
+    // Otherwise addr is the low 32 bits of an ARM64 host pointer embedded
+    // directly by the GBI macros. Reconstruct the canonical 0x7c... base.
     uintptr_t host = 0x7c00000000ULL | (uintptr_t)addr;
     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
         "RDP_TranslateAddr: reconstructing host ptr from 0x%08X -> 0x%llX\n",
@@ -565,11 +564,7 @@ static void Cmd_MoveMem(GfxCommand cmd) {
 // =======================================================================
 static void Cmd_Mtx(GfxCommand cmd) {
     uint32_t raw_addr = cmd.w1;
-    uint32_t addr = raw_addr & 0x0FFFFFFF;
-    if (!gN64_RDRAM || addr == 0 || addr > 0x7FFFFF) return;
-
-    // Load the matrix from RDRAM into the modelview matrix.
-    void *mtx_src = RDP_TranslateAddr(addr);
+    void *mtx_src = RDP_TranslateAddr(raw_addr);
     if (mtx_src) Matrix_LoadFromN64(s_rdp.modelview, mtx_src);
 }
 
