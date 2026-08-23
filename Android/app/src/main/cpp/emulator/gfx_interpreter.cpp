@@ -32,14 +32,19 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         return gN64_RDRAM ? gN64_RDRAM + (addr - 0xA0000000u) : nullptr;
     }
 
-    // Otherwise addr is a low-32-bit ARM64 host pointer captured by
-    // osVirtualToPhysical. Look it up in the mapping table.
+    // Otherwise addr is a low-32-bit ARM64 host pointer captured from
+    // GBI commands (gSPMatrix/gSPVertex/etc). These pointers normally
+    // begin with 0x7c... on this Android process, so try to reconstruct
+    // the host pointer from the low 32 bits before failing.
     void* p = bka_lookup_addr_mapping(addr);
     if (p) return (uint8_t*)p;
 
+    // 0x09D59680 -> 0x7c09D59680
+    uintptr_t host = 0x7c00000000ULL | (uintptr_t)addr;
     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-        "RDP_TranslateAddr: unmapped addr=0x%08X", addr);
-    return nullptr;
+        "RDP_TranslateAddr: reconstructing host ptr from 0x%08X -> 0x%llX\n",
+        addr, (unsigned long long)host);
+    return (uint8_t*)host;
 }
 
 static RDPState s_rdp;
@@ -420,6 +425,10 @@ static void Cmd_Vtx(GfxCommand cmd) {
     }
     
     uint8_t* src = RDP_TranslateAddr(addr);
+    if (!src) {
+        LOGW("Cmd_Vtx: failed to translate addr=0x%08X", addr);
+        return;
+    }
     for (uint32_t i = 0; i < n; i++) {
         BKVertex* v = &s_rdp.dmem[v0 + i];
         // N64 Vtx format (16 bytes): ob[3](6 bytes), flag(2), tc[2](4), cn[4](4)
@@ -544,7 +553,8 @@ static void Cmd_MoveMem(GfxCommand cmd) {
         } else {
             target = &s_rdp.modelview;
         }
-        Matrix_LoadFromN64(*target, RDP_TranslateAddr(addr));
+        void *mtx_src = RDP_TranslateAddr(addr);
+        if (mtx_src) Matrix_LoadFromN64(*target, mtx_src);
     }
 }
 
@@ -559,7 +569,8 @@ static void Cmd_Mtx(GfxCommand cmd) {
     if (!gN64_RDRAM || addr == 0 || addr > 0x7FFFFF) return;
 
     // Load the matrix from RDRAM into the modelview matrix.
-    Matrix_LoadFromN64(s_rdp.modelview, RDP_TranslateAddr(addr));
+    void *mtx_src = RDP_TranslateAddr(addr);
+    if (mtx_src) Matrix_LoadFromN64(s_rdp.modelview, mtx_src);
 }
 
 // =======================================================================
