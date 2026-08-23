@@ -77,7 +77,8 @@ void gsworld_draw(Gfx** gfx, Mtx **mtx, Vtx **vtx) {
             func_803500D8(gfx, mtx, vtx);
         }
         if (!game_is_frozen()) {
-            func_802F2ED0(func_8032994C(), gfx, mtx, vtx);
+            // TEMPORARY skip bubble/particle draw
+    // func_802F2ED0(func_8032994C(), gfx, mtx, vtx);
         }
         if (!game_is_frozen()) {
             partEmitMgr_drawPass0(gfx, mtx, vtx);
@@ -104,7 +105,8 @@ void gsworld_draw(Gfx** gfx, Mtx **mtx, Vtx **vtx) {
         core2_A5BC0_drawUnknownMarkers(gfx, mtx, vtx);
         jiggylist_draw(gfx, mtx, vtx);
         func_803500D8(gfx, mtx, vtx);
-        func_802F2ED0(func_8032994C(), gfx, mtx, vtx);
+        // TEMPORARY skip bubble/particle draw
+    // func_802F2ED0(func_8032994C(), gfx, mtx, vtx);
         func_802D520C(gfx, mtx, vtx);
         partEmitMgr_draw(gfx, mtx, vtx);
     }
