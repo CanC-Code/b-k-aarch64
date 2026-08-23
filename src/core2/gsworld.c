@@ -98,7 +98,7 @@ void gsworld_draw(Gfx** gfx, Mtx **mtx, Vtx **vtx) {
     }
 
     if (!game_is_frozen()) {
-        func_80350818(gfx, mtx, vtx);
+        lensflare_draw(gfx, mtx, vtx);
     }
 
     if (!game_is_frozen()) {
@@ -131,7 +131,7 @@ void gsworld_free(void) {
     gsworld_setUnk0(3);
     func_8034F734();
     func_803500E8();
-    func_80350BC8();
+    lensflare_free();
     func_8030F1D0();
     gcparade_free();//null
     leveloverlay_releaseCallback_OnlyFP();
@@ -218,7 +218,7 @@ void gsworld_set(enum map_e map, s32 exit, bool reload) {
     dialogBin_initialize();
     spawnQueue_malloc();
     func_803329AC();
-    func_80350BFC();
+    lensflare_init();
     func_80323190();
     func_80332894();
     func_803305AC();
@@ -347,7 +347,7 @@ s32 gsworld_update(void) {
         }
         #endif
         AnimTextureListCache_update();
-        func_80350CA4();
+        lensflare_update();
         dialogBin_update();
         func_80310D2C();
         gcparade_update();
