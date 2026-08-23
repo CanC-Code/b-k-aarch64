@@ -411,12 +411,12 @@ static void Cmd_LoadBlock(GfxCommand cmd) {
 // w1 = address of Vtx data in RDRAM
 // =======================================================================
 static void Cmd_Vtx(GfxCommand cmd) {
-    uint32_t v0 = (cmd.w0 >> 16) & 0xFF;      // Base vertex index in DMEM
-    uint32_t n  = (cmd.w0 >> 10) & 0x3F;       // Number of vertices - 1
+    uint32_t v0 = ((cmd.w0 >> 16) & 0xFF) / 2; // Base vertex index in DMEM
+    uint32_t n  = (cmd.w0 >> 10) & 0x3F;        // Vertex count in F3DEX_GBI
     uint32_t length = cmd.w0 & 0x3FF;           // Data length
-    uint32_t addr = cmd.w1 & 0x0FFFFFFF;        // Source address in RDRAM
+    uint32_t addr = cmd.w1;                     // Source address
     
-    n++; // Convert from n-1 to actual count
+    
     
     if (v0 + n > DMEM_VERTEX_COUNT || !gN64_RDRAM) {
         LOGW("Cmd_Vtx: v0=%u n=%u exceeds DMEM limit", v0, n);
