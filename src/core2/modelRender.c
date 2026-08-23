@@ -462,6 +462,114 @@ BKGeoCmdFunc sGeoCmdList[] = {
     modelRender_geoCmd_TEXWRAP
 };
 
+static f32 bswapf32(f32 value) {
+    union { f32 f; u32 u; } tmp;
+    tmp.f = value;
+    tmp.u = __builtin_bswap32(tmp.u);
+    return tmp.f;
+}
+
+static s16 bswaps16(s16 value) {
+    return (s16)(((u16)value << 8) | ((u16)value >> 8));
+}
+
+static void modelRender_geoCmd_bswap(BKGeoCmd *data, u32 cmd_index) {
+    switch (cmd_index) {
+    case 0: {
+        struct geo_cmd_0_s *cmd = (struct geo_cmd_0_s *)data;
+        cmd->branch_offset = bswaps16(cmd->branch_offset);
+        cmd->do_pitch_rotate = bswaps16(cmd->do_pitch_rotate);
+        for (int i = 0; i < 3; i++) cmd->position[i] = bswapf32(cmd->position[i]);
+        break;
+    }
+    case 1: {
+        struct geo_cmd_sort_s *cmd = (struct geo_cmd_sort_s *)data;
+        for (int i = 0; i < 3; i++) cmd->point_1[i] = bswapf32(cmd->point_1[i]);
+        for (int i = 0; i < 3; i++) cmd->point_2[i] = bswapf32(cmd->point_2[i]);
+        cmd->flags = bswaps16(cmd->flags);
+        cmd->branch_offset_1 = bswaps16(cmd->branch_offset_1);
+        cmd->branch_offset_2 = (s32)__builtin_bswap32((u32)cmd->branch_offset_2);
+        break;
+    }
+    case 3: {
+        struct geo_cmd_load_dl_s *cmd = (struct geo_cmd_load_dl_s *)data;
+        cmd->gfx_index = bswaps16(cmd->gfx_index);
+        break;
+    }
+    case 5: {
+        struct geo_cmd_skinning_s *cmd = (struct geo_cmd_skinning_s *)data;
+        for (int i = 0; ; i++) {
+            s16 v = cmd->gfx_index[i];
+            v = bswaps16(v);
+            cmd->gfx_index[i] = v;
+            if (v == 0) break;
+        }
+        break;
+    }
+    case 6: {
+        struct geo_cmd_call_s *cmd = (struct geo_cmd_call_s *)data;
+        cmd->branch_offset = (s32)__builtin_bswap32((u32)cmd->branch_offset);
+        break;
+    }
+    case 7: {
+        struct geo_cmd_load_dl_2_s *cmd = (struct geo_cmd_load_dl_2_s *)data;
+        cmd->gfx_index = bswaps16(cmd->gfx_index);
+        break;
+    }
+    case 8: {
+        struct geo_cmd_lod_s *cmd = (struct geo_cmd_lod_s *)data;
+        cmd->max = bswapf32(cmd->max);
+        cmd->min = bswapf32(cmd->min);
+        for (int i = 0; i < 3; i++) cmd->position[i] = bswapf32(cmd->position[i]);
+        cmd->branch_offset = (s32)__builtin_bswap32((u32)cmd->branch_offset);
+        break;
+    }
+    case 10: {
+        struct geo_cmd_reference_point_s *cmd = (struct geo_cmd_reference_point_s *)data;
+        cmd->index = bswaps16(cmd->index);
+        cmd->anim_mtx_id = bswaps16(cmd->anim_mtx_id);
+        for (int i = 0; i < 3; i++) cmd->point[i] = bswapf32(cmd->point[i]);
+        break;
+    }
+    case 12: {
+        struct geo_cmd_selector_s *cmd = (struct geo_cmd_selector_s *)data;
+        cmd->branch_offset_count = bswaps16(cmd->branch_offset_count);
+        cmd->index = bswaps16(cmd->index);
+        for (int i = 0; i < cmd->branch_offset_count; i++) {
+            cmd->branch_offsets[i] = (s32)__builtin_bswap32((u32)cmd->branch_offsets[i]);
+        }
+        break;
+    }
+    case 13: {
+        struct geo_cmd_draw_distance_s *cmd = (struct geo_cmd_draw_distance_s *)data;
+        for (int i = 0; i < 3; i++) cmd->min[i] = bswaps16(cmd->min[i]);
+        for (int i = 0; i < 3; i++) cmd->max[i] = bswaps16(cmd->max[i]);
+        cmd->branch_offset = bswaps16(cmd->branch_offset);
+        break;
+    }
+    case 14: {
+        struct geo_cmd_E_s *cmd = (struct geo_cmd_E_s *)data;
+        for (int i = 0; i < 3; i++) cmd->position[i] = bswaps16(cmd->position[i]);
+        cmd->distance = bswaps16(cmd->distance);
+        cmd->branch_offset = bswaps16(cmd->branch_offset);
+        cmd->anim_mtx_id = bswaps16(cmd->anim_mtx_id);
+        break;
+    }
+    case 15: {
+        struct geo_cmd_camera_s *cmd = (struct geo_cmd_camera_s *)data;
+        cmd->branch_offset = bswaps16(cmd->branch_offset);
+        break;
+    }
+    case 16: {
+        struct geo_cmd_set_texture_wrap_mode_s *cmd = (struct geo_cmd_set_texture_wrap_mode_s *)data;
+        cmd->mode = (s32)__builtin_bswap32((u32)cmd->mode);
+        break;
+    }
+    default:
+        break;
+    }
+}
+
 enum model_render_color_mode_e{
     COLOR_MODE_DYNAMIC_PRIM_AND_ENV,
     COLOR_MODE_DYNAMIC_ENV,
@@ -868,6 +976,8 @@ void modelRender_executeGeoCmds(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data)
                 cmd_index, data, next_offset);
             return;
         }
+
+        modelRender_geoCmd_bswap(data, cmd_index);
 
         sGeoCmdList[cmd_index](gfx, mtx, data);
 
