@@ -859,7 +859,7 @@ segments:
   - [0x1041CA0, c, code_C8490] #DONE
   - [0x1041F70, c, code_C8760] #DONE
   - [0x10421D0, c, code_C89C0] #DONE
-  - [0x1043000, c, code_C97F0] #DONE
+  - [0x1043000, c, lensflare] #DONE
   - [0x1043680, c, code_C9E70] #DONE
   - [0x1043710, c, code_C9F00] #DONE
   - [0x1044860, c, code_CB050] #DONE
@@ -1086,7 +1086,7 @@ segments:
   - [0x1064960, .data, code_C4F40]
   - [0x10649D0, .data, code_C5440]
   - [0x1064A40, .data, code_C8760]
-  - [0x1064A50, .data, code_C97F0]
+  - [0x1064A50, .data, lensflare]
   - [0x1064F60, .data, code_C9F00]
   - [0x1065010, .data, code_CBD10]
   - [0x1065040, .data, code_CC1E0]
@@ -1334,7 +1334,7 @@ segments:
   - [0x106C0C0, .rodata, code_C8490]
   - [0x106C0E0, .rodata, code_C8760]
   - [0x106C0F0, .rodata, code_C89C0]
-  - [0x106C130, .rodata, code_C97F0]
+  - [0x106C130, .rodata, lensflare]
   - [0x106C140, .rodata, code_C9F00]
   - [0x106C170, .rodata, code_CB050]
   - [0x106C1E0, .rodata, code_CB610]
@@ -1614,7 +1614,7 @@ segments:
   - [0x0106C980, .bss, code_C4F40]
   - [0x0106C980, .bss, code_C5440]
   - [0x0106C980, .bss, code_C89C0]
-  - [0x0106C980, .bss, code_C97F0]
+  - [0x0106C980, .bss, lensflare]
   - [0x0106C980, .bss, code_C9E70]
   - [0x0106C980, .bss, code_C9F00]
   - [0x0106C980, .bss, commonParticleTypeMap ]
