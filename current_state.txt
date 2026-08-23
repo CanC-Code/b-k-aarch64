@@ -6,8 +6,9 @@
 The game boots, the main loop runs, input works, and the Spiral Mountain opaque map model loads.
 We are in the software rendering bring-up phase.
 
-The app now survives initial map draw and processes real F3DEX_GBI display lists.
-No fatal crash occurs during the latest tested build; the next step is completing the software RDP.
+The app currently survives initial map draw and processes real F3DEX_GBI display lists,
+but visible geometry is not yet confirmed because the software RDP does not yet implement
+the full F3DEX_GBI RSP/RDP command set and segment addressing.
 
 Estimated overall completion: ~20 percent toward a fully playable port.
 
@@ -18,14 +19,15 @@ Estimated overall completion: ~20 percent toward a fully playable port.
 - Android app main code: Android/app/src/main/cpp
 - Software RDP: Android/app/src/main/cpp/emulator/gfx_interpreter.cpp
 - CI: GitHub Actions
-- Install/test:
+
+Install/test:
   - Wait for latest successful CI run matching local HEAD SHA
   - Download bka-debug-apk
   - cat APK | rish -c "cat > /data/local/tmp/app-debug.apk"
   - rish -c "pm install -r /data/local/tmp/app-debug.apk"
   - rish -c "am force-stop com.bkawrapper"
   - rish -c "am start -n com.bkawrapper/.MainActivity"
-  - Capture: rish -c "logcat -d -v threadtime | grep -E '...'"
+  - Capture logcat with grep filters
 
 ## What Works
 
@@ -36,7 +38,7 @@ Estimated overall completion: ~20 percent toward a fully playable port.
 - RSP_ProcessGfxTask receives generated F3DEX display lists
 - Spiral Mountain opaque map model modelbin loads
 - func_8030A078 completes
-- F3DEX_GBI command stream is now parsed with correct opcodes
+- F3DEX_GBI top-level opcode mapping is now correct
 - Camera NaN sanitization prevents early return for map
 - Bubble/particle update and draw temporarily skipped to isolate map rendering
 - Latest build survives main loop without immediate SIGSEGV
@@ -65,15 +67,11 @@ Location: src/core2/code_6B030.c
 
 ### 3. Software RDP Gfx stride
 
-The Gfx command union is 8 bytes in N64 headers.
-Earlier parser mistakenly used 16-byte GfxCommand, then reverted to correct behavior
-for F3DEX_GBI command alignment.
+Gfx command union is 8 bytes in N64 headers, but the Android build's Gfx
+alignment has caused stride confusion.
 
-Current GfxCommand:
-- typedef struct { uint32_t w0; uint32_t w1; uint32_t w2; uint32_t w3; } GfxCommand;
-
-Note: this remains 16 bytes because the Android Gfx stack alignment behaves that way.
-If nested DL parsing becomes corrupted, revisit this size.
+Current GfxCommand remains 16 bytes due to observed top-level alignment.
+If nested DL parsing becomes corrupted, revisit stride.
 
 ### 4. Endianness of model/geo data
 
@@ -96,8 +94,8 @@ Correct mapping:
 - 0x04 = G_VTX
 - 0x06 = G_DL
 - 0x03 = G_MOVEMEM
-- 0xBF = G_TRI1
-- 0xB1 = G_TRI2
+- 0xBF = G_TRI1 (raw RDP/immediate variant used by game)
+- 0xB1 = G_TRI2 (raw RDP/immediate variant used by game)
 - 0xBC = G_MOVEWORD
 - 0xB8 = G_ENDDL
 - 0xBD = G_POPMTX
@@ -108,53 +106,43 @@ Location: Android/app/src/main/cpp/emulator/gfx_interpreter.cpp
 ### 6. RDP host-pointer address translation
 
 Raw GBI commands sometimes contain low-32 ARM64 host pointers.
-RDP_TranslateAddr now checks bka_lookup_addr_mapping first,
-then N64 physical/KSEG0/KSEG1, then reconstructs 0x7c... host pointer as fallback.
+RDP_TranslateAddr checks bka_lookup_addr_mapping first,
+then N64 physical/KSEG0/KSEG1, then reconstructs 0x7c... host pointer.
 
-Location:
-- Android/app/src/main/cpp/emulator/gfx_interpreter.cpp
-- Android/app/src/main/cpp/ultra/linker_stubs.c
+Remaining issue: segment-relative addresses from G_MOVEWORD are not resolved.
+
+## Current Biggest Blocker
+
+### RSP segment translation and nested display-list parsing
+
+The top-level display list is parsed correctly, but when G_DL jumps to a
+nested display list, the address may be segment-relative or may point to
+non-command data. This causes:
+
+- RDP_TranslateAddr reconstructing incorrect host pointers
+- Many Unhandled op=0x... warnings
+- No visible geometry yet
+
+Observed problem commands:
+- 0xBC G_MOVEWORD segment setup is currently ignored
+- 0x06 G_DL uses raw address without segment resolution
+- Nested display list sometimes starts with non-command bytes
+
+Next actions:
+1. Implement uint32_t segmentBase[16] in RDPState
+2. Implement G_MOVEWORD (0xBC) for G_MW_SEGMENT
+3. Resolve G_DL/G_VTX addresses using segment base before fallback
+4. Add more RDP command handlers (0xF9, 0x15, 0x41/0x42/0x43, etc.)
 
 ## Remaining Issues / Blockers
 
 ### A. RSP segment translation not implemented
-
-G_MOVEWORD/G_MOVEMEM segment base loads are not fully implemented.
-Some G_DL/G_VTX addresses are segment-relative and currently fail translation.
-This causes RDP_TranslateAddr warnings and some unhandled opcodes inside nested DLs.
-
-Next actions:
-- Add uint32_t segmentBase[16] to RDPState
-- Implement 0xBC G_MOVEWORD for G_MW_SEGMENT
-- Resolve segment addresses before raw host-pointer fallback
-
 ### B. Missing RDP command handlers
-
-Observed unhandled opcodes such as:
-- 0xF9 (G_SETBLENDCOLOR or G_DL? verify)
-- 0x15, 0x41, 0x42, 0x43 (RSP triangle/vertex data inside nested DL)
-- 0xE1, 0xF1, 0xF0 raw RDP halves
-Need implementation based on lib/ultralib/include/PR/gbi.h.
-
-### C. Nested display-list parsing
-
-G_DL jumps into nested display lists, but some nested data is not a valid DL
-because segment resolution is missing. Plausibility guard temporarily avoids crash.
-
-### D. gsworld cube parsing / world file
-
-Still skipped:
-- gsworld_load cubeList_fromFile hang
-- XLU model path early return
-- func_8034C9D4 mesh transforms early return
-
-Must be restored after rendering correctness improves.
-
-### E. Player spawn/draw
-
-player_draw still sees D_8037BFB8=0 / D_8037BFB9=0
-and func_8028E440 returns -1.
-Player model not drawn, not yet critical.
+### C. Nested display-list parsing corrupt due to segment/stride
+### D. gsworld cube parsing / world file still skipped
+### E. XLU model path still skipped
+### F. func_8034C9D4 mesh transforms still skipped
+### G. Player spawn/draw not yet working
 
 ## Temporary Skips / Hacks
 
@@ -162,7 +150,7 @@ Player model not drawn, not yet critical.
 - Skip gsworld_load file parsing
 - Skip XLU model creation in mapModel.c
 - Skip func_8034C9D4 mesh transforms
-- Skip bubble/particle update and draw paths in code_9E370.c / gsworld.c
+- Skip bubble/particle update and draw paths
 - Sanitize camera NaN in modelRender_draw
 
 ## Key Files
@@ -180,7 +168,7 @@ Player model not drawn, not yet critical.
 
 ## Correct Next Step
 
-1. Implement RSP segment base state for G_MOVEWORD/G_MOVEMEM.
-2. Implement missing RDP command handlers using lib/ultralib/include/PR/gbi.h.
-3. Resolve nested G_DL addresses through segment table before host fallback.
-4. Once RDP command coverage improves, restore skipped world/XLU/mesh paths.
+1. Inspect lib/ultralib/include/PR/gbi.h for F3DEX_GBI G_MOVEWORD encoding
+2. Add segment base state and resolve segment-relative G_DL/G_VTX addresses
+3. Implement missing RDP command handlers
+4. Re-test and capture logs
