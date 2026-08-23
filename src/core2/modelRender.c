@@ -545,6 +545,11 @@ static void modelRender_geoCmd_bswap(BKGeoCmd *data, u32 cmd_index) {
         for (int i = 0; i < 3; i++) cmd->min[i] = bswaps16(cmd->min[i]);
         for (int i = 0; i < 3; i++) cmd->max[i] = bswaps16(cmd->max[i]);
         cmd->branch_offset = bswaps16(cmd->branch_offset);
+        __android_log_print(ANDROID_LOG_INFO, "BKA-MODEL",
+            "DRAWDIST bswap data=%p branch=%d min=%d,%d,%d max=%d,%d,%d\n",
+            data, cmd->branch_offset,
+            cmd->min[0], cmd->min[1], cmd->min[2],
+            cmd->max[0], cmd->max[1], cmd->max[2]);
         break;
     }
     case 14: {
@@ -558,6 +563,9 @@ static void modelRender_geoCmd_bswap(BKGeoCmd *data, u32 cmd_index) {
     case 15: {
         struct geo_cmd_camera_s *cmd = (struct geo_cmd_camera_s *)data;
         cmd->branch_offset = bswaps16(cmd->branch_offset);
+        __android_log_print(ANDROID_LOG_INFO, "BKA-MODEL",
+            "CAMERA bswap data=%p branch=%d count=%u flags=%u\n",
+            data, cmd->branch_offset, cmd->count, cmd->flags);
         break;
     }
     case 16: {
