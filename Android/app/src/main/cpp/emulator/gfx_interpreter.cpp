@@ -769,11 +769,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xDC: Cmd_MoveMem(c); break;
             case 0xBC: Cmd_Mtx(c); break;
 
-            case 0x06:
-            case 0xDE: {
-                uint32_t raw_addr = c.w1;
-                uint32_t addr = raw_addr & 0x0FFFFFFF;
-                uint8_t *sub = RDP_TranslateAddr(addr);
+            case 0x06: {
+                uint8_t *sub = RDP_TranslateAddr(c.w1);
                 if (sub != nullptr && depth < 63) {
                     stack[depth].ptr = cur;
                     stack[depth].end = cur_end;
