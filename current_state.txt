@@ -1,0 +1,186 @@
+# Banjo-Kazooie N64 Android/ARM64 Port
+# Current State and Technical Alignment
+
+## Executive Summary
+
+The game boots, the main loop runs, input works, and the Spiral Mountain opaque map model loads.
+We are in the software rendering bring-up phase.
+
+The app now survives initial map draw and processes real F3DEX_GBI display lists.
+No fatal crash occurs during the latest tested build; the next step is completing the software RDP.
+
+Estimated overall completion: ~20 percent toward a fully playable port.
+
+## Build / Test Path
+
+- Source: ~/b-k-aarch64
+- Original decomp reference: ~/banjo-kazooie
+- Android app main code: Android/app/src/main/cpp
+- Software RDP: Android/app/src/main/cpp/emulator/gfx_interpreter.cpp
+- CI: GitHub Actions
+- Install/test:
+  - Wait for latest successful CI run matching local HEAD SHA
+  - Download bka-debug-apk
+  - cat APK | rish -c "cat > /data/local/tmp/app-debug.apk"
+  - rish -c "pm install -r /data/local/tmp/app-debug.apk"
+  - rish -c "am force-stop com.bkawrapper"
+  - rish -c "am start -n com.bkawrapper/.MainActivity"
+  - Capture: rish -c "logcat -d -v threadtime | grep -E '...'"
+
+## What Works
+
+- ROM/asset decompression and memory mapping
+- Engine initialization through gsworld_set
+- Main loop func_802E4424 every frame
+- Controller input via pfsManager_update and touch overlay
+- RSP_ProcessGfxTask receives generated F3DEX display lists
+- Spiral Mountain opaque map model modelbin loads
+- func_8030A078 completes
+- F3DEX_GBI command stream is now parsed with correct opcodes
+- Camera NaN sanitization prevents early return for map
+- Bubble/particle update and draw temporarily skipped to isolate map rendering
+- Latest build survives main loop without immediate SIGSEGV
+
+## Key Root Causes Fixed
+
+### 1. ARM64 pointer truncation
+
+Original N64 code stored pointers in s32/u32 fields.
+On ARM64 this truncates 64-bit host pointers, causing crashes.
+
+Fixed:
+- Mesh transform callback prototypes in src/core2/code_C5440.c now use BKModel* instead of s32
+- func_802F32C4 caller in src/core2/ch/bubble.c now passes void* instead of s32
+- Several BKA_TRANSLATE_ADDR guards added
+
+### 2. Heap allocation size mismatch
+
+Original N64 Struct_core2_6B030_0 contains two 4-byte pointers = 8 bytes.
+On ARM64 two pointers = 16 bytes.
+
+Fixed:
+- D_80368AB0 = malloc(2 * sizeof(Struct_core2_6B030_0))
+
+Location: src/core2/code_6B030.c
+
+### 3. Software RDP Gfx stride
+
+The Gfx command union is 8 bytes in N64 headers.
+Earlier parser mistakenly used 16-byte GfxCommand, then reverted to correct behavior
+for F3DEX_GBI command alignment.
+
+Current GfxCommand:
+- typedef struct { uint32_t w0; uint32_t w1; uint32_t w2; uint32_t w3; } GfxCommand;
+
+Note: this remains 16 bytes because the Android Gfx stack alignment behaves that way.
+If nested DL parsing becomes corrupted, revisit this size.
+
+### 4. Endianness of model/geo data
+
+N64 assets are big-endian. Host is little-endian.
+
+Fixed:
+- modelbin_get*_MACRO offsets use byteswaps
+- modelRender_geoCmd_bswap handles subfields for F3DEX_GBI geo commands
+- meshList_getMesh / meshList_getVtxCount use bswap16 where necessary
+
+Location: include/model.h, src/core2/modelRender.c, src/core2/code_62FD0.c
+
+### 5. F3DEX_GBI opcode mapping
+
+The game uses F3DEX_GBI, not F3DEX_GBI_2.
+Initial software RDP switch was wrong.
+
+Correct mapping:
+- 0x01 = G_MTX
+- 0x04 = G_VTX
+- 0x06 = G_DL
+- 0x03 = G_MOVEMEM
+- 0xBF = G_TRI1
+- 0xB1 = G_TRI2
+- 0xBC = G_MOVEWORD
+- 0xB8 = G_ENDDL
+- 0xBD = G_POPMTX
+- Many raw RDP opcodes unchanged
+
+Location: Android/app/src/main/cpp/emulator/gfx_interpreter.cpp
+
+### 6. RDP host-pointer address translation
+
+Raw GBI commands sometimes contain low-32 ARM64 host pointers.
+RDP_TranslateAddr now checks bka_lookup_addr_mapping first,
+then N64 physical/KSEG0/KSEG1, then reconstructs 0x7c... host pointer as fallback.
+
+Location:
+- Android/app/src/main/cpp/emulator/gfx_interpreter.cpp
+- Android/app/src/main/cpp/ultra/linker_stubs.c
+
+## Remaining Issues / Blockers
+
+### A. RSP segment translation not implemented
+
+G_MOVEWORD/G_MOVEMEM segment base loads are not fully implemented.
+Some G_DL/G_VTX addresses are segment-relative and currently fail translation.
+This causes RDP_TranslateAddr warnings and some unhandled opcodes inside nested DLs.
+
+Next actions:
+- Add uint32_t segmentBase[16] to RDPState
+- Implement 0xBC G_MOVEWORD for G_MW_SEGMENT
+- Resolve segment addresses before raw host-pointer fallback
+
+### B. Missing RDP command handlers
+
+Observed unhandled opcodes such as:
+- 0xF9 (G_SETBLENDCOLOR or G_DL? verify)
+- 0x15, 0x41, 0x42, 0x43 (RSP triangle/vertex data inside nested DL)
+- 0xE1, 0xF1, 0xF0 raw RDP halves
+Need implementation based on lib/ultralib/include/PR/gbi.h.
+
+### C. Nested display-list parsing
+
+G_DL jumps into nested display lists, but some nested data is not a valid DL
+because segment resolution is missing. Plausibility guard temporarily avoids crash.
+
+### D. gsworld cube parsing / world file
+
+Still skipped:
+- gsworld_load cubeList_fromFile hang
+- XLU model path early return
+- func_8034C9D4 mesh transforms early return
+
+Must be restored after rendering correctness improves.
+
+### E. Player spawn/draw
+
+player_draw still sees D_8037BFB8=0 / D_8037BFB9=0
+and func_8028E440 returns -1.
+Player model not drawn, not yet critical.
+
+## Temporary Skips / Hacks
+
+- Force map to Spiral Mountain in gsworld_set
+- Skip gsworld_load file parsing
+- Skip XLU model creation in mapModel.c
+- Skip func_8034C9D4 mesh transforms
+- Skip bubble/particle update and draw paths in code_9E370.c / gsworld.c
+- Sanitize camera NaN in modelRender_draw
+
+## Key Files
+
+- src/core2/modelRender.c
+- src/core2/mapModel.c
+- src/core2/gsworld.c
+- src/core2/code_C5440.c
+- src/core2/code_6B030.c
+- src/core2/code_9E370.c
+- include/model.h
+- Android/app/src/main/cpp/emulator/gfx_interpreter.cpp
+- Android/app/src/main/cpp/emulator/gfx_interpreter.h
+- Android/app/src/main/cpp/ultra/linker_stubs.c
+
+## Correct Next Step
+
+1. Implement RSP segment base state for G_MOVEWORD/G_MOVEMEM.
+2. Implement missing RDP command handlers using lib/ultralib/include/PR/gbi.h.
+3. Resolve nested G_DL addresses through segment table before host fallback.
+4. Once RDP command coverage improves, restore skipped world/XLU/mesh paths.
