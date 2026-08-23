@@ -39,17 +39,10 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
             return gN64_RDRAM + (combined - 0x80000000u);
         if (combined >= 0xA0000000u && combined < 0xA1000000u && gN64_RDRAM)
             return gN64_RDRAM + (combined - 0xA0000000u);
-        uintptr_t host = 0x7c00000000ULL | (uintptr_t)combined;
-        if (host < 0x7c00000000ULL || host >= 0x7d00000000ULL) {
-            __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                "RDP_TranslateAddr: segment %u invalid host 0x%llX for base=0x%08X off=0x%08X\n",
-                seg, (unsigned long long)host, s_rdp.segmentBase[seg], off);
-            return nullptr;
-        }
         __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-            "RDP_TranslateAddr: segment %u base=0x%08X off=0x%08X -> host 0x%llX\n",
-            seg, s_rdp.segmentBase[seg], off, (unsigned long long)host);
-        return (uint8_t*)host;
+            "RDP_TranslateAddr: segment %u unresolved base=0x%08X off=0x%08X\n",
+            seg, s_rdp.segmentBase[seg], off);
+        return nullptr;
     }
 
     // Physical RDRAM.
