@@ -594,9 +594,10 @@ void func_803268B4(void) {
     if (D_8036E56C != 0) {
         dustEmitter_isActive(D_8036E56C);
     }
-    if (D_8036E570 != 0) {
-        func_802F2D8C(D_8036E570);
-    }
+    // TEMPORARY skip bubble/particle struct update to avoid ARM64 crash.
+    // if (D_8036E570 != 0) {
+    //     func_802F2D8C(D_8036E570);
+    // }
 }
 
 s32 func_80326C18(void){
