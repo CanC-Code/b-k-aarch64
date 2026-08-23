@@ -462,7 +462,7 @@ BKGeoCmdFunc sGeoCmdList[] = {
     modelRender_geoCmd_TEXWRAP
 };
 
-static uintptr_t s_geo_visited[16384];
+static uintptr_t s_geo_visited[65536];
 static int s_geo_visited_count = 0;
 
 static void modelRender_executeGeoCmds_reset_visited(void) {
@@ -1314,8 +1314,6 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
     }
 
     {
-        modelRender_executeGeoCmds_reset_visited();
-
         BKGeoCmd *geoCmd = modelbin_getGeoCmdList_MACRO(model_bin);
         s32 raw_offset = model_bin->geo_list_offset;
         s32 swapped_offset = __builtin_bswap32((u32)raw_offset);
