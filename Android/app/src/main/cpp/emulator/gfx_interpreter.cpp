@@ -771,16 +771,24 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
             case 0x06: {
                 uint8_t *sub = RDP_TranslateAddr(c.w1);
-                if (sub != nullptr && depth < 63) {
+                bool plausible = false;
+                if (sub != nullptr) {
+                    if (gN64_RDRAM && sub >= gN64_RDRAM && sub < gN64_RDRAM + 0x1000000)
+                        plausible = true;
+                    else if ((uintptr_t)sub >= 0x7c00000000ULL && (uintptr_t)sub < 0x7d00000000ULL)
+                        plausible = true;
+                }
+                if (plausible && depth < 63) {
                     stack[depth].ptr = cur;
                     stack[depth].end = cur_end;
                     depth++;
                     cur = sub;
-                    // Use a conservative upper bound for nested DL; zero-run and
-                    // command caps prevent runaway.
                     cur_end = cur + 0x7FFFFF;
                     dl_cmds = 0;
                     zero_run = 0;
+                } else {
+                    __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                        "G_DL skip implausible addr=0x%08X sub=%p", c.w1, sub);
                 }
                 break;
             }
