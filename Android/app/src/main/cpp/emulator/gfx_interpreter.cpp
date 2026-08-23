@@ -20,16 +20,34 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     if (addr == 0) return nullptr;
 
     // If osVirtualToPhysical stored this exact low-32 key, use the original
-    // 64-bit host pointer first. This prevents misclassifying host low-32
-    // values that happen to resemble N64 segment addresses.
+    // 64-bit host pointer first.
     void* p = bka_lookup_addr_mapping(addr);
     if (p) return (uint8_t*)p;
+
+    // F3DEX_GBI segment address: top 4 bits select segment, lower 28 bits offset.
+    uint32_t seg = (addr >> 28) & 0x0F;
+    uint32_t off = addr & 0x0FFFFFFF;
+    if (seg != 0 && s_rdp.segmentBase[seg] != 0) {
+        uint32_t combined = s_rdp.segmentBase[seg] + off;
+        void *pm = bka_lookup_addr_mapping(combined);
+        if (pm) return (uint8_t*)pm;
+        if (combined < 0x1000000u && gN64_RDRAM)
+            return gN64_RDRAM + combined;
+        if (combined >= 0x80000000u && combined < 0x81000000u && gN64_RDRAM)
+            return gN64_RDRAM + (combined - 0x80000000u);
+        if (combined >= 0xA0000000u && combined < 0xA1000000u && gN64_RDRAM)
+            return gN64_RDRAM + (combined - 0xA0000000u);
+        uintptr_t host = 0x7c00000000ULL | (uintptr_t)combined;
+        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+            "RDP_TranslateAddr: segment %u base=0x%08X off=0x%08X -> host 0x%llX\n",
+            seg, s_rdp.segmentBase[seg], off, (unsigned long long)host);
+        return (uint8_t*)host;
+    }
 
     // Physical RDRAM.
     if (addr < 0x1000000u) {
         return gN64_RDRAM ? gN64_RDRAM + addr : nullptr;
     }
-    // Cached/uncached KSEG0/KSEG1 mirrors of RDRAM.
     if (addr >= 0x80000000u && addr < 0x81000000u) {
         return gN64_RDRAM ? gN64_RDRAM + (addr - 0x80000000u) : nullptr;
     }
@@ -562,6 +580,22 @@ static void Cmd_MoveMem(GfxCommand cmd) {
 // F3DEX2 format: w0 = [G_MTX:8][flag:8][param:16], w1 = matrix address
 // For our initial implementation, we treat the matrix as modelview.
 // =======================================================================
+static void Cmd_MoveWord(GfxCommand cmd) {
+    uint32_t index = (cmd.w0 >> 8) & 0xFF;
+    uint32_t offset = cmd.w0 & 0xFF;
+    uint32_t data = cmd.w1;
+
+    if (index == 0x06) { // G_MW_SEGMENT
+        uint32_t segment = (offset / 4) & 0x0F;
+        s_rdp.segmentBase[segment] = data;
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+            "Cmd_MoveWord SEGMENT seg=%u base=0x%08X", segment, data);
+    }
+}
+
+// =======================================================================
+// G_MTX - Load matrix (opcode 0x01)
+// =======================================================================
 static void Cmd_Mtx(GfxCommand cmd) {
     uint32_t raw_addr = cmd.w1;
     void *mtx_src = RDP_TranslateAddr(raw_addr);
@@ -767,7 +801,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xBF: Cmd_Tri1(c); break;
             case 0xB1: Cmd_Tri2(c); break;
             case 0xDC: Cmd_MoveMem(c); break;
-            case 0xBC: Cmd_Mtx(c); break;
+            case 0xBC: Cmd_MoveWord(c); break;
 
             case 0x06: {
                 uint8_t *sub = RDP_TranslateAddr(c.w1);

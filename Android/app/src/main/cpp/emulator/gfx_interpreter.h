@@ -63,6 +63,9 @@ typedef struct {
     BKMatrix projection;
     BKMatrix modelview;
     int matrixMode;  // 0=modelview, 1=projection
+
+    // RSP segment base addresses (F3DEX_GBI)
+    uint32_t segmentBase[16];
     
     // DMEM vertex buffer
     BKVertex dmem[DMEM_VERTEX_COUNT];
