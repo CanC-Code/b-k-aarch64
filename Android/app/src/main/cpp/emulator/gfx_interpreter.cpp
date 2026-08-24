@@ -59,13 +59,14 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         return nullptr;
     }
 
-    // Handle 0xFFFFxxxx as a 24-bit offset (top 16 bits all ones)
-    if ((addr & 0xFFFF0000u) == 0xFFFF0000u) {
+    // Handle 0xFFxxxxxx as a 24-bit offset
+    if ((addr & 0xFF000000u) == 0xFF000000u) {
         addr &= 0x00FFFFFFu;
     }
 
-    // Handle 0x06xxxxxx-0x0FFFFFFF as custom virtual offsets.
-    if ((addr >= 0x06000000u) && (addr < 0x10000000u)) {
+    // Handle 0x06xxxxxx-0x2FFFFFFF as custom virtual offsets.
+    // These are either direct RDRAM offsets or custom banked addresses.
+    if (addr >= 0x06000000u && addr < 0x30000000u) {
         addr &= 0x00FFFFFFu;
     }
 
@@ -85,16 +86,6 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     }
     if (addr >= 0xA0000000u && addr < 0xA1000000u) {
         return gN64_RDRAM ? gN64_RDRAM + (addr - 0xA0000000u) : nullptr;
-    }
-
-    // Last resort: many model/vertex buffers are stored as direct host
-    // pointers whose low 32 bits appear in the range 0x10000000-0x2FFFFFFF.
-    if ((addr & 0xFF000000u) >= 0x10000000u && (addr & 0xFF000000u) <= 0x2F000000u) {
-        uintptr_t host = 0x7c00000000ULL | (uintptr_t)addr;
-        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-            "RDP_TranslateAddr: fallback host ptr 0x%08X -> 0x%llx\n",
-            addr, (unsigned long long)host);
-        return (uint8_t*)host;
     }
 
     // No valid mapping found.
