@@ -60,10 +60,10 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     }
 
     // Physical RDRAM.
-    // Many N64 virtual addresses use KSEG2 (0x90000000-0x9FFFFFFF) as a
-    // direct alias for physical RDRAM. Mask off the high nibble.
-    if ((addr & 0xF0000000u) == 0x90000000u) {
-        addr &= 0x1FFFFFFFu;
+    // Banjo-Kazooie uses KSEG2 addresses of the form 0x98xxxxxx as
+    // direct pointers into RDRAM. Subtract the 0x98000000 base.
+    if ((addr & 0xFF000000u) == 0x98000000u) {
+        addr -= 0x98000000u;
     }
     if (addr < 0x1000000u) {
         return gN64_RDRAM ? gN64_RDRAM + addr : nullptr;
