@@ -822,15 +822,13 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             zero_run++;
             if (zero_run >= 16) {
                 if (depth > 0) {
-                    // Skip zero padding within nested display list
                     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                        "zero-run skip at cmd %zu, depth=%d", total - 1, depth);
-                    while (cur + current_stride <= cur_end) {
-                        GfxCommand next_c = {0};
-                        memcpy(&next_c, cur, current_stride == 16 ? 16 : 8);
-                        if (next_c.w0 != 0 || next_c.w1 != 0) break;
-                        cur += current_stride;
-                    }
+                        "zero-run pop at cmd %zu, depth=%d", total - 1, depth);
+                    depth--;
+                    cur = stack[depth].ptr;
+                    cur_end = stack[depth].end;
+                    current_stride = stack_stride[depth];
+                    dl_cmds = 0;
                     zero_run = 0;
                     continue;
                 } else {
