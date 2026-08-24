@@ -839,7 +839,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
             case 0x06: {
                 uint32_t raw_addr = c.w1;
-                void *dl_ptr = RSP_ResolveGfxAddress(raw_addr);
+                void *dl_ptr = RDP_TranslateAddr(raw_addr);
                 if (!dl_ptr) {
                     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                         "G_DL: cannot resolve addr=0x%08X", raw_addr);
