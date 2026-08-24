@@ -826,10 +826,19 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     break;
                 }
                 
-                // If it's a segmented address or physical N64 ROM space, use native 8-byte stride
                 size_t new_stride = 16;
                 uint32_t seg = (addr >> 24) & 0x0F;
-                if ((seg > 0 && seg < 16 && s_rdp.segmentBase[seg] != 0) || addr < 0x80000000) {
+                
+                // 1. If it's a known segmented address resolving via base, it's ROM data (8-byte)
+                if (seg > 0 && seg < 16 && s_rdp.segmentBase[seg] != 0) {
+                    new_stride = 8;
+                } 
+                // 2. If it exactly matches a mapped host pointer, it was dynamically allocated in C (16-byte)
+                else if (bka_lookup_addr_mapping(addr)) {
+                    new_stride = 16;
+                } 
+                // 3. Otherwise, if it fits physical RDRAM or KSEG0, it's ROM/Mem data (8-byte)
+                else if (addr < 0x1000000u || (addr >= 0x80000000u && addr < 0x81000000u)) {
                     new_stride = 8;
                 }
                 
@@ -838,10 +847,10 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     stack[depth].end = cur_end;
                     stack_stride[depth] = current_stride;
                     depth++;
-                } // else gsSPBranchList (Jump/No Return)
+                }
                 
                 cur = new_cur;
-                cur_end = (uint8_t*)0xFFFFFFFF; // Run until explicit ENDDL opcode
+                cur_end = (uint8_t*)~0ULL; // Safe max pointer for 64-bit
                 current_stride = new_stride;
                 break;
             }
