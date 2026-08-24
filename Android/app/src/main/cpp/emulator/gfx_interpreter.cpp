@@ -77,6 +77,16 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         return gN64_RDRAM ? gN64_RDRAM + (addr - 0xA0000000u) : nullptr;
     }
 
+    // Last resort: many model/vertex buffers are stored as direct host
+    // pointers whose low 32 bits appear in the range 0x06000000-0x1FFFFFFF.
+    if ((addr & 0xFF000000u) >= 0x06000000u && (addr & 0xFF000000u) <= 0x1F000000u) {
+        uintptr_t host = 0x7c00000000ULL | (uintptr_t)addr;
+        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+            "RDP_TranslateAddr: fallback host ptr 0x%08X -> 0x%llx\n",
+            addr, (unsigned long long)host);
+        return (uint8_t*)host;
+    }
+
     // No valid mapping found.
     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
         "RDP_TranslateAddr: unmapped address 0x%08X", addr);

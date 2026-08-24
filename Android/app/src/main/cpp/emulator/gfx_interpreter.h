@@ -12,7 +12,7 @@
 // Thread safety: Must be called while holding the engine GIL.
 // =======================================================================
 
-#define DMEM_VERTEX_COUNT 64   // Max vertices in RSP DMEM
+#define DMEM_VERTEX_COUNT 128   // Max vertices in RSP DMEM
 #define FB_WIDTH  292
 #define FB_HEIGHT 216
 
