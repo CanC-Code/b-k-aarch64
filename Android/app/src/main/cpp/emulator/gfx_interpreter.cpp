@@ -835,6 +835,22 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX", "G_DL skip unresolved addr=0x%08X", addr);
                     break;
                 }
+
+                // Check if the target contains valid GBI commands
+                if (new_cur + 16 <= (uint8_t*)~0ULL) {
+                    GfxCommand check_cmd;
+                    memcpy(&check_cmd, new_cur, 16);
+                    uint8_t check_op = GFX_OPCODE(check_cmd);
+                    
+                    // Valid F3DEX_GBI opcodes are typically 0x00-0xFF
+                    // But if we see G_DL (0x06) or zeros, it's likely data
+                    if (check_op == 0x06 || check_op == 0x00 || check_op > 0xFE) {
+                        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                            "G_DL target doesn't look like DL (op=0x%02X), stopping", check_op);
+                        cur = cur_end;  // Force loop exit
+                        break;
+                    }
+                }
                 
                 size_t new_stride = 16;
                 uint32_t seg = (addr >> 24) & 0x0F;
