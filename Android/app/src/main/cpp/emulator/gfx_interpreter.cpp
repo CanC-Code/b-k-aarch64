@@ -817,67 +817,11 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xBC: Cmd_MoveWord(c); break;
 
             case 0x06: {
-                uint32_t branch = (c.w0 >> 16) & 0xFF;
-                uint32_t addr = c.w1;
-                
-                // Check if we've hit a potential data pointer (not a real DL)
-                if (depth >= 2) {
-                    __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                        "G_DL depth limit reached, stopping at cmd %zu", total - 1);
-                    cur = cur_end;  // Force loop exit
-                    break;
-                }
-                
-                // Validate that the target looks like a display list
-                uint8_t* new_cur = (uint8_t*)RDP_TranslateAddr(addr);
-                
-                if (!new_cur) {
-                    __android_log_print(ANDROID_LOG_WARN, "BKA_GFX", "G_DL skip unresolved addr=0x%08X", addr);
-                    break;
-                }
-
-                // Check if the target contains valid GBI commands
-                if (new_cur + 16 <= (uint8_t*)~0ULL) {
-                    GfxCommand check_cmd;
-                    memcpy(&check_cmd, new_cur, 16);
-                    uint8_t check_op = GFX_OPCODE(check_cmd);
-                    
-                    // Valid F3DEX_GBI opcodes are typically 0x00-0xFF
-                    // But if we see G_DL (0x06) or zeros, it's likely data
-                    if (check_op == 0x06 || check_op == 0x00 || check_op > 0xFE) {
-                        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                            "G_DL target doesn't look like DL (op=0x%02X), stopping", check_op);
-                        cur = cur_end;  // Force loop exit
-                        break;
-                    }
-                }
-                
-                size_t new_stride = 16;
-                uint32_t seg = (addr >> 24) & 0x0F;
-                
-                // 1. If it's a known segmented address resolving via base, it's ROM data (8-byte)
-                if (seg > 0 && seg < 16 && s_rdp.segmentBase[seg] != 0) {
-                    new_stride = 8;
-                } 
-                // 2. If it exactly matches a mapped host pointer, it was dynamically allocated in C (16-byte)
-                else if (bka_lookup_addr_mapping(addr)) {
-                    new_stride = 16;
-                } 
-                // 3. Otherwise, if it fits physical RDRAM or KSEG0, it's ROM/Mem data (8-byte)
-                else if (addr < 0x1000000u || (addr >= 0x80000000u && addr < 0x81000000u)) {
-                    new_stride = 8;
-                }
-                
-                if (branch == 0x00) { // gsSPDisplayList (Call/Push)
-                    stack[depth].ptr = cur;
-                    stack[depth].end = cur_end;
-                    stack_stride[depth] = current_stride;
-                    depth++;
-                }
-                
-                cur = new_cur;
-                cur_end = (uint8_t*)~0ULL; // Safe max pointer for 64-bit
-                current_stride = new_stride;
+                // TEMPORARY: disable nested display-list traversal until
+                // RSP vertex/matrix pipeline and correct segment-based G_DL
+                // resolution are implemented.
+                __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                    "G_DL skip nested addr=0x%08X", c.w1);
                 break;
             }
 
