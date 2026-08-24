@@ -479,6 +479,13 @@ static void Cmd_Vtx(GfxCommand cmd) {
         LOGW("Cmd_Vtx: failed to translate addr=0x%08X", addr);
         return;
     }
+    static int vtx_log_count = 0;
+    if (vtx_log_count < 10) {
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+            "Cmd_Vtx: loading v0=%u n=%u addr=0x%08X dmemVertexCount=%d",
+            v0, n, addr, s_rdp.dmemVertexCount);
+        vtx_log_count++;
+    }
     for (uint32_t i = 0; i < n; i++) {
         BKVertex* v = &s_rdp.dmem[v0 + i];
         // N64 Vtx format (16 bytes): ob[3](6 bytes), flag(2), tc[2](4), cn[4](4)
@@ -497,6 +504,8 @@ static void Cmd_Vtx(GfxCommand cmd) {
     
     if (v0 + n > (uint32_t)s_rdp.dmemVertexCount)
         s_rdp.dmemVertexCount = v0 + n;
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+        "Cmd_Vtx: loaded %u vertices, dmemVertexCount=%d", n, s_rdp.dmemVertexCount);
 }
 
 // =======================================================================
