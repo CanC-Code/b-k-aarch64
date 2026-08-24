@@ -814,7 +814,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
         cur += current_stride;
 
-        if (opcode == 0x00) {
+        if (c.w0 == 0 && c.w1 == 0) {
             zero_run++;
             if (zero_run >= 16) {
                 if (depth > 0) {
