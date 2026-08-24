@@ -75,6 +75,13 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Automation: if auto_rom.z64 exists in files dir, load it directly
+        File autoRom = new File(getFilesDir(), "auto_rom.z64");
+        if (autoRom.exists()) {
+            Log.i(TAG, "Auto-load ROM detected: " + autoRom.getAbsolutePath());
+            startExtraction(Uri.fromFile(autoRom));
+            return;
+        }
 
         if (hasExtractionCompleted()) {
             Log.i(TAG, "Extraction sentinel and base ROM verified — skipping ROM selection");
