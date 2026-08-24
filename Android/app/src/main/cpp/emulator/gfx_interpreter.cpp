@@ -441,7 +441,7 @@ static void Cmd_LoadBlock(GfxCommand cmd) {
 // =======================================================================
 static void Cmd_Vtx(GfxCommand cmd) {
     uint32_t v0 = ((cmd.w0 >> 16) & 0xFF) / 2; // Base vertex index in DMEM
-    uint32_t n  = (cmd.w0 >> 10) & 0x3F;        // Vertex count in F3DEX_GBI
+    uint32_t n  = ((cmd.w0 >> 10) & 0x3F) + 1;  // F3DEX_GBI stores (count-1)
     uint32_t length = cmd.w0 & 0x3FF;           // Data length
     uint32_t addr = cmd.w1;                     // Source address
     
@@ -702,6 +702,15 @@ static void Cmd_DL(GfxCommand cmd, GfxCommand** outCmd, size_t* outRemaining) {
     *outRemaining = 0xFFFFFFFF;
 }
 
+static uint32_t RSP_SegmentToPhysical(uint32_t addr) {
+    uint32_t seg = (addr >> 28) & 0x0F;
+    uint32_t offset = addr & 0x00FFFFFF;
+    if (seg != 0 && seg < 16 && s_rdp.segmentBase[seg] != 0) {
+        return s_rdp.segmentBase[seg] + offset;
+    }
+    return addr;
+}
+
 // =======================================================================
 // Main Dispatch
 // =======================================================================
@@ -736,7 +745,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     DListFrame stack[64];
     int depth = 0;
     size_t current_stride = 16;
-    size_t stack_stride[32];
+    size_t stack_stride[64];
     uint8_t *cur = (uint8_t*)tp->t.data_ptr;
     uint8_t *cur_end = cur + tp->t.data_size;
 
@@ -828,11 +837,32 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xBC: Cmd_MoveWord(c); break;
 
             case 0x06: {
-                // TEMPORARY: disable nested display-list traversal until
-                // RSP vertex/matrix pipeline and correct segment-based G_DL
-                // resolution are implemented.
-                __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                    "G_DL skip nested addr=0x%08X", c.w1);
+                uint32_t raw_addr = c.w1;
+                uint32_t phys = RSP_SegmentToPhysical(raw_addr);
+                void *dl_ptr = RDP_TranslateAddr(phys);
+                if (!dl_ptr) {
+                    __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                        "G_DL: cannot resolve addr=0x%08X", raw_addr);
+                    break;
+                }
+                if (depth >= 63) {
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                        "G_DL: max depth reached");
+                    break;
+                }
+
+                // Save current position/end for ENDDL
+                stack[depth].ptr = cur;
+                stack[depth].end = cur_end;
+                stack_stride[depth] = current_stride;
+                depth++;
+
+                cur = (uint8_t*)dl_ptr;
+                // Use a safe upper bound based on MAX_DL_CMDS to avoid
+                // running off into non-DL data if this nested list lacks ENDDL.
+                cur_end = cur + (MAX_DL_CMDS * current_stride);
+                dl_cmds = 0;
+                zero_run = 0;
                 break;
             }
 
