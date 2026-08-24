@@ -30,18 +30,29 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     uint32_t seg = (addr >> 24) & 0x0F;
     uint32_t off = addr & 0x00FFFFFF;
     if (seg != 0 && s_rdp.segmentBase[seg] != 0) {
-        uint32_t combined = s_rdp.segmentBase[seg] + off;
+        uint32_t base = s_rdp.segmentBase[seg];
+        
+        // 1. Try to resolve the base as a truncated host pointer FIRST
+        void *base_pm = bka_lookup_addr_mapping(base);
+        if (base_pm) {
+            return (uint8_t*)base_pm + off;
+        }
+        
+        // 2. Fallback: treat base + off as a combined N64 address
+        uint32_t combined = base + off;
         void *pm = bka_lookup_addr_mapping(combined);
         if (pm) return (uint8_t*)pm;
+        
         if (combined < 0x1000000u && gN64_RDRAM)
             return gN64_RDRAM + combined;
         if (combined >= 0x80000000u && combined < 0x81000000u && gN64_RDRAM)
             return gN64_RDRAM + (combined - 0x80000000u);
         if (combined >= 0xA0000000u && combined < 0xA1000000u && gN64_RDRAM)
             return gN64_RDRAM + (combined - 0xA0000000u);
+            
         __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-            "RDP_TranslateAddr: segment %u unresolved base=0x%08X off=0x%08X\n",
-            seg, s_rdp.segmentBase[seg], off);
+            "RDP_TranslateAddr: segment %u unresolved base=0x%08X off=0x%08X",
+            seg, base, off);
         return nullptr;
     }
 
