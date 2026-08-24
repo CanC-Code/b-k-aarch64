@@ -27,9 +27,12 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     if (p) return (uint8_t*)p;
 
     // F3DEX_GBI segment address: top 4 bits select segment, lower 28 bits offset.
+    // Only treat as segment if the address looks like a proper segmented address
+    // (top nibble non-zero AND value below 0x10000000). Many low host pointers
+    // start with 0x12..., 0x13..., etc., and must not be mistaken for segments.
     uint32_t seg = (addr >> 24) & 0x0F;
     uint32_t off = addr & 0x00FFFFFF;
-    if (seg != 0 && s_rdp.segmentBase[seg] != 0) {
+    if (seg != 0 && addr < 0x10000000 && s_rdp.segmentBase[seg] != 0) {
         uint32_t base = s_rdp.segmentBase[seg];
         
         // 1. Try to resolve the base as a truncated host pointer FIRST
