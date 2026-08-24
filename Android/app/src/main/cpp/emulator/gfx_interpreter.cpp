@@ -854,10 +854,11 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xF6: Cmd_FillRect(c); break;
             case 0xE4: case 0xE5: Cmd_TexRect(c); break;
 
-            case 0x01: Cmd_Vtx(c); break;
+            case 0x01: Cmd_Mtx(c); break;
+            case 0x04: Cmd_Vtx(c); break;
             case 0xBF: Cmd_Tri1(c); break;
             case 0xB1: Cmd_Tri2(c); break;
-            case 0xDC: Cmd_MoveMem(c); break;
+            case 0x03: Cmd_MoveMem(c); break;
             case 0xBC: Cmd_MoveWord(c); break;
 
             case 0x06: {
