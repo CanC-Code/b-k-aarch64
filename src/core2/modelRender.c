@@ -1056,8 +1056,12 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
 
     viewport_getPosition_vec3f(modelRenderCameraPosition);
 
-    // TEMPORARY: sanitize camera position for missing world data
-    if (isnan(modelRenderCameraPosition[0]) || isnan(modelRenderCameraPosition[1]) || isnan(modelRenderCameraPosition[2])) {
+    // TEMPORARY: sanitize camera position for missing/world data
+    if (isnan(modelRenderCameraPosition[0]) || isnan(modelRenderCameraPosition[1]) || isnan(modelRenderCameraPosition[2]) ||
+        isinf(modelRenderCameraPosition[0]) || isinf(modelRenderCameraPosition[1]) || isinf(modelRenderCameraPosition[2]) ||
+        fabsf(modelRenderCameraPosition[0]) > 100000.0f ||
+        fabsf(modelRenderCameraPosition[1]) > 100000.0f ||
+        fabsf(modelRenderCameraPosition[2]) > 100000.0f) {
         modelRenderCameraPosition[0] = 0.0f;
         modelRenderCameraPosition[1] = 1000.0f;
         modelRenderCameraPosition[2] = 0.0f;
