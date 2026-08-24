@@ -609,9 +609,10 @@ static void Cmd_MoveWord(GfxCommand cmd) {
 
     if (index == 0x06) { // G_MW_SEGMENT
         uint32_t segment = (offset / 4) & 0x0F;
-        s_rdp.segmentBase[segment] = data;
+        void *base_ptr = RDP_TranslateAddr(data);
+        s_rdp.segmentBase[segment] = (uintptr_t)base_ptr;
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-            "Cmd_MoveWord SEGMENT seg=%u offset=0x%04X base=0x%08X", segment, offset, data);
+            "Cmd_MoveWord SEGMENT seg=%u offset=0x%04X base=%p", segment, offset, base_ptr);
     }
 }
 
@@ -702,13 +703,13 @@ static void Cmd_DL(GfxCommand cmd, GfxCommand** outCmd, size_t* outRemaining) {
     *outRemaining = 0xFFFFFFFF;
 }
 
-static uint32_t RSP_SegmentToPhysical(uint32_t addr) {
+static void* RSP_ResolveGfxAddress(uint32_t addr) {
     uint32_t seg = (addr >> 28) & 0x0F;
     uint32_t offset = addr & 0x0FFFFFFF;
     if (seg != 0 && seg < 16 && s_rdp.segmentBase[seg] != 0) {
-        return s_rdp.segmentBase[seg] + offset;
+        return (uint8_t*)s_rdp.segmentBase[seg] + offset;
     }
-    return addr;
+    return RDP_TranslateAddr(addr);
 }
 
 // =======================================================================
@@ -838,8 +839,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
             case 0x06: {
                 uint32_t raw_addr = c.w1;
-                uint32_t phys = RSP_SegmentToPhysical(raw_addr);
-                void *dl_ptr = RDP_TranslateAddr(phys);
+                void *dl_ptr = RSP_ResolveGfxAddress(raw_addr);
                 if (!dl_ptr) {
                     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                         "G_DL: cannot resolve addr=0x%08X", raw_addr);
