@@ -172,3 +172,10 @@ Next actions:
 2. Add segment base state and resolve segment-relative G_DL/G_VTX addresses
 3. Implement missing RDP command handlers
 4. Re-test and capture logs
+
+## Update 2026-08-23 18:51:18
+
+The app is stable. RSP segment base support works.
+Remaining issue is nested display-list Gfx stride.
+Current GfxCommand is 16 bytes but nested DL may use 8.
+
