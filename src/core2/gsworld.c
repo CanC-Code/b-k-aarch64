@@ -68,7 +68,8 @@ void gsworld_draw(Gfx** gfx, Mtx **mtx, Vtx **vtx) {
             player_draw(gfx, mtx, vtx);
         }
         if (!game_is_frozen()) {
-            func_80302C94(gfx, mtx, vtx);
+            // TEMPORARY skip cube draw due to missing world data
+            // func_80302C94(gfx, mtx, vtx);
         }
         if (!game_is_frozen()) {
             jiggylist_draw(gfx, mtx, vtx);
@@ -101,7 +102,8 @@ void gsworld_draw(Gfx** gfx, Mtx **mtx, Vtx **vtx) {
         leveloverlay_drawCallback(gfx, mtx, vtx);
         func_8034F6F0(gfx, mtx, vtx);
         player_draw(gfx, mtx, vtx);
-        func_80302C94(gfx, mtx, vtx);
+        // TEMPORARY skip cube draw due to missing world data
+        // func_80302C94(gfx, mtx, vtx);
         core2_A5BC0_drawUnknownMarkers(gfx, mtx, vtx);
         jiggylist_draw(gfx, mtx, vtx);
         func_803500D8(gfx, mtx, vtx);
