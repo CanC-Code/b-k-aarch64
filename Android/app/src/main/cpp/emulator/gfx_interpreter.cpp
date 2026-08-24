@@ -791,6 +791,14 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             zero_run = 0;
         }
 
+        // Nested display lists in Banjo-Kazooie often omit ENDDL and are
+        // followed by vertex/index data. Stop before running into that.
+        if (depth > 0 && zero_run >= 2) {
+            __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                "nested DL zero-run stop at cmd %zu, depth=%d", total - 1, depth);
+            break;
+        }
+
         switch (opcode) {
             case 0x00:
             case 0xC0:
