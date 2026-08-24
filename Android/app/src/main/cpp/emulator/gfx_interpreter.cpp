@@ -819,6 +819,16 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0x06: {
                 uint32_t branch = (c.w0 >> 16) & 0xFF;
                 uint32_t addr = c.w1;
+                
+                // Check if we've hit a potential data pointer (not a real DL)
+                if (depth >= 2) {
+                    __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                        "G_DL depth limit reached, stopping at cmd %zu", total - 1);
+                    cur = cur_end;  // Force loop exit
+                    break;
+                }
+                
+                // Validate that the target looks like a display list
                 uint8_t* new_cur = (uint8_t*)RDP_TranslateAddr(addr);
                 
                 if (!new_cur) {
