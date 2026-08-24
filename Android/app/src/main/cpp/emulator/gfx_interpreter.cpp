@@ -60,6 +60,11 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     }
 
     // Physical RDRAM.
+    // Many N64 virtual addresses use KSEG2 (0x90000000-0x9FFFFFFF) as a
+    // direct alias for physical RDRAM. Mask off the high nibble.
+    if ((addr & 0xF0000000u) == 0x90000000u) {
+        addr &= 0x1FFFFFFFu;
+    }
     if (addr < 0x1000000u) {
         return gN64_RDRAM ? gN64_RDRAM + addr : nullptr;
     }
