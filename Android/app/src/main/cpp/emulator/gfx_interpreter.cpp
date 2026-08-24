@@ -836,7 +836,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xB6:
             case 0xED:
             case 0xFF:
-            case 0x03:
                 break;
 
             case 0xF7: Cmd_SetFillColor(c); break;
