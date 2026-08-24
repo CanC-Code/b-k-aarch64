@@ -118,7 +118,18 @@ static inline int16_t read_int16(const uint8_t* ptr) {
 // =======================================================================
 
 static void RDP_InitState() {
+    // Save vertex buffer across frames (RSP DMEM persists between tasks)
+    static BKVertex saved_dmem[DMEM_VERTEX_COUNT];
+    static int saved_dmemVertexCount = 0;
+    memcpy(saved_dmem, s_rdp.dmem, sizeof(saved_dmem));
+    saved_dmemVertexCount = s_rdp.dmemVertexCount;
+
     memset(&s_rdp, 0, sizeof(s_rdp));
+
+    // Restore vertex buffer and count
+    memcpy(s_rdp.dmem, saved_dmem, sizeof(saved_dmem));
+    s_rdp.dmemVertexCount = saved_dmemVertexCount;
+
     s_rdp.primR = s_rdp.primG = s_rdp.primB = s_rdp.primA = 255;
     s_rdp.envR = s_rdp.envG = s_rdp.envB = s_rdp.envA = 255;
     s_rdp.blendR = s_rdp.blendG = s_rdp.blendB = 255; s_rdp.blendA = 255;
