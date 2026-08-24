@@ -704,7 +704,7 @@ static void Cmd_DL(GfxCommand cmd, GfxCommand** outCmd, size_t* outRemaining) {
 
 static uint32_t RSP_SegmentToPhysical(uint32_t addr) {
     uint32_t seg = (addr >> 28) & 0x0F;
-    uint32_t offset = addr & 0x00FFFFFF;
+    uint32_t offset = addr & 0x0FFFFFFF;
     if (seg != 0 && seg < 16 && s_rdp.segmentBase[seg] != 0) {
         return s_rdp.segmentBase[seg] + offset;
     }
