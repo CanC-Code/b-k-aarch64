@@ -818,8 +818,12 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             zero_run++;
             if (zero_run >= 16) {
                 if (depth > 0) {
+                    // Dump the bytes after zero padding to inspect for hidden geometry
+                    const uint8_t* after = cur;
                     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                        "zero-run pop at cmd %zu, depth=%d", total - 1, depth);
+                        "zero-run pop at cmd %zu, depth=%d next_bytes=%02x %02x %02x %02x %02x %02x %02x %02x",
+                        total - 1, depth, after[0], after[1], after[2], after[3],
+                        after[4], after[5], after[6], after[7]);
                     depth--;
                     cur = stack[depth].ptr;
                     cur_end = stack[depth].end;
