@@ -179,3 +179,19 @@ The app is stable. RSP segment base support works.
 Remaining issue is nested display-list Gfx stride.
 Current GfxCommand is 16 bytes but nested DL may use 8.
 
+
+## Update 2026-08-23 19:11 MST
+
+The app is stable. RSP segment base state is implemented and logs segment
+bases correctly. Nested G_DL jumps are currently skipped to avoid invalid
+host-pointer crashes. The next major task is completing the F3DEX_GBI RSP
+command handlers and transforming vertices into screen space.
+
+Key current facts:
+- Top-level display-list parsing is stable with 16-byte GfxCommand stride
+  on this Android build.
+- G_MOVEWORD segment base extraction is correct:
+  index = w0 & 0xFF; offset = (w0 >> 8) & 0xFFFF.
+- G_DL skip logs show segment addresses are unresolved.
+- Many raw RSP opcodes still unhandled.
+- App survives without immediate crash.
