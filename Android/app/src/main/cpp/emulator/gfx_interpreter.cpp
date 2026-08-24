@@ -482,57 +482,68 @@ static void Cmd_Vtx(GfxCommand cmd) {
 // w0 = [G_TRI1:8][v2:8][v1:8][v0:8]
 // w1 = [flag:24][00000000]
 // =======================================================================
+
 static void Cmd_Tri1(GfxCommand cmd) {
-    uint32_t v0 = (cmd.w0 >> 16) & 0xFF;
-    uint32_t v1 = (cmd.w0 >> 8) & 0xFF;
-    uint32_t v2 = cmd.w0 & 0xFF;
-    
-    if (v0 >= (uint32_t)s_rdp.dmemVertexCount || 
-        v1 >= (uint32_t)s_rdp.dmemVertexCount || 
+    uint32_t packed = cmd.w1;   // F3DEX_GBI: indices packed in w1, opcode only in w0
+    uint32_t v0 = ((packed >> 16) & 0xFF) >> 1;
+    uint32_t v1 = ((packed >>  8) & 0xFF) >> 1;
+    uint32_t v2 = ( packed        & 0xFF) >> 1;
+
+    if (v0 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v1 >= (uint32_t)s_rdp.dmemVertexCount ||
         v2 >= (uint32_t)s_rdp.dmemVertexCount) {
         LOGW("Cmd_Tri1: invalid vertex indices %u,%u,%u (count=%d)", v0, v1, v2, s_rdp.dmemVertexCount);
         return;
     }
-    
+
     BKVertex* vert0 = &s_rdp.dmem[v0];
     BKVertex* vert1 = &s_rdp.dmem[v1];
     BKVertex* vert2 = &s_rdp.dmem[v2];
-    
+
     float sx0, sy0, sx1, sy1, sx2, sy2;
     TransformVertex(vert0, &sx0, &sy0);
     TransformVertex(vert1, &sx1, &sy1);
     TransformVertex(vert2, &sx2, &sy2);
-    
+
     RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
         vert0->r, vert0->g, vert0->b, vert0->a,
         vert1->r, vert1->g, vert1->b, vert1->a,
         vert2->r, vert2->g, vert2->b, vert2->a);
 }
 
+
 // =======================================================================
 // G_TRI2 - Draw 2 triangles (4 vertices)
 // w0 = [G_TRI2:8][v2:8][v1:8][v0:8]  -- triangle 1 uses v0,v1,v2
 // w1 = [flag2:8][v4:8][v3:8][flag1:8]  -- triangle 2 uses v1,v2,v3
 // =======================================================================
+
 static void Cmd_Tri2(GfxCommand cmd) {
-    uint32_t v0 = (cmd.w0 >> 16) & 0xFF;
-    uint32_t v1 = (cmd.w0 >> 8) & 0xFF;
-    uint32_t v2 = cmd.w0 & 0xFF;
-    uint32_t v3 = (cmd.w1 >> 8) & 0xFF;
-    
-    if (v0 >= (uint32_t)s_rdp.dmemVertexCount || 
-        v1 >= (uint32_t)s_rdp.dmemVertexCount || 
-        v2 >= (uint32_t)s_rdp.dmemVertexCount ||
-        v3 >= (uint32_t)s_rdp.dmemVertexCount) {
-        LOGW("Cmd_Tri2: invalid vertex indices %u,%u,%u,%u", v0, v1, v2, v3);
+    uint32_t tri1 = cmd.w0 & 0xFFFFFF;  // first triangle packed in lower 24 bits
+    uint32_t tri2 = cmd.w1;             // second triangle packed in w1
+
+    uint32_t v00 = ((tri1 >> 16) & 0xFF) >> 1;
+    uint32_t v01 = ((tri1 >>  8) & 0xFF) >> 1;
+    uint32_t v02 = ( tri1        & 0xFF) >> 1;
+    uint32_t v10 = ((tri2 >> 16) & 0xFF) >> 1;
+    uint32_t v11 = ((tri2 >>  8) & 0xFF) >> 1;
+    uint32_t v12 = ( tri2        & 0xFF) >> 1;
+
+    if (v00 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v01 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v02 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v10 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v11 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v12 >= (uint32_t)s_rdp.dmemVertexCount) {
+        LOGW("Cmd_Tri2: invalid vertex indices %u,%u,%u,%u,%u,%u",
+             v00, v01, v02, v10, v11, v12);
         return;
     }
-    
-    // Triangle 1: v0, v1, v2
+
     {
-        BKVertex* vt0 = &s_rdp.dmem[v0];
-        BKVertex* vt1 = &s_rdp.dmem[v1];
-        BKVertex* vt2 = &s_rdp.dmem[v2];
+        BKVertex* vt0 = &s_rdp.dmem[v00];
+        BKVertex* vt1 = &s_rdp.dmem[v01];
+        BKVertex* vt2 = &s_rdp.dmem[v02];
         float sx0, sy0, sx1, sy1, sx2, sy2;
         TransformVertex(vt0, &sx0, &sy0);
         TransformVertex(vt1, &sx1, &sy1);
@@ -542,12 +553,11 @@ static void Cmd_Tri2(GfxCommand cmd) {
             vt1->r, vt1->g, vt1->b, vt1->a,
             vt2->r, vt2->g, vt2->b, vt2->a);
     }
-    
-    // Triangle 2: v1, v2, v3 (using v1,v2 from above, v3 new)
+
     {
-        BKVertex* vt0 = &s_rdp.dmem[v1];
-        BKVertex* vt1 = &s_rdp.dmem[v2];
-        BKVertex* vt2 = &s_rdp.dmem[v3];
+        BKVertex* vt0 = &s_rdp.dmem[v10];
+        BKVertex* vt1 = &s_rdp.dmem[v11];
+        BKVertex* vt2 = &s_rdp.dmem[v12];
         float sx0, sy0, sx1, sy1, sx2, sy2;
         TransformVertex(vt0, &sx0, &sy0);
         TransformVertex(vt1, &sx1, &sy1);
@@ -558,6 +568,7 @@ static void Cmd_Tri2(GfxCommand cmd) {
             vt2->r, vt2->g, vt2->b, vt2->a);
     }
 }
+
 
 // =======================================================================
 // G_MOVEMEM - Load matrix (opcode 0xDC)
