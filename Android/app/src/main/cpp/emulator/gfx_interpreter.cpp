@@ -60,10 +60,10 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     }
 
     // Physical RDRAM.
-    // Banjo-Kazooie uses KSEG2 addresses in the range 0x98000000-0x9FFFFFFF
-    // as direct pointers into RDRAM. Subtract the 0x98000000 base.
+    // Banjo-Kazooie uses custom virtual addresses of the form 0x99xxxxxx.
+    // The actual RDRAM offset is the lower 24 bits.
     if ((addr & 0xFF000000u) >= 0x98000000u && (addr & 0xFF000000u) <= 0x9F000000u) {
-        addr -= 0x98000000u;
+        addr &= 0x00FFFFFFu;
     }
     if (addr < 0x1000000u) {
         return gN64_RDRAM ? gN64_RDRAM + addr : nullptr;
