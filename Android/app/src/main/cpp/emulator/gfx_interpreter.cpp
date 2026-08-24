@@ -64,6 +64,11 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         addr &= 0x00FFFFFFu;
     }
 
+    // Handle 0x06xxxxxx-0x0FFFFFFF as custom virtual offsets.
+    if ((addr >= 0x06000000u) && (addr < 0x10000000u)) {
+        addr &= 0x00FFFFFFu;
+    }
+
     // Physical RDRAM.
     // Banjo-Kazooie uses custom virtual addresses. The actual RDRAM
     // offset is the lower 24 bits for these ranges:
@@ -83,8 +88,8 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     }
 
     // Last resort: many model/vertex buffers are stored as direct host
-    // pointers whose low 32 bits appear in the range 0x06000000-0x2FFFFFFF.
-    if ((addr & 0xFF000000u) >= 0x06000000u && (addr & 0xFF000000u) <= 0x2F000000u) {
+    // pointers whose low 32 bits appear in the range 0x10000000-0x2FFFFFFF.
+    if ((addr & 0xFF000000u) >= 0x10000000u && (addr & 0xFF000000u) <= 0x2F000000u) {
         uintptr_t host = 0x7c00000000ULL | (uintptr_t)addr;
         __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
             "RDP_TranslateAddr: fallback host ptr 0x%08X -> 0x%llx\n",
