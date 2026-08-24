@@ -790,9 +790,21 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         if (opcode == 0x00) {
             zero_run++;
             if (zero_run >= 16) {
-                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                    "zero-run break at cmd %zu, depth=%d", total - 1, depth);
-                break;
+                if (depth > 0) {
+                    __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                        "zero-run pop at cmd %zu, depth=%d", total - 1, depth);
+                    depth--;
+                    cur = stack[depth].ptr;
+                    cur_end = stack[depth].end;
+                    current_stride = stack_stride[depth];
+                    dl_cmds = 0;
+                    zero_run = 0;
+                    continue;
+                } else {
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                        "zero-run break at cmd %zu, depth=%d", total - 1, depth);
+                    break;
+                }
             }
         } else {
             zero_run = 0;
