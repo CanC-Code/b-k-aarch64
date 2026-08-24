@@ -635,8 +635,7 @@ void func_8030A078(void) {
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "func_8030A078: after func_8034C6DC");
     }
 
-    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "func_8030A078: early return before XLU");
-    return;
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "func_8030A078: continuing past previous early return");
 
 
     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "func_8030A078: model_bin_xlu=%p", mapModel.model_bin_xlu);
