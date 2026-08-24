@@ -27,8 +27,8 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     if (p) return (uint8_t*)p;
 
     // F3DEX_GBI segment address: top 4 bits select segment, lower 28 bits offset.
-    uint32_t seg = (addr >> 28) & 0x0F;
-    uint32_t off = addr & 0x0FFFFFFF;
+    uint32_t seg = (addr >> 24) & 0x0F;
+    uint32_t off = addr & 0x00FFFFFF;
     if (seg != 0 && s_rdp.segmentBase[seg] != 0) {
         uint32_t combined = s_rdp.segmentBase[seg] + off;
         void *pm = bka_lookup_addr_mapping(combined);
@@ -713,6 +713,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
     DListFrame stack[64];
     int depth = 0;
+    size_t current_stride = 16;
+    size_t stack_stride[32];
     uint8_t *cur = (uint8_t*)tp->t.data_ptr;
     uint8_t *cur_end = cur + tp->t.data_size;
 
@@ -722,7 +724,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     size_t dl_cmds = 0;
     int zero_run = 0;
 
-    while (cur + sizeof(GfxCommand) <= cur_end) {
+    while (cur + current_stride <= cur_end) {
         if (++total > MAX_TOTAL_CMDS) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "runaway display list: exceeded %u total commands", (unsigned)MAX_TOTAL_CMDS);
@@ -734,8 +736,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             break;
         }
 
-        GfxCommand c;
-        memcpy(&c, cur, sizeof(GfxCommand));
+        GfxCommand c = {0};
+        memcpy(&c, cur, current_stride == 16 ? 16 : 8);
         uint8_t opcode = GFX_OPCODE(c);
 
         if (s_frameCount <= 3) {
@@ -744,7 +746,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 total - 1, depth, opcode, c.w0, c.w1);
         }
 
-        cur += sizeof(GfxCommand);
+        cur += current_stride;
 
         if (opcode == 0x00) {
             zero_run++;
@@ -804,10 +806,32 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xBC: Cmd_MoveWord(c); break;
 
             case 0x06: {
-                // TEMPORARY: disable nested G_DL jumps until RSP display-list
-                // address translation and command alignment are correct.
-                __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                    "G_DL skip nested addr=0x%08X", c.w1);
+                uint32_t branch = (c.w0 >> 16) & 0xFF;
+                uint32_t addr = c.w1;
+                uint8_t* new_cur = (uint8_t*)RDP_TranslateAddr(addr);
+                
+                if (!new_cur) {
+                    __android_log_print(ANDROID_LOG_WARN, "BKA_GFX", "G_DL skip unresolved addr=0x%08X", addr);
+                    break;
+                }
+                
+                // If it's a segmented address or physical N64 ROM space, use native 8-byte stride
+                size_t new_stride = 16;
+                uint32_t seg = (addr >> 24) & 0x0F;
+                if ((seg > 0 && seg < 16 && s_rdp.segmentBase[seg] != 0) || addr < 0x80000000) {
+                    new_stride = 8;
+                }
+                
+                if (branch == 0x00) { // gsSPDisplayList (Call/Push)
+                    stack[depth].ptr = cur;
+                    stack[depth].end = cur_end;
+                    stack_stride[depth] = current_stride;
+                    depth++;
+                } // else gsSPBranchList (Jump/No Return)
+                
+                cur = new_cur;
+                cur_end = (uint8_t*)0xFFFFFFFF; // Run until explicit ENDDL opcode
+                current_stride = new_stride;
                 break;
             }
 
@@ -822,6 +846,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     depth--;
                     cur = stack[depth].ptr;
                     cur_end = stack[depth].end;
+                    current_stride = stack_stride[depth];
                     dl_cmds = 0;
                     zero_run = 0;
                 } else {
