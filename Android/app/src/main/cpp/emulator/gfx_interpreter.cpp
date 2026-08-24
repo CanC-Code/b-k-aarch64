@@ -779,7 +779,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
     DListFrame stack[64];
     int depth = 0;
-    size_t current_stride = 16;
+    size_t current_stride = 8;
     size_t stack_stride[64];
     uint8_t *cur = (uint8_t*)tp->t.data_ptr;
     uint8_t *cur_end = cur + tp->t.data_size;
@@ -803,7 +803,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         }
 
         GfxCommand c = {0};
-        memcpy(&c, cur, current_stride == 16 ? 16 : 8);
+        memcpy(&c, cur, 8);
         uint8_t opcode = GFX_OPCODE(c);
 
         if (s_frameCount <= 3) {
