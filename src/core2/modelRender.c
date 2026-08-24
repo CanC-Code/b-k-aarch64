@@ -825,7 +825,13 @@ void modelRender_geoCmd_LOADDL(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data) 
 
     if (D_80370990) {
         gfx_sub_list = &modelRenderDisplayList->list[cmd->gfx_index];
+        __android_log_print(ANDROID_LOG_INFO, "BKA-MODEL",
+            "LOADDL: index=%d gfx_sub_list=%p first_cmd=0x%08x\n",
+            cmd->gfx_index, gfx_sub_list, ((u32*)gfx_sub_list)[0]);
         gSPDisplayList((*gfx)++, osVirtualToPhysical(gfx_sub_list));
+    } else {
+        __android_log_print(ANDROID_LOG_WARN, "BKA-MODEL",
+            "LOADDL skipped: D_80370990 is FALSE\n");
     }
 }
 
@@ -999,6 +1005,13 @@ void modelRender_geoCmd_CAMERA(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data) 
 
 void modelRender_executeGeoCmds(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data) {
     static int s_geo_log_count = 0;
+    static int s_geo_call_count = 0;
+    s_geo_call_count++;
+    if (s_geo_call_count < 10) {
+        __android_log_print(ANDROID_LOG_INFO, "BKA-MODEL",
+            "executeGeoCmds call#%d data=%p D_80370990=%d\n",
+            s_geo_call_count, data, D_80370990);
+    }
     while (TRUE) {
         u32 raw_cmd = *(u32*)&data->cmd;
         u32 raw_next = *(u32*)&data->next_offset;
