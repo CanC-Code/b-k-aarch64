@@ -195,3 +195,15 @@ Key current facts:
 - G_DL skip logs show segment addresses are unresolved.
 - Many raw RSP opcodes still unhandled.
 - App survives without immediate crash.
+
+## Update 2026-08-23 20:19 MST
+
+The nested G_DL display lists are now being parsed correctly with 16-byte
+stride. The parser successfully enters depth=1 and executes hundreds of
+F3DEX commands. The crash now occurs near the end of a nested display list
+when the parser walks into embedded geometry/index data (cmd[297] op=0x06
+with raw w0/w1).
+
+Next exact step:
+- Implement RSP vertex/matrix/triangle commands
+- Add display-list end/size validation to stop before embedded data
