@@ -70,13 +70,10 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         return gN64_RDRAM ? gN64_RDRAM + (addr - 0xA0000000u) : nullptr;
     }
 
-    // Otherwise addr is the low 32 bits of an ARM64 host pointer embedded
-    // directly by the GBI macros. Reconstruct the canonical 0x7c... base.
-    uintptr_t host = 0x7c00000000ULL | (uintptr_t)addr;
+    // No valid mapping found.
     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-        "RDP_TranslateAddr: reconstructing host ptr from 0x%08X -> 0x%llX\n",
-        addr, (unsigned long long)host);
-    return (uint8_t*)host;
+        "RDP_TranslateAddr: unmapped address 0x%08X", addr);
+    return nullptr;
 }
 
 static int s_frameCount = 0;
