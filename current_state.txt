@@ -207,3 +207,21 @@ with raw w0/w1).
 Next exact step:
 - Implement RSP vertex/matrix/triangle commands
 - Add display-list end/size validation to stop before embedded data
+
+## Update 2026-08-23 20:57 MST
+
+The app is stable. Nested G_DL traversal has been temporarily disabled.
+Top-level F3DEX_GBI display lists are parsed correctly with 16-byte stride.
+
+Current state:
+- Top-level commands execute cleanly.
+- Segment bases are set correctly.
+- G_DL is skipped to avoid walking into embedded data.
+- No immediate SIGSEGV.
+
+Next correct implementation:
+1. Implement G_MTX (opcode 0x01) matrix load.
+2. Implement G_VTX (opcode 0x04) vertex load.
+3. Implement G_MOVEMEM (opcode 0x03) matrix/viewport.
+4. Implement G_TRI1/G_TRI2 (0xBF/0xB1) triangle rasterization.
+5. Re-enable nested G_DL with correct segment address resolution.
