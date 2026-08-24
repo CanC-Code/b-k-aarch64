@@ -60,9 +60,12 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     }
 
     // Physical RDRAM.
-    // Banjo-Kazooie uses custom virtual addresses of the form 0x99xxxxxx.
-    // The actual RDRAM offset is the lower 24 bits.
-    if ((addr & 0xFF000000u) >= 0x98000000u && (addr & 0xFF000000u) <= 0x9F000000u) {
+    // Banjo-Kazooie uses custom virtual addresses. The actual RDRAM
+    // offset is the lower 24 bits for these ranges:
+    //   0x10xxxxxx, 0x18xxxxxx, 0x98xxxxxx-0x9Fxxxxxx
+    if ((addr & 0xFF000000u) == 0x10000000u ||
+        (addr & 0xFF000000u) == 0x18000000u ||
+        ((addr & 0xFF000000u) >= 0x98000000u && (addr & 0xFF000000u) <= 0x9F000000u)) {
         addr &= 0x00FFFFFFu;
     }
     if (addr < 0x1000000u) {
