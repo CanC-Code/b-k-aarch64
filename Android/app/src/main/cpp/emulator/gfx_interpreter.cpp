@@ -948,6 +948,31 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 }
                 break;
 
+            case 0x14: // G_TEXRECT
+            case 0x1C: // G_TEXRECTFLIP
+            case 0x1D: // G_LOADTLUT
+            case 0x34: // G_TRI2
+            case 0x40: // G_LOADTLUT
+            case 0x54: // G_TRI1
+            case 0x57: // G_POPMTX
+            case 0x60: // G_RDPHALF_1
+            case 0x63: // G_RDPHALF_2
+            case 0x84: // G_RDPHALF_1
+            case 0x87: // G_RDPHALF_2
+            case 0x8C: // G_RDPHALF_CONT
+            case 0x98: // G_SETTIMG
+            case 0xA1: // G_SETTIMG_OTHR
+            case 0xB0: // G_LOADBLOCK
+            case 0xC4: // G_TRI1
+            case 0xD0: // G_MTX
+            case 0xDC: // G_DMA_IO
+            case 0xDE: // G_TRI1
+            case 0xEF: // G_MTX
+            case 0xF8: // G_SETTIMG
+            case 0xF9: // G_SETTIMG_OTHR
+                LOGW("Stub: opcode 0x%02X not fully implemented", opcode);
+                break;
+
             default:
                 if (s_frameCount <= 3)
                     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
