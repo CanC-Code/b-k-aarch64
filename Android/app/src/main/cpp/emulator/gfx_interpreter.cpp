@@ -921,11 +921,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             }
 
             case 0xB8:
-                // G_POPMTX in F3DEX/F3DEX2. The software RDP currently
-                // does not maintain a full matrix stack, so treat it as
-                // a safe no-op rather than crashing.
-                break;
-
             case 0xDF:
                 if (depth > 0) {
                     depth--;
