@@ -855,32 +855,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         // as the boundary, so no early stop is needed.
 
         switch (opcode) {
-
-TEXRECT
-TEXRECTFLIP
-LOADTLUT
-TRI2
-LOADTLUT
-TRI1
-POPMTX
-RDPHALF_1
-RDPHALF_2
-RDPHALF_1
-RDPHALF_2
-RDPHALF_CONT
-SETTIMG
-SETTIMG_OTHR
-LOADBLOCK
-TRI1
-MTX
-DMA_IO
-TRI1
-MTX
-SETTIMG
-SETTIMG_OTHR
-                LOGW("Stub: opcode 0x%02X not fully implemented", opcode);
-                break;
-
             default:
                 if (s_frameCount <= 3)
                     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
