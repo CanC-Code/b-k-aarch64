@@ -29,7 +29,6 @@ static struct RDPStateDefaultSegments {
     }
 } s_rdpDefaultSegments;
 
-
 static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     if (addr == 0) return nullptr;
 
@@ -557,7 +556,6 @@ static void Cmd_Tri1(GfxCommand cmd) {
         vert2->r, vert2->g, vert2->b, vert2->a);
 }
 
-
 // =======================================================================
 // G_TRI2 - Draw 2 triangles (4 vertices)
 // w0 = [G_TRI2:8][v2:8][v1:8][v0:8]  -- triangle 1 uses v0,v1,v2
@@ -614,7 +612,6 @@ static void Cmd_Tri2(GfxCommand cmd) {
             vt2->r, vt2->g, vt2->b, vt2->a);
     }
 }
-
 
 // =======================================================================
 // G_MOVEMEM - Load matrix (opcode 0xDC)
@@ -948,53 +945,53 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 }
                 break;
 
-            case 0x14: // G_TEXRECT
-            case 0x1C: // G_TEXRECTFLIP
-            case 0x1D: // G_LOADTLUT
-            case 0x34: // G_TRI2
-            case 0x40: // G_LOADTLUT
-            case 0x54: // G_TRI1
-            case 0x57: // G_POPMTX
-            case 0x60: // G_RDPHALF_1
-            case 0x63: // G_RDPHALF_2
-            case 0x84: // G_RDPHALF_1
-            case 0x87: // G_RDPHALF_2
-            case 0x8C: // G_RDPHALF_CONT
-            case 0x98: // G_SETTIMG
-            case 0xA1: // G_SETTIMG_OTHR
-            case 0xB0: // G_LOADBLOCK
-            case 0xC4: // G_TRI1
-            case 0xD0: // G_MTX
-            case 0xDC: // G_DMA_IO
-            case 0xDE: // G_TRI1
-            case 0xEF: // G_MTX
-            case 0xF8: // G_SETTIMG
-            case 0xF9: // G_SETTIMG_OTHR
+TEXRECT
+TEXRECTFLIP
+LOADTLUT
+TRI2
+LOADTLUT
+TRI1
+POPMTX
+RDPHALF_1
+RDPHALF_2
+RDPHALF_1
+RDPHALF_2
+RDPHALF_CONT
+SETTIMG
+SETTIMG_OTHR
+LOADBLOCK
+TRI1
+MTX
+DMA_IO
+TRI1
+MTX
+SETTIMG
+SETTIMG_OTHR
                 LOGW("Stub: opcode 0x%02X not fully implemented", opcode);
                 break;
 
-            case 0x14: // G_TEXRECT
-            case 0x1C: // G_TEXRECTFLIP
-            case 0x1D: // G_LOADTLUT
-            case 0x34: // G_TRI2
-            case 0x40: // G_LOADTLUT
-            case 0x54: // G_TRI1
-            case 0x57: // G_POPMTX
-            case 0x60: // G_RDPHALF_1
-            case 0x63: // G_RDPHALF_2
-            case 0x84: // G_RDPHALF_1
-            case 0x87: // G_RDPHALF_2
-            case 0x8C: // G_RDPHALF_CONT
-            case 0x98: // G_SETTIMG
-            case 0xA1: // G_SETTIMG_OTHR
-            case 0xB0: // G_LOADBLOCK
-            case 0xC4: // G_TRI1
-            case 0xD0: // G_MTX
-            case 0xDC: // G_DMA_IO
-            case 0xDE: // G_TRI1
-            case 0xEF: // G_MTX
-            case 0xF8: // G_SETTIMG
-            case 0xF9: // G_SETTIMG_OTHR
+TEXRECT
+TEXRECTFLIP
+LOADTLUT
+TRI2
+LOADTLUT
+TRI1
+POPMTX
+RDPHALF_1
+RDPHALF_2
+RDPHALF_1
+RDPHALF_2
+RDPHALF_CONT
+SETTIMG
+SETTIMG_OTHR
+LOADBLOCK
+TRI1
+MTX
+DMA_IO
+TRI1
+MTX
+SETTIMG
+SETTIMG_OTHR
                 LOGW("Stub: opcode 0x%02X not fully implemented", opcode);
                 break;
 
