@@ -854,8 +854,104 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         // followed by vertex/index data. We now use the task data size
         // as the boundary, so no early stop is needed.
 
-        switch (opcode) {
+                switch (opcode) {
+            case 0x00:
+            case 0xC0:
+            case 0xE8:
+            case 0xE7:
+            case 0xE9:
+            case 0xE6:
+            case 0xE1:
+            case 0xF1:
+            case 0xF0:
+            case 0x02:
+            case 0xDB:
+            case 0xDA:
+            case 0xBD:
+            case 0xBE:
+            case 0xBB:
+            case 0xBA:
+            case 0xB9:
+            case 0xB7:
+            case 0xB6:
+            case 0xED:
+            case 0xFF:
+                break;
+
+            case 0xF7: Cmd_SetFillColor(c); break;
+            case 0xFA: Cmd_SetPrimColor(c); break;
+            case 0xFB: Cmd_SetEnvColor(c); break;
+            case 0xE2: Cmd_SetOtherModeL(c); break;
+            case 0xE3: Cmd_SetOtherModeH(c); break;
+            case 0xFC: Cmd_SetCombine(c); break;
+            case 0xD7: Cmd_Texture(c); break;
+            case 0xF5: Cmd_SetTile(c); break;
+            case 0xF2: Cmd_SetTileSize(c); break;
+            case 0xFD: Cmd_SetTImg(c); break;
+            case 0xF3: Cmd_LoadBlock(c); break;
+            case 0xF4: Cmd_LoadTile(c); break;
+            case 0xF6: Cmd_FillRect(c); break;
+            case 0xE4: case 0xE5: Cmd_TexRect(c); break;
+
+            case 0x01: Cmd_Mtx(c); break;
+            case 0x04: Cmd_Vtx(c); break;
+            case 0xBF: Cmd_Tri1(c); break;
+            case 0xB1: Cmd_Tri2(c); break;
+            case 0x03: Cmd_MoveMem(c); break;
+            case 0xBC: Cmd_MoveWord(c); break;
+
+            case 0x06: {
+                uint32_t raw_addr = c.w1;
+                void *dl_ptr = RDP_TranslateAddr(raw_addr);
+                if (!dl_ptr) {
+                    __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                        "G_DL: cannot resolve addr=0x%08X", raw_addr);
+                    break;
+                }
+                if (depth >= 63) {
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                        "G_DL: max depth reached");
+                    break;
+                }
+
+                // Save current position/end for ENDDL
+                stack[depth].ptr = cur;
+                stack[depth].end = cur_end;
+                stack_stride[depth] = current_stride;
+                depth++;
+
+                cur = (uint8_t*)dl_ptr;
+                // Use a safe upper bound based on MAX_DL_CMDS to avoid
+                // running off into non-DL data if this nested list lacks ENDDL.
+                cur_end = cur + (MAX_DL_CMDS * current_stride);
+                dl_cmds = 0;
+                zero_run = 0;
+                break;
+            }
+
+            case 0xB8:
+                // G_POPMTX in F3DEX/F3DEX2. The software RDP currently
+                // does not maintain a full matrix stack, so treat it as
+                // a safe no-op rather than crashing.
+                break;
+
+            case 0xDF:
+                if (depth > 0) {
+                    depth--;
+                    cur = stack[depth].ptr;
+                    cur_end = stack[depth].end;
+                    current_stride = stack_stride[depth];
+                    dl_cmds = 0;
+                    zero_run = 0;
+                } else {
+                    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+                        "ENDDL top-level, vertices=%d", s_rdp.dmemVertexCount);
+                    return;
+                }
+                break;
+
             default:
+default:
                 if (s_frameCount <= 3)
                     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                         "Unhandled op=0x%02X at cmd %zu", opcode, total - 1);
