@@ -1026,6 +1026,34 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 LOGW("Stub: opcode 0x%02X not fully implemented", opcode);
                 break;
 
+            case 0x14:
+            case 0x1C:
+            case 0xE4:
+            case 0xE5:
+                Cmd_TexRect(c);
+                break;
+
+            case 0x40:
+                Cmd_LoadTLUT(c);
+                break;
+
+            case 0xA4:
+            case 0xB0:
+            case 0xF3:
+                Cmd_LoadBlock(c);
+                break;
+
+            case 0xDC:
+                Cmd_MoveMem(c);
+                break;
+
+            case 0x84:
+            case 0x60:
+            case 0x80:
+            case 0xE8:
+                // RDP half-command writes; currently no-op
+                break;
+
             default:
 
                 if (s_frameCount <= 3)
