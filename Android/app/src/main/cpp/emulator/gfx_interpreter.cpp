@@ -670,6 +670,11 @@ static void Cmd_MoveWord(GfxCommand cmd) {
         s_rdp.segmentBase[segment] = (uintptr_t)base_ptr;
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
             "Cmd_MoveWord SEGMENT seg=%u offset=0x%04X base=%p", segment, offset, base_ptr);
+        // Banjo-Kazooie uses segments 4 and 12 for overlays that mirror segment 1
+        if (segment == 1) {
+            s_rdp.segmentBase[4] = (uintptr_t)base_ptr;
+            s_rdp.segmentBase[12] = (uintptr_t)base_ptr;
+        }
     }
 }
 
