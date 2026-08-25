@@ -448,6 +448,20 @@ static void Cmd_LoadTile(GfxCommand cmd) {
     }
 }
 
+static void Cmd_LoadTLUT(GfxCommand cmd) {
+    uint32_t tile = (cmd.w0 >> 24) & 0x7;
+    if (tile >= 8) return;
+    auto& t = s_rdp.tiles[tile];
+    uint32_t sl = (cmd.w0 >> 12) & 0xFFF;
+    uint32_t tl = cmd.w0 & 0xFFF;
+    uint32_t count = (cmd.w1 >> 14) & 0x3FF;
+    if (s_rdp.texAddr) {
+        uint32_t tmemBase = t.tmemAddr * 8;
+        uint32_t srcOffset = tl * 2 + sl * 2;
+        memcpy(s_rdp.tmem + tmemBase, s_rdp.texAddr + srcOffset, (count + 1) * 2);
+    }
+}
+
 static void Cmd_LoadBlock(GfxCommand cmd) {
     uint32_t tile = (cmd.w0 >> 24) & 0x7;
     if (tile >= 8) return;
@@ -950,82 +964,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 }
                 break;
 
-            case 0x05:
-            case 0x0A:
-            case 0x11:
-            case 0x12:
-            case 0x14:
-            case 0x1C:
-            case 0x20:
-            case 0x21:
-            case 0x22:
-            case 0x2B:
-            case 0x34:
-            case 0x36:
-            case 0x39:
-            case 0x3A:
-            case 0x3C:
-            case 0x40:
-            case 0x41:
-            case 0x45:
-            case 0x48:
-            case 0x4A:
-            case 0x4B:
-            case 0x4C:
-            case 0x4F:
-            case 0x54:
-            case 0x57:
-            case 0x60:
-            case 0x62:
-            case 0x63:
-            case 0x64:
-            case 0x65:
-            case 0x6A:
-            case 0x6B:
-            case 0x6C:
-            case 0x71:
-            case 0x72:
-            case 0x73:
-            case 0x7D:
-            case 0x7F:
-            case 0x80:
-            case 0x81:
-            case 0x84:
-            case 0x87:
-            case 0x8C:
-            case 0x8D:
-            case 0x91:
-            case 0x95:
-            case 0x96:
-            case 0x98:
-            case 0x99:
-            case 0x9A:
-            case 0x9D:
-            case 0xA1:
-            case 0xA4:
-            case 0xA6:
-            case 0xA7:
-            case 0xA9:
-            case 0xAB:
-            case 0xAD:
-            case 0xB0:
-            case 0xB2:
-            case 0xB4:
-            case 0xC4:
-            case 0xC6:
-            case 0xC8:
-            case 0xCB:
-            case 0xD0:
-            case 0xD2:
-            case 0xDC:
-            case 0xDE:
-            case 0xEB:
-            case 0xEF:
-            case 0xF8:
-            case 0xF9:
-                LOGW("Stub: opcode 0x%02X not fully implemented", opcode);
-                break;
-
             case 0x14:
             case 0x1C:
             case 0xE4:
@@ -1055,7 +993,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 break;
 
             default:
-
                 if (s_frameCount <= 3)
                     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                         "Unhandled op=0x%02X at cmd %zu", opcode, total - 1);
