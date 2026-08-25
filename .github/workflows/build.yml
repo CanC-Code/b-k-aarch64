@@ -2,7 +2,7 @@ name: Build & Verify
 
 on:
   push:
-    branches: [android-port, android-*]
+    branches: [android-port, android-*, automation]
   workflow_dispatch:
 
 jobs:
