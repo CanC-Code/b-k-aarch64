@@ -18,6 +18,18 @@ extern "C" {
 
 static RDPState s_rdp;
 
+// Deterministic default segment bases (from decomp overlay layout)
+// Populated before any RDP command runs, fixing many unmapped address errors.
+static struct RDPStateDefaultSegments {
+    RDPStateDefaultSegments() {
+        s_rdp.segmentBase[0x01] = 0x80000000u;
+        s_rdp.segmentBase[0x02] = 0x80000000u;
+        s_rdp.segmentBase[0x03] = 0x80000000u;
+        s_rdp.segmentBase[0x0C] = 0x0C000000u; // core2 overlay data (guessed)
+    }
+} s_rdpDefaultSegments;
+
+
 static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     if (addr == 0) return nullptr;
 
