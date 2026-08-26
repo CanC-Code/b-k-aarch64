@@ -1057,9 +1057,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
             case 0x14:
             case 0x1C:
-            case 0xE5:
-                Cmd_TexRect(c);
-                break;
 
             case 0x40:
                 Cmd_LoadTLUT(c);
