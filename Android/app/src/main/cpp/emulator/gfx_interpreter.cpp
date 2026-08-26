@@ -137,9 +137,11 @@ static void RDP_InitState() {
 
     memset(&s_rdp, 0, sizeof(s_rdp));
 
-    // Restore vertex buffer and count
+    // Restore vertex buffer and count - CRITICAL: keep the count so triangles can find vertices
     memcpy(s_rdp.dmem, saved_dmem, sizeof(saved_dmem));
     s_rdp.dmemVertexCount = saved_dmemVertexCount;
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+        "RDP_InitState: restored dmemVertexCount=%d", saved_dmemVertexCount);
 
     s_rdp.primR = s_rdp.primG = s_rdp.primB = s_rdp.primA = 255;
     s_rdp.envR = s_rdp.envG = s_rdp.envB = s_rdp.envA = 255;
