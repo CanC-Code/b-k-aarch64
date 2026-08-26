@@ -178,8 +178,11 @@ static void Matrix_MultVec(const BKMatrix m, float x, float y, float z, float w,
 // Load N64 fixed-point matrix (int16_t[4][4] with 32-bit integer parts)
 static void Matrix_LoadFromN64(BKMatrix dst, const void* src) {
     const uint8_t* bytes = (const uint8_t*)src;
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
+    // N64 F3DEX matrices are stored COLUMN-MAJOR (M[i][j] = column i, row j).
+    // Our Matrix_MultVec expects ROW-MAJOR (m[row][col]).
+    // So we transpose during load.
+    for (int col = 0; col < 4; col++) {
+        for (int row = 0; row < 4; row++) {
             // N64 matrix entries are 32-bit fixed-point (16.16), stored big-endian.
             uint32_t raw = ((uint32_t)bytes[0] << 24) |
                            ((uint32_t)bytes[1] << 16) |
@@ -187,7 +190,7 @@ static void Matrix_LoadFromN64(BKMatrix dst, const void* src) {
                            ((uint32_t)bytes[3]);
             bytes += 4;
             int32_t val = (int32_t)raw;
-            dst[i][j] = (float)val / 65536.0f;
+            dst[row][col] = (float)val / 65536.0f;
         }
     }
 }
@@ -738,7 +741,8 @@ static void Cmd_MoveMem(GfxCommand cmd) {
     // offset 0 = projection, offset 0 = modelview (upper bits differ)
     if (length == 8 && (index == 0x0E || index == 0x00)) {
         BKMatrix* target;
-        if (index == 0x00) {
+        // F3DEX2 G_MOVEMEM: index 0x0E = G_MTX_PROJECTION, 0x00 = G_MTX_MODELVIEW
+        if (index == 0x0E) {
             target = &s_rdp.projection;
         } else {
             target = &s_rdp.modelview;
