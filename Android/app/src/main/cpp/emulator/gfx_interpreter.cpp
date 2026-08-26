@@ -1001,6 +1001,69 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0x01: Cmd_Mtx(c); break;
             case 0x04: Cmd_Vtx(c); break;
             case 0xBF: Cmd_Tri1(c); break;
+            case 0xC4: { // F3DEX2 TRI2 - draw two triangles
+                uint32_t v0 = (w0 >> 17) & 0x7F;
+                uint32_t v1 = (w0 >> 9) & 0x7F;
+                uint32_t v2 = (w0 >> 1) & 0x7F;
+                uint32_t v3 = (w1 >> 17) & 0x7F;
+                uint32_t v4 = (w1 >> 9) & 0x7F;
+                uint32_t v5 = (w1 >> 1) & 0x7F;
+                
+                if (v0 < dmemVertexCount && v1 < dmemVertexCount && v2 < dmemVertexCount) {
+                    BKVertex* vert0 = &dmemVertices[v0];
+                    BKVertex* vert1 = &dmemVertices[v1];
+                    BKVertex* vert2 = &dmemVertices[v2];
+                    
+                    float sx0, sy0, sx1, sy1, sx2, sy2;
+                    TransformVertex(vert0, &sx0, &sy0);
+                    TransformVertex(vert1, &sx1, &sy1);
+                    TransformVertex(vert2, &sx2, &sy2);
+                    
+                    RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
+                                    vert0->r, vert0->g, vert0->b, vert0->a,
+                                    vert1->r, vert1->g, vert1->b, vert1->a,
+                                    vert2->r, vert2->g, vert2->b, vert2->a);
+                }
+                
+                if (v3 < dmemVertexCount && v4 < dmemVertexCount && v5 < dmemVertexCount) {
+                    BKVertex* vert3 = &dmemVertices[v3];
+                    BKVertex* vert4 = &dmemVertices[v4];
+                    BKVertex* vert5 = &dmemVertices[v5];
+                    
+                    float sx3, sy3, sx4, sy4, sx5, sy5;
+                    TransformVertex(vert3, &sx3, &sy3);
+                    TransformVertex(vert4, &sx4, &sy4);
+                    TransformVertex(vert5, &sx5, &sy5);
+                    
+                    RasterizeTriangle(sx3, sy3, sx4, sy4, sx5, sy5,
+                                    vert3->r, vert3->g, vert3->b, vert3->a,
+                                    vert4->r, vert4->g, vert4->b, vert4->a,
+                                    vert5->r, vert5->g, vert5->b, vert5->a);
+                }
+                break;
+            }
+            case 0x34: { // F3DEX2 TRI1 - draw one triangle
+                uint32_t v0 = (w0 >> 17) & 0x7F;
+                uint32_t v1 = (w0 >> 9) & 0x7F;
+                uint32_t v2 = (w0 >> 1) & 0x7F;
+                
+                if (v0 < dmemVertexCount && v1 < dmemVertexCount && v2 < dmemVertexCount) {
+                    BKVertex* vert0 = &dmemVertices[v0];
+                    BKVertex* vert1 = &dmemVertices[v1];
+                    BKVertex* vert2 = &dmemVertices[v2];
+                    
+                    float sx0, sy0, sx1, sy1, sx2, sy2;
+                    TransformVertex(vert0, &sx0, &sy0);
+                    TransformVertex(vert1, &sx1, &sy1);
+                    TransformVertex(vert2, &sx2, &sy2);
+                    
+                    RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
+                                    vert0->r, vert0->g, vert0->b, vert0->a,
+                                    vert1->r, vert1->g, vert1->b, vert1->a,
+                                    vert2->r, vert2->g, vert2->b, vert2->a);
+                }
+                break;
+            }
             case 0xB1: Cmd_Tri2(c); break;
             case 0x03: Cmd_MoveMem(c); break;
             case 0xBC: Cmd_MoveWord(c); break;
@@ -1082,69 +1145,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 case 0xDC:
                 Cmd_MoveMem(c);
                 break;
-            case 0xC4: { // F3DEX2 TRI2 - draw two triangles
-                uint32_t v0 = (w0 >> 17) & 0x7F;
-                uint32_t v1 = (w0 >> 9) & 0x7F;
-                uint32_t v2 = (w0 >> 1) & 0x7F;
-                uint32_t v3 = (w1 >> 17) & 0x7F;
-                uint32_t v4 = (w1 >> 9) & 0x7F;
-                uint32_t v5 = (w1 >> 1) & 0x7F;
-                
-                if (v0 < dmemVertexCount && v1 < dmemVertexCount && v2 < dmemVertexCount) {
-                    BKVertex* vert0 = &dmemVertices[v0];
-                    BKVertex* vert1 = &dmemVertices[v1];
-                    BKVertex* vert2 = &dmemVertices[v2];
-                    
-                    float sx0, sy0, sx1, sy1, sx2, sy2;
-                    TransformVertex(vert0, &sx0, &sy0);
-                    TransformVertex(vert1, &sx1, &sy1);
-                    TransformVertex(vert2, &sx2, &sy2);
-                    
-                    RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
-                                    vert0->r, vert0->g, vert0->b, vert0->a,
-                                    vert1->r, vert1->g, vert1->b, vert1->a,
-                                    vert2->r, vert2->g, vert2->b, vert2->a);
-                }
-                
-                if (v3 < dmemVertexCount && v4 < dmemVertexCount && v5 < dmemVertexCount) {
-                    BKVertex* vert3 = &dmemVertices[v3];
-                    BKVertex* vert4 = &dmemVertices[v4];
-                    BKVertex* vert5 = &dmemVertices[v5];
-                    
-                    float sx3, sy3, sx4, sy4, sx5, sy5;
-                    TransformVertex(vert3, &sx3, &sy3);
-                    TransformVertex(vert4, &sx4, &sy4);
-                    TransformVertex(vert5, &sx5, &sy5);
-                    
-                    RasterizeTriangle(sx3, sy3, sx4, sy4, sx5, sy5,
-                                    vert3->r, vert3->g, vert3->b, vert3->a,
-                                    vert4->r, vert4->g, vert4->b, vert4->a,
-                                    vert5->r, vert5->g, vert5->b, vert5->a);
-                }
-                break;
-            }
-            case 0x34: { // F3DEX2 TRI1 - draw one triangle
-                uint32_t v0 = (w0 >> 17) & 0x7F;
-                uint32_t v1 = (w0 >> 9) & 0x7F;
-                uint32_t v2 = (w0 >> 1) & 0x7F;
-                
-                if (v0 < dmemVertexCount && v1 < dmemVertexCount && v2 < dmemVertexCount) {
-                    BKVertex* vert0 = &dmemVertices[v0];
-                    BKVertex* vert1 = &dmemVertices[v1];
-                    BKVertex* vert2 = &dmemVertices[v2];
-                    
-                    float sx0, sy0, sx1, sy1, sx2, sy2;
-                    TransformVertex(vert0, &sx0, &sy0);
-                    TransformVertex(vert1, &sx1, &sy1);
-                    TransformVertex(vert2, &sx2, &sy2);
-                    
-                    RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
-                                    vert0->r, vert0->g, vert0->b, vert0->a,
-                                    vert1->r, vert1->g, vert1->b, vert1->a,
-                                    vert2->r, vert2->g, vert2->b, vert2->a);
-                }
-                break;
-            }
 default:
                 __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                     "Stub: opcode 0x%02X not fully implemented", opcode);
