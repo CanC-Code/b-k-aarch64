@@ -1098,66 +1098,7 @@ case 0xDC:
             case 0x50:
             case 0x57:
             case 0x5F:
-            case 0x60:
-            case 0x61:
-            case 0x62:
-            case 0x63:
-            case 0x64:
-            case 0x65:
-            case 0x6A:
-            case 0x6B:
-            case 0x6C:
-            case 0x71:
-            case 0x72:
-            case 0x73:
-            case 0x77:
-            case 0x7D:
-            case 0x7F:
-            case 0x80:
-            case 0x81:
-            case 0x84:
-            case 0x87:
-            case 0x8C:
-            case 0x8D:
-            case 0x8F:
-            case 0x90:
-            case 0x91:
-            case 0x92:
-            case 0x95:
-            case 0x96:
-            case 0x99:
-            case 0x9A:
-            case 0x9B:
-            case 0x9D:
-            case 0xA6:
-            case 0xA7:
-            case 0xA8:
-            case 0xA9:
-            case 0xAB:
-            case 0xAC:
-            case 0xAD:
-            case 0xB2:
-            case 0xB4:
-            case 0xC6:
-            case 0xC7:
-            case 0xC8:
-            case 0xCB:
-            case 0xCC:
-            case 0xD0:
-            case 0xD2:
-            case 0xD4:
-            case 0xDD:
-            case 0xDE:
-            case 0xEB:
-            case 0xEF:
-            case 0xF8:
-            case 0xF9:
-                LOGW("Stub: opcode 0x%02X not fully implemented", opcode);
-                break;
-Cmd_SetTImg(c);
-                break;
-
-            case 0x98:
+case 0x98:
             case 0xA1:
                 Cmd_SetTImg(c);
                 break;
@@ -1177,6 +1118,14 @@ case 0x54:
 
                 Cmd_SetOtherModeL(c); break;
                 Cmd_SetOtherModeH(c); break;
+            case 0x84:
+                Cmd_SetOtherModeL(c);
+                break;
+
+            case 0x60:
+                Cmd_SetOtherModeH(c);
+                break;
+
             default:
                 if (s_frameCount <= 3)
                     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
