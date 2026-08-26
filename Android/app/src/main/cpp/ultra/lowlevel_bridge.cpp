@@ -9,6 +9,7 @@
 #include <cstring>
 #include <stdint.h>
 #include <GLES2/gl2.h>
+#include <pthread.h>
 
 #define LOG_TAG "BKA_MEM"
 
