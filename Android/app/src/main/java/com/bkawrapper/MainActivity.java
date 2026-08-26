@@ -218,9 +218,10 @@ public class MainActivity extends AppCompatActivity {
         final AssetManager mgr   = getAssets();
 
         glSurfaceView = new GLSurfaceView(this);
-        glSurfaceView.setEGLContextClientVersion(3);
-        glSurfaceView.setEGLConfigChooser(8, 8, 8, 8, 24, 8);
+        glSurfaceView.setEGLContextClientVersion(2);
+        glSurfaceView.setEGLConfigChooser(8, 8, 8, 8, 16, 0);
         glSurfaceView.setPreserveEGLContextOnPause(true);
+        glSurfaceView.setWillNotDraw(false);
 
         glSurfaceView.setRenderer(new GLRenderer(this, assetDir, mgr));
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
