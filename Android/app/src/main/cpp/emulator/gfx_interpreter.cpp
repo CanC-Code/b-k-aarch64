@@ -634,9 +634,9 @@ static void Cmd_Tri2(GfxCommand cmd) {
 // w1 = flag
 // =======================================================================
 static void Cmd_Tri1_F3DEX2(GfxCommand cmd) {
-    uint32_t v0 = (cmd.w0 >> 16) & 0xFF;
-    uint32_t v1 = (cmd.w0 >> 8) & 0xFF;
-    uint32_t v2 = cmd.w0 & 0xFF;
+    uint32_t v0 = (cmd.w0 >> 17) & 0x7F;
+    uint32_t v1 = (cmd.w0 >> 9) & 0x7F;
+    uint32_t v2 = (cmd.w0 >> 1) & 0x7F;
 
     if (v0 >= (uint32_t)s_rdp.dmemVertexCount ||
         v1 >= (uint32_t)s_rdp.dmemVertexCount ||
@@ -666,12 +666,12 @@ static void Cmd_Tri1_F3DEX2(GfxCommand cmd) {
 // w1 = [flag:8][v3:8][v4:8][v5:8]     (second triangle, flag ignored)
 // =======================================================================
 static void Cmd_Tri2_F3DEX2(GfxCommand cmd) {
-    uint32_t v00 = (cmd.w0 >> 16) & 0xFF;
-    uint32_t v01 = (cmd.w0 >> 8) & 0xFF;
-    uint32_t v02 = cmd.w0 & 0xFF;
-    uint32_t v10 = (cmd.w1 >> 16) & 0xFF;
-    uint32_t v11 = (cmd.w1 >> 8) & 0xFF;
-    uint32_t v12 = cmd.w1 & 0xFF;
+    uint32_t v00 = (cmd.w0 >> 17) & 0x7F;
+    uint32_t v01 = (cmd.w0 >> 9) & 0x7F;
+    uint32_t v02 = (cmd.w0 >> 1) & 0x7F;
+    uint32_t v10 = (cmd.w1 >> 17) & 0x7F;
+    uint32_t v11 = (cmd.w1 >> 9) & 0x7F;
+    uint32_t v12 = (cmd.w1 >> 1) & 0x7F;
 
     if (v00 >= (uint32_t)s_rdp.dmemVertexCount ||
         v01 >= (uint32_t)s_rdp.dmemVertexCount ||
