@@ -41,18 +41,13 @@ uint8_t* gN64_ROM_Base = nullptr;
 uint16_t gFramebuffers[2][FB_WIDTH * FB_HEIGHT];
 uint32_t g_active_fb_offset = 0x400000;
 
-// Actual framebuffer dimensions (defined here, not extern)
-int32_t gFramebufferWidth = FB_WIDTH;
-int32_t gFramebufferHeight = FB_HEIGHT;
-
 extern "C" {
 
     void HLE_TriggerN64Event(int event_id);
 
-    // gFramebufferWidth/Height are defined in the recompiled game code
-    // (src/core1/vimgr.c or similar). They default to 292x216.
-    extern s32 gFramebufferWidth;
-    extern s32 gFramebufferHeight;
+    // gFramebufferWidth/Height - actual definitions (292x216)
+    int32_t gFramebufferWidth = FB_WIDTH;
+    int32_t gFramebufferHeight = FB_HEIGHT;
 
     void InitN64Registers(const char* assetDir) {
         if (gN64_RDRAM != nullptr && gN64_Reg_Base != nullptr &&
