@@ -562,7 +562,9 @@ static void Cmd_Tri1(GfxCommand cmd) {
     if (v0 >= (uint32_t)s_rdp.dmemVertexCount ||
         v1 >= (uint32_t)s_rdp.dmemVertexCount ||
         v2 >= (uint32_t)s_rdp.dmemVertexCount) {
-        LOGW("Cmd_Tri1: invalid vertex indices %u,%u,%u (count=%d)", v0, v1, v2, s_rdp.dmemVertexCount);
+        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+            "Cmd_Tri1: INVALID vertex indices %u,%u,%u (dmemVertexCount=%d)",
+            v0, v1, v2, s_rdp.dmemVertexCount);
         return;
     }
 
@@ -604,8 +606,9 @@ static void Cmd_Tri2(GfxCommand cmd) {
         v10 >= (uint32_t)s_rdp.dmemVertexCount ||
         v11 >= (uint32_t)s_rdp.dmemVertexCount ||
         v12 >= (uint32_t)s_rdp.dmemVertexCount) {
-        LOGW("Cmd_Tri2: invalid vertex indices %u,%u,%u,%u,%u,%u",
-             v00, v01, v02, v10, v11, v12);
+        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+            "Cmd_Tri2: INVALID vertex indices %u,%u,%u,%u,%u,%u (dmemVertexCount=%d)",
+            v00, v01, v02, v10, v11, v12, s_rdp.dmemVertexCount);
         return;
     }
 
@@ -652,7 +655,9 @@ static void Cmd_Tri1_F3DEX2(GfxCommand cmd) {
     if (v0 >= (uint32_t)s_rdp.dmemVertexCount ||
         v1 >= (uint32_t)s_rdp.dmemVertexCount ||
         v2 >= (uint32_t)s_rdp.dmemVertexCount) {
-        LOGW("Cmd_Tri1_F3DEX2: invalid vertex indices %u,%u,%u (count=%d)", v0, v1, v2, s_rdp.dmemVertexCount);
+        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+            "Cmd_Tri1_F3DEX2: INVALID vertex indices %u,%u,%u (dmemVertexCount=%d)",
+            v0, v1, v2, s_rdp.dmemVertexCount);
         return;
     }
 
