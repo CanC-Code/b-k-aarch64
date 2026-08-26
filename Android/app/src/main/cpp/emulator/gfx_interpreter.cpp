@@ -1093,9 +1093,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 break;
 
             default:
-                if (s_frameCount <= 3)
-                    __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                        "Unhandled op=0x%02X at cmd %zu", opcode, total - 1);
+                __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                    "Stub: opcode 0x%02X not fully implemented", opcode);
                 break;
         }
     }
