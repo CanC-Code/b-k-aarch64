@@ -1085,6 +1085,44 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 case 0xDC:
                 Cmd_MoveMem(c);
                 break;
+            case 0x16: // G_TEXRECTFLIP - textured rectangle flip
+            case 0x1D: // G_TEXRECT - textured rectangle
+                Cmd_TexRect(c);
+                break;
+            case 0x30: // G_LOADUCODE - load microcode (no-op for software RDP)
+            case 0x39: // G_SETTILESIZE - set tile size (handled by 0xF2)
+            case 0x3A: // G_LOADBLOCK - load texture block (handled by 0xF3)
+            case 0x41: // G_SETTIMG - set texture image (handled by 0xFD)
+            case 0x45: // G_SETTILE - set tile (handled by 0xF5)
+            case 0x50: // G_SETSCISSOR - set scissor box (can be no-op)
+            case 0x57: // G_SETOTHERMODE_L - set other mode L (handled by 0xE2)
+            case 0x63: // G_SETCOMBINE - set combine mode (handled by 0xFC)
+            case 0x65: // G_SETOTHERMODE_H - set other mode H (handled by 0xE3)
+            case 0x6B: // G_SETTILESIZE - set tile size (handled by 0xF2)
+            case 0x71: // G_SETTILE - set tile (handled by 0xF5)
+            case 0x72: // G_SETTILE - set tile (handled by 0xF5)
+            case 0x7D: // G_SETTIMG - set texture image (handled by 0xFD)
+            case 0x80: // G_RDPHALF_1 - RDP half command
+            case 0x81: // G_RDPHALF_2 - RDP half command
+            case 0x8C: // G_SETTIMG - set texture image (handled by 0xFD)
+            case 0x8D: // G_LOADBLOCK - load texture block (handled by 0xF3)
+            case 0x91: // G_SETTIMG - set texture image (handled by 0xFD)
+            case 0x95: // G_SETTILESIZE - set tile size (handled by 0xF2)
+            case 0x99: // G_SETOTHERMODE_L - set other mode L (handled by 0xE2)
+            case 0xA6: // G_LOADTLUT - load texture lookup table (handled by 0x40)
+            case 0xA7: // G_SETTILE - set tile (handled by 0xF5)
+            case 0xA9: // G_SETTIMG - set texture image (handled by 0xFD)
+            case 0xAD: // G_SETTIMG - set texture image (handled by 0xFD)
+            case 0xB2: // G_SETTILE - set tile (handled by 0xF5)
+            case 0xB4: // G_LOADBLOCK - load texture block (handled by 0xF3)
+            case 0xC6: // G_SETTILESIZE - set tile size (handled by 0xF2)
+            case 0xC8: // G_SETTILE - set tile (handled by 0xF5)
+            case 0xCB: // G_RDPHALF_1 - RDP half command
+            case 0xCC: // G_LOADBLOCK - load texture block (handled by 0xF3)
+            case 0xDE: // G_SETTIMG - set texture image (handled by 0xFD)
+            case 0xF8: // G_SETTILESIZE - set tile size (handled by 0xF2)
+            case 0xF9: // G_SETTILE - set tile (handled by 0xF5)
+                break;
 default:
                 __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                     "Stub: opcode 0x%02X not fully implemented", opcode);
