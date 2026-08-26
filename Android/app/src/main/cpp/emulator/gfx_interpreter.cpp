@@ -1175,9 +1175,7 @@ case 0x54:
                 Cmd_Tri2_F3DEX2(c);
                 break;
 
-            case 0x84:
                 Cmd_SetOtherModeL(c); break;
-            case 0x60:
                 Cmd_SetOtherModeH(c); break;
             default:
                 if (s_frameCount <= 3)
