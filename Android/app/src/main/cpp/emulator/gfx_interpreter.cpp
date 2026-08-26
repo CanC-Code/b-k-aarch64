@@ -1078,6 +1078,9 @@ case 0xDC:
             case 0x34:
                 LOGW("Stub: opcode 0x%02X not fully implemented", opcode);
                 break;
+                Cmd_SetTImg(c);
+                break;
+
             case 0x98:
             case 0xA1:
                 Cmd_SetTImg(c);
