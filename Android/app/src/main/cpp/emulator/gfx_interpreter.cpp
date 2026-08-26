@@ -524,8 +524,10 @@ static void Cmd_LoadBlock(GfxCommand cmd) {
 static int s_vtxCallCount = 0;
 static void Cmd_Vtx(GfxCommand cmd) {
     s_vtxCallCount++;
-    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-        "Cmd_Vtx CALL #%d: w0=0x%08X w1=0x%08X", s_vtxCallCount, cmd.w0, cmd.w1);
+    if (s_vtxCallCount <= 50) {
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+            "Cmd_Vtx CALL #%d: w0=0x%08X w1=0x%08X", s_vtxCallCount, cmd.w0, cmd.w1);
+    }
     uint32_t v0 = (cmd.w0 >> 16) & 0xFF; // Base vertex index in DMEM
     uint32_t n  = ((cmd.w0 >> 10) & 0x3F) + 1;  // F3DEX_GBI stores (count-1)
     uint32_t length = cmd.w0 & 0x3FF;           // Data length
@@ -979,7 +981,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         memcpy(&c, cur, 16);
         uint8_t opcode = GFX_OPCODE(c);
 
-        if (s_frameCount <= 3) {
+        if (s_frameCount <= 1) {
             __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
                 "cmd[%zu] depth=%d op=0x%02X w0=0x%08X w1=0x%08X",
                 total - 1, depth, opcode, c.w0, c.w1);
@@ -1059,9 +1061,9 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
             case 0x01: Cmd_Mtx(c); break;
             case 0x04: Cmd_Vtx(c); break;
-            case 0xBF: __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "TRI dispatch 0xBF w1=0x%08X", c.w1); Cmd_Tri1(c); break;
-            case 0xC4: __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "TRI dispatch 0xC4 w0=0x%08X", c.w0); Cmd_Tri2_F3DEX2(c); break;
-            case 0x34: __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "TRI dispatch 0x34 w0=0x%08X", c.w0); Cmd_Tri1_F3DEX2(c); break;
+            case 0xBF: { static int tri_bf=0; if(++tri_bf<=50) __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "TRI dispatch 0xBF w1=0x%08X", c.w1); Cmd_Tri1(c); break; }
+            case 0xC4: { static int tri_c4=0; if(++tri_c4<=50) __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "TRI dispatch 0xC4 w0=0x%08X", c.w0); Cmd_Tri2_F3DEX2(c); break; }
+            case 0x34: { static int tri_34=0; if(++tri_34<=50) __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "TRI dispatch 0x34 w0=0x%08X", c.w0); Cmd_Tri1_F3DEX2(c); break; }
 
             case 0xB1: __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "TRI dispatch 0xB1 w0=0x%08X", c.w0); Cmd_Tri2(c); break;
             case 0x03: Cmd_MoveMem(c); break;
@@ -1070,8 +1072,11 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0x06: {
                 uint32_t raw_addr = c.w1;
                 void *dl_ptr = RDP_TranslateAddr(raw_addr);
-                __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-                    "G_DL: addr=0x%08X resolved=%p", raw_addr, dl_ptr);
+                static int dl_log_count = 0;
+                if (++dl_log_count <= 20) {
+                    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+                        "G_DL: addr=0x%08X resolved=%p", raw_addr, dl_ptr);
+                }
                 if (!dl_ptr) {
                     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                         "G_DL: cannot resolve addr=0x%08X", raw_addr);
