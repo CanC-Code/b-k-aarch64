@@ -1092,6 +1092,19 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 Cmd_MoveMem(c);
                 break;
 
+            case 0xC4:
+                __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                    "DIAG 0xC4 w0=0x%08X w1=0x%08X v0=%u v1=%u v2=%u",
+                    c.w0, c.w1, (c.w0>>16)&0xFF, (c.w0>>8)&0xFF, c.w0&0xFF);
+                break;
+
+            case 0x34:
+                __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                    "DIAG 0x34 w0=0x%08X w1=0x%08X tri1=(%u,%u,%u) tri2=(%u,%u,%u)",
+                    c.w0, c.w1, (c.w0>>16)&0xFF, (c.w0>>8)&0xFF, c.w0&0xFF,
+                    (c.w1>>16)&0xFF, (c.w1>>8)&0xFF, c.w1&0xFF);
+                break;
+
             default:
                 __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                     "Stub: opcode 0x%02X not fully implemented", opcode);
