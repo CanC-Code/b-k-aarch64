@@ -1045,17 +1045,19 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
             case 0x01: Cmd_Mtx(c); break;
             case 0x04: Cmd_Vtx(c); break;
-            case 0xBF: Cmd_Tri1(c); break;
-            case 0xC4: Cmd_Tri2_F3DEX2(c); break;
-            case 0x34: Cmd_Tri1_F3DEX2(c); break;
+            case 0xBF: __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "TRI dispatch 0xBF w1=0x%08X", c.w1); Cmd_Tri1(c); break;
+            case 0xC4: __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "TRI dispatch 0xC4 w0=0x%08X", c.w0); Cmd_Tri2_F3DEX2(c); break;
+            case 0x34: __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "TRI dispatch 0x34 w0=0x%08X", c.w0); Cmd_Tri1_F3DEX2(c); break;
 
-            case 0xB1: Cmd_Tri2(c); break;
+            case 0xB1: __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "TRI dispatch 0xB1 w0=0x%08X", c.w0); Cmd_Tri2(c); break;
             case 0x03: Cmd_MoveMem(c); break;
             case 0xBC: Cmd_MoveWord(c); break;
 
             case 0x06: {
                 uint32_t raw_addr = c.w1;
                 void *dl_ptr = RDP_TranslateAddr(raw_addr);
+                __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+                    "G_DL: addr=0x%08X resolved=%p", raw_addr, dl_ptr);
                 if (!dl_ptr) {
                     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                         "G_DL: cannot resolve addr=0x%08X", raw_addr);
