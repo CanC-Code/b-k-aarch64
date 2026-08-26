@@ -627,6 +627,92 @@ static void Cmd_Tri2(GfxCommand cmd) {
     }
 }
 
+
+// =======================================================================
+// G_TRI1 (F3DEX2 variant, opcode 0xC4)
+// w0 = [G_TRI1:8][v0:8][v1:8][v2:8]
+// w1 = flag
+// =======================================================================
+static void Cmd_Tri1_F3DEX2(GfxCommand cmd) {
+    uint32_t v0 = (cmd.w0 >> 16) & 0xFF;
+    uint32_t v1 = (cmd.w0 >> 8) & 0xFF;
+    uint32_t v2 = cmd.w0 & 0xFF;
+
+    if (v0 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v1 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v2 >= (uint32_t)s_rdp.dmemVertexCount) {
+        LOGW("Cmd_Tri1_F3DEX2: invalid vertex indices %u,%u,%u (count=%d)", v0, v1, v2, s_rdp.dmemVertexCount);
+        return;
+    }
+
+    BKVertex* vert0 = &s_rdp.dmem[v0];
+    BKVertex* vert1 = &s_rdp.dmem[v1];
+    BKVertex* vert2 = &s_rdp.dmem[v2];
+
+    float sx0, sy0, sx1, sy1, sx2, sy2;
+    TransformVertex(vert0, &sx0, &sy0);
+    TransformVertex(vert1, &sx1, &sy1);
+    TransformVertex(vert2, &sx2, &sy2);
+
+    RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
+        vert0->r, vert0->g, vert0->b, vert0->a,
+        vert1->r, vert1->g, vert1->b, vert1->a,
+        vert2->r, vert2->g, vert2->b, vert2->a);
+}
+
+// =======================================================================
+// G_TRI2 (F3DEX2 variant, opcode 0x34)
+// w0 = [G_TRI2:8][v0:8][v1:8][v2:8]   (first triangle)
+// w1 = [flag:8][v3:8][v4:8][v5:8]     (second triangle, flag ignored)
+// =======================================================================
+static void Cmd_Tri2_F3DEX2(GfxCommand cmd) {
+    uint32_t v00 = (cmd.w0 >> 16) & 0xFF;
+    uint32_t v01 = (cmd.w0 >> 8) & 0xFF;
+    uint32_t v02 = cmd.w0 & 0xFF;
+    uint32_t v10 = (cmd.w1 >> 16) & 0xFF;
+    uint32_t v11 = (cmd.w1 >> 8) & 0xFF;
+    uint32_t v12 = cmd.w1 & 0xFF;
+
+    if (v00 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v01 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v02 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v10 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v11 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v12 >= (uint32_t)s_rdp.dmemVertexCount) {
+        LOGW("Cmd_Tri2_F3DEX2: invalid vertex indices %u,%u,%u,%u,%u,%u",
+             v00, v01, v02, v10, v11, v12);
+        return;
+    }
+
+    {
+        BKVertex* vt0 = &s_rdp.dmem[v00];
+        BKVertex* vt1 = &s_rdp.dmem[v01];
+        BKVertex* vt2 = &s_rdp.dmem[v02];
+        float sx0, sy0, sx1, sy1, sx2, sy2;
+        TransformVertex(vt0, &sx0, &sy0);
+        TransformVertex(vt1, &sx1, &sy1);
+        TransformVertex(vt2, &sx2, &sy2);
+        RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
+            vt0->r, vt0->g, vt0->b, vt0->a,
+            vt1->r, vt1->g, vt1->b, vt1->a,
+            vt2->r, vt2->g, vt2->b, vt2->a);
+    }
+
+    {
+        BKVertex* vt0 = &s_rdp.dmem[v10];
+        BKVertex* vt1 = &s_rdp.dmem[v11];
+        BKVertex* vt2 = &s_rdp.dmem[v12];
+        float sx0, sy0, sx1, sy1, sx2, sy2;
+        TransformVertex(vt0, &sx0, &sy0);
+        TransformVertex(vt1, &sx1, &sy1);
+        TransformVertex(vt2, &sx2, &sy2);
+        RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
+            vt0->r, vt0->g, vt0->b, vt0->a,
+            vt1->r, vt1->g, vt1->b, vt1->a,
+            vt2->r, vt2->g, vt2->b, vt2->a);
+    }
+}
+
 // =======================================================================
 // G_MOVEMEM - Load matrix (opcode 0xDC)
 // w0 = [opcode:8][length:8][offset:8][index:8]
@@ -1075,27 +1161,18 @@ Cmd_SetTImg(c);
             case 0xA1:
                 Cmd_SetTImg(c);
                 break;
-
-            case 0xC4:
-                __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                    "DIAG 0xC4 w0=0x%08X w1=0x%08X v0=%u v1=%u v2=%u flag=%u",
-                    c.w0, c.w1,
-                    (c.w0 >> 16) & 0xFF, (c.w0 >> 8) & 0xFF, c.w0 & 0xFF,
-                    (c.w1 >> 24) & 0xFF);
-                break;
-
-            case 0x34:
-                __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                    "DIAG 0x34 w0=0x%08X w1=0x%08X tri1=(%u,%u,%u) tri2=(%u,%u,%u)",
-                    c.w0, c.w1,
-                    (c.w0 >> 16) & 0xFF, (c.w0 >> 8) & 0xFF, c.w0 & 0xFF,
-                    (c.w1 >> 16) & 0xFF, (c.w1 >> 8) & 0xFF, c.w1 & 0xFF);
-                break;
-
-            case 0x54:
+case 0x54:
                 __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                     "DIAG 0x54 w0=0x%08X w1=0x%08X",
                     c.w0, c.w1);
+                break;
+
+            case 0xC4:
+                Cmd_Tri1_F3DEX2(c);
+                break;
+
+            case 0x34:
+                Cmd_Tri2_F3DEX2(c);
                 break;
 
             default:
