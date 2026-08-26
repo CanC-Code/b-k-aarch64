@@ -40,6 +40,7 @@ uint8_t* gN64_ROM_Base = nullptr;
 
 uint16_t gFramebuffers[2][FB_WIDTH * FB_HEIGHT];
 uint32_t g_active_fb_offset = 0x400000;
+pthread_mutex_t g_fbMutex = PTHREAD_MUTEX_INITIALIZER;
 
 extern "C" {
 
@@ -177,6 +178,7 @@ extern "C" {
         }
 
         if (s_convBuffer) {
+            pthread_mutex_lock(&g_fbMutex);
             uint16_t* src = (uint16_t*)fbBase;
             uint8_t*  dst = s_convBuffer;
             for (s32 y = 0; y < fbHeight; y++) {
@@ -219,6 +221,7 @@ extern "C" {
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fbWidth, fbHeight, 0,
                          GL_RGBA, GL_UNSIGNED_BYTE, s_convBuffer);
         }
+        pthread_mutex_unlock(&g_fbMutex);
     }
 
 } // extern "C"
