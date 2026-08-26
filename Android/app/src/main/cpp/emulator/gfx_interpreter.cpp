@@ -977,6 +977,11 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             break;
         }
 
+        // Yield to other threads every 256 commands to prevent UI starvation
+        if ((total & 0xFF) == 0) {
+            sched_yield();
+        }
+
         GfxCommand c = {0};
         memcpy(&c, cur, 16);
         uint8_t opcode = GFX_OPCODE(c);
