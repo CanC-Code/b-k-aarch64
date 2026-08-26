@@ -1039,12 +1039,10 @@ case 0xDC:
             case 0x92:
             case 0x95:
             case 0x96:
-            case 0x98:
             case 0x99:
             case 0x9A:
             case 0x9B:
             case 0x9D:
-            case 0xA1:
             case 0xA6:
             case 0xA7:
             case 0xA8:
@@ -1080,6 +1078,11 @@ case 0xDC:
             case 0x34:
                 LOGW("Stub: opcode 0x%02X not fully implemented", opcode);
                 break;
+            case 0x98:
+            case 0xA1:
+                Cmd_SetTImg(c);
+                break;
+
             default:
                 if (s_frameCount <= 3)
                     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
