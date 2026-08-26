@@ -243,12 +243,20 @@ static void RDP_FetchTexel(int tile, uint32_t s, uint32_t t, uint8_t* outRGBA) {
 // Triangle Rasterizer (flat shaded, no Z-buffer yet)
 // =======================================================================
 
+static int s_triangleCount = 0;
+
 static void RasterizeTriangle(
     float x0, float y0, float x1, float y1, float x2, float y2,
     uint8_t r0, uint8_t g0, uint8_t b0, uint8_t a0,
     uint8_t r1, uint8_t g1, uint8_t b1, uint8_t a1,
     uint8_t r2, uint8_t g2, uint8_t b2, uint8_t a2)
 {
+    s_triangleCount++;
+    if (s_triangleCount <= 10) {
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+            "RasterizeTriangle #%d: (%.1f,%.1f) (%.1f,%.1f) (%.1f,%.1f)",
+            s_triangleCount, x0, y0, x1, y1, x2, y2);
+    }
     // Sort vertices by Y (y0 <= y1 <= y2)
     if (y0 > y1) { std::swap(x0, x1); std::swap(y0, y1); std::swap(r0, r1); std::swap(g0, g1); std::swap(b0, b1); std::swap(a0, a1); }
     if (y1 > y2) { std::swap(x1, x2); std::swap(y1, y2); std::swap(r1, r2); std::swap(g1, g2); std::swap(b1, b2); std::swap(a1, a2); }
@@ -768,9 +776,18 @@ static void Cmd_MoveWord(GfxCommand cmd) {
 // G_MTX - Load matrix (opcode 0x01)
 // =======================================================================
 static void Cmd_Mtx(GfxCommand cmd) {
+    uint32_t flag = (cmd.w0 >> 16) & 0xFF;
     uint32_t raw_addr = cmd.w1;
     void *mtx_src = RDP_TranslateAddr(raw_addr);
-    if (mtx_src) Matrix_LoadFromN64(s_rdp.modelview, mtx_src);
+    if (!mtx_src) return;
+    
+    // G_MTX flags: bit 0 = push, bit 1 = load (not used), bit 2 = projection
+    // In F3DEX2: G_MTX_PROJECTION = 0x04, G_MTX_MODELVIEW = 0x00
+    if (flag & 0x04) {
+        Matrix_LoadFromN64(s_rdp.projection, mtx_src);
+    } else {
+        Matrix_LoadFromN64(s_rdp.modelview, mtx_src);
+    }
 }
 
 // =======================================================================
@@ -885,6 +902,10 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     }
 
     RDP_InitState();
+
+    // Clear both framebuffers to black at start of each frame
+    memset(gFramebuffers[0], 0, sizeof(gFramebuffers[0]));
+    memset(gFramebuffers[1], 0, sizeof(gFramebuffers[1]));
 
     struct DListFrame {
         uint8_t *ptr;
