@@ -85,8 +85,9 @@ static void DestroyEGL_Locked() {
 
 extern "C" {
     extern uint8_t* gN64_RDRAM;
-    extern int32_t gFramebufferWidth;
-    extern int32_t gFramebufferHeight;
+    // Defined in lowlevel_bridge.cpp
+    extern s32 gFramebufferWidth;
+    extern s32 gFramebufferHeight;
     extern uint32_t* gN64_Reg_Base;
 
     void InitN64Registers(const char* assetDir);

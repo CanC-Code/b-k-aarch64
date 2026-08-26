@@ -41,6 +41,10 @@ uint8_t* gN64_ROM_Base = nullptr;
 uint16_t gFramebuffers[2][FB_WIDTH * FB_HEIGHT];
 uint32_t g_active_fb_offset = 0x400000;
 
+// Actual framebuffer dimensions (defined here, not extern)
+s32 gFramebufferWidth = FB_WIDTH;
+s32 gFramebufferHeight = FB_HEIGHT;
+
 extern "C" {
 
     void HLE_TriggerN64Event(int event_id);
