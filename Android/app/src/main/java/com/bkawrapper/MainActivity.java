@@ -79,8 +79,8 @@ public class MainActivity extends AppCompatActivity {
         File autoRom = new File(getFilesDir(), "auto_rom.z64");
         if (autoRom.exists()) {
             Log.i(TAG, "Auto-load ROM detected: " + autoRom.getAbsolutePath());
-            // Boot directly without extraction - the ROM is already in place
-            bootGameEngine();
+            // Run OTR extraction first - creates rom_base.bin required by engine
+            startExtraction(Uri.fromFile(autoRom));
             return;
         }
 
