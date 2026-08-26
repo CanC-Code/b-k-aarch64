@@ -1131,6 +1131,27 @@ case 0xDC:
             case 0xD4: // G_LOADBLOCK - load texture block (handled by 0xF3)
             case 0xDD: // G_SETTIMG - set texture image (handled by 0xFD)
                 break;
+            case 0x05: // G_TEXTURE - enable texture
+            case 0x11: // G_RDPHALF_1 - RDP half command
+            case 0x22: // G_RDPHALF_2 - RDP half command
+            case 0x2B: // G_SETTIMG - set texture image
+            case 0x3C: // G_SETTILESIZE - set tile size
+            case 0x48: // G_SETTIMG - set texture image
+            case 0x4B: // G_LOADBLOCK - load texture block
+            case 0x4C: // G_SETTILE - set tile
+            case 0x54: // G_SETSCISSOR - set scissor box
+            case 0x62: // G_SETTILESIZE - set tile size
+            case 0x6A: // G_SETTIMG - set texture image
+            case 0x6C: // G_SETTILE - set tile
+            case 0x73: // G_SETTIMG - set texture image
+            case 0x87: // G_LOADBLOCK - load texture block
+            case 0x96: // G_SETTILESIZE - set tile size
+            case 0x9A: // G_SETTIMG - set texture image
+            case 0x9D: // G_SETTILE - set tile
+            case 0xAB: // G_SETTIMG - set texture image
+            case 0xD0: // G_LOADBLOCK - load texture block
+            case 0xEB: // G_SETTIMG - set texture image
+                break;
 default:
                 __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                     "Stub: opcode 0x%02X not fully implemented", opcode);
