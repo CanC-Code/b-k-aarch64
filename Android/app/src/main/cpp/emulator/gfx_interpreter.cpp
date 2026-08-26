@@ -151,7 +151,8 @@ static void RDP_InitState() {
     s_rdp.activeTile = 0;
     s_rdp.textureEnabled = false;
     s_rdp.matrixMode = 0;
-    s_rdp.dmemVertexCount = 0;
+    // CRITICAL: Do NOT reset dmemVertexCount here - it was just restored above.
+    // If set to 0, all triangle commands will fail bounds checks.
     
     // Initialize matrices to identity
     for (int i = 0; i < 4; i++)
@@ -914,9 +915,14 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
     RDP_InitState();
 
-    // Clear both framebuffers to black at start of each frame
-    memset(gFramebuffers[0], 0, sizeof(gFramebuffers[0]));
-    memset(gFramebuffers[1], 0, sizeof(gFramebuffers[1]));
+    // Only clear framebuffers on first call (static flag)
+    static bool s_firstFrame = true;
+    if (s_firstFrame) {
+        memset(gFramebuffers[0], 0, sizeof(gFramebuffers[0]));
+        memset(gFramebuffers[1], 0, sizeof(gFramebuffers[1]));
+        s_firstFrame = false;
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "Framebuffers cleared (first frame)");
+    }
 
     struct DListFrame {
         uint8_t *ptr;
