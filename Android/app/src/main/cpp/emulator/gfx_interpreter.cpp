@@ -1123,6 +1123,14 @@ case 0xDC:
             case 0xF8: // G_SETTILESIZE - set tile size (handled by 0xF2)
             case 0xF9: // G_SETTILE - set tile (handled by 0xF5)
                 break;
+            case 0x12: // G_LOADUCODE - load microcode (no-op)
+            case 0x20: // G_RDPHALF_1 - RDP half command
+            case 0x21: // G_RDPHALF_2 - RDP half command
+            case 0x36: // G_SETTILESIZE - set tile size (handled by 0xF2)
+            case 0x0A: // G_SETTIMG - set texture image (handled by 0xFD)
+            case 0xD4: // G_LOADBLOCK - load texture block (handled by 0xF3)
+            case 0xDD: // G_SETTIMG - set texture image (handled by 0xFD)
+                break;
 default:
                 __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                     "Stub: opcode 0x%02X not fully implemented", opcode);
