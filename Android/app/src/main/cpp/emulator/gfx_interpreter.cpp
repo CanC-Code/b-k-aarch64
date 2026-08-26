@@ -352,11 +352,11 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
     *sy = (1.0f - oy) * 0.5f * (float)FB_HEIGHT;
 
     // DEBUG FALLBACK: If matrices produce off-screen coordinates,
-    // map model space directly to screen space
+    // map model space directly to screen space with wider range
     if (*sx < -1000 || *sx > 1000 || *sy < -1000 || *sy > 1000) {
-        // N64 model space is roughly [-256, 256] for x/y
-        *sx = (x + 256.0f) * 0.5f * (float)FB_WIDTH / 256.0f;
-        *sy = (y + 256.0f) * 0.5f * (float)FB_HEIGHT / 256.0f;
+        // N64 model space can be [-512, 512] - use wider mapping
+        *sx = (x + 512.0f) * 0.5f * (float)FB_WIDTH / 512.0f;
+        *sy = (y + 512.0f) * 0.5f * (float)FB_HEIGHT / 512.0f;
         static int debugCount = 0;
         if (debugCount++ < 5) {
             __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
