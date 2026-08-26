@@ -544,9 +544,9 @@ static void Cmd_Vtx(GfxCommand cmd) {
 
 static void Cmd_Tri1(GfxCommand cmd) {
     uint32_t packed = cmd.w1;   // F3DEX_GBI: indices packed in w1, opcode only in w0
-    uint32_t v0 = (packed >> 16) & 0xFF;
-    uint32_t v1 = (packed >> 8) & 0xFF;
-    uint32_t v2 = packed & 0xFF;
+    uint32_t v0 = ((packed >> 16) & 0xFF) >> 1;
+    uint32_t v1 = ((packed >> 8) & 0xFF) >> 1;
+    uint32_t v2 = (packed & 0xFF) >> 1;
 
     if (v0 >= (uint32_t)s_rdp.dmemVertexCount ||
         v1 >= (uint32_t)s_rdp.dmemVertexCount ||
@@ -580,12 +580,12 @@ static void Cmd_Tri2(GfxCommand cmd) {
     uint32_t tri1 = cmd.w0 & 0xFFFFFF;  // first triangle packed in lower 24 bits
     uint32_t tri2 = cmd.w1;             // second triangle packed in w1
 
-    uint32_t v00 = (tri1 >> 16) & 0xFF;
-    uint32_t v01 = (tri1 >> 8) & 0xFF;
-    uint32_t v02 = tri1 & 0xFF;
-    uint32_t v10 = (tri2 >> 16) & 0xFF;
-    uint32_t v11 = (tri2 >> 8) & 0xFF;
-    uint32_t v12 = tri2 & 0xFF;
+    uint32_t v00 = ((tri1 >> 16) & 0xFF) >> 1;
+    uint32_t v01 = ((tri1 >> 8) & 0xFF) >> 1;
+    uint32_t v02 = (tri1 & 0xFF) >> 1;
+    uint32_t v10 = ((tri2 >> 16) & 0xFF) >> 1;
+    uint32_t v11 = ((tri2 >> 8) & 0xFF) >> 1;
+    uint32_t v12 = (tri2 & 0xFF) >> 1;
 
     if (v00 >= (uint32_t)s_rdp.dmemVertexCount ||
         v01 >= (uint32_t)s_rdp.dmemVertexCount ||
