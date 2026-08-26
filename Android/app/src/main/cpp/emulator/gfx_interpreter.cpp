@@ -131,15 +131,15 @@ static inline int16_t read_int16(const uint8_t* ptr) {
 static void RDP_InitState() {
     // Save vertex buffer across frames (RSP DMEM persists between tasks)
     static BKVertex saved_dmem[DMEM_VERTEX_COUNT];
-    static int saved_dmemVertexCount = 0;
+    static int saved_s_rdp.dmemVertexCount = 0;
     memcpy(saved_dmem, s_rdp.dmem, sizeof(saved_dmem));
-    saved_dmemVertexCount = s_rdp.dmemVertexCount;
+    saved_s_rdp.dmemVertexCount = s_rdp.s_rdp.dmemVertexCount;
 
     memset(&s_rdp, 0, sizeof(s_rdp));
 
     // Restore vertex buffer and count
     memcpy(s_rdp.dmem, saved_dmem, sizeof(saved_dmem));
-    s_rdp.dmemVertexCount = saved_dmemVertexCount;
+    s_rdp.s_rdp.dmemVertexCount = saved_s_rdp.dmemVertexCount;
 
     s_rdp.primR = s_rdp.primG = s_rdp.primB = s_rdp.primA = 255;
     s_rdp.envR = s_rdp.envG = s_rdp.envB = s_rdp.envA = 255;
@@ -149,7 +149,7 @@ static void RDP_InitState() {
     s_rdp.activeTile = 0;
     s_rdp.textureEnabled = false;
     s_rdp.matrixMode = 0;
-    s_rdp.dmemVertexCount = 0;
+    s_rdp.s_rdp.dmemVertexCount = 0;
     
     // Initialize matrices to identity
     for (int i = 0; i < 4; i++)
@@ -512,8 +512,8 @@ static void Cmd_Vtx(GfxCommand cmd) {
         return;
     }
     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-        "Cmd_Vtx: loading v0=%u n=%u addr=0x%08X dmemVertexCount=%d",
-        v0, n, addr, s_rdp.dmemVertexCount);
+        "Cmd_Vtx: loading v0=%u n=%u addr=0x%08X s_rdp.dmemVertexCount=%d",
+        v0, n, addr, s_rdp.s_rdp.dmemVertexCount);
     for (uint32_t i = 0; i < n; i++) {
         BKVertex* v = &s_rdp.dmem[v0 + i];
         // N64 Vtx format (16 bytes): ob[3](6 bytes), flag(2), tc[2](4), cn[4](4)
@@ -530,10 +530,10 @@ static void Cmd_Vtx(GfxCommand cmd) {
         src += 16;
     }
     
-    if (v0 + n > (uint32_t)s_rdp.dmemVertexCount)
-        s_rdp.dmemVertexCount = v0 + n;
+    if (v0 + n > (uint32_t)s_rdp.s_rdp.dmemVertexCount)
+        s_rdp.s_rdp.dmemVertexCount = v0 + n;
     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-        "Cmd_Vtx: loaded %u vertices, dmemVertexCount=%d", n, s_rdp.dmemVertexCount);
+        "Cmd_Vtx: loaded %u vertices, s_rdp.dmemVertexCount=%d", n, s_rdp.s_rdp.dmemVertexCount);
 }
 
 // =======================================================================
@@ -548,10 +548,10 @@ static void Cmd_Tri1(GfxCommand cmd) {
     uint32_t v1 = ((packed >> 8) & 0xFF) >> 1;
     uint32_t v2 = (packed & 0xFF) >> 1;
 
-    if (v0 >= (uint32_t)s_rdp.dmemVertexCount ||
-        v1 >= (uint32_t)s_rdp.dmemVertexCount ||
-        v2 >= (uint32_t)s_rdp.dmemVertexCount) {
-        LOGW("Cmd_Tri1: invalid vertex indices %u,%u,%u (count=%d)", v0, v1, v2, s_rdp.dmemVertexCount);
+    if (v0 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
+        v1 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
+        v2 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount) {
+        LOGW("Cmd_Tri1: invalid vertex indices %u,%u,%u (count=%d)", v0, v1, v2, s_rdp.s_rdp.dmemVertexCount);
         return;
     }
 
@@ -587,12 +587,12 @@ static void Cmd_Tri2(GfxCommand cmd) {
     uint32_t v11 = ((tri2 >> 8) & 0xFF) >> 1;
     uint32_t v12 = (tri2 & 0xFF) >> 1;
 
-    if (v00 >= (uint32_t)s_rdp.dmemVertexCount ||
-        v01 >= (uint32_t)s_rdp.dmemVertexCount ||
-        v02 >= (uint32_t)s_rdp.dmemVertexCount ||
-        v10 >= (uint32_t)s_rdp.dmemVertexCount ||
-        v11 >= (uint32_t)s_rdp.dmemVertexCount ||
-        v12 >= (uint32_t)s_rdp.dmemVertexCount) {
+    if (v00 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
+        v01 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
+        v02 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
+        v10 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
+        v11 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
+        v12 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount) {
         LOGW("Cmd_Tri2: invalid vertex indices %u,%u,%u,%u,%u,%u",
              v00, v01, v02, v10, v11, v12);
         return;
@@ -638,10 +638,10 @@ static void Cmd_Tri1_F3DEX2(GfxCommand cmd) {
     uint32_t v1 = (cmd.w0 >> 9) & 0x7F;
     uint32_t v2 = (cmd.w0 >> 1) & 0x7F;
 
-    if (v0 >= (uint32_t)s_rdp.dmemVertexCount ||
-        v1 >= (uint32_t)s_rdp.dmemVertexCount ||
-        v2 >= (uint32_t)s_rdp.dmemVertexCount) {
-        LOGW("Cmd_Tri1_F3DEX2: invalid vertex indices %u,%u,%u (count=%d)", v0, v1, v2, s_rdp.dmemVertexCount);
+    if (v0 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
+        v1 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
+        v2 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount) {
+        LOGW("Cmd_Tri1_F3DEX2: invalid vertex indices %u,%u,%u (count=%d)", v0, v1, v2, s_rdp.s_rdp.dmemVertexCount);
         return;
     }
 
@@ -673,12 +673,12 @@ static void Cmd_Tri2_F3DEX2(GfxCommand cmd) {
     uint32_t v11 = (cmd.w1 >> 9) & 0x7F;
     uint32_t v12 = (cmd.w1 >> 1) & 0x7F;
 
-    if (v00 >= (uint32_t)s_rdp.dmemVertexCount ||
-        v01 >= (uint32_t)s_rdp.dmemVertexCount ||
-        v02 >= (uint32_t)s_rdp.dmemVertexCount ||
-        v10 >= (uint32_t)s_rdp.dmemVertexCount ||
-        v11 >= (uint32_t)s_rdp.dmemVertexCount ||
-        v12 >= (uint32_t)s_rdp.dmemVertexCount) {
+    if (v00 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
+        v01 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
+        v02 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
+        v10 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
+        v11 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
+        v12 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount) {
         LOGW("Cmd_Tri2_F3DEX2: invalid vertex indices %u,%u,%u,%u,%u,%u",
              v00, v01, v02, v10, v11, v12);
         return;
@@ -1001,69 +1001,9 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0x01: Cmd_Mtx(c); break;
             case 0x04: Cmd_Vtx(c); break;
             case 0xBF: Cmd_Tri1(c); break;
-            case 0xC4: { // F3DEX2 TRI2 - draw two triangles
-                uint32_t v0 = (w0 >> 17) & 0x7F;
-                uint32_t v1 = (w0 >> 9) & 0x7F;
-                uint32_t v2 = (w0 >> 1) & 0x7F;
-                uint32_t v3 = (w1 >> 17) & 0x7F;
-                uint32_t v4 = (w1 >> 9) & 0x7F;
-                uint32_t v5 = (w1 >> 1) & 0x7F;
-                
-                if (v0 < dmemVertexCount && v1 < dmemVertexCount && v2 < dmemVertexCount) {
-                    BKVertex* vert0 = &dmemVertices[v0];
-                    BKVertex* vert1 = &dmemVertices[v1];
-                    BKVertex* vert2 = &dmemVertices[v2];
-                    
-                    float sx0, sy0, sx1, sy1, sx2, sy2;
-                    TransformVertex(vert0, &sx0, &sy0);
-                    TransformVertex(vert1, &sx1, &sy1);
-                    TransformVertex(vert2, &sx2, &sy2);
-                    
-                    RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
-                                    vert0->r, vert0->g, vert0->b, vert0->a,
-                                    vert1->r, vert1->g, vert1->b, vert1->a,
-                                    vert2->r, vert2->g, vert2->b, vert2->a);
-                }
-                
-                if (v3 < dmemVertexCount && v4 < dmemVertexCount && v5 < dmemVertexCount) {
-                    BKVertex* vert3 = &dmemVertices[v3];
-                    BKVertex* vert4 = &dmemVertices[v4];
-                    BKVertex* vert5 = &dmemVertices[v5];
-                    
-                    float sx3, sy3, sx4, sy4, sx5, sy5;
-                    TransformVertex(vert3, &sx3, &sy3);
-                    TransformVertex(vert4, &sx4, &sy4);
-                    TransformVertex(vert5, &sx5, &sy5);
-                    
-                    RasterizeTriangle(sx3, sy3, sx4, sy4, sx5, sy5,
-                                    vert3->r, vert3->g, vert3->b, vert3->a,
-                                    vert4->r, vert4->g, vert4->b, vert4->a,
-                                    vert5->r, vert5->g, vert5->b, vert5->a);
-                }
-                break;
-            }
-            case 0x34: { // F3DEX2 TRI1 - draw one triangle
-                uint32_t v0 = (w0 >> 17) & 0x7F;
-                uint32_t v1 = (w0 >> 9) & 0x7F;
-                uint32_t v2 = (w0 >> 1) & 0x7F;
-                
-                if (v0 < dmemVertexCount && v1 < dmemVertexCount && v2 < dmemVertexCount) {
-                    BKVertex* vert0 = &dmemVertices[v0];
-                    BKVertex* vert1 = &dmemVertices[v1];
-                    BKVertex* vert2 = &dmemVertices[v2];
-                    
-                    float sx0, sy0, sx1, sy1, sx2, sy2;
-                    TransformVertex(vert0, &sx0, &sy0);
-                    TransformVertex(vert1, &sx1, &sy1);
-                    TransformVertex(vert2, &sx2, &sy2);
-                    
-                    RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
-                                    vert0->r, vert0->g, vert0->b, vert0->a,
-                                    vert1->r, vert1->g, vert1->b, vert1->a,
-                                    vert2->r, vert2->g, vert2->b, vert2->a);
-                }
-                break;
-            }
+            case 0xC4: Cmd_Tri2_F3DEX2(c); break;
+            case 0x34: Cmd_Tri1_F3DEX2(c); break;
+
             case 0xB1: Cmd_Tri2(c); break;
             case 0x03: Cmd_MoveMem(c); break;
             case 0xBC: Cmd_MoveWord(c); break;
@@ -1113,7 +1053,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     zero_run = 0;
                 } else {
                     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-                        "ENDDL top-level, vertices=%d", s_rdp.dmemVertexCount);
+                        "ENDDL top-level, vertices=%d", s_rdp.s_rdp.dmemVertexCount);
                     return;
                 }
                 break;
