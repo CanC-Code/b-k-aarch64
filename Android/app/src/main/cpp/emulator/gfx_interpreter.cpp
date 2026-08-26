@@ -250,6 +250,7 @@ static void RDP_FetchTexel(int tile, uint32_t s, uint32_t t, uint8_t* outRGBA) {
 // =======================================================================
 
 static int s_triangleCount = 0;
+static int s_invalidTriCount = 0;
 
 static void RasterizeTriangle(
     float x0, float y0, float x1, float y1, float x2, float y2,
@@ -586,8 +587,8 @@ static void Cmd_Tri1(GfxCommand cmd) {
         v1 >= (uint32_t)s_rdp.dmemVertexCount ||
         v2 >= (uint32_t)s_rdp.dmemVertexCount) {
         __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-            "Cmd_Tri1: INVALID vertex indices %u,%u,%u (dmemVertexCount=%d)",
-            v0, v1, v2, s_rdp.dmemVertexCount);
+            "Cmd_Tri1: INVALID vertex indices %u,%u,%u (dmemVertexCount=%d) w1=0x%08X",
+            v0, v1, v2, s_rdp.dmemVertexCount, cmd.w1);
         return;
     }
 
@@ -679,8 +680,8 @@ static void Cmd_Tri1_F3DEX2(GfxCommand cmd) {
         v1 >= (uint32_t)s_rdp.dmemVertexCount ||
         v2 >= (uint32_t)s_rdp.dmemVertexCount) {
         __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-            "Cmd_Tri1_F3DEX2: INVALID vertex indices %u,%u,%u (dmemVertexCount=%d)",
-            v0, v1, v2, s_rdp.dmemVertexCount);
+            "Cmd_Tri1_F3DEX2: INVALID vertex indices %u,%u,%u (dmemVertexCount=%d) w0=0x%08X",
+            v0, v1, v2, s_rdp.dmemVertexCount, cmd.w0);
         return;
     }
 
