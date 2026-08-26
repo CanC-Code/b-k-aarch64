@@ -42,8 +42,8 @@ uint16_t gFramebuffers[2][FB_WIDTH * FB_HEIGHT];
 uint32_t g_active_fb_offset = 0x400000;
 
 // Actual framebuffer dimensions (defined here, not extern)
-s32 gFramebufferWidth = FB_WIDTH;
-s32 gFramebufferHeight = FB_HEIGHT;
+int32_t gFramebufferWidth = FB_WIDTH;
+int32_t gFramebufferHeight = FB_HEIGHT;
 
 extern "C" {
 
