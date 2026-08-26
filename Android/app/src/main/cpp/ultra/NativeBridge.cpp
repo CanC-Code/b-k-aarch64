@@ -346,7 +346,9 @@ Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass clazz, jint t
     }
     pthread_mutex_unlock(&g_vblankMutex);
 
-    VideoPlugin_OutputFrameTexture((uint32_t)textureId);
+    // Skip GL upload from this thread - it crashes the binder thread.
+    // The GLRenderer.onDrawFrame will handle texture upload itself.
+    // VideoPlugin_OutputFrameTexture((uint32_t)textureId);
 
     BKA_DropEngineLock();
 
