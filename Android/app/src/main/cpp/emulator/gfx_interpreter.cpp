@@ -1056,23 +1056,27 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 break;
 
             case 0x14:
-                Cmd_TexRect(c); break;
             case 0x1C:
-                Cmd_TexRect(c); break;
-case 0x40:
-                Cmd_LoadTLUT(c); break;
-case 0xA4:
-                Cmd_LoadBlock(c); break;
-case 0xC4:
-                Cmd_Tri1_F3DEX2(c);
+            case 0xE4:
+            case 0xE5:
+                Cmd_TexRect(c);
                 break;
 
-            case 0x34:
-                Cmd_Tri2_F3DEX2(c);
+            case 0x40:
+                Cmd_LoadTLUT(c);
                 break;
 
-                Cmd_SetOtherModeL(c); break;
-                Cmd_SetOtherModeH(c); break;
+            case 0xA4:
+            case 0xB0:
+            case 0xF3:
+                Cmd_LoadBlock(c);
+                break;
+
+            case 0x98:
+            case 0xA1:
+                Cmd_SetTImg(c);
+                break;
+
             case 0x84:
                 Cmd_SetOtherModeL(c);
                 break;
@@ -1080,7 +1084,20 @@ case 0xC4:
             case 0x60:
                 Cmd_SetOtherModeH(c);
                 break;
-default:
+
+            case 0xC4:
+                Cmd_Tri1_F3DEX2(c);
+                break;
+
+            case 0x34:
+                Cmd_Tri2_F3DEX2(c);
+                break;
+
+            case 0xDC:
+                Cmd_MoveMem(c);
+                break;
+
+            default:
                 if (s_frameCount <= 3)
                     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                         "Unhandled op=0x%02X at cmd %zu", opcode, total - 1);
