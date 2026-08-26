@@ -179,15 +179,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startExtraction(Uri romUri) {
-        if (menuOverlay != null) menuOverlay.setVisibility(View.GONE);
-        if (otrContainer != null) otrContainer.setVisibility(View.VISIBLE);
-
+        // Don't block main thread - just start the service
         Intent serviceIntent = new Intent(this, OtrService.class);
         serviceIntent.putExtra("uri",    romUri.toString());
         serviceIntent.putExtra("outDir", getFilesDir().getAbsolutePath());
 
         // Upgraded to startForegroundService for Target SDK 34 compliance
         ContextCompat.startForegroundService(this, serviceIntent);
+        
+        // Keep UI responsive while extraction runs
+        new Thread(() -> {
+            try { Thread.sleep(500); } catch (InterruptedException e) {}
+        }).start();
     }
 
     private void updateUI(int percent, String fileName) {
