@@ -507,7 +507,11 @@ static void Cmd_LoadBlock(GfxCommand cmd) {
 // w0 = [G_VTX:8][v0:8][n:6][length:10]
 // w1 = address of Vtx data in RDRAM
 // =======================================================================
+static int s_vtxCallCount = 0;
 static void Cmd_Vtx(GfxCommand cmd) {
+    s_vtxCallCount++;
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+        "Cmd_Vtx CALL #%d: w0=0x%08X w1=0x%08X", s_vtxCallCount, cmd.w0, cmd.w1);
     uint32_t v0 = (cmd.w0 >> 16) & 0xFF; // Base vertex index in DMEM
     uint32_t n  = ((cmd.w0 >> 10) & 0x3F) + 1;  // F3DEX_GBI stores (count-1)
     uint32_t length = cmd.w0 & 0x3FF;           // Data length
@@ -893,10 +897,13 @@ static void* RSP_ResolveGfxAddress(uint32_t addr) {
 // Main Dispatch
 // =======================================================================
 
+static int s_rspCallCount = 0;
 void RSP_ProcessGfxTask(OSTask* tp) {
+    s_rspCallCount++;
     __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-        "RSP_ProcessGfxTask called tp=%p type=%d data=%p size=%u",
-        tp, tp ? tp->t.type : -1, tp ? tp->t.data_ptr : nullptr, tp ? tp->t.data_size : 0);
+        "RSP_ProcessGfxTask CALL #%d: tp=%p type=%d data=%p size=%u dmemVertexCount=%d",
+        s_rspCallCount, tp, tp ? tp->t.type : -1, tp ? tp->t.data_ptr : nullptr,
+        tp ? tp->t.data_size : 0, s_rdp.dmemVertexCount);
 
     if (!tp || !tp->t.data_ptr || tp->t.data_size == 0) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
