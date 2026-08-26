@@ -133,13 +133,13 @@ static void RDP_InitState() {
     static BKVertex saved_dmem[DMEM_VERTEX_COUNT];
     static int saved_s_rdp.dmemVertexCount = 0;
     memcpy(saved_dmem, s_rdp.dmem, sizeof(saved_dmem));
-    saved_s_rdp.dmemVertexCount = s_rdp.s_rdp.dmemVertexCount;
+    saved_s_rdp.dmemVertexCount = s_rdp.dmemVertexCount;
 
     memset(&s_rdp, 0, sizeof(s_rdp));
 
     // Restore vertex buffer and count
     memcpy(s_rdp.dmem, saved_dmem, sizeof(saved_dmem));
-    s_rdp.s_rdp.dmemVertexCount = saved_s_rdp.dmemVertexCount;
+    s_rdp.dmemVertexCount = saved_s_rdp.dmemVertexCount;
 
     s_rdp.primR = s_rdp.primG = s_rdp.primB = s_rdp.primA = 255;
     s_rdp.envR = s_rdp.envG = s_rdp.envB = s_rdp.envA = 255;
@@ -149,7 +149,7 @@ static void RDP_InitState() {
     s_rdp.activeTile = 0;
     s_rdp.textureEnabled = false;
     s_rdp.matrixMode = 0;
-    s_rdp.s_rdp.dmemVertexCount = 0;
+    s_rdp.dmemVertexCount = 0;
     
     // Initialize matrices to identity
     for (int i = 0; i < 4; i++)
@@ -513,7 +513,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
     }
     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
         "Cmd_Vtx: loading v0=%u n=%u addr=0x%08X s_rdp.dmemVertexCount=%d",
-        v0, n, addr, s_rdp.s_rdp.dmemVertexCount);
+        v0, n, addr, s_rdp.dmemVertexCount);
     for (uint32_t i = 0; i < n; i++) {
         BKVertex* v = &s_rdp.dmem[v0 + i];
         // N64 Vtx format (16 bytes): ob[3](6 bytes), flag(2), tc[2](4), cn[4](4)
@@ -530,10 +530,10 @@ static void Cmd_Vtx(GfxCommand cmd) {
         src += 16;
     }
     
-    if (v0 + n > (uint32_t)s_rdp.s_rdp.dmemVertexCount)
-        s_rdp.s_rdp.dmemVertexCount = v0 + n;
+    if (v0 + n > (uint32_t)s_rdp.dmemVertexCount)
+        s_rdp.dmemVertexCount = v0 + n;
     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-        "Cmd_Vtx: loaded %u vertices, s_rdp.dmemVertexCount=%d", n, s_rdp.s_rdp.dmemVertexCount);
+        "Cmd_Vtx: loaded %u vertices, s_rdp.dmemVertexCount=%d", n, s_rdp.dmemVertexCount);
 }
 
 // =======================================================================
@@ -548,10 +548,10 @@ static void Cmd_Tri1(GfxCommand cmd) {
     uint32_t v1 = ((packed >> 8) & 0xFF) >> 1;
     uint32_t v2 = (packed & 0xFF) >> 1;
 
-    if (v0 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
-        v1 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
-        v2 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount) {
-        LOGW("Cmd_Tri1: invalid vertex indices %u,%u,%u (count=%d)", v0, v1, v2, s_rdp.s_rdp.dmemVertexCount);
+    if (v0 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v1 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v2 >= (uint32_t)s_rdp.dmemVertexCount) {
+        LOGW("Cmd_Tri1: invalid vertex indices %u,%u,%u (count=%d)", v0, v1, v2, s_rdp.dmemVertexCount);
         return;
     }
 
@@ -587,12 +587,12 @@ static void Cmd_Tri2(GfxCommand cmd) {
     uint32_t v11 = ((tri2 >> 8) & 0xFF) >> 1;
     uint32_t v12 = (tri2 & 0xFF) >> 1;
 
-    if (v00 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
-        v01 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
-        v02 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
-        v10 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
-        v11 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
-        v12 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount) {
+    if (v00 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v01 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v02 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v10 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v11 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v12 >= (uint32_t)s_rdp.dmemVertexCount) {
         LOGW("Cmd_Tri2: invalid vertex indices %u,%u,%u,%u,%u,%u",
              v00, v01, v02, v10, v11, v12);
         return;
@@ -638,10 +638,10 @@ static void Cmd_Tri1_F3DEX2(GfxCommand cmd) {
     uint32_t v1 = (cmd.w0 >> 9) & 0x7F;
     uint32_t v2 = (cmd.w0 >> 1) & 0x7F;
 
-    if (v0 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
-        v1 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
-        v2 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount) {
-        LOGW("Cmd_Tri1_F3DEX2: invalid vertex indices %u,%u,%u (count=%d)", v0, v1, v2, s_rdp.s_rdp.dmemVertexCount);
+    if (v0 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v1 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v2 >= (uint32_t)s_rdp.dmemVertexCount) {
+        LOGW("Cmd_Tri1_F3DEX2: invalid vertex indices %u,%u,%u (count=%d)", v0, v1, v2, s_rdp.dmemVertexCount);
         return;
     }
 
@@ -673,12 +673,12 @@ static void Cmd_Tri2_F3DEX2(GfxCommand cmd) {
     uint32_t v11 = (cmd.w1 >> 9) & 0x7F;
     uint32_t v12 = (cmd.w1 >> 1) & 0x7F;
 
-    if (v00 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
-        v01 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
-        v02 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
-        v10 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
-        v11 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount ||
-        v12 >= (uint32_t)s_rdp.s_rdp.dmemVertexCount) {
+    if (v00 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v01 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v02 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v10 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v11 >= (uint32_t)s_rdp.dmemVertexCount ||
+        v12 >= (uint32_t)s_rdp.dmemVertexCount) {
         LOGW("Cmd_Tri2_F3DEX2: invalid vertex indices %u,%u,%u,%u,%u,%u",
              v00, v01, v02, v10, v11, v12);
         return;
@@ -1053,7 +1053,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     zero_run = 0;
                 } else {
                     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-                        "ENDDL top-level, vertices=%d", s_rdp.s_rdp.dmemVertexCount);
+                        "ENDDL top-level, vertices=%d", s_rdp.dmemVertexCount);
                     return;
                 }
                 break;
