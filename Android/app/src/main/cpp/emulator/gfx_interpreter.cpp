@@ -333,22 +333,36 @@ static void RasterizeTriangle(
 
 static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
     float x = (float)v->x, y = (float)v->y, z = (float)v->z;
-    
+
     // Apply modelview
     float ox, oy, oz, ow;
     Matrix_MultVec(s_rdp.modelview, x, y, z, 1.0f, &ox, &oy, &oz, &ow);
-    
+
     // Apply projection
     Matrix_MultVec(s_rdp.projection, ox, oy, oz, ow, &ox, &oy, &oz, &ow);
-    
+
     // Perspective divide
     if (fabsf(ow) > 0.0001f) {
         ox /= ow; oy /= ow;
     }
-    
+
     // Viewport transform: NDC [-1,1] → screen [0,FB_WIDTH/HEIGHT]
     *sx = (ox + 1.0f) * 0.5f * (float)FB_WIDTH;
     *sy = (1.0f - oy) * 0.5f * (float)FB_HEIGHT;
+
+    // DEBUG FALLBACK: If matrices produce off-screen coordinates,
+    // map model space directly to screen space
+    if (*sx < -1000 || *sx > 1000 || *sy < -1000 || *sy > 1000) {
+        // N64 model space is roughly [-256, 256] for x/y
+        *sx = (x + 256.0f) * 0.5f * (float)FB_WIDTH / 256.0f;
+        *sy = (y + 256.0f) * 0.5f * (float)FB_HEIGHT / 256.0f;
+        static int debugCount = 0;
+        if (debugCount++ < 5) {
+            __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                "TransformVertex: off-screen after matrix (%.1f, %.1f) fallback (%.1f, %.1f) orig(%.1f,%.1f,%.1f)",
+                (ox+1)*0.5f*FB_WIDTH, (1-oy)*0.5f*FB_HEIGHT, *sx, *sy, x, y, z);
+        }
+    }
 }
 
 // =======================================================================
