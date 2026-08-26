@@ -798,18 +798,44 @@ static void Cmd_MoveWord(GfxCommand cmd) {
 // =======================================================================
 // G_MTX - Load matrix (opcode 0x01)
 // =======================================================================
+static void Matrix_Multiply(BKMatrix result, const BKMatrix a, const BKMatrix b) {
+    BKMatrix temp;
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            temp[i][j] = 0;
+            for (int k = 0; k < 4; k++) {
+                temp[i][j] += a[i][k] * b[k][j];
+            }
+        }
+    }
+    memcpy(result, temp, sizeof(BKMatrix));
+}
+
 static void Cmd_Mtx(GfxCommand cmd) {
     uint32_t flag = (cmd.w0 >> 16) & 0xFF;
     uint32_t raw_addr = cmd.w1;
     void *mtx_src = RDP_TranslateAddr(raw_addr);
     if (!mtx_src) return;
     
-    // G_MTX flags: bit 0 = push, bit 1 = load (not used), bit 2 = projection
-    // In F3DEX2: G_MTX_PROJECTION = 0x04, G_MTX_MODELVIEW = 0x00
+    BKMatrix newMatrix;
+    Matrix_LoadFromN64(newMatrix, mtx_src);
+    
+    // G_MTX flags: bit 0 = push, bit 2 = projection
     if (flag & 0x04) {
+        // Projection matrix
         Matrix_LoadFromN64(s_rdp.projection, mtx_src);
     } else {
-        Matrix_LoadFromN64(s_rdp.modelview, mtx_src);
+        if (flag & 0x01) {
+            // G_MTX_PUSH: push current matrix and multiply
+            if (s_rdp.modelviewStackDepth < 16) {
+                memcpy(s_rdp.modelviewStack[s_rdp.modelviewStackDepth], s_rdp.modelview, sizeof(BKMatrix));
+                s_rdp.modelviewStackDepth++;
+            }
+            Matrix_Multiply(s_rdp.modelview, s_rdp.modelview, newMatrix);
+        } else {
+            // G_MTX_NOPUSH: just load
+            Matrix_LoadFromN64(s_rdp.modelview, mtx_src);
+        }
     }
 }
 
@@ -1100,9 +1126,11 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             }
 
             case 0xB8:
-                // G_POPMTX in F3DEX/F3DEX2. The software RDP currently
-                // does not maintain a full matrix stack, so treat it as
-                // a safe no-op rather than crashing.
+                // G_POPMTX - pop modelview matrix from stack
+                if (s_rdp.modelviewStackDepth > 0) {
+                    s_rdp.modelviewStackDepth--;
+                    memcpy(s_rdp.modelview, s_rdp.modelviewStack[s_rdp.modelviewStackDepth], sizeof(BKMatrix));
+                }
                 break;
 
             case 0xDF:
