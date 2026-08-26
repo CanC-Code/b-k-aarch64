@@ -7,7 +7,6 @@
 //function declarations
 void anim_setIndex(Animation *this, enum asset_e arg1);
 void anim_drawSetup(Animation *this);
-void animationFile_getBoneTransformList(s32, f32, s32);
 void boneTransformList_interpolate(s32, s32, s32, f32);
 
 //function definitions
@@ -62,11 +61,11 @@ void __anim_update_doubleBuffer(Animation *this){
     }
     this->reset = 0;
     if( this->duration < 1.0f && __anim_startTransformInUse(this)){
-        animationFile_getBoneTransformList(animBinCache_get(this->index), this->timer, animcache_getCurrentTransform(this));
+        animationfilebin_getBoneTransformList(animcommoncache_get(this->index), this->timer, animcache_getCurrentTransform(this));
         boneTransformList_interpolate(animcache_getCurrentTransform(this), anim_getStartTransform(this), animcache_getCurrentTransform(this), this->duration);
     }
     else{
-        animationFile_getBoneTransformList(animBinCache_get(this->index), this->timer, animcache_getCurrentTransform(this));
+        animationfilebin_getBoneTransformList(animcommoncache_get(this->index), this->timer, animcache_getCurrentTransform(this));
     }
 
 }
@@ -86,11 +85,11 @@ void __anim_update_tripleBuffer(Animation *this){
     }
     this->reset = 0;
     if( this->duration < 1.0f && __anim_startTransformInUse(this) && !this->unk1E){
-        animationFile_getBoneTransformList(animBinCache_get(this->index), this->timer, anim_getTargetTransform(this));
+        animationfilebin_getBoneTransformList(animcommoncache_get(this->index), this->timer, anim_getTargetTransform(this));
         boneTransformList_interpolate(animcache_getCurrentTransform(this), anim_getStartTransform(this), anim_getTargetTransform(this), this->duration);
     }
     else{
-        animationFile_getBoneTransformList(animBinCache_get(this->index), this->timer, animcache_getCurrentTransform(this));
+        animationfilebin_getBoneTransformList(animcommoncache_get(this->index), this->timer, animcache_getCurrentTransform(this));
         if(this->unk1E && this->index)
             this->unk1E = 0;
     }

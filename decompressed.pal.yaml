@@ -814,7 +814,8 @@ segments:
   - [0x10285A0, c, code_AEDA0]
   - [0x102AC00, textbin, modelRender_untouched] # PAL change
   - [0x102CD80, c, code_B3580] #DONE
-  - [0x102D280, c, code_B3A80] #DONE
+  - [0x102D280, c, animationfile] #DONE
+  - [0x102D890, c, code_B3A80] #DONE
   - [0x102E840, c, code_B5040] #DONE
   - [0x102F600, c, code_B5E00] #DONE
   - [0x102FAB0, c, code_B62B0] #DONE
@@ -1071,7 +1072,8 @@ segments:
   - [0x1062BF0, .data, gsworld]
   - [0x1062C00, .data, code_AEDA0]
   - [0x1062CE0, .data, modelRender]
-  - [0x1063380, .data, code_B3A80]
+  - [0x1063380, .data, animationfile]
+  - [0x10633B0, .data, code_B3A80]
   - [0x10633C0, .data, code_B5040]
   - [0x1063460, .data, code_B62B0]
   - [0x10647C0, .data, time]
@@ -1309,7 +1311,7 @@ segments:
   - [0x106BCD0, .rodata, skeletalanim]
   - [0x106BCE0, .rodata, code_AEDA0]
   - [0x106BD30, .rodata, modelRender]
-  - [0x106BD40, .rodata, code_B3A80]
+  - [0x106BD40, .rodata, animationfile]
   - [0x106BD50, .rodata, string]
   - [0x106BD70, .rodata, code_B6C60]
   - [0x106BD80, .rodata, time]
