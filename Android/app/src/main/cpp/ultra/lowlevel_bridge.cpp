@@ -49,6 +49,7 @@ uint32_t g_active_fb_offset = 0x400000;
 // The recompiled code should call bka_add_addr_mapping() through osVirtualToPhysical.
 #include <unordered_map>
 static std::unordered_map<uint32_t, void*> s_addrMap;
+static std::unordered_map<uint64_t, void*> s_fullAddrMap;
 
 void* bka_lookup_addr_mapping(uint32_t low32) {
     auto it = s_addrMap.find(low32);
@@ -76,6 +77,16 @@ void bka_add_addr_mapping(uint32_t low32, void* fullPtr) {
     s_addrMap[low32] = fullPtr;
 }
 
+void bka_add_full_addr_mapping(uint64_t fullAddr, void* ptr) {
+    s_fullAddrMap[fullAddr] = ptr;
+}
+
+void* bka_lookup_full_addr_mapping_internal(uint64_t fullAddr) {
+    auto it = s_fullAddrMap.find(fullAddr);
+    if (it != s_fullAddrMap.end()) return it->second;
+    return nullptr;
+}
+
 
 
 
@@ -91,6 +102,12 @@ void* bka_lookup_addr_mapping_c(uint32_t key) {
 
 void bka_store_addr_mapping(uint32_t key, void *ptr) {
     bka_add_addr_mapping(key, ptr);
+}
+void bka_store_full_addr_mapping(uint64_t fullAddr, void *ptr) {
+    bka_add_full_addr_mapping(fullAddr, ptr);
+}
+void* bka_lookup_full_addr_mapping(uint64_t fullAddr) {
+    return bka_lookup_full_addr_mapping_internal(fullAddr);
 }
 int bka_is_mapped(void* ptr) {
     return is_address_mapped(ptr) ? 1 : 0;

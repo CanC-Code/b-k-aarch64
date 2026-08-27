@@ -14,7 +14,7 @@ extern "C" {
     int getActiveFramebuffer(void);
     uint8_t* gN64_RDRAM;
     void* bka_lookup_addr_mapping(uint32_t key);
-extern "C" void* bka_lookup_full_addr_mapping(uint64_t fullAddr);
+extern "C" extern "C" void* bka_lookup_full_addr_mapping(uint64_t fullAddr);
 extern "C" int bka_is_mapped(void* ptr);  // C++ registry lookup
 }
 
