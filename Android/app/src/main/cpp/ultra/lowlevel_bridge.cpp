@@ -81,11 +81,13 @@ void bka_add_full_addr_mapping(uint64_t fullAddr, void* ptr) {
     s_fullAddrMap[fullAddr] = ptr;
 }
 
-void* bka_lookup_full_addr_mapping(uint64_t fullAddr) {
+void* bka_lookup_full_addr_mapping_internal(uint64_t fullAddr) {
     auto it = s_fullAddrMap.find(fullAddr);
     if (it != s_fullAddrMap.end()) return it->second;
     return nullptr;
 }
+
+
 
 // C-compatible wrappers for linker_stubs.c
 extern "C" {
