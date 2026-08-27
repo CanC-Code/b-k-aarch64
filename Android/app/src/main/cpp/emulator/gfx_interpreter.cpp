@@ -45,21 +45,6 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     if (hi == 0x4A000000u || hi == 0x4B000000u || hi == 0x4C000000u || hi == 0x4F000000u) {
     }
 
-    // General safe fallback for truncated host pointers.
-    // Many recompiled addresses preserve the low 28 bits of the host pointer.
-    // Try multiple prefixes and validate with /proc/self/maps.
-    const uint64_t prefixes[] = {0x7c40000000ULL, 0x7c00000000ULL, 0x7bb0000000ULL, 0x7b00000000ULL};
-    for (uint64_t prefix : prefixes) {
-        uint64_t full64 = prefix | (uint64_t)(addr & 0x0FFFFFFFu);
-        void* guessed = (void*)full64;
-        if (bka_is_mapped(guessed)) {
-            return (uint8_t*)guessed;
-        }
-    }
-    
-    // Do NOT guess pointers. Only use the exact mapping registry.
-    // If the mapping is not present, return nullptr so we don't crash.
-
     // F3DEX_GBI segment address: top 4 bits select segment, lower 28 bits offset.
     // Only treat as segment if the address looks like a proper segmented address
     // (top nibble non-zero AND value below 0x10000000). Many low host pointers
