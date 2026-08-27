@@ -833,8 +833,12 @@ static void Cmd_Mtx(GfxCommand cmd) {
             }
             Matrix_Multiply(s_rdp.modelview, s_rdp.modelview, newMatrix);
         } else {
-            // G_MTX_NOPUSH: just load
+            // G_MTX_NOPUSH: Load the view-projection matrix (from gSPLookAt)
+            // into modelview AND set projection to identity
             Matrix_LoadFromN64(s_rdp.modelview, mtx_src);
+            for (int i = 0; i < 4; i++)
+                for (int j = 0; j < 4; j++)
+                    s_rdp.projection[i][j] = (i == j) ? 1.0f : 0.0f;
         }
     }
 }
