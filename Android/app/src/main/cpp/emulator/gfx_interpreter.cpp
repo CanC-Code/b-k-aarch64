@@ -43,9 +43,6 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // (0x4A, 0x4B, 0x4C, 0x4F). Do NOT use for 0x06 or other segment-like values.
     uint32_t hi = addr & 0xFF000000u;
     if (hi == 0x4A000000u || hi == 0x4B000000u || hi == 0x4C000000u || hi == 0x4F000000u) {
-        uint64_t full64 = 0x7c40000000ULL | (uint64_t)(addr & 0x0FFFFFFFu);
-        p = bka_lookup_full_addr_mapping(full64);
-        if (p) return (uint8_t*)p;
     }
 
     // General safe fallback for truncated host pointers.
