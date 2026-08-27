@@ -1014,6 +1014,38 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     size_t dl_cmds = 0;
     int zero_run = 0;
 
+    // Scan for the start of a valid command stream if the first bytes look invalid.
+    // The F3DEX task may have a header before the actual Gfx commands.
+    {
+        int best_offset = 0;
+        int best_score = 0;
+        for (int off = 0; off < 64 && off + 8 <= (int)(cur_end - cur); off += 8) {
+            GfxCommand probe;
+            memcpy(&probe, cur + off, 8);
+            uint8_t op = GFX_OPCODE(probe);
+            // Valid F3DEX2 opcodes are typically 0x00-0xDF, with many in
+            // specific ranges. We'll assign a score based on known patterns.
+            int score = 0;
+            for (int j = 0; j < 8 && off + off + j * 8 + 8 <= (int)(cur_end - cur); j++) {
+                GfxCommand c2;
+                memcpy(&c2, cur + off + j * 8, 8);
+                uint8_t o2 = GFX_OPCODE(c2);
+                if (o2 <= 0xDF) score += 1;
+                if (o2 == 0x04 || o2 == 0x01 || o2 == 0x06 || o2 == 0xDF) score += 5;
+                if (o2 == 0xBF || o2 == 0xC4 || o2 == 0x34 || o2 == 0xB1) score += 3;
+            }
+            if (score > best_score) {
+                best_score = score;
+                best_offset = off;
+            }
+        }
+        if (best_offset > 0) {
+            cur += best_offset;
+            __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+                "Adjusted display list start by %d bytes (score=%d)", best_offset, best_score);
+        }
+    }
+
     while (cur + current_stride <= cur_end) {
         if (++total > MAX_TOTAL_CMDS) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
