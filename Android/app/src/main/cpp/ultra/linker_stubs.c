@@ -55,8 +55,12 @@ void bka_store_addr_mapping(uint32_t key, void *ptr) {
 
 void* bka_lookup_addr_mapping(uint32_t key) {
     for (int i = 0; i < s_bka_addr_count; i++) {
-        if (s_bka_addr_key[i] == key) return s_bka_addr_ptr[i];
+        if (s_bka_addr_key[i] == key) {
+            __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "bka_lookup_addr_mapping FOUND key=0x%08X ptr=%p", key, s_bka_addr_ptr[i]);
+            return s_bka_addr_ptr[i];
+        }
     }
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "bka_lookup_addr_mapping MISS key=0x%08X count=%d", key, s_bka_addr_count);
     return 0;
 }
 
