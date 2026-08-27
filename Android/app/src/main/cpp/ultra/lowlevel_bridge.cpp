@@ -73,15 +73,6 @@ static bool is_address_mapped(void* ptr) {
 
 // C-compatible wrappers for linker_stubs.c
 extern "C" {
-}
-
-}
-
-int bka_is_mapped(void* ptr) {
-    return is_address_mapped(ptr) ? 1 : 0;
-}
-}
-
 extern "C" {
 
     void HLE_TriggerN64Event(int event_id);
