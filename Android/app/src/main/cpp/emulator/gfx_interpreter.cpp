@@ -13,7 +13,8 @@ extern "C" {
     uint16_t gFramebuffers[2][FB_WIDTH * FB_HEIGHT];
     int getActiveFramebuffer(void);
     uint8_t* gN64_RDRAM;
-    void* bka_lookup_addr_mapping(uint32_t key);  // C++ registry lookup
+    void* bka_lookup_addr_mapping(uint32_t key);
+extern "C" int bka_is_mapped(void* ptr);  // C++ registry lookup
 }
 
 static RDPState s_rdp;
@@ -36,6 +37,15 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // 64-bit host pointer first.
     void* p = bka_lookup_addr_mapping(addr);
     if (p) return (uint8_t*)p;
+
+    // Safe fallback for truncated host pointers (0x4A..., 0x4F...)
+    if ((addr & 0xFF000000u) == 0x4A000000u || (addr & 0xFF000000u) == 0x4F000000u) {
+        uint64_t full64 = 0x7c40000000ULL | (uint64_t)(addr & 0x0FFFFFFFu);
+        void* guessed = (void*)full64;
+        if (bka_is_mapped(guessed)) {
+            return (uint8_t*)guessed;
+        }
+    }
     
     // Do NOT guess pointers. Only use the exact mapping registry.
     // If the mapping is not present, return nullptr so we don't crash.

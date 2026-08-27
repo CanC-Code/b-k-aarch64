@@ -10,6 +10,9 @@
 #include <stdint.h>
 #include <GLES2/gl2.h>
 #include <pthread.h>
+#include <fstream>
+#include <sstream>
+#include <cstdint>
 
 #define LOG_TAG "BKA_MEM"
 
@@ -51,6 +54,26 @@ void* bka_lookup_addr_mapping(uint32_t low32) {
     auto it = s_addrMap.find(low32);
     if (it != s_addrMap.end()) return it->second;
     return nullptr;
+}
+
+static bool is_address_mapped(void* ptr) {
+    uintptr_t addr = (uintptr_t)ptr;
+    std::ifstream maps("/proc/self/maps");
+    std::string line;
+    while (std::getline(maps, line)) {
+        uintptr_t start, end;
+        char perms[5];
+        if (sscanf(line.c_str(), "%lx-%lx %4s", &start, &end, perms) == 3) {
+            if (addr >= start && addr < end) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+extern "C" int bka_is_mapped(void* ptr) {
+    return is_address_mapped(ptr) ? 1 : 0;
 }
 
 void bka_add_addr_mapping(uint32_t low32, void* fullPtr) {
