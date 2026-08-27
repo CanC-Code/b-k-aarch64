@@ -46,8 +46,14 @@ uint16_t gFramebuffers[2][FB_WIDTH * FB_HEIGHT];
 uint32_t g_active_fb_offset = 0x400000;
 
 // Virtual-to-physical mapping registry.
+// The recompiled code should call bka_add_addr_mapping() through osVirtualToPhysical.
 #include <unordered_map>
+static std::unordered_map<uint32_t, void*> s_addrMap;
+static std::unordered_map<uint64_t, void*> s_fullAddrMap;
 
+void* bka_lookup_addr_mapping(uint32_t low32) {
+    auto it = s_addrMap.find(low32);
+    if (it != s_addrMap.end()) return it->second;
     return nullptr;
 }
 
@@ -67,12 +73,17 @@ static bool is_address_mapped(void* ptr) {
     return false;
 }
 
+void bka_add_addr_mapping(uint32_t low32, void* fullPtr) {
+    s_addrMap[low32] = fullPtr;
 }
 
 void bka_add_full_addr_mapping(uint64_t fullAddr, void* ptr) {
+    s_fullAddrMap[fullAddr] = ptr;
 }
 
 void* bka_lookup_full_addr_mapping_internal(uint64_t fullAddr) {
+    auto it = s_fullAddrMap.find(fullAddr);
+    if (it != s_fullAddrMap.end()) return it->second;
     return nullptr;
 }
 
@@ -81,11 +92,14 @@ void* bka_lookup_full_addr_mapping_internal(uint64_t fullAddr) {
 
 // C-compatible wrappers for linker_stubs.c
 extern "C" {
+void bka_add_addr_mapping_c(uint32_t key, void *ptr) {
+    bka_add_addr_mapping(key, ptr);
 }
 
+void* bka_lookup_addr_mapping_c(uint32_t key) {
+    return bka_lookup_addr_mapping(key);
 }
 
-}
 void bka_store_full_addr_mapping(uint64_t fullAddr, void *ptr) {
     bka_add_full_addr_mapping(fullAddr, ptr);
 }
