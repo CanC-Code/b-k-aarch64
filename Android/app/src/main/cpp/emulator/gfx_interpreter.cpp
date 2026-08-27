@@ -83,14 +83,6 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
             "RDP_TranslateAddr: segment %u unresolved base=0x%08X off=0x%08X",
             seg, base, off);
-        // Last resort: try mapping as a truncated host pointer
-        {
-            uint64_t full64 = 0x7c40000000ULL | (uint64_t)(addr & 0x0FFFFFFFu);
-            void* guessed = (void*)full64;
-            if (bka_is_mapped(guessed)) {
-                return (uint8_t*)guessed;
-            }
-        }
         return nullptr;
     }
 
