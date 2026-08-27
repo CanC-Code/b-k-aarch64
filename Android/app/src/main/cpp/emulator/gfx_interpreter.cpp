@@ -13,9 +13,7 @@ extern "C" {
     uint16_t gFramebuffers[2][FB_WIDTH * FB_HEIGHT];
     int getActiveFramebuffer(void);
     uint8_t* gN64_RDRAM;
-    extern "C" void* bka_lookup_addr_mapping(uint32_t key);
-extern "C" extern "C" void* bka_lookup_full_addr_mapping(uint64_t fullAddr);
-extern "C" int bka_is_mapped(void* ptr);  // C++ registry lookup
+    void* bka_lookup_addr_mapping(uint32_t key);
 }
 
 static RDPState s_rdp;
@@ -34,84 +32,50 @@ static struct RDPStateDefaultSegments {
 static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     if (addr == 0) return nullptr;
 
-    // If osVirtualToPhysical stored this exact low-32 key, use the original
-    // 64-bit host pointer first.
+    // Exact virtual-to-physical mapping registry
     void* p = bka_lookup_addr_mapping(addr);
     if (p) return (uint8_t*)p;
 
-    // Try full64 registry ONLY for known truncated host pointer prefixes
-    // (0x4A, 0x4B, 0x4C, 0x4F). Do NOT use for 0x06 or other segment-like values.
-    uint32_t hi = addr & 0xFF000000u;
-    if (hi == 0x4A000000u || hi == 0x4B000000u || hi == 0x4C000000u || hi == 0x4F000000u) {
+    // Simple direct host pointer for recompiled addresses 0x4xxxxxxx or 0xBxxxxxxx.
+    // These are usually low 28 bits of host pointers in the 0x7c4xxxxxxx range.
+    uint32_t hi = addr & 0xF0000000u;
+    if (hi == 0x40000000u || hi == 0xB0000000u) {
+        uint64_t full64 = 0x7c40000000ULL | (uint64_t)(addr & 0x0FFFFFFFu);
+        return (uint8_t*)full64;
     }
 
-    // F3DEX_GBI segment address: top 4 bits select segment, lower 28 bits offset.
-    // Only treat as segment if the address looks like a proper segmented address
-    // (top nibble non-zero AND value below 0x10000000). Many low host pointers
-    // start with 0x12..., 0x13..., etc., and must not be mistaken for segments.
+    // Segment address (F3DEX_GBI)
     uint32_t seg = (addr >> 24) & 0x0F;
     uint32_t off = addr & 0x00FFFFFF;
     if (seg != 0 && addr < 0x10000000 && s_rdp.segmentBase[seg] != 0) {
         uint32_t base = s_rdp.segmentBase[seg];
-        
-        // 1. Try to resolve the base as a truncated host pointer FIRST
         void *base_pm = bka_lookup_addr_mapping(base);
-        if (base_pm) {
-            return (uint8_t*)base_pm + off;
-        }
-        
-        // 2. Fallback: treat base + off as a combined N64 address
+        if (base_pm) return (uint8_t*)base_pm + off;
         uint32_t combined = base + off;
         void *pm = bka_lookup_addr_mapping(combined);
         if (pm) return (uint8_t*)pm;
-        
         if (combined < 0x1000000u && gN64_RDRAM)
             return gN64_RDRAM + combined;
         if (combined >= 0x80000000u && combined < 0x81000000u && gN64_RDRAM)
             return gN64_RDRAM + (combined - 0x80000000u);
         if (combined >= 0xA0000000u && combined < 0xA1000000u && gN64_RDRAM)
             return gN64_RDRAM + (combined - 0xA0000000u);
-            
-        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-            "RDP_TranslateAddr: segment %u unresolved base=0x%08X off=0x%08X",
-            seg, base, off);
         return nullptr;
     }
 
-    // Handle 0xFFxxxxxx as a 24-bit offset
-    if ((addr & 0xFF000000u) == 0xFF000000u) {
-        addr &= 0x00FFFFFFu;
-    }
+    // Handle 0xFFxxxxxx as 24-bit offset
+    if ((addr & 0xFF000000u) == 0xFF000000u) addr &= 0x00FFFFFFu;
+    // Handle 0x02xxxxxx-0x2FFFFFFF as direct RDRAM offsets
+    if (addr >= 0x02000000u && addr < 0x30000000u) addr &= 0x00FFFFFFu;
+    // Physical RDRAM
+    if (addr < 0x1000000u && gN64_RDRAM) return gN64_RDRAM + addr;
+    if (addr >= 0x80000000u && addr < 0x81000000u && gN64_RDRAM) return gN64_RDRAM + (addr - 0x80000000u);
+    if (addr >= 0xA0000000u && addr < 0xA1000000u && gN64_RDRAM) return gN64_RDRAM + (addr - 0xA0000000u);
 
-    // Handle 0x02xxxxxx-0x2FFFFFFF as custom virtual offsets.
-    // These are either direct RDRAM offsets or custom banked addresses.
-    if (addr >= 0x02000000u && addr < 0x30000000u) {
-        addr &= 0x00FFFFFFu;
-    }
-
-    // Physical RDRAM.
-    // Banjo-Kazooie uses custom virtual addresses. The actual RDRAM
-    // offset is the lower 24 bits for these ranges:
-    //   0x10xxxxxx, 0x18xxxxxx, 0x98xxxxxx-0x9Fxxxxxx
-    if (((addr & 0xF0000000u) == 0x10000000u) ||
-        ((addr & 0xFF000000u) >= 0x98000000u && (addr & 0xFF000000u) <= 0x9F000000u)) {
-        addr &= 0x00FFFFFFu;
-    }
-    if (addr < 0x1000000u) {
-        return gN64_RDRAM ? gN64_RDRAM + addr : nullptr;
-    }
-    if (addr >= 0x80000000u && addr < 0x81000000u) {
-        return gN64_RDRAM ? gN64_RDRAM + (addr - 0x80000000u) : nullptr;
-    }
-    if (addr >= 0xA0000000u && addr < 0xA1000000u) {
-        return gN64_RDRAM ? gN64_RDRAM + (addr - 0xA0000000u) : nullptr;
-    }
-
-    // No valid mapping found.
-    __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-        "RDP_TranslateAddr: unmapped address 0x%08X", addr);
     return nullptr;
 }
+
+
 
 static int s_frameCount = 0;
 
