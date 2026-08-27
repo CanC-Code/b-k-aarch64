@@ -14,6 +14,7 @@ extern "C" {
     int getActiveFramebuffer(void);
     uint8_t* gN64_RDRAM;
     void* bka_lookup_addr_mapping(uint32_t key);
+void* bka_lookup_full_addr_mapping(uint64_t fullAddr);
 extern "C" int bka_is_mapped(void* ptr);  // C++ registry lookup
 }
 
@@ -37,6 +38,13 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // 64-bit host pointer first.
     void* p = bka_lookup_addr_mapping(addr);
     if (p) return (uint8_t*)p;
+
+    // Try full64 registry for truncated host pointers (low 28 bits preserved)
+    {
+        uint64_t full64 = 0x7c40000000ULL | (uint64_t)(addr & 0x0FFFFFFFu);
+        p = bka_lookup_full_addr_mapping(full64);
+        if (p) return (uint8_t*)p;
+    }
 
     // General safe fallback for truncated host pointers.
     // Many recompiled addresses preserve the low 28 bits of the host pointer.
