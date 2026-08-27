@@ -35,6 +35,72 @@ void osInitialize(void) {}
 u64  osGetTime(void) { return 0; }
 u32  osViClock(void) { return 0; }
 #define BKA_ADDR_MAP_SIZE 8192
+static uint32_t s_bka_addr_key[BKA_ADDR_MAP_SIZE];
+static void    *s_bka_addr_ptr[BKA_ADDR_MAP_SIZE];
+static int       s_bka_addr_count = 0;
+
+void bka_store_addr_mapping(uint32_t key, void *ptr) {
+    int i;
+    if (key == 0 || ptr == 0) return;
+    for (i = 0; i < s_bka_addr_count; i++) {
+        if (s_bka_addr_key[i] == key) {
+            s_bka_addr_ptr[i] = ptr;
+            return;
+        }
+    }
+    if (s_bka_addr_count < BKA_ADDR_MAP_SIZE) {
+        s_bka_addr_key[s_bka_addr_count] = key;
+        s_bka_addr_ptr[s_bka_addr_count] = ptr;
+        s_bka_addr_count++;
+    }
+}
+
+void *bka_lookup_addr_mapping(uint32_t key) {
+    int i;
+    for (i = 0; i < s_bka_addr_count; i++) {
+        if (s_bka_addr_key[i] == key) {
+            return s_bka_addr_ptr[i];
+        }
+    }
+    return 0;
+}
+
+void bka_add_addr_mapping_c(uint32_t key, void *ptr);
+void* bka_lookup_addr_mapping_c(uint32_t key);
+
+
+static uint32_t s_map_keys[512];
+static void* s_map_ptrs[512];
+static int s_map_count = 0;
+
+void bka_store_addr_mapping(uint32_t key, void *ptr) {
+    for (int i = 0; i < s_map_count; i++) {
+        if (s_map_keys[i] == key) {
+            s_map_ptrs[i] = ptr;
+            return;
+        }
+    }
+    if (s_map_count < 512) {
+        s_map_keys[s_map_count] = key;
+        s_map_ptrs[s_map_count] = ptr;
+        s_map_count++;
+    }
+}
+
+void* bka_lookup_addr_mapping(uint32_t key) {
+    for (int i = 0; i < s_map_count; i++) {
+        if (s_map_keys[i] == key) return s_map_ptrs[i];
+    }
+    return 0;
+}
+
+u32  osVirtualToPhysical(void *vaddr) {
+    u32 key = (u32)(uintptr_t)vaddr;
+    bka_store_addr_mapping(key, vaddr);
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "osVirtualToPhysical: vaddr=%p key=0x%08X", vaddr, key);
+    return key;
+}
+
 // Graphics
 void guMtxIdentF(void *mf) {}
 void guMtxF2L(void *mf, void *m) {}
@@ -81,35 +147,3 @@ void osViBlack(u8 active) {}
 s32  overlayManager_getLoadedID(void) { return 0; }
 void overlayManager_load(s32 id) {}
 void osSyncPrintf(const char *fmt, ...) {}
-
-static uint32_t s_map_keys[512];
-static void* s_map_ptrs[512];
-static int s_map_count = 0;
-
-void bka_store_addr_mapping(uint32_t key, void *ptr) {
-    for (int i = 0; i < s_map_count; i++) {
-        if (s_map_keys[i] == key) {
-            s_map_ptrs[i] = ptr;
-            return;
-        }
-    }
-    if (s_map_count < 512) {
-        s_map_keys[s_map_count] = key;
-        s_map_ptrs[s_map_count] = ptr;
-        s_map_count++;
-    }
-}
-
-void* bka_lookup_addr_mapping(uint32_t key) {
-    for (int i = 0; i < s_map_count; i++) {
-        if (s_map_keys[i] == key) return s_map_ptrs[i];
-    }
-    return 0;
-}
-
-u32  osVirtualToPhysical(void *vaddr) {
-    u32 key = (u32)(uintptr_t)vaddr;
-    bka_store_addr_mapping(key, vaddr);
-    return key;
-}
-
