@@ -37,9 +37,17 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     void* p = bka_lookup_addr_mapping(addr);
     if (p) return (uint8_t*)p;
     
-    // Try truncated 64-bit host pointer (upper 32 bits stripped)
-    p = bka_lookup_addr_mapping(addr & 0x00FFFFFFu);
+    // Try truncated 64-bit host pointer with 0x7c4 prefix
+    // Pattern: 0x4FEE2AA8 → 0x7c4fee2aa8 (high 16 bits = 0x7c4)
+    uint64_t full64 = 0x7c40000000ULL | (uint64_t)(addr & 0x0FFFFFFFu);
+    p = bka_lookup_addr_mapping((uint32_t)(full64 & 0xFFFFFFFFu));
     if (p) return (uint8_t*)p;
+    
+    // Also try direct 0x7c4 prefix guess
+    full64 = 0x7c40000000ULL | (uint64_t)(addr & 0x0FFFFFFFu);
+    if (full64 > 0x7c00000000ULL && full64 < 0x800000000000ULL) {
+        return (uint8_t*)full64;
+    }
     
     // Try with 0x4B prefix (common for recompiled code host pointers)
     p = bka_lookup_addr_mapping(0x4B000000u | (addr & 0x00FFFFFFu));
