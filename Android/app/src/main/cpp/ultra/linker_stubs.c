@@ -108,3 +108,8 @@ void* bka_lookup_addr_mapping(uint32_t key) {
 }
 
 u32  osVirtualToPhysical(void *vaddr) {
+    u32 key = (u32)(uintptr_t)vaddr;
+    bka_store_addr_mapping(key, vaddr);
+    return key;
+}
+
