@@ -46,7 +46,6 @@ uint16_t gFramebuffers[2][FB_WIDTH * FB_HEIGHT];
 uint32_t g_active_fb_offset = 0x400000;
 
 // Virtual-to-physical mapping registry.
-// The recompiled code should call bka_add_addr_mapping() through osVirtualToPhysical.
 #include <unordered_map>
 
 
@@ -74,12 +73,8 @@ static bool is_address_mapped(void* ptr) {
 
 // C-compatible wrappers for linker_stubs.c
 extern "C" {
-void bka_add_addr_mapping_c(uint32_t key, void *ptr) {
-    bka_add_addr_mapping(key, ptr);
 }
 
-void* bka_lookup_addr_mapping_c(uint32_t key) {
-    return bka_lookup_addr_mapping(key);
 }
 
 int bka_is_mapped(void* ptr) {
