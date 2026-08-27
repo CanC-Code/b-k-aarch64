@@ -66,6 +66,10 @@ void bka_add_addr_mapping_c(uint32_t key, void *ptr) {
 void* bka_lookup_addr_mapping_c(uint32_t key) {
     return bka_lookup_addr_mapping(key);
 }
+
+void bka_store_addr_mapping(uint32_t key, void *ptr) {
+    bka_add_addr_mapping(key, ptr);
+}
 }
 
 extern "C" {
