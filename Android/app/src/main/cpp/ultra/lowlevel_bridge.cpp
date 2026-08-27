@@ -72,10 +72,6 @@ static bool is_address_mapped(void* ptr) {
     return false;
 }
 
-extern "C" int bka_is_mapped(void* ptr) {
-    return is_address_mapped(ptr) ? 1 : 0;
-}
-
 void bka_add_addr_mapping(uint32_t low32, void* fullPtr) {
     s_addrMap[low32] = fullPtr;
 }
@@ -92,6 +88,9 @@ void* bka_lookup_addr_mapping_c(uint32_t key) {
 
 void bka_store_addr_mapping(uint32_t key, void *ptr) {
     bka_add_addr_mapping(key, ptr);
+}
+int bka_is_mapped(void* ptr) {
+    return is_address_mapped(ptr) ? 1 : 0;
 }
 }
 

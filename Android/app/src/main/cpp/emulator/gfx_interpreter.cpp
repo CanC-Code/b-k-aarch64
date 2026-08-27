@@ -40,9 +40,10 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
 
     // General safe fallback for truncated host pointers.
     // Many recompiled addresses preserve the low 28 bits of the host pointer.
-    // Try the known 0x7c40000000 prefix and validate with /proc/self/maps.
-    if ((addr & 0xF0000000u) >= 0x40000000u) {
-        uint64_t full64 = 0x7c40000000ULL | (uint64_t)(addr & 0x0FFFFFFFu);
+    // Try multiple prefixes and validate with /proc/self/maps.
+    const uint64_t prefixes[] = {0x7c40000000ULL, 0x7c00000000ULL, 0x7bb0000000ULL, 0x7b00000000ULL};
+    for (uint64_t prefix : prefixes) {
+        uint64_t full64 = prefix | (uint64_t)(addr & 0x0FFFFFFFu);
         void* guessed = (void*)full64;
         if (bka_is_mapped(guessed)) {
             return (uint8_t*)guessed;
