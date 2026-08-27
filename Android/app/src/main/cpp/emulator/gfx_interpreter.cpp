@@ -759,11 +759,20 @@ static void Cmd_MoveWord(GfxCommand cmd) {
 
     if (index == 0x06) { // G_MW_SEGMENT
         uint32_t segment = (offset / 4) & 0x0F;
-        void *base_ptr = RDP_TranslateAddr(data);
+        // First try exact mapping registry
+        void *base_ptr = bka_lookup_addr_mapping(data);
+        // If not found, try direct safe prefix (0x4, 0xB, 0x0C)
+        if (!base_ptr) {
+            uint32_t hi = data & 0xFF000000u;
+            if (hi == 0x40000000u || hi == 0xB0000000u || hi == 0x0C000000u) {
+                uint64_t full64 = 0x7c40000000ULL | (uint64_t)(data & 0x0FFFFFFFu);
+                base_ptr = (void*)full64;
+            }
+        }
+        if (!base_ptr) base_ptr = RDP_TranslateAddr(data);
         s_rdp.segmentBase[segment] = (uintptr_t)base_ptr;
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-            "Cmd_MoveWord SEGMENT seg=%u offset=0x%04X base=%p", segment, offset, base_ptr);
-        // Banjo-Kazooie uses segments 4 and 12 for overlays that mirror segment 1
+            "Cmd_MoveWord SEGMENT seg=%u offset=0x%04X data=0x%08X base=%p", segment, offset, data, base_ptr);
         if (segment == 1) {
             s_rdp.segmentBase[4] = (uintptr_t)base_ptr;
             s_rdp.segmentBase[12] = (uintptr_t)base_ptr;
