@@ -40,6 +40,7 @@ static void    *s_bka_addr_ptr[BKA_ADDR_MAP_SIZE];
 static int       s_bka_addr_count = 0;
 
 void bka_store_addr_mapping(uint32_t key, void *ptr) {
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "bka_store_addr_mapping ENTER key=0x%08X count=%d", key, s_bka_addr_count);
     for (int i = 0; i < s_bka_addr_count; i++) {
         if (s_bka_addr_key[i] == key) {
             s_bka_addr_ptr[i] = ptr;
@@ -50,6 +51,7 @@ void bka_store_addr_mapping(uint32_t key, void *ptr) {
         s_bka_addr_key[s_bka_addr_count] = key;
         s_bka_addr_ptr[s_bka_addr_count] = ptr;
         s_bka_addr_count++;
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "bka_store_addr_mapping STORED count now %d", s_bka_addr_count);
     }
 }
 
