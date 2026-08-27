@@ -3,6 +3,7 @@
  * using generic pointer types. */
 
 #include <stdint.h>
+#include <stdio.h>
 #include <android/log.h>
 typedef int8_t  s8;
 typedef uint8_t  u8;
