@@ -542,9 +542,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
         LOGW("Cmd_Vtx: failed to translate addr=0x%08X", addr);
         return;
     }
-    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-        "Cmd_Vtx: loading v0=%u n=%u addr=0x%08X s_rdp.dmemVertexCount=%d",
-        v0, n, addr, s_rdp.dmemVertexCount);
+    // Debug logging removed for performance
     for (uint32_t i = 0; i < n; i++) {
         BKVertex* v = &s_rdp.dmem[v0 + i];
         // N64 Vtx format (16 bytes): ob[3](6 bytes), flag(2), tc[2](4), cn[4](4)
@@ -1013,11 +1011,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         memcpy(&c, cur, 16);
         uint8_t opcode = GFX_OPCODE(c);
 
-        if (s_frameCount <= 1) {
-            __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-                "cmd[%zu] depth=%d op=0x%02X w0=0x%08X w1=0x%08X",
-                total - 1, depth, opcode, c.w0, c.w1);
-        }
+        // Per-command logging disabled for performance
 
         cur += current_stride;
 
@@ -1093,9 +1087,9 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
             case 0x01: Cmd_Mtx(c); break;
             case 0x04: Cmd_Vtx(c); break;
-            case 0xBF: { static int tri_bf=0; if(++tri_bf<=50) __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "TRI dispatch 0xBF w1=0x%08X", c.w1); Cmd_Tri1(c); break; }
-            case 0xC4: { static int tri_c4=0; if(++tri_c4<=50) __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "TRI dispatch 0xC4 w0=0x%08X", c.w0); Cmd_Tri2_F3DEX2(c); break; }
-            case 0x34: { static int tri_34=0; if(++tri_34<=50) __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "TRI dispatch 0x34 w0=0x%08X", c.w0); Cmd_Tri1_F3DEX2(c); break; }
+            case 0xBF: Cmd_Tri1(c); break;
+            case 0xC4: Cmd_Tri2_F3DEX2(c); break;
+            case 0x34: Cmd_Tri1_F3DEX2(c); break;
 
             case 0xB1: __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "TRI dispatch 0xB1 w0=0x%08X", c.w0); Cmd_Tri2(c); break;
             case 0x03: Cmd_MoveMem(c); break;
