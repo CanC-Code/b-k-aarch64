@@ -39,7 +39,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // Simple direct host pointer for recompiled addresses 0x4xxxxxxx or 0xBxxxxxxx.
     // These are usually low 28 bits of host pointers in the 0x7c4xxxxxxx range.
     uint32_t hi = addr & 0xF0000000u;
-    if (hi == 0x40000000u || hi == 0xB0000000u) {
+    if (hi == 0x40000000u || hi == 0xB0000000u || hi == 0x0C000000u) {
         uint64_t full64 = 0x7c40000000ULL | (uint64_t)(addr & 0x0FFFFFFFu);
         return (uint8_t*)full64;
     }
