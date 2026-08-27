@@ -66,8 +66,32 @@ void *bka_lookup_addr_mapping(uint32_t key) {
 }
 
 void bka_add_addr_mapping_c(uint32_t key, void *ptr);
-void* bka_lookup_addr_mapping_c(uint32_t key);
 
+
+static uint32_t s_map_keys[512];
+static void* s_map_ptrs[512];
+static int s_map_count = 0;
+
+void bka_store_addr_mapping(uint32_t key, void *ptr) {
+    for (int i = 0; i < s_map_count; i++) {
+        if (s_map_keys[i] == key) {
+            s_map_ptrs[i] = ptr;
+            return;
+        }
+    }
+    if (s_map_count < 512) {
+        s_map_keys[s_map_count] = key;
+        s_map_ptrs[s_map_count] = ptr;
+        s_map_count++;
+    }
+}
+
+void* bka_lookup_addr_mapping(uint32_t key) {
+    for (int i = 0; i < s_map_count; i++) {
+        if (s_map_keys[i] == key) return s_map_ptrs[i];
+    }
+    return 0;
+}
 
 u32  osVirtualToPhysical(void *vaddr) {
     u32 key = (u32)(uintptr_t)vaddr;
