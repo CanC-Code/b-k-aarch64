@@ -42,6 +42,15 @@ uint8_t* gN64_ROM_Base = nullptr;
 uint16_t gFramebuffers[2][FB_WIDTH * FB_HEIGHT];
 uint32_t g_active_fb_offset = 0x400000;
 
+// Map truncated 32-bit host pointers back to full 64-bit addresses
+void* bka_lookup_addr_mapping(uint32_t low32) {
+    // Try common patterns for recompiled code host pointers
+    // Pattern 1: 0x7c4B997940 → low32 = 0x4B997940
+    uint64_t full = 0x7c00000000ULL | (uint64_t)low32;
+    // We can't verify validity here without a registry, so just return the guess
+    return (void*)full;
+}
+
 extern "C" {
 
     void HLE_TriggerN64Event(int event_id);

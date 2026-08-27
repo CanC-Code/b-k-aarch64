@@ -36,6 +36,14 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // 64-bit host pointer first.
     void* p = bka_lookup_addr_mapping(addr);
     if (p) return (uint8_t*)p;
+    
+    // Try truncated 64-bit host pointer (upper 32 bits stripped)
+    p = bka_lookup_addr_mapping(addr & 0x00FFFFFFu);
+    if (p) return (uint8_t*)p;
+    
+    // Try with 0x4B prefix (common for recompiled code host pointers)
+    p = bka_lookup_addr_mapping(0x4B000000u | (addr & 0x00FFFFFFu));
+    if (p) return (uint8_t*)p;
 
     // F3DEX_GBI segment address: top 4 bits select segment, lower 28 bits offset.
     // Only treat as segment if the address looks like a proper segmented address
