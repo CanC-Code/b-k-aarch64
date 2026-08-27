@@ -13,7 +13,7 @@ extern "C" {
     uint16_t gFramebuffers[2][FB_WIDTH * FB_HEIGHT];
     int getActiveFramebuffer(void);
     uint8_t* gN64_RDRAM;
-    void* bka_lookup_addr_mapping(uint32_t key);
+    void* bka_lookup_addr_mapping(uint32_t key);  // C++ registry lookup
 }
 
 static RDPState s_rdp;

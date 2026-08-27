@@ -57,6 +57,17 @@ void bka_add_addr_mapping(uint32_t low32, void* fullPtr) {
     s_addrMap[low32] = fullPtr;
 }
 
+// C-compatible wrappers for linker_stubs.c
+extern "C" {
+void bka_add_addr_mapping_c(uint32_t key, void *ptr) {
+    bka_add_addr_mapping(key, ptr);
+}
+
+void* bka_lookup_addr_mapping_c(uint32_t key) {
+    return bka_lookup_addr_mapping(key);
+}
+}
+
 extern "C" {
 
     void HLE_TriggerN64Event(int event_id);

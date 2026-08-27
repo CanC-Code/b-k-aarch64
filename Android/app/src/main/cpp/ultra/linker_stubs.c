@@ -65,10 +65,15 @@ void *bka_lookup_addr_mapping(uint32_t key) {
     return 0;
 }
 
+void bka_add_addr_mapping_c(uint32_t key, void *ptr);
+void* bka_lookup_addr_mapping_c(uint32_t key);
+
 u32  osVirtualToPhysical(void *vaddr) {
     u32 key = (u32)(uintptr_t)vaddr;
     bka_store_addr_mapping(key, vaddr);
     return key;
+    bka_add_addr_mapping_c((u32)vaddr, vaddr);
+
 }
 
 // Graphics
