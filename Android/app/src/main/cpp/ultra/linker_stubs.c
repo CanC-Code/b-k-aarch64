@@ -66,7 +66,6 @@ void *bka_lookup_addr_mapping(uint32_t key) {
 }
 
 void bka_add_addr_mapping_c(uint32_t key, void *ptr);
-void* bka_lookup_addr_mapping_c(uint32_t key);
 
 
 static uint32_t s_map_keys[512];
