@@ -38,8 +38,9 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     void* p = bka_lookup_addr_mapping(addr);
     if (p) return (uint8_t*)p;
 
-    // Safe fallback for truncated host pointers (0x4A..., 0x4F...)
-    if ((addr & 0xFF000000u) == 0x4A000000u || (addr & 0xFF000000u) == 0x4F000000u) {
+    // Safe fallback for truncated host pointers (0x4A..., 0x4C..., 0x4F...)
+    uint32_t hi = addr & 0xFF000000u;
+    if (hi == 0x4A000000u || hi == 0x4C000000u || hi == 0x4F000000u) {
         uint64_t full64 = 0x7c40000000ULL | (uint64_t)(addr & 0x0FFFFFFFu);
         void* guessed = (void*)full64;
         if (bka_is_mapped(guessed)) {
@@ -83,14 +84,19 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         return nullptr;
     }
 
+    // Handle 0xBDxxxxxx as a 24-bit offset (cached KSEG1 equivalent)
+    if ((addr & 0xFF000000u) == 0xBD000000u) {
+        addr &= 0x00FFFFFFu;
+    }
+
     // Handle 0xFFxxxxxx as a 24-bit offset
     if ((addr & 0xFF000000u) == 0xFF000000u) {
         addr &= 0x00FFFFFFu;
     }
 
-    // Handle 0x06xxxxxx-0x2FFFFFFF as custom virtual offsets.
+    // Handle 0x02xxxxxx-0x2FFFFFFF as custom virtual offsets.
     // These are either direct RDRAM offsets or custom banked addresses.
-    if (addr >= 0x06000000u && addr < 0x30000000u) {
+    if (addr >= 0x02000000u && addr < 0x30000000u) {
         addr &= 0x00FFFFFFu;
     }
 
