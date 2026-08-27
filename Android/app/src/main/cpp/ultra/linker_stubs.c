@@ -107,4 +107,4 @@ void* bka_lookup_addr_mapping(uint32_t key) {
     return 0;
 }
 
-u32  osVirtualToPhysical(void *vaddr) { { return 0; }
+u32  osVirtualToPhysical(void *vaddr) {
