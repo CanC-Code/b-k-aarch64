@@ -42,13 +42,19 @@ uint8_t* gN64_ROM_Base = nullptr;
 uint16_t gFramebuffers[2][FB_WIDTH * FB_HEIGHT];
 uint32_t g_active_fb_offset = 0x400000;
 
-// Map truncated 32-bit host pointers back to full 64-bit addresses
+// Virtual-to-physical mapping registry.
+// The recompiled code should call bka_add_addr_mapping() through osVirtualToPhysical.
+#include <unordered_map>
+static std::unordered_map<uint32_t, void*> s_addrMap;
+
 void* bka_lookup_addr_mapping(uint32_t low32) {
-    // Try common patterns for recompiled code host pointers
-    // Pattern 1: 0x7c4B997940 → low32 = 0x4B997940
-    uint64_t full = 0x7c00000000ULL | (uint64_t)low32;
-    // We can't verify validity here without a registry, so just return the guess
-    return (void*)full;
+    auto it = s_addrMap.find(low32);
+    if (it != s_addrMap.end()) return it->second;
+    return nullptr;
+}
+
+void bka_add_addr_mapping(uint32_t low32, void* fullPtr) {
+    s_addrMap[low32] = fullPtr;
 }
 
 extern "C" {
