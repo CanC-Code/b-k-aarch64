@@ -40,39 +40,6 @@ static void    *s_bka_addr_ptr[BKA_ADDR_MAP_SIZE];
 static int       s_bka_addr_count = 0;
 
 void bka_store_addr_mapping(uint32_t key, void *ptr) {
-    int i;
-    if (key == 0 || ptr == 0) return;
-    for (i = 0; i < s_bka_addr_count; i++) {
-        if (s_bka_addr_key[i] == key) {
-            s_bka_addr_ptr[i] = ptr;
-            return;
-        }
-    }
-    if (s_bka_addr_count < BKA_ADDR_MAP_SIZE) {
-        s_bka_addr_key[s_bka_addr_count] = key;
-        s_bka_addr_ptr[s_bka_addr_count] = ptr;
-        s_bka_addr_count++;
-    }
-}
-
-void *bka_lookup_addr_mapping(uint32_t key) {
-    int i;
-    for (i = 0; i < s_bka_addr_count; i++) {
-        if (s_bka_addr_key[i] == key) {
-            return s_bka_addr_ptr[i];
-        }
-    }
-    return 0;
-}
-
-void bka_add_addr_mapping_c(uint32_t key, void *ptr);
-
-
-static uint32_t s_map_keys[512];
-static void* s_map_ptrs[512];
-static int s_map_count = 0;
-
-void bka_store_addr_mapping(uint32_t key, void *ptr) {
     for (int i = 0; i < s_map_count; i++) {
         if (s_map_keys[i] == key) {
             s_map_ptrs[i] = ptr;
