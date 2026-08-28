@@ -36,13 +36,6 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     void* p = bka_lookup_addr_mapping(addr);
     if (p) return (uint8_t*)p;
 
-    // Simple direct host pointer for recompiled addresses 0x4xxxxxxx or 0xBxxxxxxx.
-    // These are usually low 28 bits of host pointers in the 0x7c4xxxxxxx range.
-    uint32_t hi = addr & 0xF0000000u;
-    if (hi == 0x40000000u || hi == 0xB0000000u || hi == 0x0C000000u) {
-        uint64_t full64 = 0x7c40000000ULL | (uint64_t)(addr & 0x0FFFFFFFu);
-        return (uint8_t*)full64;
-    }
 
     // Segment address (F3DEX_GBI)
     uint32_t seg = (addr >> 24) & 0x0F;
@@ -541,7 +534,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
     if (v0 + n > (uint32_t)s_rdp.dmemVertexCount)
         s_rdp.dmemVertexCount = v0 + n;
     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-        "Cmd_Vtx: loaded %u vertices, s_rdp.dmemVertexCount=%d", n, s_rdp.dmemVertexCount);
+        "Cmd_Vtx: loaded %u vertices, dmemVertexCount=%d", n, s_rdp.dmemVertexCount);
 }
 
 // =======================================================================
@@ -555,6 +548,8 @@ static void Cmd_Tri1(GfxCommand cmd) {
     uint32_t v0 = ((packed >> 16) & 0xFF) >> 1;
     uint32_t v1 = ((packed >> 8) & 0xFF) >> 1;
     uint32_t v2 = (packed & 0xFF) >> 1;
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+        "Cmd_Tri1 ENTER v0=%u v1=%u v2=%u dmemVertexCount=%d", v0, v1, v2, s_rdp.dmemVertexCount);
 
     if (v0 >= (uint32_t)s_rdp.dmemVertexCount ||
         v1 >= (uint32_t)s_rdp.dmemVertexCount ||
