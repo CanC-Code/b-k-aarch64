@@ -1038,7 +1038,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             current_stride = 16;
         }
 
-        if (total <= 1000) {
+        if (total <= 20) {
             __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
                 "cmd[%zu] op=0x%02X w0=0x%08X w1=0x%08X depth=%d stride=%zu",
                 total-1, opcode, c.w0, c.w1, depth, current_stride);
@@ -1223,6 +1223,9 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 Cmd_LoadTLUT(c);
                 break;
 
+            case 0x4E: // Unknown but appears frequently; treat as no-op for now
+                break;
+
             case 0xA4:
             case 0xB0:
                 Cmd_LoadBlock(c);
@@ -1311,8 +1314,15 @@ case 0xDC:
             case 0xEB: // G_SETTIMG - set texture image
                 break;
 default:
-                __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                    "Stub: opcode 0x%02X not fully implemented", opcode);
+                {
+                    static int stub_warn_count[256] = {0};
+                    if (stub_warn_count[opcode] < 3) {
+                        stub_warn_count[opcode]++;
+                        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                            "Stub: opcode 0x%02X not fully implemented (logged %d/3)",
+                            opcode, stub_warn_count[opcode]);
+                    }
+                }
                 break;
         }
     }
