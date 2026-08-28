@@ -1028,8 +1028,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         // Display list words are already host-endian in the recompiled code.
         uint8_t opcode = GFX_OPCODE(c);
 
-        // Always use 16-byte stride for Banjo-Kazooie display lists (8 bytes command + 8 bytes extra)
-        current_stride = 16;
+        // Top-level display lists use 16-byte records, nested lists use 8-byte commands
+        current_stride = (depth == 0) ? 16 : 8;
 
         if (total <= 200) {
             __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
@@ -1154,9 +1154,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 stack[depth].end = cur_end;
                 stack_stride[depth] = current_stride;
                 depth++;
-
-                // Nested display lists use standard 8-byte commands
-                current_stride = 8;
 
                 cur = (uint8_t*)dl_ptr;
                 // Use a safe upper bound based on MAX_DL_CMDS to avoid
