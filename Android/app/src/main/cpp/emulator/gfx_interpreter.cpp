@@ -101,9 +101,18 @@ static inline int16_t read_int16(const uint8_t* ptr) {
 // =======================================================================
 
 static void RDP_InitState() {
-    // Each display list starts fresh - vertices are loaded per-frame
-    // Don't restore across frames - causes stale vertex references
+    // Preserve vertex buffer and count across display list tasks.
+    static BKVertex saved_dmem[DMEM_VERTEX_COUNT];
+    static int saved_dmemVertexCount = 0;
+    memcpy(saved_dmem, s_rdp.dmem, sizeof(saved_dmem));
+    saved_dmemVertexCount = s_rdp.dmemVertexCount;
+
+    // Clear all state except vertices.
     memset(&s_rdp, 0, sizeof(s_rdp));
+
+    // Restore vertices and count.
+    memcpy(s_rdp.dmem, saved_dmem, sizeof(saved_dmem));
+    s_rdp.dmemVertexCount = saved_dmemVertexCount;
 
     s_rdp.primR = s_rdp.primG = s_rdp.primB = s_rdp.primA = 255;
     s_rdp.envR = s_rdp.envG = s_rdp.envB = s_rdp.envA = 255;
@@ -113,9 +122,7 @@ static void RDP_InitState() {
     s_rdp.activeTile = 0;
     s_rdp.textureEnabled = false;
     s_rdp.matrixMode = 0;
-    // CRITICAL: Do NOT reset dmemVertexCount here - it was just restored above.
-    // If set to 0, all triangle commands will fail bounds checks.
-    
+
     // Initialize matrices to identity
     for (int i = 0; i < 4; i++)
         for (int j = 0; j < 4; j++)
