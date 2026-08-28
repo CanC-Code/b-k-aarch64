@@ -1003,9 +1003,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
         GfxCommand c = {0};
         memcpy(&c, cur, 8);
-        // N64 display lists are big-endian; swap to host little-endian.
-        c.w0 = __builtin_bswap32(c.w0);
-        c.w1 = __builtin_bswap32(c.w1);
+        // Display list words are already host-endian in the recompiled code.
         uint8_t opcode = GFX_OPCODE(c);
 
         if (total <= 200) {
