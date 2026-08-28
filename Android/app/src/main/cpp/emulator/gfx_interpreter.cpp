@@ -15,6 +15,7 @@ extern "C" {
     uint8_t* gN64_RDRAM;
     void* bka_lookup_addr_mapping(uint32_t key);
     int bka_is_mapped(void* ptr);
+    uintptr_t bka_get_mapped_end(void* ptr);
 }
 
 static RDPState s_rdp;
@@ -1127,6 +1128,12 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                         "G_DL: target not mapped addr=0x%08X", raw_addr);
                     break;
+                }
+                uintptr_t mapped_end = bka_get_mapped_end(dl_ptr);
+                if (mapped_end != 0 && mapped_end > (uintptr_t)dl_ptr) {
+                    cur_end = (uint8_t*)mapped_end;
+                } else {
+                    cur_end = (uint8_t*)dl_ptr + 4096;
                 }
                 if (depth >= 63) {
                     __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",

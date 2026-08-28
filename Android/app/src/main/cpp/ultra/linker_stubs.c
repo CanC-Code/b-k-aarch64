@@ -54,6 +54,24 @@ void bka_store_addr_mapping(uint32_t key, void *ptr) {
     }
 }
 
+uintptr_t bka_get_mapped_end(void* ptr) {
+    uintptr_t addr = (uintptr_t)ptr;
+    FILE* f = fopen("/proc/self/maps", "r");
+    if (!f) return 0;
+    char line[256];
+    uintptr_t start, end;
+    while (fgets(line, sizeof(line), f)) {
+        if (sscanf(line, "%lx-%lx", &start, &end) == 2) {
+            if (addr >= start && addr < end) {
+                fclose(f);
+                return end;
+            }
+        }
+    }
+    fclose(f);
+    return 0;
+}
+
 int bka_is_mapped(void* ptr) {
     uintptr_t addr = (uintptr_t)ptr;
     FILE* f = fopen("/proc/self/maps", "r");
