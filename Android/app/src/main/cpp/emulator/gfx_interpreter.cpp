@@ -1144,6 +1144,20 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                         "G_DL: target not mapped addr=0x%08X", raw_addr);
                     break;
                 }
+                static int dl_dump_count = 0;
+                if (dl_dump_count < 3) {
+                    dl_dump_count++;
+                    const unsigned char *np = (const unsigned char*)dl_ptr;
+                    for (int off = 0; off < 64; off += 16) {
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                            "G_DL_TARGET[%d][%02d]: %02x %02x %02x %02x %02x %02x %02x %02x  %02x %02x %02x %02x %02x %02x %02x %02x",
+                            dl_dump_count-1, off,
+                            np[off+0], np[off+1], np[off+2], np[off+3],
+                            np[off+4], np[off+5], np[off+6], np[off+7],
+                            np[off+8], np[off+9], np[off+10], np[off+11],
+                            np[off+12], np[off+13], np[off+14], np[off+15]);
+                    }
+                }
                 __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
                     "G_DL JUMP to addr=0x%08X resolved=%p cur_end=%p depth=%d",
                     raw_addr, dl_ptr, cur_end, depth);
