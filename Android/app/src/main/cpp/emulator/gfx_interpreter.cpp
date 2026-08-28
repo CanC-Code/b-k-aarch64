@@ -1038,7 +1038,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             current_stride = 16;
         }
 
-        if (total <= 200) {
+        if (total <= 1000) {
             __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
                 "cmd[%zu] op=0x%02X w0=0x%08X w1=0x%08X depth=%d stride=%zu",
                 total-1, opcode, c.w0, c.w1, depth, current_stride);
@@ -1144,6 +1144,9 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                         "G_DL: target not mapped addr=0x%08X", raw_addr);
                     break;
                 }
+                __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+                    "G_DL JUMP to addr=0x%08X resolved=%p cur_end=%p depth=%d",
+                    raw_addr, dl_ptr, cur_end, depth);
                 uintptr_t mapped_end = bka_get_mapped_end(dl_ptr);
                 if (mapped_end != 0 && mapped_end > (uintptr_t)dl_ptr) {
                     cur_end = (uint8_t*)mapped_end;
