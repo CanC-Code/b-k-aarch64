@@ -1028,8 +1028,13 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         // Display list words are already host-endian in the recompiled code.
         uint8_t opcode = GFX_OPCODE(c);
 
-        // All display lists in Banjo-Kazooie use 16-byte records (8 bytes command + 8 bytes extra)
-        current_stride = 16;
+        // Determine stride based on command type.
+        // G_MTX (0x01) is 64 bytes; all others are 16 in Banjo-Kazooie display lists.
+        if (opcode == 0x01) {
+            current_stride = 64;
+        } else {
+            current_stride = 16;
+        }
 
         if (total <= 200) {
             __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
