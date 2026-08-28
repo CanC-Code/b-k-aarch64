@@ -1119,6 +1119,11 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                         "G_DL: cannot resolve addr=0x%08X", raw_addr);
                     break;
                 }
+                if (!bka_is_mapped(dl_ptr)) {
+                    __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                        "G_DL: target not mapped addr=0x%08X", raw_addr);
+                    break;
+                }
                 if (depth >= 63) {
                     __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                         "G_DL: max depth reached");
