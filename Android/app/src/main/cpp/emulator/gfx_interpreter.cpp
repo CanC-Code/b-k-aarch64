@@ -1048,7 +1048,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
         if (c.w0 == 0 && c.w1 == 0) {
             zero_run++;
-            if (zero_run >= 16) {
+            if (zero_run >= 2) {
                 if (depth > 0) {
                     // Dump the bytes after zero padding to inspect for hidden geometry
                     const uint8_t* after = cur;
@@ -1175,17 +1175,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 dl_cmds = 0;
                 zero_run = 0;
 
-                // Diagnostic: dump first 64 bytes of nested DL
-                const unsigned char *np = (const unsigned char*)dl_ptr;
-                for (int off = 0; off < 64; off += 16) {
-                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                        "nested_dl[%02d]: %02x %02x %02x %02x %02x %02x %02x %02x  %02x %02x %02x %02x %02x %02x %02x %02x",
-                        off,
-                        np[off+0], np[off+1], np[off+2], np[off+3],
-                        np[off+4], np[off+5], np[off+6], np[off+7],
-                        np[off+8], np[off+9], np[off+10], np[off+11],
-                        np[off+12], np[off+13], np[off+14], np[off+15]);
-                }
                 break;
             }
 
