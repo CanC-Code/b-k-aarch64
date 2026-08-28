@@ -952,10 +952,12 @@ static void* RSP_ResolveGfxAddress(uint32_t addr) {
 static int s_rspCallCount = 0;
 void RSP_ProcessGfxTask(OSTask* tp) {
     s_rspCallCount++;
-    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-        "RSP_ProcessGfxTask CALL #%d: tp=%p type=%d data=%p size=%u dmemVertexCount=%d",
-        s_rspCallCount, tp, tp ? tp->t.type : -1, tp ? tp->t.data_ptr : nullptr,
-        tp ? tp->t.data_size : 0, s_rdp.dmemVertexCount);
+    if (s_rspCallCount % 100 == 1) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "RSP_ProcessGfxTask CALL #%d: tp=%p type=%d data=%p size=%u dmemVertexCount=%d",
+            s_rspCallCount, tp, tp ? tp->t.type : -1, tp ? tp->t.data_ptr : nullptr,
+            tp ? tp->t.data_size : 0, s_rdp.dmemVertexCount);
+    }
 
     if (!tp || !tp->t.data_ptr || tp->t.data_size == 0) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -964,18 +966,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         return;
     }
 
-    {
-        const unsigned char *p = (const unsigned char*)tp->t.data_ptr;
-        for (int off = 0; off < 64; off += 16) {
-            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                "data[%02d]: %02x %02x %02x %02x %02x %02x %02x %02x  %02x %02x %02x %02x %02x %02x %02x %02x",
-                off,
-                p[off+0], p[off+1], p[off+2], p[off+3],
-                p[off+4], p[off+5], p[off+6], p[off+7],
-                p[off+8], p[off+9], p[off+10], p[off+11],
-                p[off+12], p[off+13], p[off+14], p[off+15]);
-        }
-    }
+    // Hex dump removed to reduce log overhead.
 
     RDP_InitState();
 
@@ -1038,7 +1029,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             current_stride = 16;
         }
 
-        if (total <= 20) {
+        if (total <= 5) {
             __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
                 "cmd[%zu] op=0x%02X w0=0x%08X w1=0x%08X depth=%d stride=%zu",
                 total-1, opcode, c.w0, c.w1, depth, current_stride);
