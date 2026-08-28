@@ -995,7 +995,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
     DListFrame stack[64];
     int depth = 0;
-    size_t current_stride = 8;
+    size_t current_stride = 16;
     size_t stack_stride[64];
     uint8_t *cur = (uint8_t*)tp->t.data_ptr;
     uint8_t *cur_end = cur + tp->t.data_size;
@@ -1028,17 +1028,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         // Display list words are already host-endian in the recompiled code.
         uint8_t opcode = GFX_OPCODE(c);
 
-        // Determine correct stride for this command (F3DEX2 variable-length commands)
-        switch (opcode) {
-            case 0x01: // G_VTX - 16 bytes (opcode + address)
-            case 0x03: // G_MOVEMEM - 16 bytes (opcode + address)
-            case 0xBC: // G_MOVEWORD - 16 bytes (opcode + data)
-                current_stride = 16;
-                break;
-            default:
-                current_stride = 8;
-                break;
-        }
+        // Always use 16-byte stride for Banjo-Kazooie display lists (8 bytes command + 8 bytes extra)
+        current_stride = 16;
 
         if (total <= 200) {
             __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
