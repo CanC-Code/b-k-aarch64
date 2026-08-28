@@ -1029,9 +1029,11 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         uint8_t opcode = GFX_OPCODE(c);
 
         // Determine stride based on command type.
-        // G_MTX (0x01) is 64 bytes; all others are 16 in Banjo-Kazooie display lists.
+        // G_MTX (0x01) is 64 bytes; G_DPFULLSYNC (0xE9) and G_ENDDL (0xDF) are 8 bytes.
         if (opcode == 0x01) {
             current_stride = 64;
+        } else if (opcode == 0xDF || opcode == 0xE9) {
+            current_stride = 8;
         } else {
             current_stride = 16;
         }
