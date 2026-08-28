@@ -992,7 +992,11 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         memcpy(&c, cur, 8);
         uint8_t opcode = GFX_OPCODE(c);
 
-        // Per-command logging disabled for performance
+        if (total <= 200) {
+            __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+                "cmd[%zu] op=0x%02X w0=0x%08X w1=0x%08X depth=%d",
+                total-1, opcode, c.w0, c.w1, depth);
+        }
 
         cur += current_stride;
 
