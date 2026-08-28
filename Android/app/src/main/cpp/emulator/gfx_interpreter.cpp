@@ -37,16 +37,6 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     void* p = bka_lookup_addr_mapping(addr);
     if (p) return (uint8_t*)p;
 
-    // Safe validated fallback for truncated host pointers with high nibble 4.
-    // These are commonly low 28 bits of heap pointers in the 0x7c4xxxxxxx range.
-    if ((addr & 0xF0000000u) == 0x40000000u) {
-        uint64_t full64 = 0x7c40000000ULL | (uint64_t)(addr & 0x0FFFFFFFu);
-        void* guessed = (void*)full64;
-        if (bka_is_mapped(guessed)) {
-            return (uint8_t*)guessed;
-        }
-    }
-
 
     // Segment address (F3DEX_GBI)
     uint32_t seg = (addr >> 24) & 0x0F;
