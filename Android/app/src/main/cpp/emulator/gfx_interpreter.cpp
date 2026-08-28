@@ -231,6 +231,11 @@ static void RasterizeTriangle(
     uint8_t r1, uint8_t g1, uint8_t b1, uint8_t a1,
     uint8_t r2, uint8_t g2, uint8_t b2, uint8_t a2)
 {
+    if (!std::isfinite(x0) || !std::isfinite(y0) ||
+        !std::isfinite(x1) || !std::isfinite(y1) ||
+        !std::isfinite(x2) || !std::isfinite(y2)) {
+        return;
+    }
     s_triangleCount++;
     if (s_triangleCount <= 10) {
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
