@@ -1150,7 +1150,7 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
         return 0;
     }
 
-    D_80370990 = (D_80383704) ? viewport_func_8024DB50(object_position, spD0*scale) : TRUE;
+    D_80370990 = TRUE; // TEMP: disable frustum culling
     if (!D_80370990) {
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "modelRender_draw EARLY RETURN 4: frustum culled");
         modelRender_reset();
