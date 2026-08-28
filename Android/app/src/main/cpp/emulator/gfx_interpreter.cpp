@@ -1163,7 +1163,13 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 cur = (uint8_t*)dl_ptr;
                 // Use a safe upper bound based on MAX_DL_CMDS to avoid
                 // running off into non-DL data if this nested list lacks ENDDL.
-                cur_end = cur + (MAX_DL_CMDS * current_stride);
+                // Set cur_end to the actual mapped region end, not a huge upper bound.
+                uintptr_t nested_end = bka_get_mapped_end(dl_ptr);
+                if (nested_end > (uintptr_t)dl_ptr) {
+                    cur_end = (uint8_t*)nested_end;
+                } else {
+                    cur_end = cur + (MAX_DL_CMDS * current_stride);
+                }
                 dl_cmds = 0;
                 zero_run = 0;
                 break;
