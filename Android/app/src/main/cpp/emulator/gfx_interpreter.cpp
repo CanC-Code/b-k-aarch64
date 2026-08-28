@@ -1155,6 +1155,9 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 stack_stride[depth] = current_stride;
                 depth++;
 
+                // Nested display lists use standard 8-byte commands
+                current_stride = 8;
+
                 cur = (uint8_t*)dl_ptr;
                 // Use a safe upper bound based on MAX_DL_CMDS to avoid
                 // running off into non-DL data if this nested list lacks ENDDL.
