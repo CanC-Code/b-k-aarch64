@@ -966,10 +966,15 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
     {
         const unsigned char *p = (const unsigned char*)tp->t.data_ptr;
-        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-            "data bytes: %02x %02x %02x %02x %02x %02x %02x %02x  %02x %02x %02x %02x %02x %02x %02x %02x",
-            p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7],
-            p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]);
+        for (int off = 0; off < 64; off += 16) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "data[%02d]: %02x %02x %02x %02x %02x %02x %02x %02x  %02x %02x %02x %02x %02x %02x %02x %02x",
+                off,
+                p[off+0], p[off+1], p[off+2], p[off+3],
+                p[off+4], p[off+5], p[off+6], p[off+7],
+                p[off+8], p[off+9], p[off+10], p[off+11],
+                p[off+12], p[off+13], p[off+14], p[off+15]);
+        }
     }
 
     RDP_InitState();
