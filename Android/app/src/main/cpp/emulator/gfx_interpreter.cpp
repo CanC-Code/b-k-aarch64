@@ -1251,3 +1251,5 @@ default:
         }
     }
 }
+
+// force rebuild: vertex preservation
