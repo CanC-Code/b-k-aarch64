@@ -560,12 +560,13 @@ static void Cmd_Vtx(GfxCommand cmd) {
 // =======================================================================
 
 static void Cmd_Tri1(GfxCommand cmd) {
+    // No vertices loaded yet; skip to avoid out-of-bounds and crash.
+    if (s_rdp.dmemVertexCount == 0) return;
+
     uint32_t packed = cmd.w1;   // F3DEX_GBI: indices packed in w1, opcode only in w0
     uint32_t v0 = ((packed >> 16) & 0xFF) >> 1;
     uint32_t v1 = ((packed >> 8) & 0xFF) >> 1;
     uint32_t v2 = (packed & 0xFF) >> 1;
-    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-        "Cmd_Tri1 ENTER v0=%u v1=%u v2=%u dmemVertexCount=%d", v0, v1, v2, s_rdp.dmemVertexCount);
 
     if (v0 >= (uint32_t)s_rdp.dmemVertexCount ||
         v1 >= (uint32_t)s_rdp.dmemVertexCount ||
@@ -598,6 +599,8 @@ static void Cmd_Tri1(GfxCommand cmd) {
 // =======================================================================
 
 static void Cmd_Tri2(GfxCommand cmd) {
+    if (s_rdp.dmemVertexCount == 0) return;
+
     uint32_t tri1 = cmd.w0 & 0xFFFFFF;  // first triangle packed in lower 24 bits
     uint32_t tri2 = cmd.w1;             // second triangle packed in w1
 
@@ -656,6 +659,8 @@ static void Cmd_Tri2(GfxCommand cmd) {
 // w1 = flag
 // =======================================================================
 static void Cmd_Tri1_F3DEX2(GfxCommand cmd) {
+    if (s_rdp.dmemVertexCount == 0) return;
+
     uint32_t v0 = (cmd.w0 >> 17) & 0x7F;
     uint32_t v1 = (cmd.w0 >> 9) & 0x7F;
     uint32_t v2 = (cmd.w0 >> 1) & 0x7F;
@@ -690,6 +695,8 @@ static void Cmd_Tri1_F3DEX2(GfxCommand cmd) {
 // w1 = [flag:8][v3:8][v4:8][v5:8]     (second triangle, flag ignored)
 // =======================================================================
 static void Cmd_Tri2_F3DEX2(GfxCommand cmd) {
+    if (s_rdp.dmemVertexCount == 0) return;
+
     uint32_t v00 = (cmd.w0 >> 17) & 0x7F;
     uint32_t v01 = (cmd.w0 >> 9) & 0x7F;
     uint32_t v02 = (cmd.w0 >> 1) & 0x7F;
