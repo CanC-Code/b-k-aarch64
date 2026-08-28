@@ -1028,10 +1028,22 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         // Display list words are already host-endian in the recompiled code.
         uint8_t opcode = GFX_OPCODE(c);
 
+        // Determine correct stride for this command (F3DEX2 variable-length commands)
+        switch (opcode) {
+            case 0x01: // G_VTX - 16 bytes (opcode + address)
+            case 0x03: // G_MOVEMEM - 16 bytes (opcode + address)
+            case 0xBC: // G_MOVEWORD - 16 bytes (opcode + data)
+                current_stride = 16;
+                break;
+            default:
+                current_stride = 8;
+                break;
+        }
+
         if (total <= 200) {
             __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-                "cmd[%zu] op=0x%02X w0=0x%08X w1=0x%08X depth=%d",
-                total-1, opcode, c.w0, c.w1, depth);
+                "cmd[%zu] op=0x%02X w0=0x%08X w1=0x%08X depth=%d stride=%zu",
+                total-1, opcode, c.w0, c.w1, depth, current_stride);
         }
 
         cur += current_stride;
