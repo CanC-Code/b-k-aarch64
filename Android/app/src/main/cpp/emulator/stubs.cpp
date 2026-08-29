@@ -448,31 +448,6 @@ void osCreatePiManager(OSPri pri, OSMesgQueue *cmdQ, OSMesg *cmdBuf, s32 cmdMsgC
 void osSpTaskLoad(OSTask *tp) {}
 
 // MODIFIED: Route GFX tasks through the software RDP before signaling completion
-static std::queue<OSTask_t> s_gfx_task_queue;
-static std::mutex s_gfx_queue_mutex;
-static std::condition_variable s_gfx_queue_cv;
-static std::thread s_gfx_worker_thread;
-static bool s_gfx_worker_running = true;
-
-static void gfx_worker_loop() {
-    setpriority(PRIO_PROCESS, 0, 10);
-    while (s_gfx_worker_running) {
-        OSTask_t task;
-        {
-            std::unique_lock<std::mutex> lock(s_gfx_queue_mutex);
-            s_gfx_queue_cv.wait(lock, []{ return !s_gfx_task_queue.empty() || !s_gfx_worker_running; });
-            if (!s_gfx_worker_running && s_gfx_task_queue.empty()) break;
-            task = s_gfx_task_queue.front();
-            s_gfx_task_queue.pop();
-        }
-
-        OSTask wrapper;
-        wrapper.t = task;
-        RSP_ProcessGfxTask(&wrapper);
-        usleep(1000); // yield a bit
-    }
-}
-
 void osSpTaskStartGo(OSTask *tp) {
     static int s_gfxLogCount = 0;
     if (tp == nullptr) return;
@@ -490,14 +465,9 @@ void osSpTaskStartGo(OSTask *tp) {
             worker_started = true;
         }
 
-        // Enqueue task for asynchronous processing
-        {
-            std::lock_guard<std::mutex> lock(s_gfx_queue_mutex);
-            s_gfx_task_queue.push(tp->t);
-        }
-        s_gfx_queue_cv.notify_one();
+        RSP_ProcessGfxTask(tp);
+        usleep(2000); // small delay to prevent main thread starvation
 
-        // Signal completion immediately on the main thread (render is async)
 #ifndef OS_EVENT_SP
 #define OS_EVENT_SP 4
 #endif
