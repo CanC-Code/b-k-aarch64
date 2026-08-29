@@ -447,10 +447,14 @@ void osSpTaskLoad(OSTask *tp) {}
 
 // MODIFIED: Route GFX tasks through the software RDP before signaling completion
 void osSpTaskStartGo(OSTask *tp) {
-    LOGI("BKA-RDP: osSpTaskStartGo type=%d data=%p size=%u", tp->t.type, tp->t.data_ptr, tp->t.data_size);
+    static int s_gfxLogCount = 0;
     if (tp == nullptr) return;
     if (tp->t.type == M_GFXTASK) {
-        LOGI("BKA-RDP: GFX task data=%p size=%u", tp->t.data_ptr, tp->t.data_size);
+        // Limit logging to first 3 GFX tasks
+        if (++s_gfxLogCount <= 3) {
+            LOGI("BKA-RDP: osSpTaskStartGo type=%d data=%p size=%u", tp->t.type, tp->t.data_ptr, tp->t.data_size);
+            LOGI("BKA-RDP: GFX task data=%p size=%u", tp->t.data_ptr, tp->t.data_size);
+        }
         // Process the F3DEX display list and rasterize to gFramebuffers
         RSP_ProcessGfxTask(tp);
         // Signal completion so Thread 5 continues
