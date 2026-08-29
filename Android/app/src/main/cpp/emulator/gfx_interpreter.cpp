@@ -951,7 +951,7 @@ static void* RSP_ResolveGfxAddress(uint32_t addr) {
 // =======================================================================
 
 static int s_rspCallCount = 0;
-static void RSP_ProcessGfxTaskInternal(OSTask* tp) {
+void RSP_ProcessGfxTask(OSTask* tp) {
     s_rspCallCount++;
     if (s_rspCallCount % 100 == 1) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -1376,57 +1376,5 @@ default:
     }
 }
 
-
-// === Asynchronous RSP worker ===
-static std::queue<OSTask_t> s_gfx_task_queue;
-static std::mutex s_gfx_queue_mutex;
-static std::condition_variable s_gfx_queue_cv;
-static std::thread s_gfx_worker_thread;
-static bool s_gfx_worker_running = true;
-
-static void gfx_worker_loop() {
-    while (s_gfx_worker_running) {
-        OSTask_t task;
-        {
-            std::unique_lock<std::mutex> lock(s_gfx_queue_mutex);
-            s_gfx_queue_cv.wait(lock, []{ return !s_gfx_task_queue.empty() || !s_gfx_worker_running; });
-            if (!s_gfx_worker_running && s_gfx_task_queue.empty()) break;
-            task = s_gfx_task_queue.front();
-            s_gfx_task_queue.pop();
-        }
-
-        OSTask wrapper;
-        wrapper.t = task;
-        RSP_ProcessGfxTaskInternal(&wrapper);
-
-        // Signal completion (same as before)
-#ifndef OS_EVENT_SP
-#define OS_EVENT_SP 4
-#endif
-#ifndef OS_EVENT_DP
-#define OS_EVENT_DP 9
-#endif
-        HLE_TriggerN64Event(OS_EVENT_SP);
-        HLE_TriggerN64Event(OS_EVENT_DP);
-        osSendMesg(&D_8027FBC8, NULL, OS_MESG_NOBLOCK);
-    }
-}
-
-// Public API now enqueues and returns immediately
-void RSP_ProcessGfxTask(OSTask* tp) {
-    if (!tp) return;
-
-    static bool worker_started = false;
-    if (!worker_started) {
-        s_gfx_worker_thread = std::thread(gfx_worker_loop);
-        worker_started = true;
-    }
-
-    {
-        std::lock_guard<std::mutex> lock(s_gfx_queue_mutex);
-        s_gfx_task_queue.push(tp->t);
-    }
-    s_gfx_queue_cv.notify_one();
-}
 
 // force rebuild: vertex preservation
