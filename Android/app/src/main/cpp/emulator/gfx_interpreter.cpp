@@ -980,6 +980,10 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "Framebuffers cleared (first frame)");
     }
 
+    // TEMP: Return early to test ANR. No RSP parsing.
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "RSP parsing skipped (stability test)");
+    return;
+
     struct DListFrame {
         uint8_t *ptr;
         uint8_t *end;
