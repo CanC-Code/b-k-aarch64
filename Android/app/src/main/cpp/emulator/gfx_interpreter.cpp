@@ -993,8 +993,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     uint8_t *cur = (uint8_t*)tp->t.data_ptr;
     uint8_t *cur_end = cur + tp->t.data_size;
 
-    const size_t MAX_TOTAL_CMDS = 20000;
-    const size_t MAX_DL_CMDS = 5000;
+    const size_t MAX_TOTAL_CMDS = 1000;
+    const size_t MAX_DL_CMDS = 200;
     size_t total = 0;
     size_t dl_cmds = 0;
     int zero_run = 0;
@@ -1012,7 +1012,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         }
 
         // Yield to other threads every 256 commands to prevent UI starvation
-        if ((total & 0x0F) == 0) {
+        if ((total & 0x03) == 0) {
             sched_yield();
         }
 
