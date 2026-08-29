@@ -3,6 +3,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <cmath>
+#include <time.h>
 #include <algorithm>
 
 #define LOG_TAG "BKA_GFX"
@@ -998,6 +999,10 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     size_t total = 0;
     size_t dl_cmds = 0;
     int zero_run = 0;
+    struct timespec start_ts, now_ts;
+    clock_gettime(CLOCK_MONOTONIC, &start_ts);
+    bool log_after_jump = false;
+    int jump_log_count = 0;
 
     while (cur + current_stride <= cur_end) {
         if (++total > MAX_TOTAL_CMDS) {
@@ -1011,9 +1016,18 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             break;
         }
 
-        // Yield to other threads every 256 commands to prevent UI starvation
+        // Yield to other threads every 4 commands and enforce time budget
         if ((total & 0x03) == 0) {
             sched_yield();
+            if ((total & 0x0F) == 0) {
+                clock_gettime(CLOCK_MONOTONIC, &now_ts);
+                long long elapsed_ms = (now_ts.tv_sec - start_ts.tv_sec) * 1000 + (now_ts.tv_nsec - start_ts.tv_nsec) / 1000000;
+                if (elapsed_ms > 50) {
+                    __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                        "RSP time budget exceeded at cmd %zu (%lld ms), breaking", total-1, elapsed_ms);
+                    break;
+                }
+            }
         }
 
         GfxCommand c = {0};
@@ -1029,7 +1043,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             current_stride = 16;
         }
 
-        if (total <= 2) {
+        if (total <= 100 || (log_after_jump && jump_log_count < 10)) {
+            if (log_after_jump) jump_log_count++;
             __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
                 "cmd[%zu] op=0x%02X w0=0x%08X w1=0x%08X depth=%d stride=%zu",
                 total-1, opcode, c.w0, c.w1, depth, current_stride);
@@ -1219,6 +1234,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 }
                 dl_cmds = 0;
                 zero_run = 0;
+                log_after_jump = true;
+                jump_log_count = 0;
 
                 break;
             }
