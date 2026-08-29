@@ -168,36 +168,7 @@ public class GLRenderer implements GLSurfaceView.Renderer {
 
     @Override
     public void onDrawFrame(GL10 gl) {
-        // Guard against calling updateTexture before the native side knows about the surface
-        if (!isSurfaceReady) return;
-
-        // Tell native to upload the N64 framebuffer into the texture
-        NativeBridge.updateTexture(mTextureId);
-
-        // Draw the textured quad
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
-
-        if (mProgram != 0 && mTextureId != 0) {
-            GLES20.glUseProgram(mProgram);
-
-            int posHandle = GLES20.glGetAttribLocation(mProgram, "aPosition");
-            int texHandle = GLES20.glGetAttribLocation(mProgram, "aTexCoord");
-            int texUniform = GLES20.glGetUniformLocation(mProgram, "uTexture");
-
-            GLES20.glVertexAttribPointer(posHandle, 3, GLES20.GL_FLOAT, false, 0, mQuadVertices);
-            GLES20.glEnableVertexAttribArray(posHandle);
-
-            GLES20.glVertexAttribPointer(texHandle, 2, GLES20.GL_FLOAT, false, 0, mQuadTexCoords);
-            GLES20.glEnableVertexAttribArray(texHandle);
-
-            GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextureId);
-            GLES20.glUniform1i(texUniform, 0);
-
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
-
-            GLES20.glDisableVertexAttribArray(posHandle);
-            GLES20.glDisableVertexAttribArray(texHandle);
-        }
+        // TEMP: no-op to isolate RSP worker and avoid libgui crashes
+        return;
     }
 }
