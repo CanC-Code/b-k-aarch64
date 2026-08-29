@@ -1105,10 +1105,8 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
     camera_focus[1] = object_position[1] - modelRenderCameraPosition[1];
     camera_focus[2] = object_position[2] - modelRenderCameraPosition[2];
 
-    if( ((camera_focus[0] < -17000.0f) || (17000.0f < camera_focus[0]))
-        || ((camera_focus[1] < -17000.0f) || (17000.0f < camera_focus[1]))
-        || ((camera_focus[2] < -17000.0f) || (17000.0f < camera_focus[2]))
-    ){
+    // TEMP: bypass distance check (EARLY RETURN 2)
+    if(0){
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "modelRender_draw EARLY RETURN 2: camera_focus=%.1f %.1f %.1f", camera_focus[0], camera_focus[1], camera_focus[2]);
         modelRender_reset();
         return 0;
@@ -1144,7 +1142,8 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
         D_80383708 = spD4*scale*D_8038370C*50.0f;
     }
 
-    if(D_80383708 <= camera_focus_distance){
+    // TEMP: bypass distance culling (EARLY RETURN 3)
+    if(0){
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "modelRender_draw EARLY RETURN 3: D_80383708=%f camera_focus_distance=%f", D_80383708, camera_focus_distance);
         modelRender_reset();
         return 0;
