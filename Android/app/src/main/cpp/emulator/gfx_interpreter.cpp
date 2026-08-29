@@ -1022,13 +1022,16 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         uint8_t opcode = GFX_OPCODE(c);
 
         // Determine stride based on command type.
-        // G_MTX (0x01) is 64 bytes; G_DPFULLSYNC (0xE9) and G_ENDDL (0xDF) are 8 bytes.
+        // Most F3DEX commands are 8 bytes.
+        // G_MTX (0x01) is 64 bytes (8 header + 56 matrix data? Actually inline? We'll keep 64).
+        // G_VTX (0x04), G_MOVEMEM (0x03), G_MOVEWORD (0xBC) are 16 bytes in Banjo-Kazooie.
+        // G_DL (0x06) is 8 bytes.
         if (opcode == 0x01) {
             current_stride = 64;
-        } else if (opcode == 0xDF || opcode == 0xE9) {
-            current_stride = 8;
-        } else {
+        } else if (opcode == 0x04 || opcode == 0x03 || opcode == 0xBC) {
             current_stride = 16;
+        } else {
+            current_stride = 8;
         }
 
         if (total <= 100) {
