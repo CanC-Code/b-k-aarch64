@@ -988,11 +988,13 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     int depth = 0;
     size_t current_stride = 16;
     size_t stack_stride[64];
+    uintptr_t visited_dl_addrs[256];
+    int visited_dl_count = 0;
     uint8_t *cur = (uint8_t*)tp->t.data_ptr;
     uint8_t *cur_end = cur + tp->t.data_size;
 
-    const size_t MAX_TOTAL_CMDS = 500;
-    const size_t MAX_DL_CMDS = 100;
+    const size_t MAX_TOTAL_CMDS = 20000;
+    const size_t MAX_DL_CMDS = 5000;
     size_t total = 0;
     size_t dl_cmds = 0;
     int zero_run = 0;
@@ -1165,6 +1167,23 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                             "G_DL: skipping empty nested list at addr=0x%08X", raw_addr);
                     }
                     break;
+                }
+
+                // Loop detection: prevent infinite G_DL recursion
+                bool already_visited = false;
+                for (int i = 0; i < visited_dl_count; i++) {
+                    if (visited_dl_addrs[i] == (uintptr_t)dl_ptr) {
+                        already_visited = true;
+                        break;
+                    }
+                }
+                if (already_visited) {
+                    __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                        "G_DL loop detected at addr=0x%08X, breaking", raw_addr);
+                    break;
+                }
+                if (visited_dl_count < 256) {
+                    visited_dl_addrs[visited_dl_count++] = (uintptr_t)dl_ptr;
                 }
                 static int dl_jump_log_count = 0;
                 if (++dl_jump_log_count <= 5) {
