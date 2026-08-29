@@ -221,15 +221,20 @@ public class MainActivity extends AppCompatActivity {
         final String assetDir    = getFilesDir().getAbsolutePath();
         final AssetManager mgr   = getAssets();
 
-        // TEMP: Headless mode — skip GLSurfaceView to avoid libgui crashes
-        glSurfaceView = null;
+        glSurfaceView = new GLSurfaceView(this);
+        glSurfaceView.setEGLContextClientVersion(2);
+        glSurfaceView.setEGLConfigChooser(8, 8, 8, 8, 16, 0);
+        glSurfaceView.setPreserveEGLContextOnPause(true);
+        glSurfaceView.setWillNotDraw(false);
+
+        glSurfaceView.setRenderer(new GLRenderer(this, assetDir, mgr));
+        glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
 
         // FIXED: Bridge the Android Surface to native code so the engine can
         // initialize EGL and unblock the vblank synchronization loop.
         // Without this callback, g_nativeWindow stays null and the engine
         // thread hangs forever in BKA_FrameSyncHook waiting for g_windowCond.
-        // TEMP: No surface callbacks in headless mode
-        if (false) glSurfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
+        glSurfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
             @Override
             public void surfaceCreated(SurfaceHolder holder) {
                 NativeBridge.setSurface(holder.getSurface());
