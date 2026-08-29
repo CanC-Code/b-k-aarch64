@@ -1029,7 +1029,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             current_stride = 16;
         }
 
-        if (total <= 5) {
+        if (total <= 100) {
             __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
                 "cmd[%zu] op=0x%02X w0=0x%08X w1=0x%08X depth=%d stride=%zu",
                 total-1, opcode, c.w0, c.w1, depth, current_stride);
@@ -1108,12 +1108,34 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xE4: case 0xE5: Cmd_TexRect(c); break;
 
             case 0x01: Cmd_Mtx(c); break;
-            case 0x04: Cmd_Vtx(c); break;
-            case 0xBF: Cmd_Tri1(c); break;
-            case 0xC4: Cmd_Tri2_F3DEX2(c); break;
-            case 0x34: Cmd_Tri1_F3DEX2(c); break;
-
-            case 0xB1: __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "TRI dispatch 0xB1 w0=0x%08X", c.w0); Cmd_Tri2(c); break;
+            case 0x04:
+                {
+                    static int vtx_log_count = 0;
+                    if (++vtx_log_count <= 10) {
+                        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+                            "GEOMETRY: op=0x04 (G_VTX) w0=0x%08X w1=0x%08X total=%zu depth=%d",
+                            c.w0, c.w1, total-1, depth);
+                    }
+                }
+                Cmd_Vtx(c);
+                break;
+            case 0xBF:
+            case 0xB1:
+            case 0xC4:
+            case 0x34:
+                {
+                    static int tri_log_count = 0;
+                    if (++tri_log_count <= 10) {
+                        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+                            "GEOMETRY: op=0x%02X (tri) w0=0x%08X w1=0x%08X total=%zu depth=%d",
+                            opcode, c.w0, c.w1, total-1, depth);
+                    }
+                }
+                if (opcode == 0xBF) Cmd_Tri1(c);
+                else if (opcode == 0xB1) Cmd_Tri2(c);
+                else if (opcode == 0xC4) Cmd_Tri2_F3DEX2(c);
+                else if (opcode == 0x34) Cmd_Tri1_F3DEX2(c);
+                break;
             case 0x03: Cmd_MoveMem(c); break;
             case 0xBC: Cmd_MoveWord(c); break;
 
