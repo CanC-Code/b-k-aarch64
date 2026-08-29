@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/resource.h>
 #include <time.h>
 #include <pthread.h>
 #include "n64_os_types_cpp.h"
@@ -454,6 +455,7 @@ static std::thread s_gfx_worker_thread;
 static bool s_gfx_worker_running = true;
 
 static void gfx_worker_loop() {
+    setpriority(PRIO_PROCESS, 0, 10);
     while (s_gfx_worker_running) {
         OSTask_t task;
         {
@@ -467,6 +469,7 @@ static void gfx_worker_loop() {
         OSTask wrapper;
         wrapper.t = task;
         RSP_ProcessGfxTask(&wrapper);
+        usleep(1000); // yield a bit
     }
 }
 
