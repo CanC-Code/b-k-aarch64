@@ -458,13 +458,6 @@ void osSpTaskStartGo(OSTask *tp) {
             LOGI("BKA-RDP: GFX task data=%p size=%u", tp->t.data_ptr, tp->t.data_size);
         }
 
-        // Start worker thread on first use
-        static bool worker_started = false;
-        if (!worker_started) {
-            s_gfx_worker_thread = std::thread(gfx_worker_loop);
-            worker_started = true;
-        }
-
         RSP_ProcessGfxTask(tp);
         usleep(2000); // small delay to prevent main thread starvation
 
