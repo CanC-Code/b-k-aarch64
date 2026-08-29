@@ -446,6 +446,39 @@ void osCreatePiManager(OSPri pri, OSMesgQueue *cmdQ, OSMesg *cmdBuf, s32 cmdMsgC
 void osSpTaskLoad(OSTask *tp) {}
 
 // MODIFIED: Route GFX tasks through the software RDP before signaling completion
+static std::queue<OSTask_t> s_gfx_task_queue;
+static std::mutex s_gfx_queue_mutex;
+static std::condition_variable s_gfx_queue_cv;
+static std::thread s_gfx_worker_thread;
+static bool s_gfx_worker_running = true;
+
+static void gfx_worker_loop() {
+    while (s_gfx_worker_running) {
+        OSTask_t task;
+        {
+            std::unique_lock<std::mutex> lock(s_gfx_queue_mutex);
+            s_gfx_queue_cv.wait(lock, []{ return !s_gfx_task_queue.empty() || !s_gfx_worker_running; });
+            if (!s_gfx_worker_running && s_gfx_task_queue.empty()) break;
+            task = s_gfx_task_queue.front();
+            s_gfx_task_queue.pop();
+        }
+
+        OSTask wrapper;
+        wrapper.t = task;
+        RSP_ProcessGfxTask(&wrapper);
+
+#ifndef OS_EVENT_SP
+#define OS_EVENT_SP 4
+#endif
+#ifndef OS_EVENT_DP
+#define OS_EVENT_DP 9
+#endif
+        HLE_TriggerN64Event(OS_EVENT_SP);
+        HLE_TriggerN64Event(OS_EVENT_DP);
+        osSendMesg(&D_8027FBC8, NULL, OS_MESG_NOBLOCK);
+    }
+}
+
 void osSpTaskStartGo(OSTask *tp) {
     static int s_gfxLogCount = 0;
     if (tp == nullptr) return;
@@ -455,19 +488,22 @@ void osSpTaskStartGo(OSTask *tp) {
             LOGI("BKA-RDP: osSpTaskStartGo type=%d data=%p size=%u", tp->t.type, tp->t.data_ptr, tp->t.data_size);
             LOGI("BKA-RDP: GFX task data=%p size=%u", tp->t.data_ptr, tp->t.data_size);
         }
-        RSP_ProcessGfxTask(tp);
-        // Signal completion so Thread 5 continues
-#ifndef OS_EVENT_SP
-#define OS_EVENT_SP 4
-#endif
-#ifndef OS_EVENT_DP
-#define OS_EVENT_DP 9
-#endif
-        HLE_TriggerN64Event(OS_EVENT_SP); // 4
-        HLE_TriggerN64Event(OS_EVENT_DP); // 9
-        osSendMesg(&D_8027FBC8, NULL, OS_MESG_NOBLOCK);
+
+        // Start worker thread on first use
+        static bool worker_started = false;
+        if (!worker_started) {
+            s_gfx_worker_thread = std::thread(gfx_worker_loop);
+            worker_started = true;
+        }
+
+        // Enqueue task for asynchronous processing
+        {
+            std::lock_guard<std::mutex> lock(s_gfx_queue_mutex);
+            s_gfx_task_queue.push(tp->t);
+        }
+        s_gfx_queue_cv.notify_one();
     } else if (tp->t.type == M_AUDTASK) {
-        HLE_TriggerN64Event(OS_EVENT_SP); // 4
+        HLE_TriggerN64Event(OS_EVENT_SP);
     }
 }
 
