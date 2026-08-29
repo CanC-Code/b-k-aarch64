@@ -23,7 +23,6 @@
 #include "rarezip_stub_cpp.h"
 extern OSMesgQueue D_8027FBC8;
 #include "gfx_interpreter.h"   // <-- ADDED: F3DEX display list → framebuffer rasterizer
-#define __android_log_print(...) ((void)0)
 
 
 // -------------------------------------------------------------------------
