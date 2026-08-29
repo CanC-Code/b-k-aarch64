@@ -826,14 +826,15 @@ void modelRender_geoCmd_LOADDL(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data) 
     if (D_80370990) {
         gfx_sub_list = &modelRenderDisplayList->list[cmd->gfx_index];
         {
-            void *phys = osVirtualToPhysical(gfx_sub_list);
-            __android_log_print(ANDROID_LOG_INFO, "BKA-MODEL",
-                "LOADDL: index=%d gfx_sub_list=%p phys=%p first_cmd=0x%08x",
-                cmd->gfx_index, gfx_sub_list, phys,
-                gfx_sub_list ? ((u32*)gfx_sub_list)[0] : 0);
-            if (phys) {
-                gSPDisplayList((*gfx)++, phys);
+            static int loaddl_log_count = 0;
+            if (++loaddl_log_count <= 3) {
+                void *phys = osVirtualToPhysical(gfx_sub_list);
+                __android_log_print(ANDROID_LOG_INFO, "BKA-MODEL",
+                    "LOADDL: index=%d gfx_sub_list=%p phys=%p first_cmd=0x%08x",
+                    cmd->gfx_index, gfx_sub_list, phys,
+                    gfx_sub_list ? ((u32*)gfx_sub_list)[0] : 0);
             }
+            gSPDisplayList((*gfx)++, osVirtualToPhysical(gfx_sub_list));
         }
     } else {
         __android_log_print(ANDROID_LOG_WARN, "BKA-MODEL",
