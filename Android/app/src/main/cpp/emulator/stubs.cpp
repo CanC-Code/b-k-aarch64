@@ -467,16 +467,6 @@ static void gfx_worker_loop() {
         OSTask wrapper;
         wrapper.t = task;
         RSP_ProcessGfxTask(&wrapper);
-
-#ifndef OS_EVENT_SP
-#define OS_EVENT_SP 4
-#endif
-#ifndef OS_EVENT_DP
-#define OS_EVENT_DP 9
-#endif
-        HLE_TriggerN64Event(OS_EVENT_SP);
-        HLE_TriggerN64Event(OS_EVENT_DP);
-        osSendMesg(&D_8027FBC8, NULL, OS_MESG_NOBLOCK);
     }
 }
 
@@ -503,6 +493,17 @@ void osSpTaskStartGo(OSTask *tp) {
             s_gfx_task_queue.push(tp->t);
         }
         s_gfx_queue_cv.notify_one();
+
+        // Signal completion immediately on the main thread (render is async)
+#ifndef OS_EVENT_SP
+#define OS_EVENT_SP 4
+#endif
+#ifndef OS_EVENT_DP
+#define OS_EVENT_DP 9
+#endif
+        HLE_TriggerN64Event(OS_EVENT_SP);
+        HLE_TriggerN64Event(OS_EVENT_DP);
+        osSendMesg(&D_8027FBC8, NULL, OS_MESG_NOBLOCK);
     } else if (tp->t.type == M_AUDTASK) {
         HLE_TriggerN64Event(OS_EVENT_SP);
     }
