@@ -455,8 +455,7 @@ void osSpTaskStartGo(OSTask *tp) {
             LOGI("BKA-RDP: osSpTaskStartGo type=%d data=%p size=%u", tp->t.type, tp->t.data_ptr, tp->t.data_size);
             LOGI("BKA-RDP: GFX task data=%p size=%u", tp->t.data_ptr, tp->t.data_size);
         }
-        // TEMP: Disable RSP processing to test ANR
-        // RSP_ProcessGfxTask(tp);
+        RSP_ProcessGfxTask(tp);
         // Signal completion so Thread 5 continues
 #ifndef OS_EVENT_SP
 #define OS_EVENT_SP 4

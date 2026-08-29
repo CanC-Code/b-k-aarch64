@@ -117,9 +117,8 @@ extern "C" {
         if (++hookCount <= 3 || hookCount % 60 == 0)
             LOGI("BKA-FrameSync: frame %d", hookCount);
 
-        // TEMPORARY NO-OP FRAME SYNC:
-        // Main thread already owns the engine lock, so we simply return.
-        // This keeps the main loop running while we debug rendering.
+        // Cap frame rate to ~30 FPS to reduce SurfaceView buffer pressure
+        usleep(33333);
     }
 }
 
