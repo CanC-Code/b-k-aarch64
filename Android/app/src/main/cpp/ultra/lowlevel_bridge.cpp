@@ -48,6 +48,7 @@ uint32_t g_active_fb_offset = 0x400000;
 // Virtual-to-physical mapping registry.
 // The recompiled code should call bka_add_addr_mapping() through osVirtualToPhysical.
 #include <unordered_map>
+#define __android_log_print(...) ((void)0)
 static std::unordered_map<uint32_t, void*> s_addrMap;
 static std::unordered_map<uint64_t, void*> s_fullAddrMap;
 

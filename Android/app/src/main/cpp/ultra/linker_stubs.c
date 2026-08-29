@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <android/log.h>
+#define __android_log_print(...) ((void)0)
 typedef int8_t  s8;
 typedef uint8_t  u8;
 typedef uint16_t u16;
