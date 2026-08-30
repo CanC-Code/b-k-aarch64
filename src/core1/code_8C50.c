@@ -68,18 +68,25 @@ static bool sEnableControllerTimer;
 void thread5_startNextAudioTask(void);
 
 void thread5_sendTaskToQueue(OSMesg msg) {
-    static bool clear_freeze = TRUE;
-    
+    // Android HLE: thread5 is not actually running (GIL prevents separate thread).
+    // Process messages synchronously in the caller (main thread).
     osSendMesg(&sThread5MesgQueue, msg, OS_MESG_BLOCK);
-    
+
     if (msg == (OSMesg) THREAD5_MESSAGE_EVENT_SYNC) {
-        sUnkCounter2 = 30;
-        if (clear_freeze) {
-            osDpSetStatus(DPC_CLR_FREEZE);
-            clear_freeze = FALSE;
+        thread5_handleSyncEvent();
+    } else if (msg == (OSMesg) THREAD5_MESSAGE_EVENT_DP) {
+        thread5_handleDPEvent();
+    } else if (msg == (OSMesg) THREAD5_MESSAGE_EVENT_VI_RETRACE) {
+        thread5_handleVIRetraceEvent();
+    } else if (msg >= (OSMesg) 100) {
+        struct ucode_task_data_s *task = (struct ucode_task_data_s *)msg;
+        if (task->task_type == UCODE_TASK_TYPE_AUDIO) {
+            thread5_handleAudioTaskMesg(task);
+        } else if (task->task_type == UCODE_TASK_TYPE_F3DEX) {
+            thread5_handleF3DEXTaskMesg(task);
+        } else if (task->task_type == UCODE_TASK_TYPE_L3DEX) {
+            thread5_handleL3DEXTaskMesg(task);
         }
-        // TEMPORARY DIAGNOSTIC: skip sync wait (remove osRecvMesg)
-        sUnkCounter2 = 0;
     }
 }
 
