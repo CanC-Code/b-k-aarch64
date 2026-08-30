@@ -997,7 +997,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
     DListFrame stack[64];
     int depth = 0;
-    size_t current_stride = 16;
+    size_t current_stride = 8;
     size_t stack_stride[64];
     uintptr_t visited_dl_addrs[256];
     int visited_dl_count = 0;
