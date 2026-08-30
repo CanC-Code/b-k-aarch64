@@ -184,11 +184,8 @@ void thread5_handleL3DEXTaskMesg(struct ucode_task_data_s *task_data) {
 }
 
 void thread5_handleSyncEvent(void) {
-    if ((sUnkFlag1 == UNKFLAG1_NO_TASK) && (sUnkFlag2_Saved == 2) && (sActiveGfxTaskDataID == sSelectedGfxTaskDataID) && !(osDpGetStatus() & DPC_STATUS_FREEZE)) {
-        osSendMesg(&sThread5SyncMesgQueue, NULL, OS_MESG_NOBLOCK);
-    } else {
-        sSyncCounter++;
-    }
+    // Temporary diagnostic: always acknowledge sync to unblock main thread
+    osSendMesg(&sThread5SyncMesgQueue, NULL, OS_MESG_NOBLOCK);
 }
 
 void thread5_handleDPEvent(void) {
