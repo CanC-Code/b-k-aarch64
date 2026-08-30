@@ -971,6 +971,15 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
     RDP_InitState();
 
+    // Diagnostic: dump first 16 bytes of task data
+    {
+        const unsigned char *dp = (const unsigned char*)tp->t.data_ptr;
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "RSP task data: %02x %02x %02x %02x %02x %02x %02x %02x  %02x %02x %02x %02x %02x %02x %02x %02x",
+            dp[0], dp[1], dp[2], dp[3], dp[4], dp[5], dp[6], dp[7],
+            dp[8], dp[9], dp[10], dp[11], dp[12], dp[13], dp[14], dp[15]);
+    }
+
     // Only clear framebuffers on first call (static flag)
     static bool s_firstFrame = true;
     if (s_firstFrame) {
