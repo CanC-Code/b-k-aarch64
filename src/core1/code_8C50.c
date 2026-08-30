@@ -78,7 +78,7 @@ void thread5_sendTaskToQueue(OSMesg msg) {
             osDpSetStatus(DPC_CLR_FREEZE);
             clear_freeze = FALSE;
         }
-        // osRecvMesg(&sThread5SyncMesgQueue, NULL, OS_MESG_BLOCK); // ANDROID: skip sync handshake - rasterizer is synchronous
+        osRecvMesg(&sThread5SyncMesgQueue, NULL, OS_MESG_BLOCK); // ANDROID: skip sync handshake - rasterizer is synchronous
         sUnkCounter2 = 0;
     }
 }
