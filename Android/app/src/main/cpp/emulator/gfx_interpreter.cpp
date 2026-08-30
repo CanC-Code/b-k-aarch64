@@ -997,7 +997,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
     DListFrame stack[64];
     int depth = 0;
-    size_t current_stride = 16;
+    size_t current_stride = 8;
     size_t stack_stride[64];
     uintptr_t visited_dl_addrs[256];
     int visited_dl_count = 0;
@@ -1042,7 +1042,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
         GfxCommand c = {0};
         memcpy(&c, cur, 8);
-        // Banjo-Kazooie display lists are big-endian; swap to host order.
+        c.w0 = __builtin_bswap32(c.w0);
+        c.w1 = __builtin_bswap32(c.w1);
         uint8_t opcode = GFX_OPCODE(c);
         if (opcode == 0x04 && total <= 5) {
             const uint8_t *raw = cur;
