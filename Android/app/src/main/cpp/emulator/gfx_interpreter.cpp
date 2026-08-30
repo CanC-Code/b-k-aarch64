@@ -1,4 +1,5 @@
 #include "gfx_interpreter.h"
+#include <PR/gbi.h>
 #include <android/log.h>
 #include <cstring>
 #include <cstdlib>
@@ -997,7 +998,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
     DListFrame stack[64];
     int depth = 0;
-    size_t current_stride = 16;
+    size_t current_stride = 8;
     size_t stack_stride[64];
     uintptr_t visited_dl_addrs[256];
     int visited_dl_count = 0;
@@ -1040,11 +1041,12 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             }
         }
 
-        GfxCommand c = {0};
-        memcpy(&c, cur, 8);
+        Gfx c = {0};
+        memcpy(&c, cur, sizeof(Gfx));
         // Banjo-Kazooie display lists are big-endian; swap to host order.
-        // No byteswap for 16-byte stride testing
-        uint8_t opcode = GFX_OPCODE(c);
+        c.words.w0 = __builtin_bswap32(c.words.w0);
+        c.words.w1 = __builtin_bswap32(c.words.w1);
+        uint8_t opcode = (c.words.w0 >> 24) & 0xFF;
         if (opcode == 0x04 && total <= 5) {
             const uint8_t *raw = cur;
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -1058,7 +1060,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         if (opcode == 0x01) {
             current_stride = 64;
         } else {
-            current_stride = 16;
+            current_stride = 8;
         }
 
         if (total <= 0) {
