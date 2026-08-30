@@ -1,5 +1,5 @@
 #include "gfx_interpreter.h"
-#include <PR/gbi.h>
+#include <PR/ultra64.h>
 #include <android/log.h>
 #include <cstring>
 #include <cstdlib>
