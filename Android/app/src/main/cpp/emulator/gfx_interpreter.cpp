@@ -1043,8 +1043,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         GfxCommand c = {0};
         memcpy(&c, cur, 8);
         // Banjo-Kazooie display lists are big-endian; swap to host order.
-        c.w0 = __builtin_bswap32(c.w0);
-        c.w1 = __builtin_bswap32(c.w1);
+        // No byteswap for 16-byte stride testing
         uint8_t opcode = GFX_OPCODE(c);
         if (opcode == 0x04 && total <= 5) {
             const uint8_t *raw = cur;
@@ -1059,7 +1058,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         if (opcode == 0x01) {
             current_stride = 64;
         } else {
-            current_stride = 8;
+            current_stride = 16;
         }
 
         if (total <= 0) {
