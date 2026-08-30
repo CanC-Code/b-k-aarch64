@@ -1047,12 +1047,12 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         c.w1 = __builtin_bswap32(c.w1);
         uint8_t opcode = GFX_OPCODE(c);
 
-        // Banjo-Kazooie display lists are stored as 16-byte records.
-        // G_MTX (0x01) is 64 bytes, but all others are 16.
+        // Banjo-Kazooie display lists are 8-byte aligned like the PC.
+        // G_MTX (0x01) is 64 bytes.
         if (opcode == 0x01) {
             current_stride = 64;
         } else {
-            current_stride = 16;
+            current_stride = 8;
         }
 
         if (total <= 0) {
