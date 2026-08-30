@@ -1042,7 +1042,9 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
         GfxCommand c = {0};
         memcpy(&c, cur, 8);
-        // Display list words are already host-endian in the recompiled code.
+        // Banjo-Kazooie display lists are big-endian; swap to host order.
+        c.w0 = __builtin_bswap32(c.w0);
+        c.w1 = __builtin_bswap32(c.w1);
         uint8_t opcode = GFX_OPCODE(c);
 
         // Banjo-Kazooie display lists are stored as 16-byte records.
