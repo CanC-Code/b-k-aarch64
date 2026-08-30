@@ -974,10 +974,15 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     // Diagnostic: dump first 16 bytes of task data
     {
         const unsigned char *dp = (const unsigned char*)tp->t.data_ptr;
-        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-            "RSP task data: %02x %02x %02x %02x %02x %02x %02x %02x  %02x %02x %02x %02x %02x %02x %02x %02x",
-            dp[0], dp[1], dp[2], dp[3], dp[4], dp[5], dp[6], dp[7],
-            dp[8], dp[9], dp[10], dp[11], dp[12], dp[13], dp[14], dp[15]);
+        for (int off = 0; off < 32; off += 16) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "RSP task data[%02d]: %02x %02x %02x %02x %02x %02x %02x %02x  %02x %02x %02x %02x %02x %02x %02x %02x",
+                off,
+                dp[off+0], dp[off+1], dp[off+2], dp[off+3],
+                dp[off+4], dp[off+5], dp[off+6], dp[off+7],
+                dp[off+8], dp[off+9], dp[off+10], dp[off+11],
+                dp[off+12], dp[off+13], dp[off+14], dp[off+15]);
+        }
     }
 
     // Only clear framebuffers on first call (static flag)
