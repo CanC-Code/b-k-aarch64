@@ -995,8 +995,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     uint8_t *cur = (uint8_t*)tp->t.data_ptr;
     uint8_t *cur_end = cur + tp->t.data_size;
 
-    const size_t MAX_TOTAL_CMDS = 200;
-    const size_t MAX_DL_CMDS = 100;
+    const size_t MAX_TOTAL_CMDS = 20000;
+    const size_t MAX_DL_CMDS = 5000;
     size_t total = 0;
     size_t dl_cmds = 0;
     int zero_run = 0;
