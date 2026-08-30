@@ -1178,7 +1178,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 void *dl_ptr = RDP_TranslateAddr(raw_addr);
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "G_DL RECOGNIZED raw=0x%08X", raw_addr);
-                break; // TEMP: skip jump to avoid crash
                 static int dl_log_count = 0;
                 if (++dl_log_count <= 20) {
                     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
