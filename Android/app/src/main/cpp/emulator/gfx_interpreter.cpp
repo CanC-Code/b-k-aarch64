@@ -1061,7 +1061,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         if (opcode == 0x01) {
             current_stride = 64;
         } else {
-            current_stride = 16;
+            current_stride = 8;
         }
 
         if (total <= 100) {
