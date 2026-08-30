@@ -1046,6 +1046,13 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         c.w0 = __builtin_bswap32(c.w0);
         c.w1 = __builtin_bswap32(c.w1);
         uint8_t opcode = GFX_OPCODE(c);
+        if (opcode == 0x04 && total <= 5) {
+            const uint8_t *raw = cur;
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "RAW Vtx bytes: %02x %02x %02x %02x %02x %02x %02x %02x",
+                raw[0], raw[1], raw[2], raw[3],
+                raw[4], raw[5], raw[6], raw[7]);
+        }
 
         // Banjo-Kazooie display lists are 8-byte aligned like the PC.
         // G_MTX (0x01) is 64 bytes.
