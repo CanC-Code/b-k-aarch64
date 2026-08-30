@@ -1060,7 +1060,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             current_stride = 16;
         }
 
-        if (total <= 0) {
+        if (total <= 100) {
             if (log_after_jump) jump_log_count++;
             __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
                 "cmd[%zu] op=0x%02X w0=0x%08X w1=0x%08X depth=%d stride=%zu",
