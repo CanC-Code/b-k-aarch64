@@ -456,6 +456,8 @@ void osSpTaskStartGo(OSTask *tp) {
         if (++s_gfxLogCount <= 3) {
             LOGI("BKA-RDP: osSpTaskStartGo type=%d data=%p size=%u", tp->t.type, tp->t.data_ptr, tp->t.data_size);
             LOGI("BKA-RDP: GFX task data=%p size=%u", tp->t.data_ptr, tp->t.data_size);
+        } else {
+            LOGI("BKA-RDP: osSpTaskStartGo (silent)");
         }
 
         RSP_ProcessGfxTask(tp);
