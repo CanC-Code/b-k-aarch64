@@ -1396,3 +1396,4 @@ default:
 
 
 // force rebuild: vertex preservation
+// force rebuild stride16 no bswap
