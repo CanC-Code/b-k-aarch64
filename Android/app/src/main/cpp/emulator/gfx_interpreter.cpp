@@ -1043,8 +1043,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         GfxCommand c = {0};
         memcpy(&c, cur, 8);
         // Banjo-Kazooie display lists are big-endian; swap to host order.
-        c.words.w0 = __builtin_bswap32(c.words.w0);
-        c.words.w1 = __builtin_bswap32(c.words.w1);
+        c.w0 = __builtin_bswap32(c.w0);
+        c.w1 = __builtin_bswap32(c.w1);
         uint8_t opcode = GFX_OPCODE(c);
         if (opcode == 0x04 && total <= 5) {
             const uint8_t *raw = cur;
