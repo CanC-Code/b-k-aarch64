@@ -35,14 +35,18 @@ static struct RDPStateDefaultSegments {
 static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     if (addr == 0) return nullptr;
 
-    // Exact virtual-to-physical mapping registry
+    // Exact virtual-to-physical mapping registry (C++ table first, then C table)
     void* p = bka_lookup_addr_mapping(addr);
+    if (!p) {
+        extern void* bka_lookup_addr_mapping_c(uint32_t key);
+        p = bka_lookup_addr_mapping_c(addr);
+    }
     if (p) {
         static int diag_count = 0;
         if (++diag_count <= 20) {
             uint32_t* words = (uint32_t*)p;
             __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-                "RDP_TranslateAddr(0x%08X) exact hit p=%p first=[%08X %08X %08X %08X]",
+                "RDP_TranslateAddr(0x%08X) hit p=%p first=[%08X %08X %08X %08X]",
                 addr, p, words[0], words[1], words[2], words[3]);
         }
         return (uint8_t*)p;

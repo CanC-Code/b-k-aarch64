@@ -41,6 +41,7 @@ static uint32_t s_bka_addr_key[BKA_ADDR_MAP_SIZE];
 static void    *s_bka_addr_ptr[BKA_ADDR_MAP_SIZE];
 static int       s_bka_addr_count = 0;
 
+void* bka_lookup_addr_mapping(uint32_t key);
 void bka_store_addr_mapping(uint32_t key, void *ptr) {
     for (int i = 0; i < s_bka_addr_count; i++) {
         if (s_bka_addr_key[i] == key) {
