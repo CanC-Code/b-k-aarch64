@@ -1202,15 +1202,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                         "G_DL: target not mapped addr=0x%08X", raw_addr);
                     break;
                 }
-                // Skip empty nested display lists to avoid loops
-                if (((uint32_t*)dl_ptr)[0] == 0 && ((uint32_t*)dl_ptr)[1] == 0) {
-                    static int empty_dl_log_count = 0;
-                    if (++empty_dl_log_count <= 5) {
-                        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                            "G_DL: skipping empty nested list at addr=0x%08X", raw_addr);
-                    }
-                    break;
-                }
+                // NOTE: Do not skip lists with zero first words. They are not truly empty;
+                // the address resolver may see zeros due to segment mapping.
 
                 // Loop detection: prevent infinite G_DL recursion
                 bool already_visited = false;
