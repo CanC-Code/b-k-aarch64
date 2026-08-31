@@ -64,6 +64,13 @@ static void *sCurrentFramebuffer;
 static OSTimer sAudioTimer;
 static OSTimer sControllerTimer;
 static bool sEnableControllerTimer;
+void thread5_handleAudioTaskMesg(struct ucode_task_data_s *task_data);
+void thread5_handleF3DEXTaskMesg(struct ucode_task_data_s *task_data);
+void thread5_handleL3DEXTaskMesg(struct ucode_task_data_s *task_data);
+void thread5_handleSyncEvent(void);
+void thread5_handleDPEvent(void);
+void thread5_handleVIRetraceEvent(void);
+
 
 void thread5_startNextAudioTask(void);
 
