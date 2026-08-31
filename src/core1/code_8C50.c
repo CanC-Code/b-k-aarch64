@@ -96,7 +96,7 @@ void thread5_flush_graphics_tasks(void) {
             }
         }
     }
-    __android_log_print(ANDROID_LOG_INFO, "BKA-GFX", "thread5_flush_graphics_tasks: flushed %d messages", flushed_count);
+    fprintf(stderr, "BKA-FLUSH: flushed %d messages\n", flushed_count);
 }
 
 
