@@ -96,7 +96,6 @@ void thread5_flush_graphics_tasks(void) {
             }
         }
     }
-    fprintf(stderr, "BKA-FLUSH: flushed %d messages\n", flushed_count);
 }
 
 

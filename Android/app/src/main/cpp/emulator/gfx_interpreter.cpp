@@ -79,7 +79,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // Segment address (F3DEX_GBI)
     uint32_t seg = (addr >> 24) & 0x0F;
     uint32_t off = addr & 0x00FFFFFF;
-    if (seg != 0 && addr < 0x10000000 && s_rdp.segmentBase[seg] != 0) {
+    if (seg != 0 && s_rdp.segmentBase[seg] != 0) {
         uint32_t base = s_rdp.segmentBase[seg];
         void *base_pm = bka_lookup_addr_mapping(base);
         if (base_pm) return (uint8_t*)base_pm + off;
