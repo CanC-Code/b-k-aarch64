@@ -206,6 +206,7 @@ void mainLoop(void){
             }
             spawnQueue_flush();
             __android_log_print(ANDROID_LOG_ERROR, "BKA-LOOP", "after spawnQueue_flush\n");
+            thread5_flush_graphics_tasks();
             break;
     }//L8023DE34
 
