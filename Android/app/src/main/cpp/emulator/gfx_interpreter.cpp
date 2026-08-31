@@ -7,6 +7,8 @@
 #include <algorithm>
 
 #define LOG_TAG "BKA_GFX"
+extern "C" void* bka_lookup_addr_mapping_c(uint32_t key);
+
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
 
@@ -38,7 +40,6 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // Exact virtual-to-physical mapping registry (C++ table first, then C table)
     void* p = bka_lookup_addr_mapping(addr);
     if (!p) {
-        extern "C" void* bka_lookup_addr_mapping_c(uint32_t key);
         p = bka_lookup_addr_mapping_c(addr);
     }
     if (p) {
