@@ -1258,6 +1258,14 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                         "G_DL JUMP to addr=0x%08X resolved=%p cur_end=%p depth=%d",
                         raw_addr, dl_ptr, cur_end, depth);
                 }
+                // Diagnostic: dump first 16 bytes at resolved pointer
+                if (dl_jump_log_count <= 3) {
+                    uint8_t* dump = (uint8_t*)dl_ptr;
+                    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+                        "DL bytes at %p: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
+                        dl_ptr, dump[0], dump[1], dump[2], dump[3], dump[4], dump[5], dump[6], dump[7],
+                        dump[8], dump[9], dump[10], dump[11], dump[12], dump[13], dump[14], dump[15]);
+                }
                 uintptr_t mapped_end = bka_get_mapped_end(dl_ptr);
                 if (mapped_end != 0 && mapped_end > (uintptr_t)dl_ptr) {
                     cur_end = (uint8_t*)mapped_end;
