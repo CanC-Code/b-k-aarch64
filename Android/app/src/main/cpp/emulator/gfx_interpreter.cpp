@@ -1391,15 +1391,7 @@ case 0xDC:
             case 0xEB: // G_SETTIMG - set texture image
                 break;
 default:
-                {
-                    static int stub_warn_count[256] = {0};
-                    if (stub_warn_count[opcode] < 3) {
-                        stub_warn_count[opcode]++;
-                        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                            "Stub: opcode 0x%02X not fully implemented (logged %d/3)",
-                            opcode, stub_warn_count[opcode]);
-                    }
-                }
+                // Quietly skip unknown opcodes to continue processing
                 break;
         }
     }
