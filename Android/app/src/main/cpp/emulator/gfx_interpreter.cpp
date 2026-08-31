@@ -38,7 +38,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // Exact virtual-to-physical mapping registry (C++ table first, then C table)
     void* p = bka_lookup_addr_mapping(addr);
     if (!p) {
-        extern void* bka_lookup_addr_mapping_c(uint32_t key);
+        extern "C" void* bka_lookup_addr_mapping_c(uint32_t key);
         p = bka_lookup_addr_mapping_c(addr);
     }
     if (p) {
