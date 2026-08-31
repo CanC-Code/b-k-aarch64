@@ -568,7 +568,7 @@ void thread5_create(void) {
     sGfxTask.t.yield_data_ptr = (u64 *) yield_data_ptr;
 
     osCreateThread(&sThread5, THREAD5_ID,thread5_entry, NULL, STACK_START(sThread5Stack), THREAD5_PRI);
-    osStartThread(&sThread5);
+    // osStartThread(&sThread5); // disabled: use synchronous flush in main loop
 }
 
 void thread5_enableControllerTimer(void) {
