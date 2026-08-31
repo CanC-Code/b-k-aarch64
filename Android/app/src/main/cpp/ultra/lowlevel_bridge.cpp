@@ -52,9 +52,13 @@ uint32_t g_active_fb_offset = 0x400000;
 static std::unordered_map<uint32_t, void*> s_addrMap;
 static std::unordered_map<uint64_t, void*> s_fullAddrMap;
 
+extern "C" void* bka_lookup_addr_mapping_c(uint32_t key);
 void* bka_lookup_addr_mapping(uint32_t low32) {
     auto it = s_addrMap.find(low32);
     if (it != s_addrMap.end()) return it->second;
+    // Fallback to C table (linker_stubs.c)
+    void* p = bka_lookup_addr_mapping_c(low32);
+    if (p) return p;
     return nullptr;
 }
 
