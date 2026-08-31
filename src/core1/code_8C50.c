@@ -1,3 +1,4 @@
+#include <android/log.h>
 #include <ultra64.h>
 #include <n_libaudio.h>
 #include <PRinternal/macros.h>
