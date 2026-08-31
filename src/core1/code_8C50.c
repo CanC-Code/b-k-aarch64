@@ -75,7 +75,9 @@ void thread5_handleVIRetraceEvent(void);
 void thread5_startNextAudioTask(void);
 void thread5_flush_graphics_tasks(void) {
     OSMesg msg;
+    int flushed_count = 0;
     while (osRecvMesg(&sThread5MesgQueue, &msg, OS_MESG_NOBLOCK) != -1) {
+        flushed_count++;
         if (msg == (OSMesg) THREAD5_MESSAGE_EVENT_SYNC) {
             thread5_handleSyncEvent();
         } else if (msg == (OSMesg) THREAD5_MESSAGE_EVENT_DP) {
@@ -93,6 +95,7 @@ void thread5_flush_graphics_tasks(void) {
             }
         }
     }
+    __android_log_print(ANDROID_LOG_INFO, "BKA-GFX", "thread5_flush_graphics_tasks: flushed %d messages", flushed_count);
 }
 
 
