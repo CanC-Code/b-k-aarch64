@@ -1127,6 +1127,13 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xED:
             case 0xFF:
                 break;
+            case 0x58: // G_SETTILESIZE? no-op for now
+            case 0xE0: // Unknown but appears frequently; treat as no-op
+            case 0x90: // Unknown
+            case 0x88: // Unknown
+            case 0x70: // Unknown
+            case 0x08: // Unknown
+                break;
 
             case 0xF7: Cmd_SetFillColor(c); break;
             case 0xFA: Cmd_SetPrimColor(c); break;
