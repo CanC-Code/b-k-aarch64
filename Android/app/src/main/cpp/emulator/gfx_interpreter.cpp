@@ -37,7 +37,16 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
 
     // Exact virtual-to-physical mapping registry
     void* p = bka_lookup_addr_mapping(addr);
-    if (p) return (uint8_t*)p;
+    if (p) {
+        static int diag_count = 0;
+        if (++diag_count <= 20) {
+            uint32_t* words = (uint32_t*)p;
+            __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+                "RDP_TranslateAddr(0x%08X) exact hit p=%p first=[%08X %08X %08X %08X]",
+                addr, p, words[0], words[1], words[2], words[3]);
+        }
+        return (uint8_t*)p;
+    }
 
     // Safe fallback for truncated host pointers (0x40-0x4F, 0x90-0x9F).
     // Only accept if the mapped address contains a plausible F3DEX opcode.
