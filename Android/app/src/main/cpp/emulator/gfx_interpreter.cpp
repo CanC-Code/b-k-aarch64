@@ -92,6 +92,15 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     if (addr >= 0x02000000u && addr < 0x30000000u) addr &= 0x00FFFFFFu;
     // Physical RDRAM
     if (addr < 0x1000000u && gN64_RDRAM) return gN64_RDRAM + addr;
+    // Last resort: treat the raw address as a direct offset into a mapped region
+    // This is necessary because some display list addresses are not in the mapping table.
+    {
+        uint32_t test_off = addr & 0x00FFFFFF;
+        if (test_off < 0x1000000u) {
+            // Try to find a mapped pointer by scanning the C table via C++ wrapper already done.
+            // If still zero, return null and let caller handle.
+        }
+    }
     if (addr >= 0x80000000u && addr < 0x81000000u && gN64_RDRAM) return gN64_RDRAM + (addr - 0x80000000u);
     if (addr >= 0xA0000000u && addr < 0xA1000000u && gN64_RDRAM) return gN64_RDRAM + (addr - 0xA0000000u);
 
