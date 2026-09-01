@@ -205,6 +205,7 @@ void thread5_handleAudioTaskMesg(struct ucode_task_data_s *task_data) {
 }
 
 void thread5_handleF3DEXTaskMesg(struct ucode_task_data_s *task_data) {
+   __android_log_print(ANDROID_LOG_INFO, "BKA-TASK", "handleF3DEX: sUnkFlag1=0x%x task7=%d", sUnkFlag1, sTask7Handled);
    thread5_insertGfxTaskData(task_data);
     if (sUnkFlag1 == UNKFLAG1_NO_TASK && !sTask7Handled) {
         if (sGfxTaskDataList[sActiveGfxTaskDataID] == NULL) return;
