@@ -278,6 +278,7 @@ void osCreateMesgQueue(OSMesgQueue *mq, OSMesg *msgBuf, s32 count) {
     auto nq = std::make_shared<NativeQueue>();
     nq->capacity = count;
     s_queueRegistry[mq] = nq; __android_log_print(ANDROID_LOG_INFO, "BKA-RDP", "osCreateMesgQueue: mq=%p capacity=%d", (void*)mq, count);
+    if ((uintptr_t)mq == 0x7428f4d5c8ULL) __android_log_print(ANDROID_LOG_ERROR, "BKA-RDP", "CREATED COMPLETION QUEUE mq=%p", (void*)mq);
 }
 
 void osSetEventMesg(OSEvent e, OSMesgQueue *mq, OSMesg msg) {
@@ -304,6 +305,7 @@ void HLE_TriggerN64Event(int event_id) {
 }
 
 s32 osSendMesg(OSMesgQueue *mq, OSMesg msg, s32 flag) {
+    if ((uintptr_t)mq == 0x7428f4d5c8ULL) __android_log_print(ANDROID_LOG_ERROR, "BKA-RDP", "SENDING TO COMPLETION QUEUE mq=%p", (void*)mq);
     std::shared_ptr<NativeQueue> nq = GetNativeQueue(mq);
     if (!nq) { __android_log_print(ANDROID_LOG_ERROR, "BKA-RDP", "osSendMesg: QUEUE NOT FOUND mq=%p", (void*)mq); return -1; }
 
