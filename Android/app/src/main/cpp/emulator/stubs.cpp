@@ -22,6 +22,7 @@
 #include "bka_safe_base.h"
 #include "rarezip_stub_cpp.h"
 extern OSMesgQueue D_8027FBC8;
+static bool s_completionMsgPending = false;
 #include "gfx_interpreter.h"   // <-- ADDED: F3DEX display list → framebuffer rasterizer
 
 
@@ -352,6 +353,21 @@ s32 osJamMesg(OSMesgQueue *mq, OSMesg msg, s32 flag) {
 }
 
 s32 osRecvMesg(OSMesgQueue *mq, OSMesg *msg, s32 flag) {
+    // Special case: completion queue (D_8027FBC8)
+    if (mq == &D_8027FBC8) {
+        if (flag == OS_MESG_BLOCK) {
+            while (!s_completionMsgPending) {
+                s_n64_gil.unlock();
+                usleep(1000);
+                s_n64_gil.lock();
+            }
+        } else {
+            if (!s_completionMsgPending) return -1;
+        }
+        s_completionMsgPending = false;
+        if (msg) *msg = nullptr;
+        return 0;
+    }
     std::shared_ptr<NativeQueue> nq = GetNativeQueue(mq);
     if (!nq) { static int failCount = 0; if (++failCount <= 5 || failCount % 1000 == 0) __android_log_print(ANDROID_LOG_ERROR, "BKA-RDP", "osRecvMesg: QUEUE NOT FOUND mq=%p failCount=%d", (void*)mq, failCount); return -1; }
 
