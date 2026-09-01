@@ -114,8 +114,10 @@ void thread5_sendTaskToQueue(OSMesg msg) {
         if (task->task_type == UCODE_TASK_TYPE_AUDIO) {
             thread5_handleAudioTaskMesg(task);
         } else if (task->task_type == UCODE_TASK_TYPE_F3DEX) {
+            sUnkFlag1 = UNKFLAG1_NO_TASK;
             thread5_handleF3DEXTaskMesg(task);
         } else if (task->task_type == UCODE_TASK_TYPE_L3DEX) {
+            sUnkFlag1 = UNKFLAG1_NO_TASK;
             thread5_handleL3DEXTaskMesg(task);
         }
     }
