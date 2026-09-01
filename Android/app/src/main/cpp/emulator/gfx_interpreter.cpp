@@ -59,7 +59,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
 
     // Safe fallback for truncated host pointers (0x40-0x4F, 0x90-0x9F, 0x20-0x2F, etc).
     // These are likely low 32 bits of host pointers stored directly in display lists.
-
+    uint32_t hi = addr & 0xF0000000u;
     // Segment address (F3DEX_GBI)
     uint32_t seg = (addr >> 24) & 0x0F;
     uint32_t off = addr & 0x00FFFFFF;
@@ -1205,6 +1205,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 break;
             case 0x03: Cmd_MoveMem(c); break;
             case 0xBC: Cmd_MoveWord(c); break;
+
             case 0x06: {
                 uint32_t raw_addr = c.w1;
                 void *dl_ptr = RDP_TranslateAddr(raw_addr);
@@ -1226,7 +1227,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     break;
                 }
 
-                // Only log the first few G_DL jumps
                 static int dl_log_count = 0;
                 if (++dl_log_count <= 5) {
                     __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -1286,80 +1286,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 jump_log_count = 0;
                 break;
             }
-                if (!bka_is_mapped(dl_ptr)) {
-                    __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                        "G_DL: target not mapped addr=0x%08X", raw_addr);
-                    break;
-                }
-                // NOTE: Do not skip lists with zero first words. They are not truly empty;
-                // the address resolver may see zeros due to segment mapping.
-
-                // Loop detection: prevent infinite G_DL recursion
-                bool already_visited = false;
-                for (int i = 0; i < visited_dl_count; i++) {
-                    if (visited_dl_addrs[i] == (uintptr_t)dl_ptr) {
-                        already_visited = true;
-                        break;
-                    }
-                }
-                if (already_visited) {
-                    __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                        "G_DL loop detected at addr=0x%08X, breaking", raw_addr);
-                    break;
-                }
-                if (visited_dl_count < 256) {
-                    visited_dl_addrs[visited_dl_count++] = (uintptr_t)dl_ptr;
-                }
-                static int dl_jump_log_count = 0;
-                if (++dl_jump_log_count <= 5) {
-                    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-                        "G_DL JUMP to addr=0x%08X resolved=%p cur_end=%p depth=%d",
-                        raw_addr, dl_ptr, cur_end, depth);
-                }
-                // Diagnostic: dump first 16 bytes at resolved pointer
-                if (dl_jump_log_count <= 3) {
-                    uint8_t* dump = (uint8_t*)dl_ptr;
-                    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-                        "DL bytes at %p: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
-                        dl_ptr, dump[0], dump[1], dump[2], dump[3], dump[4], dump[5], dump[6], dump[7],
-                        dump[8], dump[9], dump[10], dump[11], dump[12], dump[13], dump[14], dump[15]);
-                }
-                uintptr_t mapped_end = bka_get_mapped_end(dl_ptr);
-                if (mapped_end != 0 && mapped_end > (uintptr_t)dl_ptr) {
-                    cur_end = (uint8_t*)mapped_end;
-                } else {
-                    cur_end = (uint8_t*)dl_ptr + 4096;
-                }
-                if (depth >= 63) {
-                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                        "G_DL: max depth reached");
-                    break;
-                }
-
-                // Save current position/end for ENDDL
-                stack[depth].ptr = cur;
-                stack[depth].end = cur_end;
-                stack_stride[depth] = current_stride;
-                depth++;
-
-                cur = (uint8_t*)dl_ptr;
-                // Use a safe upper bound based on MAX_DL_CMDS to avoid
-                // running off into non-DL data if this nested list lacks ENDDL.
-                // Set cur_end to the actual mapped region end, not a huge upper bound.
-                uintptr_t nested_end = bka_get_mapped_end(dl_ptr);
-                if (nested_end > (uintptr_t)dl_ptr) {
-                    cur_end = (uint8_t*)nested_end;
-                } else {
-                    cur_end = cur + (MAX_DL_CMDS * current_stride);
-                }
-                dl_cmds = 0;
-                zero_run = 0;
-                log_after_jump = true;
-                jump_log_count = 0;
-
-                break;
-            }
-
             case 0xB8:
                 // G_POPMTX - pop modelview matrix from stack
                 if (s_rdp.modelviewStackDepth > 0) {
