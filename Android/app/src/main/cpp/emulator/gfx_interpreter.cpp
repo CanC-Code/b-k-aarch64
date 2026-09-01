@@ -831,7 +831,7 @@ static void Cmd_MoveWord(GfxCommand cmd) {
             }
         }
         if (!base_ptr) base_ptr = RDP_TranslateAddr(data);
-        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "Cmd_MoveWord: setting seg=%u base=0x%08X", segment, (uint32_t)base_ptr);
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "Cmd_MoveWord: setting seg=%u base=%p", segment, base_ptr);
         s_rdp.segmentBase[segment] = (uintptr_t)base_ptr;
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
             "Cmd_MoveWord SEGMENT seg=%u offset=0x%04X data=0x%08X base=%p", segment, offset, data, base_ptr);
