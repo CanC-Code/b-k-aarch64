@@ -1107,19 +1107,29 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             zero_run++;
             if (zero_run >= 2) {
                 if (depth > 0) {
-                    // Dump the bytes after zero padding to inspect for hidden geometry
-                    const uint8_t* after = cur;
-                    __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                        "zero-run pop at cmd %zu, depth=%d next_bytes=%02x %02x %02x %02x %02x %02x %02x %02x",
-                        total - 1, depth, after[0], after[1], after[2], after[3],
-                        after[4], after[5], after[6], after[7]);
-                    depth--;
-                    cur = stack[depth].ptr;
-                    cur_end = stack[depth].end;
-                    current_stride = stack_stride[depth];
-                    dl_cmds = 0;
-                    zero_run = 0;
-                    continue;
+                    // Skip zero padding to find actual commands in nested DL
+                    uint8_t* probe = cur;
+                    int skipped = 0;
+                    while (probe + 8 <= cur_end && (probe[0] == 0 && probe[1] == 0 && probe[2] == 0 && probe[3] == 0)) {
+                        probe += current_stride;
+                        skipped++;
+                    }
+                    if (probe + 8 <= cur_end) {
+                        // Found a non-zero command; jump to it
+                        cur = probe;
+                        zero_run = 0;
+                        dl_cmds = 0;
+                        continue;
+                    } else {
+                        // No non-zero commands found; pop stack
+                        depth--;
+                        cur = stack[depth].ptr;
+                        cur_end = stack[depth].end;
+                        current_stride = stack_stride[depth];
+                        dl_cmds = 0;
+                        zero_run = 0;
+                        continue;
+                    }
                 } else {
                     __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                         "zero-run break at cmd %zu, depth=%d", total - 1, depth);
