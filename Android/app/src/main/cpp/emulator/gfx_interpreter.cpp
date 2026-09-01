@@ -36,11 +36,6 @@ static struct RDPStateDefaultSegments {
 static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     if (addr == 0) return nullptr;
 
-    // Direct physical RDRAM addresses (0x00000000 - 0x03FFFFFF)
-    if (addr < 0x04000000u && gN64_RDRAM) {
-        return gN64_RDRAM + addr;
-    }
-
     // Exact virtual-to-physical mapping registry (C++ table first, then C table)
     void* p = bka_lookup_addr_mapping(addr);
     if (!p) {
@@ -59,6 +54,28 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
 
     // Safe fallback for truncated host pointers (0x40-0x4F, 0x90-0x9F, 0x20-0x2F, etc).
     // These are likely low 32 bits of host pointers stored directly in display lists.
+    uint32_t hi = addr & 0xF0000000u;
+    if (hi == 0x40000000u || hi == 0x90000000u || hi == 0x20000000u || hi == 0x70000000u || hi == 0x60000000u) {
+        uint64_t full64 = 0x7c40000000ULL | (uint64_t)(addr & 0x0FFFFFFFu);
+        void* guessed = (void*)full64;
+        if (bka_is_mapped(guessed)) {
+            uint8_t op = *(uint8_t*)guessed;
+            if (op <= 0xDF) {
+                return (uint8_t*)guessed;
+            }
+        }
+        // Also try 0x7c00000000 base
+        full64 = 0x7c00000000ULL | (uint64_t)(addr & 0x0FFFFFFFu);
+        guessed = (void*)full64;
+        if (bka_is_mapped(guessed)) {
+            uint8_t op = *(uint8_t*)guessed;
+            if (op <= 0xDF) {
+                return (uint8_t*)guessed;
+            }
+        }
+    }
+
+
     // Segment address (F3DEX_GBI)
     uint32_t seg = (addr >> 24) & 0x0F;
     uint32_t off = addr & 0x00FFFFFF;
@@ -83,7 +100,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // Handle 0x02xxxxxx-0x2FFFFFFF as direct RDRAM offsets
     if (addr >= 0x02000000u && addr < 0x30000000u) addr &= 0x00FFFFFFu;
     // Only fall back to RDRAM if addr looks like N64 physical or mapped segment
-    if ((addr < 0x4000000u || (addr >= 0x80000000u && addr < 0x84000000u) || (addr >= 0xA0000000u && addr < 0xA4000000u)) && gN64_RDRAM) return gN64_RDRAM + (addr & 0x003FFFFF);
+    if ((addr < 0x1000000u || (addr >= 0x80000000u && addr < 0x81000000u) || (addr >= 0xA0000000u && addr < 0xA1000000u)) && gN64_RDRAM) return gN64_RDRAM + (addr & 0x00FFFFFF);
     // Last resort: treat the raw address as a direct offset into a mapped region
     // This is necessary because some display list addresses are not in the mapping table.
     {
@@ -1209,39 +1226,20 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 uint32_t raw_addr = c.w1;
                 void *dl_ptr = RDP_TranslateAddr(raw_addr);
 
-                // DEBUG: print mapping for first few G_DL commands
                 static int debug_gdl_count = 0;
-                if (++debug_gdl_count <= 10) {
+                if (++debug_gdl_count <= 20) {
                     void* map_result = bka_lookup_addr_mapping(raw_addr);
                     __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                         "G_DL DEBUG: raw=0x%08X map_lookup=%p translate=%p",
                         raw_addr, map_result, dl_ptr);
                 }
-
-                // Loop detection: prevent infinite G_DL recursion
-                bool already_visited = false;
-                for (int i = 0; i < visited_dl_count; i++) {
-                    if (visited_dl_addrs[i] == (uintptr_t)dl_ptr) {
-                        already_visited = true;
-                        break;
-                    }
-                }
-                if (already_visited) {
-                    static int loop_warn_count = 0;
-                    if (++loop_warn_count <= 3) {
-                        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                            "G_DL loop detected at addr=0x%08X, breaking", raw_addr);
-                    }
-                    break;
-                }
-
-                // Only log the first few G_DL jumps
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "G_DL RECOGNIZED raw=0x%08X", raw_addr);
                 static int dl_log_count = 0;
-                if (++dl_log_count <= 5) {
-                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                        "G_DL RECOGNIZED raw=0x%08X resolved=%p", raw_addr, dl_ptr);
+                if (++dl_log_count <= 20) {
+                    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+                        "G_DL: addr=0x%08X resolved=%p", raw_addr, dl_ptr);
                 }
-
                 if (!dl_ptr) {
                     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                         "G_DL: cannot resolve addr=0x%08X", raw_addr);
@@ -1252,18 +1250,39 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                         "G_DL: target not mapped addr=0x%08X", raw_addr);
                     break;
                 }
+                // NOTE: Do not skip lists with zero first words. They are not truly empty;
+                // the address resolver may see zeros due to segment mapping.
 
+                // Loop detection: prevent infinite G_DL recursion
+                bool already_visited = false;
+                for (int i = 0; i < visited_dl_count; i++) {
+                    if (visited_dl_addrs[i] == (uintptr_t)dl_ptr) {
+                        already_visited = true;
+                        break;
+                    }
+                }
+                if (already_visited) {
+                    __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                        "G_DL loop detected at addr=0x%08X, breaking", raw_addr);
+                    break;
+                }
                 if (visited_dl_count < 256) {
                     visited_dl_addrs[visited_dl_count++] = (uintptr_t)dl_ptr;
                 }
-
                 static int dl_jump_log_count = 0;
                 if (++dl_jump_log_count <= 5) {
                     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
                         "G_DL JUMP to addr=0x%08X resolved=%p cur_end=%p depth=%d",
                         raw_addr, dl_ptr, cur_end, depth);
                 }
-
+                // Diagnostic: dump first 16 bytes at resolved pointer
+                if (dl_jump_log_count <= 3) {
+                    uint8_t* dump = (uint8_t*)dl_ptr;
+                    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+                        "DL bytes at %p: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
+                        dl_ptr, dump[0], dump[1], dump[2], dump[3], dump[4], dump[5], dump[6], dump[7],
+                        dump[8], dump[9], dump[10], dump[11], dump[12], dump[13], dump[14], dump[15]);
+                }
                 uintptr_t mapped_end = bka_get_mapped_end(dl_ptr);
                 if (mapped_end != 0 && mapped_end > (uintptr_t)dl_ptr) {
                     cur_end = (uint8_t*)mapped_end;
@@ -1283,6 +1302,9 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 depth++;
 
                 cur = (uint8_t*)dl_ptr;
+                // Use a safe upper bound based on MAX_DL_CMDS to avoid
+                // running off into non-DL data if this nested list lacks ENDDL.
+                // Set cur_end to the actual mapped region end, not a huge upper bound.
                 uintptr_t nested_end = bka_get_mapped_end(dl_ptr);
                 if (nested_end > (uintptr_t)dl_ptr) {
                     cur_end = (uint8_t*)nested_end;
@@ -1293,6 +1315,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 zero_run = 0;
                 log_after_jump = true;
                 jump_log_count = 0;
+
                 break;
             }
 
