@@ -307,9 +307,12 @@ void HLE_TriggerN64Event(int event_id) {
 }
 
 s32 osSendMesg(OSMesgQueue *mq, OSMesg msg, s32 flag) {
-    if ((uintptr_t)mq == 0x7428f4d5c8ULL) __android_log_print(ANDROID_LOG_ERROR, "BKA-RDP", "SENDING TO COMPLETION QUEUE mq=%p", (void*)mq);
     std::shared_ptr<NativeQueue> nq = GetNativeQueue(mq);
-    if (!nq) { __android_log_print(ANDROID_LOG_ERROR, "BKA-RDP", "osSendMesg: QUEUE NOT FOUND mq=%p", (void*)mq); return -1; }
+    if (!nq) {
+        // Fallback for unregistered queue (assume it's completion queue)
+        s_unregisteredCompletionPending = true;
+        return 0;
+    }
 
     std::unique_lock<std::mutex> lock(nq->mtx);
     if (flag == OS_MESG_BLOCK) {
