@@ -99,8 +99,8 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     if ((addr & 0xFF000000u) == 0xFF000000u) addr &= 0x00FFFFFFu;
     // Handle 0x02xxxxxx-0x2FFFFFFF as direct RDRAM offsets
     if (addr >= 0x02000000u && addr < 0x30000000u) addr &= 0x00FFFFFFu;
-    // Physical RDRAM
-    if (addr < 0x1000000u && gN64_RDRAM) return gN64_RDRAM + addr;
+    // Only fall back to RDRAM if addr looks like N64 physical or mapped segment
+    if ((addr < 0x1000000u || (addr >= 0x80000000u && addr < 0x81000000u) || (addr >= 0xA0000000u && addr < 0xA1000000u)) && gN64_RDRAM) return gN64_RDRAM + (addr & 0x00FFFFFF);
     // Last resort: treat the raw address as a direct offset into a mapped region
     // This is necessary because some display list addresses are not in the mapping table.
     {
@@ -110,8 +110,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
             // If still zero, return null and let caller handle.
         }
     }
-    if (addr >= 0x80000000u && addr < 0x81000000u && gN64_RDRAM) return gN64_RDRAM + (addr - 0x80000000u);
-    if (addr >= 0xA0000000u && addr < 0xA1000000u && gN64_RDRAM) return gN64_RDRAM + (addr - 0xA0000000u);
+    // Handled above
 
     return nullptr;
 }
