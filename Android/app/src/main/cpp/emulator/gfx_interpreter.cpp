@@ -1232,6 +1232,13 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                         "G_DL DEBUG: raw=0x%08X map_lookup=%p translate=%p",
                         raw_addr, map_result, dl_ptr);
+                    if (dl_ptr) {
+                        uint8_t* dump = (uint8_t*)dl_ptr;
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                            "G_DL DL bytes: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
+                            dump[0], dump[1], dump[2], dump[3], dump[4], dump[5], dump[6], dump[7],
+                            dump[8], dump[9], dump[10], dump[11], dump[12], dump[13], dump[14], dump[15]);
+                    }
                 }
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "G_DL RECOGNIZED raw=0x%08X", raw_addr);
