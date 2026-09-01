@@ -814,8 +814,9 @@ static void Cmd_MoveMem(GfxCommand cmd) {
 // For our initial implementation, we treat the matrix as modelview.
 // =======================================================================
 static void Cmd_MoveWord(GfxCommand cmd) {
-    uint32_t index = cmd.w0 & 0xFF;
-    uint32_t offset = (cmd.w0 >> 8) & 0xFFFF;
+    // After byteswap, w0 = (opcode<<24) | (index<<16) | (offset<<0)
+    uint32_t index = (cmd.w0 >> 16) & 0xFF;
+    uint32_t offset = cmd.w0 & 0xFFFF;
     uint32_t data = cmd.w1;
 
     if (index == 0x06) { // G_MW_SEGMENT
@@ -1080,6 +1081,9 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
         GfxCommand c = {0};
         memcpy(&c, cur, 8);
+        // Convert from big-endian (N64) to little-endian (host)
+        c.w0 = __builtin_bswap32(c.w0);
+        c.w1 = __builtin_bswap32(c.w1);
         uint8_t opcode = GFX_OPCODE(c);
         if (opcode == 0x04 && total <= 5) {
             const uint8_t *raw = cur;
