@@ -1209,6 +1209,15 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 uint32_t raw_addr = c.w1;
                 void *dl_ptr = RDP_TranslateAddr(raw_addr);
 
+                // DEBUG: print mapping for first few G_DL commands
+                static int debug_gdl_count = 0;
+                if (++debug_gdl_count <= 10) {
+                    void* map_result = bka_lookup_addr_mapping(raw_addr);
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                        "G_DL DEBUG: raw=0x%08X map_lookup=%p translate=%p",
+                        raw_addr, map_result, dl_ptr);
+                }
+
                 // Loop detection: prevent infinite G_DL recursion
                 bool already_visited = false;
                 for (int i = 0; i < visited_dl_count; i++) {
