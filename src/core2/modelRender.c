@@ -847,7 +847,7 @@ void modelRender_geoCmd_SKINNING(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data
     struct geo_cmd_skinning_s *cmd = (struct geo_cmd_skinning_s *) data;
     int i;
 
-    if (D_80370990) {
+    if (1) {
         gSPDisplayList((*gfx)++, osVirtualToPhysical(modelRenderDisplayList->list + cmd->gfx_index[0]));
     }
 
@@ -867,7 +867,7 @@ void modelRender_geoCmd_CALL(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data) {
 }
 
 void modelRender_geoCmd_LOADDL2(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data) {
-    if (D_80370990) {
+    if (1) {
         gSPDisplayList((*gfx)++, osVirtualToPhysical(&modelRenderDisplayList->list[((struct geo_cmd_load_dl_2_s *) data)->gfx_index]));
     }
 }
