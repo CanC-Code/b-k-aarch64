@@ -35,107 +35,51 @@ static struct RDPStateDefaultSegments {
 
 static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     if (addr == 0) return nullptr;
-    static int trans_log_count = 0;
-    if (addr >= 0x20000000 && ++trans_log_count <= 10) {
-        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "RDP_TranslateAddr(0x%08X) start", addr);
-    }
 
-    // Exact virtual-to-physical mapping registry (C++ table first, then C table)
-    void* p = bka_lookup_addr_mapping(addr);
-    if (!p) {
-
-    }
-    if (p) {
-        static int diag_count = 0;
-        if (++diag_count <= 20) {
-            uint32_t* words = (uint32_t*)p;
-            __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-                "RDP_TranslateAddr(0x%08X) hit p=%p first=[%08X %08X %08X %08X]",
-                addr, p, words[0], words[1], words[2], words[3]);
-        }
-        return (uint8_t*)p;
-    }
-
-    // Safe fallback for truncated host pointers (0x40-0x4F, 0x90-0x9F, 0x20-0x2F, etc).
-    // These are likely low 32 bits of host pointers stored directly in display lists.
-    uint32_t hi = addr & 0xF0000000u;
-    if (hi == 0x40000000u || hi == 0x90000000u || hi == 0x20000000u || hi == 0x70000000u || hi == 0x60000000u) {
-        uint64_t full64 = 0x7c40000000ULL | (uint64_t)(addr & 0x0FFFFFFFu);
-        void* guessed = (void*)full64;
-        if (bka_is_mapped(guessed)) {
-            uint8_t op = *(uint8_t*)guessed;
-            if (op <= 0xDF) {
-                return (uint8_t*)guessed;
-            }
-        }
-        // Also try 0x7c00000000 base
-        full64 = 0x7c00000000ULL | (uint64_t)(addr & 0x0FFFFFFFu);
-        guessed = (void*)full64;
-        if (bka_is_mapped(guessed)) {
-            uint8_t op = *(uint8_t*)guessed;
-            if (op <= 0xDF) {
-                return (uint8_t*)guessed;
-            }
-        }
-    }
-
+    // Try mapping table first
+    void* mapped = bka_lookup_addr_mapping(addr);
+    if (mapped) return (uint8_t*)mapped;
 
     // Segment address (F3DEX_GBI)
     uint32_t seg = (addr >> 24) & 0x0F;
     uint32_t off = addr & 0x00FFFFFF;
-    if (seg == 8 && trans_log_count <= 10) __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "RDP_TranslateAddr seg8: base=%u", s_rdp.segmentBase[seg]);
     if (seg != 0 && s_rdp.segmentBase[seg] != 0) {
         uint32_t base = s_rdp.segmentBase[seg];
         void *base_pm = bka_lookup_addr_mapping(base);
-        if (base_pm) return (uint8_t*)base_pm + off;
         uint32_t combined = base + off;
+        if (base_pm) return (uint8_t*)base_pm + off;
         void *pm = bka_lookup_addr_mapping(combined);
         if (pm) return (uint8_t*)pm;
-        if (combined < 0x1000000u && gN64_RDRAM)
+        if (combined < 0x4000000u && gN64_RDRAM)
             return gN64_RDRAM + combined;
-        if (combined >= 0x80000000u && combined < 0x81000000u && gN64_RDRAM)
+        if (combined >= 0x80000000u && combined < 0x84000000u && gN64_RDRAM)
             return gN64_RDRAM + (combined - 0x80000000u);
-        if (combined >= 0xA0000000u && combined < 0xA1000000u && gN64_RDRAM)
+        if (combined >= 0xA0000000u && combined < 0xA4000000u && gN64_RDRAM)
             return gN64_RDRAM + (combined - 0xA0000000u);
         return nullptr;
     }
 
-    // Handle 0xFFxxxxxx as 24-bit offset
-    if ((addr & 0xFF000000u) == 0xFF000000u) addr &= 0x00FFFFFFu;
-    // Handle 0x02xxxxxx-0x2FFFFFFF as direct RDRAM offsets
-    if (addr >= 0x02000000u && addr < 0x30000000u) addr &= 0x00FFFFFFu;
-    // Only fall back to RDRAM if addr looks like N64 physical or mapped segment
-    if ((addr < 0x1000000u || (addr >= 0x80000000u && addr < 0x81000000u) || (addr >= 0xA0000000u && addr < 0xA1000000u)) && gN64_RDRAM) return gN64_RDRAM + (addr & 0x00FFFFFF);
-    // Last resort: treat the raw address as a direct offset into a mapped region
-    // This is necessary because some display list addresses are not in the mapping table.
-    {
-        uint32_t test_off = addr & 0x00FFFFFF;
-        if (test_off < 0x1000000u) {
-            // Try to find a mapped pointer by scanning the C table via C++ wrapper already done.
-            // If still zero, return null and let caller handle.
-        }
-    }
-    // Handled above
+    // Direct physical RDRAM
+    if (addr < 0x4000000u && gN64_RDRAM)
+        return gN64_RDRAM + addr;
 
-    return nullptr;    // Last resort: treat as direct RDRAM offset (common for static display lists)
+    // Last resort: treat as direct RDRAM offset (common for static display lists)
     if (gN64_RDRAM) {
-        uint32_t off = addr & 0x00FFFFFF;
+        uint32_t off2 = addr & 0x00FFFFFF;
         static int log_count = 0;
         if (++log_count <= 5) {
-            uint8_t* dump = gN64_RDRAM + off;
+            uint8_t* dump = gN64_RDRAM + off2;
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "RDRAM fallback: addr=0x%08X off=0x%06X ptr=%p bytes: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
-                addr, off, (void*)dump,
+                addr, off2, (void*)dump,
                 dump[0], dump[1], dump[2], dump[3], dump[4], dump[5], dump[6], dump[7],
                 dump[8], dump[9], dump[10], dump[11], dump[12], dump[13], dump[14], dump[15]);
         }
-        return gN64_RDRAM + off;
+        return gN64_RDRAM + off2;
     }
 
     return nullptr;
 }
-
-
 
 static int s_frameCount = 0;
 
