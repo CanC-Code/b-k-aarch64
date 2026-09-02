@@ -488,9 +488,7 @@ void osSpTaskStartGo(OSTask *tp) {
     static int s_gfxLogCount = 0;
     if (tp == nullptr) return;
     if (tp->t.type == M_GFXTASK) {
-        // Bypass software RSP for now – just signal completion.
-        // The graphics interpreter is not mature enough to render correctly,
-        // but the game can run without it (visuals will be missing).
+        // Bypass software RSP for now - just signal completion.
         usleep(2000);
 #ifndef OS_EVENT_SP
 #define OS_EVENT_SP 4
