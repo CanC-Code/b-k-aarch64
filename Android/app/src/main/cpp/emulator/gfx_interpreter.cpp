@@ -117,6 +117,10 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     }
     // Handled above
 
+    return nullptr;    // Last resort: treat as direct RDRAM offset (common for static display lists)
+    if (gN64_RDRAM)
+        return gN64_RDRAM + (addr & 0x00FFFFFF);
+
     return nullptr;
 }
 
@@ -1086,9 +1090,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
         GfxCommand c = {0};
         memcpy(&c, cur, 8);
-        // Convert from big-endian (N64) to little-endian (host)
-        c.w0 = __builtin_bswap32(c.w0);
-        c.w1 = __builtin_bswap32(c.w1);
         uint8_t opcode = GFX_OPCODE(c);
         if (opcode == 0x04 && total <= 5) {
             const uint8_t *raw = cur;
