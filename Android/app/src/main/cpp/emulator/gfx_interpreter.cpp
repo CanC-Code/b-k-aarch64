@@ -1086,6 +1086,9 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
         GfxCommand c = {0};
         memcpy(&c, cur, 8);
+        // Convert from big-endian (N64) to little-endian (host)
+        c.w0 = __builtin_bswap32(c.w0);
+        c.w1 = __builtin_bswap32(c.w1);
         uint8_t opcode = GFX_OPCODE(c);
         if (opcode == 0x04 && total <= 5) {
             const uint8_t *raw = cur;
