@@ -118,8 +118,19 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // Handled above
 
     return nullptr;    // Last resort: treat as direct RDRAM offset (common for static display lists)
-    if (gN64_RDRAM)
-        return gN64_RDRAM + (addr & 0x00FFFFFF);
+    if (gN64_RDRAM) {
+        uint32_t off = addr & 0x00FFFFFF;
+        static int log_count = 0;
+        if (++log_count <= 5) {
+            uint8_t* dump = gN64_RDRAM + off;
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "RDRAM fallback: addr=0x%08X off=0x%06X ptr=%p bytes: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
+                addr, off, (void*)dump,
+                dump[0], dump[1], dump[2], dump[3], dump[4], dump[5], dump[6], dump[7],
+                dump[8], dump[9], dump[10], dump[11], dump[12], dump[13], dump[14], dump[15]);
+        }
+        return gN64_RDRAM + off;
+    }
 
     return nullptr;
 }
