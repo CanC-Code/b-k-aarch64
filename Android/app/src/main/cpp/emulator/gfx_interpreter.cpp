@@ -819,8 +819,9 @@ static void Cmd_MoveMem(GfxCommand cmd) {
 // For our initial implementation, we treat the matrix as modelview.
 // =======================================================================
 static void Cmd_MoveWord(GfxCommand cmd) {
-    uint32_t index = cmd.w0 & 0xFF;
-    uint32_t offset = (cmd.w0 >> 8) & 0xFFFF;
+    // F3DEX2 G_MOVEWORD: w0 = (opcode<<24) | (index<<16) | offset
+    uint32_t index = (cmd.w0 >> 16) & 0xFF;
+    uint32_t offset = cmd.w0 & 0xFFFF;
     uint32_t data = cmd.w1;
 
     if (index == 0x06) { // G_MW_SEGMENT
