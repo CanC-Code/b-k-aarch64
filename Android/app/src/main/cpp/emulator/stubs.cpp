@@ -488,8 +488,17 @@ void osSpTaskStartGo(OSTask *tp) {
     static int s_gfxLogCount = 0;
     if (tp == nullptr) return;
     if (tp->t.type == M_GFXTASK) {
-        // Bypass software RSP for now - just signal completion.
+        // Limit logging to first 3 GFX tasks
+        if (++s_gfxLogCount <= 3) {
+            LOGI("BKA-RDP: osSpTaskStartGo type=%d data=%p size=%u", tp->t.type, tp->t.data_ptr, tp->t.data_size);
+            LOGI("BKA-RDP: GFX task data=%p size=%u", tp->t.data_ptr, tp->t.data_size);
+        } else {
+            LOGI("BKA-RDP: osSpTaskStartGo (silent)");
+        }
+
+        RSP_ProcessGfxTask(tp);
         usleep(2000);
+
 #ifndef OS_EVENT_SP
 #define OS_EVENT_SP 4
 #endif
