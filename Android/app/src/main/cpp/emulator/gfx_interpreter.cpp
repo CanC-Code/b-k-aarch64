@@ -35,6 +35,10 @@ static struct RDPStateDefaultSegments {
 
 static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     if (addr == 0) return nullptr;
+    static int trans_log_count = 0;
+    if (addr >= 0x20000000 && ++trans_log_count <= 10) {
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "RDP_TranslateAddr(0x%08X) start", addr);
+    }
 
     // Exact virtual-to-physical mapping registry (C++ table first, then C table)
     void* p = bka_lookup_addr_mapping(addr);
@@ -79,6 +83,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // Segment address (F3DEX_GBI)
     uint32_t seg = (addr >> 24) & 0x0F;
     uint32_t off = addr & 0x00FFFFFF;
+    if (seg == 8 && trans_log_count <= 10) __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "RDP_TranslateAddr seg8: base=%u", s_rdp.segmentBase[seg]);
     if (seg != 0 && s_rdp.segmentBase[seg] != 0) {
         uint32_t base = s_rdp.segmentBase[seg];
         void *base_pm = bka_lookup_addr_mapping(base);
@@ -814,9 +819,8 @@ static void Cmd_MoveMem(GfxCommand cmd) {
 // For our initial implementation, we treat the matrix as modelview.
 // =======================================================================
 static void Cmd_MoveWord(GfxCommand cmd) {
-    // After byteswap, w0 = (opcode<<24) | (index<<16) | (offset<<0)
-    uint32_t index = (cmd.w0 >> 16) & 0xFF;
-    uint32_t offset = cmd.w0 & 0xFFFF;
+    uint32_t index = cmd.w0 & 0xFF;
+    uint32_t offset = (cmd.w0 >> 8) & 0xFFFF;
     uint32_t data = cmd.w1;
 
     if (index == 0x06) { // G_MW_SEGMENT
@@ -1081,9 +1085,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
         GfxCommand c = {0};
         memcpy(&c, cur, 8);
-        // Convert from big-endian (N64) to little-endian (host)
-        c.w0 = __builtin_bswap32(c.w0);
-        c.w1 = __builtin_bswap32(c.w1);
         uint8_t opcode = GFX_OPCODE(c);
         if (opcode == 0x04 && total <= 5) {
             const uint8_t *raw = cur;
