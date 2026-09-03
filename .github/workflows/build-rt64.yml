@@ -15,8 +15,18 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install NDK
-        run: echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/25.1.8937393" >> $GITHUB_ENV
+      - name: Locate NDK and set environment
+        run: |
+          echo "Available NDK versions:"
+          ls $ANDROID_HOME/ndk || true
+          NDK_VERSION=$(ls $ANDROID_HOME/ndk | head -1)
+          if [ -z "$NDK_VERSION" ]; then
+            echo "No NDK found, installing 25.1.8937393"
+            $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;25.1.8937393"
+            NDK_VERSION="25.1.8937393"
+          fi
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> $GITHUB_ENV
+          echo "CMAKE_MAKE_PROGRAM=/usr/local/bin/ninja" >> $GITHUB_ENV
 
       - name: Configure RT64
         run: |
@@ -27,6 +37,7 @@ jobs:
             -DANDROID_PLATFORM=android-24 \
             -DRT64_STATIC=ON \
             -DPLUME_X11_ENABLED=OFF \
+            -DCMAKE_MAKE_PROGRAM=$CMAKE_MAKE_PROGRAM \
             -DCMAKE_BUILD_TYPE=Release
 
       - name: Build RT64
