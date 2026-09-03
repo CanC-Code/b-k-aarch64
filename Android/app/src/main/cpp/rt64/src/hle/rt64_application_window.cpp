@@ -11,7 +11,7 @@
 #if defined(_WIN32)
 #   include <Windows.h>
 #   include <ShellScalingAPI.h>
-#elif defined(__linux__)
+#elif defined(__linux__) && !defined(__ANDROID__)
 #   define Status int
 #   if !defined(RT64_SDL_WINDOW_VULKAN)
 #      include <X11/extensions/Xrandr.h>
