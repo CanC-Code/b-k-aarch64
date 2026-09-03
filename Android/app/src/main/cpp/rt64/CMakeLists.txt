@@ -70,8 +70,7 @@ set(ZSTD_BUILD_STATIC ON)
 set(ZSTD_BUILD_SHARED OFF)
 
 if (NOT ANDROID)
-    add_subdirectory(src/tools/file_to_c)
-endif()
+    endif()
 add_subdirectory(src/contrib/re-spirv)
 if (NOT ANDROID)
     if (NOT ANDROID)
@@ -124,8 +123,8 @@ function(build_shader_spirv_impl TARGETOBJ FILENAME TARGET_NAME OUTNAME)
         COMMAND ${DXC} ${DXC_SPV_OPTS} ${ARGN} ${FILENAME} /Fo ${OUTNAME}.spv
         DEPENDS ${FILENAME})
     add_custom_command(OUTPUT ${OUTNAME}.spirv.c
-        COMMAND file_to_c ${OUTNAME}.spv ${TARGET_NAME}BlobSPIRV ${OUTNAME}.spirv.c ${OUTNAME}.spirv.h
-        DEPENDS ${OUTNAME}.spv file_to_c
+        COMMAND python3 ${PROJECT_SOURCE_DIR}/tools/file_to_c.py ${OUTNAME}.spv ${TARGET_NAME}BlobSPIRV ${OUTNAME}.spirv.c ${OUTNAME}.spirv.h
+        DEPENDS ${OUTNAME}.spv
         BYPRODUCTS ${OUTNAME}.spirv.h)
     target_sources(${TARGETOBJ} PRIVATE ${OUTNAME}.spirv.c)
 endfunction()
@@ -135,8 +134,8 @@ function(build_shader_dxil_impl TARGETOBJ FILENAME TARGET_NAME OUTNAME)
         COMMAND ${DXC} ${DXC_DXIL_OPTS} ${ARGN} ${FILENAME} /Fo ${OUTNAME}.dxil
         DEPENDS ${FILENAME})
     add_custom_command(OUTPUT ${OUTNAME}.dxil.c
-        COMMAND file_to_c ${OUTNAME}.dxil ${TARGET_NAME}BlobDXIL ${OUTNAME}.dxil.c ${OUTNAME}.dxil.h
-        DEPENDS ${OUTNAME}.dxil file_to_c
+        COMMAND python3 ${PROJECT_SOURCE_DIR}/tools/file_to_c.py ${OUTNAME}.dxil ${TARGET_NAME}BlobDXIL ${OUTNAME}.dxil.c ${OUTNAME}.dxil.h
+        DEPENDS ${OUTNAME}.dxil
         BYPRODUCTS ${OUTNAME}.dxil.h)
     target_sources(${TARGETOBJ} PRIVATE ${OUTNAME}.dxil.c)
 endfunction()
@@ -155,8 +154,8 @@ function(build_shader_msl_impl TARGETOBJ FILENAME TARGET_NAME OUTNAME)
             COMMAND xcrun -sdk macosx metallib ${OUTNAME}.ir -o ${OUTNAME}.metallib
             DEPENDS ${OUTNAME}.ir)
     add_custom_command(OUTPUT ${OUTNAME}.metal.c
-            COMMAND file_to_c ${OUTNAME}.metallib ${TARGET_NAME}BlobMSL ${OUTNAME}.metal.c ${OUTNAME}.metal.h
-            DEPENDS ${OUTNAME}.metallib file_to_c
+            COMMAND python3 ${PROJECT_SOURCE_DIR}/tools/file_to_c.py ${OUTNAME}.metallib ${TARGET_NAME}BlobMSL ${OUTNAME}.metal.c ${OUTNAME}.metal.h
+            DEPENDS ${OUTNAME}.metallib
             BYPRODUCTS ${OUTNAME}.metal.h)
     target_sources(${TARGETOBJ} PRIVATE ${OUTNAME}.metal.c)
 endfunction()
@@ -249,8 +248,8 @@ function(preprocess_shader TARGETOBJ SHADERNAME)
     cmake_path(GET OUTNAME PARENT_PATH OUTPUT_DIR)
     preprocess(${FILENAME} ${OUTNAME}.rw ${DXC_COMMON_OPTS})
     add_custom_command(OUTPUT ${OUTNAME}.rw.c
-        COMMAND file_to_c ${OUTNAME}.rw ${TARGET_NAME}Text ${OUTNAME}.rw.c ${OUTNAME}.rw.h
-        DEPENDS ${OUTNAME}.rw file_to_c
+        COMMAND python3 ${PROJECT_SOURCE_DIR}/tools/file_to_c.py ${OUTNAME}.rw ${TARGET_NAME}Text ${OUTNAME}.rw.c ${OUTNAME}.rw.h
+        DEPENDS ${OUTNAME}.rw
         BYPRODUCTS ${OUTNAME}.rw.h)
     file(MAKE_DIRECTORY ${OUTPUT_DIR})
     target_sources(${TARGETOBJ} PRIVATE ${OUTNAME}.rw.c)
