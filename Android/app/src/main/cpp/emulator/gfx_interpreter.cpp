@@ -56,7 +56,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
             return gN64_RDRAM + (combined - 0x80000000u);
         if (combined >= 0xA0000000u && combined < 0xA4000000u && gN64_RDRAM)
             return gN64_RDRAM + (combined - 0xA0000000u);
-        return nullptr;
+        // fall through if none matched
     }
 
     // Direct physical RDRAM fallback
