@@ -36,9 +36,9 @@ static struct RDPStateDefaultSegments {
 static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     if (addr == 0) return nullptr;
 
-    // Try mapping table first
-    void* mapped = bka_lookup_addr_mapping(addr);
-    if (mapped) return (uint8_t*)mapped;
+    // Try exact mapping table first
+    void* p = bka_lookup_addr_mapping(addr);
+    if (p) return (uint8_t*)p;
 
     // Segment address (F3DEX_GBI)
     uint32_t seg = (addr >> 24) & 0x0F;
@@ -46,8 +46,8 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     if (seg != 0 && s_rdp.segmentBase[seg] != 0) {
         uint32_t base = s_rdp.segmentBase[seg];
         void *base_pm = bka_lookup_addr_mapping(base);
-        uint32_t combined = base + off;
         if (base_pm) return (uint8_t*)base_pm + off;
+        uint32_t combined = base + off;
         void *pm = bka_lookup_addr_mapping(combined);
         if (pm) return (uint8_t*)pm;
         if (combined < 0x4000000u && gN64_RDRAM)
@@ -59,11 +59,11 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         return nullptr;
     }
 
-    // Direct physical RDRAM
-    if (addr < 0x4000000u && gN64_RDRAM)
-        return gN64_RDRAM + addr;
+    // Direct physical RDRAM fallback
+    if ((addr < 0x4000000u || (addr >= 0x80000000u && addr < 0x84000000u) || (addr >= 0xA0000000u && addr < 0xA4000000u)) && gN64_RDRAM)
+        return gN64_RDRAM + (addr & 0x003FFFFF);
 
-    // Last resort: treat as direct RDRAM offset (common for static display lists)
+    // Last resort: treat as direct RDRAM offset (for segment addresses not handled)
     if (gN64_RDRAM) {
         uint32_t off2 = addr & 0x00FFFFFF;
         static int log_count = 0;
