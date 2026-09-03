@@ -1,6 +1,8 @@
-#ifndef RT64_ANDROID_SDL_STUB_SDL_keyboard
-#define RT64_ANDROID_SDL_STUB_SDL_keyboard
+#ifndef RT64_ANDROID_SDL_STUB_SDL_KEYBOARD_H
+#define RT64_ANDROID_SDL_STUB_SDL_KEYBOARD_H
+
 // Minimal SDL stub for Android compilation.
 typedef struct SDL_Window SDL_Window;
 typedef void* SDL_GLContext;
-typedef struct SDL_Event SDL_Event;
+
+#endif // RT64_ANDROID_SDL_STUB_SDL_KEYBOARD_H

@@ -1,6 +1,8 @@
-#ifndef RT64_ANDROID_SDL_STUB_SDL_surface
-#define RT64_ANDROID_SDL_STUB_SDL_surface
+#ifndef RT64_ANDROID_SDL_STUB_SDL_SURFACE_H
+#define RT64_ANDROID_SDL_STUB_SDL_SURFACE_H
+
 // Minimal SDL stub for Android compilation.
 typedef struct SDL_Window SDL_Window;
 typedef void* SDL_GLContext;
-typedef struct SDL_Event SDL_Event;
+
+#endif // RT64_ANDROID_SDL_STUB_SDL_SURFACE_H
