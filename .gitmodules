@@ -20,3 +20,6 @@
 	path = lib/ultralib
 	url = https://github.com/mariob92/ultralib.git
 	branch = banjo-kazooie
+[submodule "Android/app/src/main/cpp/rt64"]
+	path = Android/app/src/main/cpp/rt64
+	url = https://github.com/rt64/rt64.git
