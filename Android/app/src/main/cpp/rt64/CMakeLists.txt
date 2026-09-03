@@ -421,7 +421,6 @@ set (SOURCES
 )
 
 include_directories(
-    "${SDL2_INCLUDE_DIRS}"
     "${PROJECT_SOURCE_DIR}/src"
     "${PROJECT_SOURCE_DIR}/src/contrib"
     "${PROJECT_SOURCE_DIR}/src/contrib/plume"
