@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(rt64 LANGUAGES C CXX)
+if (ANDROID)
+    include_directories(${PROJECT_SOURCE_DIR}/src/contrib/android_sdl_stub)
+endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
