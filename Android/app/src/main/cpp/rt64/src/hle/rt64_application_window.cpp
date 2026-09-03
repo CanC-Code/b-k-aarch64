@@ -104,8 +104,9 @@ namespace RT64 {
         bounds.width = rect.right - rect.left;
         bounds.height = rect.bottom - rect.top;
 #   elif defined(__ANDROID__)
-        static_assert(false && "Android unimplemented");
+        // Android: window handle already provided via constructor; no SDL setup needed.
 #   elif defined(__linux__) || defined(__APPLE__)
+#   if !defined(__ANDROID__) && (defined(__linux__) || defined(__APPLE__))
         if (SDL_VideoInit(nullptr) != 0) {
             printf("Failed to init SDL2 video: %s\n", SDL_GetError());
             assert(false && "Failed to init SDL2 video");
@@ -124,7 +125,9 @@ namespace RT64 {
 #   else
         static_assert(false && "Unimplemented");
 #   endif
-        uint32_t createFlags = SDL_WINDOW_RESIZABLE;
+        #   endif
+#if !defined(__ANDROID__)
+uint32_t createFlags = SDL_WINDOW_RESIZABLE;
 #   if defined(__APPLE__)
         createFlags |= SDL_WINDOW_METAL;
 #   endif
@@ -143,12 +146,13 @@ namespace RT64 {
         SDL_SysWMinfo wmInfo;
         SDL_VERSION(&wmInfo.version);
         SDL_GetWindowWMInfo(sdlWindow, &wmInfo);
+#endif
 #   if defined(_WIN32)
         windowHandle = wmInfo.info.win.window;
 #   elif defined(RT64_SDL_WINDOW_VULKAN)
         windowHandle = sdlWindow;
 #   elif defined(__ANDROID__)
-        static_assert(false && "Android unimplemented");
+        // Android: window handle already provided via constructor; no SDL setup needed.
 #   elif defined(__linux__)
         windowHandle.display = wmInfo.info.x11.display;
         windowHandle.window = wmInfo.info.x11.window;
