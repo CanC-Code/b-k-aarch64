@@ -28,6 +28,12 @@ jobs:
         with:
           gradle-version: '8.2'
 
+      - name: Build host tools (file_to_c)
+        run: |
+          g++ -std=c++17 -O2 -o file_to_c Android/app/src/main/cpp/rt64/src/tools/file_to_c/file_to_c.cpp
+          chmod +x file_to_c
+          echo "$PWD" >> $GITHUB_PATH
+
       - name: Clean previous build
         run: |
           rm -rf Android/app/.cxx
