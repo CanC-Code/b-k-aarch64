@@ -496,7 +496,7 @@ void osSpTaskStartGo(OSTask *tp) {
             LOGI("BKA-RDP: osSpTaskStartGo (silent)");
         }
 
-        RSP_ProcessGfxTask(tp);
+        // RSP_ProcessGfxTask(tp);
         usleep(2000);
 
 #ifndef OS_EVENT_SP
