@@ -1,8 +1,9 @@
 #ifndef RT64_ANDROID_SDL_STUB_SDL_SCANCODE_H
 #define RT64_ANDROID_SDL_STUB_SDL_SCANCODE_H
 
-// Minimal SDL stub for Android compilation.
-typedef struct SDL_Window SDL_Window;
-typedef void* SDL_GLContext;
+#define SDL_SCANCODE_F1 58
+#define SDL_SCANCODE_F2 59
+#define SDL_SCANCODE_F3 60
+#define SDL_SCANCODE_F4 61
 
-#endif // RT64_ANDROID_SDL_STUB_SDL_SCANCODE_H
+#endif
