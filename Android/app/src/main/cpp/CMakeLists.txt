@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(bkawrapper)
 
-set(RT64_STATIC ON CACHE BOOL "Build RT64 static" FORCE)
-set(PLUME_X11_ENABLED OFF CACHE BOOL "" FORCE)
-add_subdirectory(rt64)
 
 set(REPO_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../../../..)
 
@@ -59,7 +56,6 @@ target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/ultra
     ${CMAKE_CURRENT_SOURCE_DIR}/emulator
     ${CMAKE_CURRENT_SOURCE_DIR}/tools
-    ${CMAKE_CURRENT_SOURCE_DIR}/rt64/include
     ${REPO_ROOT}/src
     ${REPO_ROOT}/lib/ultralib/include
 )
@@ -91,7 +87,7 @@ find_library(egl-lib EGL)
 find_library(gles3-lib GLESv3)
 find_library(gles2-lib GLESv2)
 
-target_link_libraries(bkawrapper rt64 ${log-lib} ${android-lib} ${egl-lib} ${gles3-lib} ${gles2-lib} atomic m)
+target_link_libraries(bkawrapper ${log-lib} ${android-lib} ${egl-lib} ${gles3-lib} ${gles2-lib} atomic m)
 
 # linker_stubs.c must compile without N64 headers
 set_source_files_properties(ultra/linker_stubs.c PROPERTIES
