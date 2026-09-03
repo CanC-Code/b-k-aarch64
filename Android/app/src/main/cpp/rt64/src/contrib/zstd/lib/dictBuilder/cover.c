@@ -29,6 +29,18 @@
 #endif
 #endif
 
+#ifdef __ANDROID__
+static void *cover_qsort_arg;
+static int (*cover_qsort_compar)(const void *, const void *, void *);
+static int cover_qsort_wrapper(const void *a, const void *b) {
+    return cover_qsort_compar(a, b, cover_qsort_arg);
+}
+#define qsort_r(base, nmemb, size, compar, arg) do { \
+    cover_qsort_compar = (int (*)(const void *, const void *, void *))(compar); \
+    cover_qsort_arg = (void*)(arg); \
+    qsort((base), (nmemb), (size), cover_qsort_wrapper); \
+} while(0)
+#endif
 #include <stdio.h>  /* fprintf */
 #include <stdlib.h> /* malloc, free, qsort_r */
 
