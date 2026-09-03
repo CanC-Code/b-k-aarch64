@@ -14,4 +14,4 @@ typedef void* SDL_GLContext;
 }
 #endif
 
-#endif // RT64_ANDROID_SDL_STUB_SDL_H
+#endif
