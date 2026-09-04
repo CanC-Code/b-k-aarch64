@@ -88,7 +88,11 @@ find_library(egl-lib EGL)
 find_library(gles3-lib GLESv3)
 find_library(gles2-lib GLESv2)
 
-target_include_directories(bkawrapper PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/rt64_include)
+target_include_directories(bkawrapper PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/rt64_include
+    ${CMAKE_CURRENT_SOURCE_DIR}/rt64/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/rt64/include
+)
 target_link_directories(bkawrapper PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs/arm64-v8a)
 target_link_libraries(bkawrapper rt64 ${log-lib} ${android-lib} ${egl-lib} ${gles3-lib} ${gles2-lib} atomic m)
 
