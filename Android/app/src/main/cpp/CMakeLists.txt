@@ -13,6 +13,7 @@ set(CPP_BRIDGE_SOURCES
     ultra/setintmask.cpp ultra/math_bridge.cpp ultra/audio_bridge.cpp
     ultra/lowlevel_bridge.cpp emulator/stubs.cpp emulator/pi_hle.cpp
     emulator/resource_mgr.cpp
+    emulator/RT64Renderer.cpp
     tools/rare_decompression.cpp ultra/HardwareRegs.cpp
     ultra/linker_stubs.c
 )
