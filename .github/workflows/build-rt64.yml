@@ -37,7 +37,7 @@ jobs:
       - name: Copy library and headers
         run: |
           mkdir -p artifact/lib/arm64-v8a artifact/include
-          cp rt64-build/lib/librt64.a artifact/lib/arm64-v8a/
+          cp rt64-build/rt64.a artifact/lib/arm64-v8a/
           cp -r Android/app/src/main/cpp/rt64/include artifact/include
 
       - name: Upload artifact
