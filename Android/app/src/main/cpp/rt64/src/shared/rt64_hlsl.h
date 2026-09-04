@@ -268,11 +268,19 @@ namespace interop {
 
 // Wrappers for select to prevent implicit casting to float.
 uint select_uint(bool cond, uint val1, uint val2) {
+    #ifndef __HLSL_VERSION
+    return hlslpp::select(cond, val1, val2);
+#else
     return select(cond, val1, val2);
+#endif
 }
 
 int select_int(bool cond, int val1, int val2) {
+    #ifndef __HLSL_VERSION
+    return hlslpp::select(cond, val1, val2);
+#else
     return select(cond, val1, val2);
+#endif
 }
 
 #endif
