@@ -25,7 +25,7 @@ extern OSMesgQueue D_8027FBC8;
 static bool s_completionMsgPending = false;
 static bool s_unregisteredCompletionPending = false;
 #include "gfx_interpreter.h"
-#include "RT64Renderer.h"   // <-- ADDED: F3DEX display list → framebuffer rasterizer
+   // <-- ADDED: F3DEX display list → framebuffer rasterizer
 
 
 // -------------------------------------------------------------------------
