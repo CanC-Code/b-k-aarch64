@@ -91,6 +91,7 @@ find_library(gles2-lib GLESv2)
 target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/rt64_include
     ${CMAKE_CURRENT_SOURCE_DIR}/rt64/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/rt64/src/hle
     ${CMAKE_CURRENT_SOURCE_DIR}/rt64/include
 )
 target_link_directories(bkawrapper PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs/arm64-v8a)
