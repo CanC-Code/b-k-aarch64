@@ -10,6 +10,7 @@ set(PLUME_X11_ENABLED OFF CACHE BOOL "" FORCE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../rt64 rt64-build)
 
 add_library(rt64_wrapper SHARED rt64_wrapper.cpp)
+target_compile_definitions(rt64_wrapper PRIVATE HLSL_CPU=1 F3DEX_GBI=1 __ANDROID__=1)
 target_include_directories(rt64_wrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../rt64/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../rt64/src
