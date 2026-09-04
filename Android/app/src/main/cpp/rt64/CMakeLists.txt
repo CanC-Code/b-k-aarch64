@@ -376,7 +376,9 @@ set (SOURCES
     "${PROJECT_SOURCE_DIR}/src/hle/rt64_workload.cpp"
     "${PROJECT_SOURCE_DIR}/src/hle/rt64_workload_queue.cpp"
 
-    "${PROJECT_SOURCE_DIR}/src/imgui/imgui_impl_sdl2_custom.cpp"
+    if (NOT ANDROID)
+            "${PROJECT_SOURCE_DIR}/src/imgui/imgui_impl_sdl2_custom.cpp"
+        endif()
 
     "${PROJECT_SOURCE_DIR}/src/render/rt64_buffer_uploader.cpp"
     "${PROJECT_SOURCE_DIR}/src/render/rt64_framebuffer_renderer.cpp"
