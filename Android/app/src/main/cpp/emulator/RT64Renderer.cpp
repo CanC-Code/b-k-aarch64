@@ -1,5 +1,7 @@
 #include "RT64Renderer.h"
+#include <hlsl++.h>
 #include "rt64_application.h"
+using namespace hlslpp;
 #include "rt64_application_window.h"
 #include <android/log.h>
 
