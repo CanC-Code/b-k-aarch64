@@ -499,7 +499,7 @@ void osSpTaskStartGo(OSTask *tp) {
 
 uint32_t dl_start = (uint32_t)(uintptr_t)tp->t.data_ptr;
             uint32_t dl_end = dl_start + tp->t.data_size;
-            RT64Renderer::get().processDisplayLists(gN64_RDRAM, dl_start, dl_end, true); // bypass graphics
+            // RSP_ProcessGfxTask(tp); // bypass graphics // bypass graphics
         usleep(2000);
 
 #ifndef OS_EVENT_SP
