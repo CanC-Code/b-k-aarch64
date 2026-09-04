@@ -28,26 +28,17 @@ jobs:
           NDK_VERSION=$(ls $ANDROID_HOME/ndk | head -1)
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> $GITHUB_ENV
 
-      - name: Configure RT64
+      - name: Build RT64 wrapper shared library
         run: |
-          mkdir -p rt64-build && cd rt64-build
-          cmake -G Ninja ../Android/app/src/main/cpp/rt64 \
+          mkdir -p rt64-wrapper-build && cd rt64-wrapper-build
+          cmake -G Ninja ../Android/app/src/main/cpp/rt64_wrapper \
             -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
             -DANDROID_ABI=arm64-v8a \
             -DANDROID_PLATFORM=android-24 \
-            -DRT64_STATIC=ON \
-            -DPLUME_X11_ENABLED=OFF \
             -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build RT64
-        run: cmake --build rt64-build --target rt64 -j$(nproc)
-
-      - name: Copy RT64 library and headers
-        run: |
-          mkdir -p Android/app/src/main/cpp/libs/arm64-v8a
-          mkdir -p Android/app/src/main/cpp/rt64_include
-          cp rt64-build/rt64.a Android/app/src/main/cpp/libs/arm64-v8a/librt64.a
-          cp -r Android/app/src/main/cpp/rt64/include/* Android/app/src/main/cpp/rt64_include/
+          cmake --build . --target rt64_wrapper -j$(nproc)
+          mkdir -p ../Android/app/src/main/cpp/libs/arm64-v8a
+          cp librt64_wrapper.so ../Android/app/src/main/cpp/libs/arm64-v8a/
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4

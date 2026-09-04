@@ -22,9 +22,18 @@
 #include "bka_safe_base.h"
 #include "rarezip_stub_cpp.h"
 extern OSMesgQueue D_8027FBC8;
+
+typedef void* (*rt64_init_fn)(void*, uint32_t, uint32_t);
+typedef void (*rt64_process_fn)(void*, uint8_t*, uint32_t, uint32_t, bool);
+typedef void (*rt64_destroy_fn)(void*);
+static void* s_rt64_handle = nullptr;
+static rt64_init_fn s_rt64_init = nullptr;
+static rt64_process_fn s_rt64_process = nullptr;
+static rt64_destroy_fn s_rt64_destroy = nullptr;
 static bool s_completionMsgPending = false;
 static bool s_unregisteredCompletionPending = false;
 #include "gfx_interpreter.h"
+#include <dlfcn.h>
    // <-- ADDED: F3DEX display list → framebuffer rasterizer
 
 
@@ -489,19 +498,23 @@ void osSpTaskStartGo(OSTask *tp) {
     static int s_gfxLogCount = 0;
     if (tp == nullptr) return;
     if (tp->t.type == M_GFXTASK) {
-        // Limit logging to first 3 GFX tasks
-        if (++s_gfxLogCount <= 3) {
-            LOGI("BKA-RDP: osSpTaskStartGo type=%d data=%p size=%u", tp->t.type, tp->t.data_ptr, tp->t.data_size);
-            LOGI("BKA-RDP: GFX task data=%p size=%u", tp->t.data_ptr, tp->t.data_size);
-        } else {
-            LOGI("BKA-RDP: osSpTaskStartGo (silent)");
+        if (!s_rt64_handle) {
+            s_rt64_handle = dlopen("librt64_wrapper.so", RTLD_NOW);
+            if (s_rt64_handle) {
+                s_rt64_init = (rt64_init_fn)dlsym(s_rt64_handle, "rt64_init");
+                s_rt64_process = (rt64_process_fn)dlsym(s_rt64_handle, "rt64_process_display_lists");
+                s_rt64_destroy = (rt64_destroy_fn)dlsym(s_rt64_handle, "rt64_destroy");
+                if (s_rt64_init) {
+                    s_rt64_init(nullptr, 0, 0); // TODO: pass ANativeWindow
+                }
+            }
         }
-
-uint32_t dl_start = (uint32_t)(uintptr_t)tp->t.data_ptr;
+        if (s_rt64_process) {
+            uint32_t dl_start = (uint32_t)(uintptr_t)tp->t.data_ptr;
             uint32_t dl_end = dl_start + tp->t.data_size;
-            // RSP_ProcessGfxTask(tp); // bypass graphics // bypass graphics
+            s_rt64_process(s_rt64_handle, gN64_RDRAM, dl_start, dl_end, true);
+        }
         usleep(2000);
-
 #ifndef OS_EVENT_SP
 #define OS_EVENT_SP 4
 #endif
@@ -511,7 +524,7 @@ uint32_t dl_start = (uint32_t)(uintptr_t)tp->t.data_ptr;
         HLE_TriggerN64Event(OS_EVENT_SP);
         HLE_TriggerN64Event(OS_EVENT_DP);
         osSendMesg(&D_8027FBC8, NULL, OS_MESG_NOBLOCK);
-    } else if (tp->t.type == M_AUDTASK) {
+        } else if (tp->t.type == M_AUDTASK) {
         HLE_TriggerN64Event(OS_EVENT_SP);
     }
 }
