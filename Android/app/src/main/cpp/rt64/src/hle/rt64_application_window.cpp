@@ -80,6 +80,9 @@ namespace RT64 {
     }
 
     void ApplicationWindow::setup(const char *windowTitle, Listener *listener) {
+#if defined(__ANDROID__)
+        return; // Window handle already provided via constructor
+#else
         assert(windowTitle != nullptr);
 
         // Find the right window dimension and placement.
@@ -300,7 +303,8 @@ uint32_t createFlags = SDL_WINDOW_RESIZABLE;
         refreshRate = displayMode.refresh_rate;
 #   elif defined(__linux__)
         // Sourced from: https://stackoverflow.com/a/66865623
-        XRRScreenResources *screenResources = XRRGetScreenResources(windowHandle.display, windowHandle.window);
+        XRRScreenResources *screenResources = #if !defined(__ANDROID__)
+XRRGetScreenResources(windowHandle.display, windowHandle.window);
         if (screenResources == nullptr) {
             fprintf(stderr, "XRRGetScreenResources failed.\n");
             return;
@@ -400,12 +404,14 @@ uint32_t createFlags = SDL_WINDOW_RESIZABLE;
 
     void ApplicationWindow::sdlCheckFilterInstallation() {
         if (listener->usesWindowMessageFilter() && !sdlEventFilterInstalled && (sdlWindow != nullptr)) {
+            #if !defined(__ANDROID__)
             if (!SDL_GetEventFilter(&sdlEventFilterStored, &sdlEventFilterUserdata)) {
                 sdlEventFilterStored = nullptr;
                 sdlEventFilterUserdata = nullptr;
             }
 
             SDL_SetEventFilter(&ApplicationWindow::sdlEventFilter, this);
+#endif
             sdlEventFilterInstalled = true;
         }
     }
