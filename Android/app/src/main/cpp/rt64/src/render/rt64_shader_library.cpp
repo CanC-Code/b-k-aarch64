@@ -719,34 +719,34 @@ namespace RT64 {
 #   endif
         if (shaderFormat == RenderShaderFormat::SPIRV) {
             RtCopyDepthToColorPSBlob = RtCopyDepthToColorPSBlobSPIRV;
-            RtCopyDepthToColorPSBlobSize = std::size(RtCopyDepthToColorPSBlobSPIRV);
+            RtCopyDepthToColorPSBlobSize = RtCopyDepthToColorPSBlobSPIRV_size;
             RtCopyColorToDepthPSBlob = RtCopyColorToDepthPSBlobSPIRV;
-            RtCopyColorToDepthPSBlobSize = std::size(RtCopyColorToDepthPSBlobSPIRV);
+            RtCopyColorToDepthPSBlobSize = RtCopyColorToDepthPSBlobSPIRV_size;
 
             switch (multisampling.sampleCount) {
             case RenderSampleCount::COUNT_2:
                 TextureResolvePSBlob = TextureResolveSamples2XPSBlobSPIRV;
-                TextureResolvePSBlobSize = std::size(TextureResolveSamples2XPSBlobSPIRV);
+                TextureResolvePSBlobSize = TextureResolveSamples2XPSBlobSPIRV_size;
                 RtCopyDepthToColorPSMSBlob = RtCopyDepthToColor2XPSBlobSPIRV;
-                RtCopyDepthToColorPSMSBlobSize = std::size(RtCopyDepthToColor2XPSBlobSPIRV);
+                RtCopyDepthToColorPSMSBlobSize = RtCopyDepthToColor2XPSBlobSPIRV_size;
                 RtCopyColorToDepthPSMSBlob = RtCopyColorToDepth2XPSBlobSPIRV;
-                RtCopyColorToDepthPSMSBlobSize = std::size(RtCopyColorToDepth2XPSBlobSPIRV);
+                RtCopyColorToDepthPSMSBlobSize = RtCopyColorToDepth2XPSBlobSPIRV_size;
                 break;
             case RenderSampleCount::COUNT_4:
                 TextureResolvePSBlob = TextureResolveSamples4XPSBlobSPIRV;
-                TextureResolvePSBlobSize = std::size(TextureResolveSamples4XPSBlobSPIRV);
+                TextureResolvePSBlobSize = TextureResolveSamples4XPSBlobSPIRV_size;
                 RtCopyDepthToColorPSMSBlob = RtCopyDepthToColor4XPSBlobSPIRV;
-                RtCopyDepthToColorPSMSBlobSize = std::size(RtCopyDepthToColor4XPSBlobSPIRV);
+                RtCopyDepthToColorPSMSBlobSize = RtCopyDepthToColor4XPSBlobSPIRV_size;
                 RtCopyColorToDepthPSMSBlob = RtCopyColorToDepth4XPSBlobSPIRV;
-                RtCopyColorToDepthPSMSBlobSize = std::size(RtCopyColorToDepth4XPSBlobSPIRV);
+                RtCopyColorToDepthPSMSBlobSize = RtCopyColorToDepth4XPSBlobSPIRV_size;
                 break;
             case RenderSampleCount::COUNT_8:
                 TextureResolvePSBlob = TextureResolveSamples8XPSBlobSPIRV;
-                TextureResolvePSBlobSize = std::size(TextureResolveSamples8XPSBlobSPIRV);
+                TextureResolvePSBlobSize = TextureResolveSamples8XPSBlobSPIRV_size;
                 RtCopyDepthToColorPSMSBlob = RtCopyDepthToColor8XPSBlobSPIRV;
-                RtCopyDepthToColorPSMSBlobSize = std::size(RtCopyDepthToColor8XPSBlobSPIRV);
+                RtCopyDepthToColorPSMSBlobSize = RtCopyDepthToColor8XPSBlobSPIRV_size;
                 RtCopyColorToDepthPSMSBlob = RtCopyColorToDepth8XPSBlobSPIRV;
-                RtCopyColorToDepthPSMSBlobSize = std::size(RtCopyColorToDepth8XPSBlobSPIRV);
+                RtCopyColorToDepthPSMSBlobSize = RtCopyColorToDepth8XPSBlobSPIRV_size;
                 break;
             }
         }
