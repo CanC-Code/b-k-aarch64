@@ -68,12 +68,12 @@ namespace RT64 {
     // OptimizerCacheSPIRV
 
     void OptimizerCacheSPIRV::initialize() {
-        rasterVS.parse(RasterVSSpecConstantBlobSPIRV, std::size(RasterVSSpecConstantBlobSPIRV));
-        rasterVSFlat.parse(RasterVSSpecConstantFlatBlobSPIRV, std::size(RasterVSSpecConstantFlatBlobSPIRV));
-        rasterPS.parse(RasterPSSpecConstantBlobSPIRV, std::size(RasterPSSpecConstantBlobSPIRV));
-        rasterPSMS.parse(RasterPSSpecConstantMSBlobSPIRV, std::size(RasterPSSpecConstantMSBlobSPIRV));
-        rasterPSFlat.parse(RasterPSSpecConstantFlatBlobSPIRV, std::size(RasterPSSpecConstantFlatBlobSPIRV));
-        rasterPSFlatMS.parse(RasterPSSpecConstantFlatMSBlobSPIRV, std::size(RasterPSSpecConstantFlatMSBlobSPIRV));
+        rasterVS.parse(RasterVSSpecConstantBlobSPIRV, RasterVSSpecConstantBlobSPIRV_size);
+        rasterVSFlat.parse(RasterVSSpecConstantFlatBlobSPIRV, RasterVSSpecConstantFlatBlobSPIRV_size);
+        rasterPS.parse(RasterPSSpecConstantBlobSPIRV, RasterPSSpecConstantBlobSPIRV_size);
+        rasterPSMS.parse(RasterPSSpecConstantMSBlobSPIRV, RasterPSSpecConstantMSBlobSPIRV_size);
+        rasterPSFlat.parse(RasterPSSpecConstantFlatBlobSPIRV, RasterPSSpecConstantFlatBlobSPIRV_size);
+        rasterPSFlatMS.parse(RasterPSSpecConstantFlatMSBlobSPIRV, RasterPSSpecConstantFlatMSBlobSPIRV_size);
         assert(!rasterVS.empty());
         assert(!rasterVSFlat.empty());
         assert(!rasterPS.empty());
@@ -146,21 +146,21 @@ namespace RT64 {
             uint32_t PSBlobSize = 0;
             if (desc.flags.smoothShade) {
                 VSBlob = RasterVSSpecConstantBlobMSL;
-                VSBlobSize = uint32_t(std::size(RasterVSSpecConstantBlobMSL));
+                VSBlobSize = uint32_t(RasterVSSpecConstantBlobMSL_size);
             }
             else {
                 VSBlob = RasterVSSpecConstantFlatBlobMSL;
-                VSBlobSize = uint32_t(std::size(RasterVSSpecConstantFlatBlobMSL));
+                VSBlobSize = uint32_t(RasterVSSpecConstantFlatBlobMSL_size);
             }
 
             // Pick the correct MSL based on the configuration.
             if (desc.flags.smoothShade) {
                 PSBlob = useMSAA ? RasterPSSpecConstantMSBlobMSL : RasterPSSpecConstantBlobMSL;
-                PSBlobSize = uint32_t(useMSAA ? std::size(RasterPSSpecConstantMSBlobMSL) : std::size(RasterPSSpecConstantBlobMSL));
+                PSBlobSize = uint32_t(useMSAA ? RasterPSSpecConstantMSBlobMSL_size : RasterPSSpecConstantBlobMSL_size);
             }
             else {
                 PSBlob = useMSAA ? RasterPSSpecConstantFlatMSBlobMSL : RasterPSSpecConstantFlatBlobMSL;
-                PSBlobSize = uint32_t(useMSAA ? std::size(RasterPSSpecConstantFlatMSBlobMSL) : std::size(RasterPSSpecConstantFlatBlobMSL));
+                PSBlobSize = uint32_t(useMSAA ? RasterPSSpecConstantFlatMSBlobMSL_size : RasterPSSpecConstantFlatBlobMSL_size);
             }
 
             vertexShader = device->createShader(VSBlob, VSBlobSize, "VSMain", shaderFormat);
@@ -246,7 +246,7 @@ namespace RT64 {
 
         // Generate vertex shader.
         std::stringstream vss;
-        vss << std::string_view(RenderParamsText, sizeof(RenderParamsText));
+        vss << std::string_view(RenderParamsText, RenderParamsText_size);
         vss << "RenderParams getRenderParams() {" + renderParamsCode + "; return rp; }";
         vss <<
             "void RasterVS(const RenderParams, in float4, in float2, in float4, out float4, out float2, out float4, out float4);"
@@ -272,7 +272,7 @@ namespace RT64 {
 
         // Generate pixel shader.
         std::stringstream pss;
-        pss << std::string_view(RenderParamsText, sizeof(RenderParamsText));
+        pss << std::string_view(RenderParamsText, RenderParamsText_size);
         pss << "RenderParams getRenderParams() {" + renderParamsCode + "; return rp; }";
         pss <<
             "bool RasterPS(const RenderParams, float4, float2, float4, float4, bool, out float4, out float4);"
@@ -418,22 +418,22 @@ namespace RT64 {
         case RenderShaderFormat::DXIL:
             VSBlob = RasterVSDynamicBlobDXIL;
             PSBlob = useMSAA ? RasterPSDynamicMSBlobDXIL : RasterPSDynamicBlobDXIL;
-            VSBlobSize = uint32_t(std::size(RasterVSDynamicBlobDXIL));
-            PSBlobSize = uint32_t(useMSAA ? std::size(RasterPSDynamicMSBlobDXIL) : std::size(RasterPSDynamicBlobDXIL));
+            VSBlobSize = uint32_t(RasterVSDynamicBlobDXIL_size);
+            PSBlobSize = uint32_t(useMSAA ? RasterPSDynamicMSBlobDXIL_size : RasterPSDynamicBlobDXIL_size);
             break;
 #   endif
         case RenderShaderFormat::SPIRV:
             VSBlob = RasterVSDynamicBlobSPIRV;
             PSBlob = useMSAA ? RasterPSDynamicMSBlobSPIRV : RasterPSDynamicBlobSPIRV;
-            VSBlobSize = uint32_t(std::size(RasterVSDynamicBlobSPIRV));
-            PSBlobSize = uint32_t(useMSAA ? std::size(RasterPSDynamicMSBlobSPIRV) : std::size(RasterPSDynamicBlobSPIRV));
+            VSBlobSize = uint32_t(RasterVSDynamicBlobSPIRV_size);
+            PSBlobSize = uint32_t(useMSAA ? RasterPSDynamicMSBlobSPIRV_size : RasterPSDynamicBlobSPIRV_size);
             break;
 #   ifdef __APPLE__
         case RenderShaderFormat::METAL:
             VSBlob = RasterVSDynamicBlobMSL;
             PSBlob = useMSAA ? RasterPSDynamicMSBlobMSL : RasterPSDynamicBlobMSL;
-            VSBlobSize = uint32_t(std::size(RasterVSDynamicBlobMSL));
-            PSBlobSize = uint32_t(useMSAA ? std::size(RasterPSDynamicMSBlobMSL) : std::size(RasterPSDynamicBlobMSL));
+            VSBlobSize = uint32_t(RasterVSDynamicBlobMSL_size);
+            PSBlobSize = uint32_t(useMSAA ? RasterPSDynamicMSBlobMSL_size : RasterPSDynamicBlobMSL_size);
             break;
 #   endif
         default:
@@ -497,21 +497,21 @@ namespace RT64 {
         switch (shaderFormat) {
 #   ifdef _WIN32
         case RenderShaderFormat::DXIL:
-            postBlendAddPixelShader = device->createShader(PostBlendDitherNoiseAddPSBlobDXIL, std::size(PostBlendDitherNoiseAddPSBlobDXIL), "PSMain", shaderFormat);
-            postBlendSubPixelShader = device->createShader(PostBlendDitherNoiseSubPSBlobDXIL, std::size(PostBlendDitherNoiseSubPSBlobDXIL), "PSMain", shaderFormat);
-            postBlendSubNegativePixelShader = device->createShader(PostBlendDitherNoiseSubNegativePSBlobDXIL, std::size(PostBlendDitherNoiseSubNegativePSBlobDXIL), "PSMain", shaderFormat);
+            postBlendAddPixelShader = device->createShader(PostBlendDitherNoiseAddPSBlobDXIL, PostBlendDitherNoiseAddPSBlobDXIL_size, "PSMain", shaderFormat);
+            postBlendSubPixelShader = device->createShader(PostBlendDitherNoiseSubPSBlobDXIL, PostBlendDitherNoiseSubPSBlobDXIL_size, "PSMain", shaderFormat);
+            postBlendSubNegativePixelShader = device->createShader(PostBlendDitherNoiseSubNegativePSBlobDXIL, PostBlendDitherNoiseSubNegativePSBlobDXIL_size, "PSMain", shaderFormat);
             break;
 #   endif
         case RenderShaderFormat::SPIRV:
-            postBlendAddPixelShader = device->createShader(PostBlendDitherNoiseAddPSBlobSPIRV, std::size(PostBlendDitherNoiseAddPSBlobSPIRV), "PSMain", shaderFormat);
-            postBlendSubPixelShader = device->createShader(PostBlendDitherNoiseSubPSBlobSPIRV, std::size(PostBlendDitherNoiseSubPSBlobSPIRV), "PSMain", shaderFormat);
-            postBlendSubNegativePixelShader = device->createShader(PostBlendDitherNoiseSubNegativePSBlobSPIRV, std::size(PostBlendDitherNoiseSubNegativePSBlobSPIRV), "PSMain", shaderFormat);
+            postBlendAddPixelShader = device->createShader(PostBlendDitherNoiseAddPSBlobSPIRV, PostBlendDitherNoiseAddPSBlobSPIRV_size, "PSMain", shaderFormat);
+            postBlendSubPixelShader = device->createShader(PostBlendDitherNoiseSubPSBlobSPIRV, PostBlendDitherNoiseSubPSBlobSPIRV_size, "PSMain", shaderFormat);
+            postBlendSubNegativePixelShader = device->createShader(PostBlendDitherNoiseSubNegativePSBlobSPIRV, PostBlendDitherNoiseSubNegativePSBlobSPIRV_size, "PSMain", shaderFormat);
             break;
 #   ifdef __APPLE__
         case RenderShaderFormat::METAL:
-            postBlendAddPixelShader = device->createShader(PostBlendDitherNoiseAddPSBlobMSL, std::size(PostBlendDitherNoiseAddPSBlobMSL), "PSMain", shaderFormat);
-            postBlendSubPixelShader = device->createShader(PostBlendDitherNoiseSubPSBlobMSL, std::size(PostBlendDitherNoiseSubPSBlobMSL), "PSMain", shaderFormat);
-            postBlendSubNegativePixelShader = device->createShader(PostBlendDitherNoiseSubNegativePSBlobMSL, std::size(PostBlendDitherNoiseSubNegativePSBlobMSL), "PSMain", shaderFormat);
+            postBlendAddPixelShader = device->createShader(PostBlendDitherNoiseAddPSBlobMSL, PostBlendDitherNoiseAddPSBlobMSL_size, "PSMain", shaderFormat);
+            postBlendSubPixelShader = device->createShader(PostBlendDitherNoiseSubPSBlobMSL, PostBlendDitherNoiseSubPSBlobMSL_size, "PSMain", shaderFormat);
+            postBlendSubNegativePixelShader = device->createShader(PostBlendDitherNoiseSubNegativePSBlobMSL, PostBlendDitherNoiseSubNegativePSBlobMSL_size, "PSMain", shaderFormat);
             break;
 #   endif
         default:
