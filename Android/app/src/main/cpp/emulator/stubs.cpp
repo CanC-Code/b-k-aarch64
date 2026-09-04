@@ -24,7 +24,8 @@
 extern OSMesgQueue D_8027FBC8;
 static bool s_completionMsgPending = false;
 static bool s_unregisteredCompletionPending = false;
-#include "gfx_interpreter.h"   // <-- ADDED: F3DEX display list → framebuffer rasterizer
+#include "gfx_interpreter.h"
+#include "RT64Renderer.h"   // <-- ADDED: F3DEX display list → framebuffer rasterizer
 
 
 // -------------------------------------------------------------------------
@@ -496,7 +497,9 @@ void osSpTaskStartGo(OSTask *tp) {
             LOGI("BKA-RDP: osSpTaskStartGo (silent)");
         }
 
-// RSP_ProcessGfxTask(tp); // bypass graphics
+uint32_t dl_start = (uint32_t)(uintptr_t)tp->t.data_ptr;
+            uint32_t dl_end = dl_start + tp->t.data_size;
+            RT64Renderer::get().processDisplayLists(gN64_RDRAM, dl_start, dl_end, true); // bypass graphics
         usleep(2000);
 
 #ifndef OS_EVENT_SP
