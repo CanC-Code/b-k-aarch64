@@ -93,6 +93,7 @@ target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/rt64/src
     ${CMAKE_CURRENT_SOURCE_DIR}/rt64/src/hle
     ${CMAKE_CURRENT_SOURCE_DIR}/rt64/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/rt64/src/contrib/hlslpp/include
 )
 target_link_directories(bkawrapper PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs/arm64-v8a)
 target_link_libraries(bkawrapper rt64 ${log-lib} ${android-lib} ${egl-lib} ${gles3-lib} ${gles2-lib} atomic m)
