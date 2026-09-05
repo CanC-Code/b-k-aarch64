@@ -16,7 +16,7 @@ RT64Handle rt64_init(void* window, uint32_t width, uint32_t height) {
     auto* ctx = new RT64Context();
     ctx->app = nullptr;
 
-    Core core = {};
+    Application::Core core = {};
     core.RDRAM = (uint8_t*)calloc(0x1000000, 1);
     core.DMEM = (uint8_t*)calloc(0x1000, 1);
     core.IMEM = (uint8_t*)calloc(0x1000, 1);
