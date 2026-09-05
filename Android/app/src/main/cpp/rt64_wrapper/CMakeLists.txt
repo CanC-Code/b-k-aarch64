@@ -18,5 +18,6 @@ target_include_directories(rt64_wrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../rt64/src/common
     ${CMAKE_CURRENT_SOURCE_DIR}/../rt64/src/contrib/hlslpp/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../rt64/src/contrib
+    ${CMAKE_CURRENT_SOURCE_DIR}/../rt64/src/contrib/android_sdl_stub
 )
 target_link_libraries(rt64_wrapper rt64)
