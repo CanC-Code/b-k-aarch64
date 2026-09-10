@@ -158,15 +158,16 @@ static void Matrix_MultVec(const BKMatrix m, float x, float y, float z, float w,
 
 // Load N64 fixed-point matrix (int16_t[4][4] with 32-bit integer parts)
 static void Matrix_LoadFromN64(BKMatrix out, const void* src) {
-    // N64 Mtx: 16 s16 integer parts (32 bytes), then 16 u16 fractional
-    // parts (32 bytes). Element (i,j) = int[i*4+j] + frac[i*4+j]/65536.
+    // N64 Mtx layout: 16 s16 integer parts (32 bytes), then 16 u16 fractional
+    // parts (32 bytes). Element (i,j) = integer[i*4+j] + fraction[i*4+j]/65536.
     const int16_t*  integer  = (const int16_t*)src;
     const uint16_t* fraction = (const uint16_t*)((const uint8_t*)src + 32);
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
             int idx = i * 4 + j;
             out[i][j] = (float)integer[idx] + (float)fraction[idx] / 65536.0f;
         }
+    }
 }
 
 // =======================================================================
@@ -834,40 +835,29 @@ static void Matrix_Multiply(BKMatrix result, const BKMatrix a, const BKMatrix b)
 #define G_MTX_PUSH        0x04
 #endif
 
-#ifndef G_MTX_PROJECTION
-#define G_MTX_PROJECTION  0x01
-#endif
-#ifndef G_MTX_LOAD
-#define G_MTX_LOAD        0x02
-#endif
-#ifndef G_MTX_PUSH
-#define G_MTX_PUSH        0x04
-#endif
-
 static void Cmd_Mtx(GfxCommand cmd) {
     uint32_t flag = (cmd.w0 >> 16) & 0xFF;
     void *mtx_src = RDP_TranslateAddr(cmd.w1);
-
-    static int mtx_log = 0;
-    if (mtx_log++ < 16) {
-        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-            "Cmd_Mtx flag=0x%02X raw=0x%08X translated=%p",
-            flag, cmd.w1, mtx_src);
+    if (!mtx_src) {
+        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+            "Cmd_Mtx: translate fail raw=0x%08X flag=0x%02X", cmd.w1, flag);
+        return;
     }
-
-    if (!mtx_src) return;
 
     BKMatrix newMatrix;
     Matrix_LoadFromN64(newMatrix, mtx_src);
 
-    if (mtx_log <= 16) {
+    static int mtx_log = 0;
+    if (mtx_log++ < 12) {
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-            "  diag [%.4f %.4f %.4f %.4f]",
+            "Cmd_Mtx flag=0x%02X diag=[%.4f %.4f %.4f %.4f]",
+            flag,
             newMatrix[0][0], newMatrix[1][1],
             newMatrix[2][2], newMatrix[3][3]);
     }
 
     if (flag & G_MTX_PROJECTION) {
+        // Projection matrix op
         if (flag & G_MTX_LOAD) {
             memcpy(s_rdp.projection, newMatrix, sizeof(BKMatrix));
         } else {
@@ -876,6 +866,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
             memcpy(s_rdp.projection, tmp, sizeof(BKMatrix));
         }
     } else {
+        // Modelview matrix op
         if (flag & G_MTX_PUSH) {
             if (s_rdp.modelviewStackDepth < 16) {
                 memcpy(s_rdp.modelviewStack[s_rdp.modelviewStackDepth],
@@ -1004,26 +995,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     // Hex dump removed to reduce log overhead.
 
     RDP_InitState();
-
-    // ---- DL_DUMP_ADDED ----
-    {
-        const uint8_t* d = (const uint8_t*)tp->t.data_ptr;
-        uint32_t sz = tp->t.data_size;
-        uint32_t lim = sz < 256 ? sz : 256;
-        for (uint32_t off = 0; off < lim; off += 32) {
-            uint32_t o2 = off + 16;
-            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                "DLRAW[%03u]: "
-                "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X  "
-                "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
-                off,
-                d[off+0],d[off+1],d[off+2],d[off+3],d[off+4],d[off+5],d[off+6],d[off+7],
-                d[off+8],d[off+9],d[off+10],d[off+11],d[off+12],d[off+13],d[off+14],d[off+15],
-                d[o2+0],d[o2+1],d[o2+2],d[o2+3],d[o2+4],d[o2+5],d[o2+6],d[o2+7],
-                d[o2+8],d[o2+9],d[o2+10],d[o2+11],d[o2+12],d[o2+13],d[o2+14],d[o2+15]);
-        }
-    }
-    // ---- end DL_DUMP_ADDED ----
 
     // Diagnostic: dump first 16 bytes of task data
     {
