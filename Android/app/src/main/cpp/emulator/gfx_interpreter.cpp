@@ -1263,9 +1263,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xF0:
             case 0x02:
             case 0xDB:
-            case 0xDA:
-            case 0xBD:
-            case 0xBE:
+            case 0xDA:            case 0xBE:
             case 0xBB:
             case 0xBA:
             case 0xB9:
@@ -1428,11 +1426,14 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 break;
             }
 
-            case 0xB8:
-                // G_POPMTX - pop modelview matrix from stack
-                if (s_rdp.modelviewStackDepth > 0) {
-                    s_rdp.modelviewStackDepth--;
-                    memcpy(s_rdp.modelview, s_rdp.modelviewStack[s_rdp.modelviewStackDepth], sizeof(BKMatrix));
+            case 0xB8: // F3DEX G_ENDDL - end of display list
+                if (depth > 0) {
+                    depth--;
+                    cur = stack[depth].ptr;
+                    cur_end = stack[depth].end;
+                    current_stride = stack_stride[depth];
+                    dl_cmds = 0;
+                    zero_run = 0;
                 }
                 break;
 
