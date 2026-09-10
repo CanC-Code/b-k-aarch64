@@ -858,7 +858,24 @@ static void Cmd_Mtx(GfxCommand cmd) {
             flag, cmd.w1, mtx_src);
     }
 
-    if (!mtx_src) return;
+    if (!mtx_src) {
+        static int null_log = 0;
+        if (null_log++ < 12) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "Cmd_Mtx NULL raw=0x%08X flag=0x%02X "
+                "segs[0]=%08lX [1]=%08lX [2]=%08lX [3]=%08lX [0C]=%08lX [0D]=%08lX [0E]=%08lX [0F]=%08lX",
+                cmd.w1, flag,
+                (unsigned long)s_rdp.segmentBase[0x00],
+                (unsigned long)s_rdp.segmentBase[0x01],
+                (unsigned long)s_rdp.segmentBase[0x02],
+                (unsigned long)s_rdp.segmentBase[0x03],
+                (unsigned long)s_rdp.segmentBase[0x0C],
+                (unsigned long)s_rdp.segmentBase[0x0D],
+                (unsigned long)s_rdp.segmentBase[0x0E],
+                (unsigned long)s_rdp.segmentBase[0x0F]);
+        }
+        return;
+    }
 
     static int mtx_dump = 0;
     if (mtx_dump++ < 8) {
