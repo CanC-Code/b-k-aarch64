@@ -213,7 +213,7 @@ extern "C" {
     }
 
     void VideoPlugin_OutputFrameTexture(uint32_t hostTextureId) {
-    return; // TEMP disabled for RSP stability test
+    /* return; */ // Re-enabled for software rendering
         static int diagCount = 0;
         if (++diagCount <= 5) {
             __android_log_print(ANDROID_LOG_INFO, LOG_TAG,

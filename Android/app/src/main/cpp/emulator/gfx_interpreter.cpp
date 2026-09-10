@@ -12,7 +12,7 @@
 #define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
 
 extern "C" {
-    uint16_t gFramebuffers[2][FB_WIDTH * FB_HEIGHT];
+    extern uint16_t gFramebuffers[2][FB_WIDTH * FB_HEIGHT];
     int getActiveFramebuffer(void);
     uint8_t* gN64_RDRAM;
     void* bka_lookup_addr_mapping(uint32_t key);

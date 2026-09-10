@@ -228,7 +228,7 @@ public class MainActivity extends AppCompatActivity {
         glSurfaceView.setWillNotDraw(false);
 
         glSurfaceView.setRenderer(new GLRenderer(this, assetDir, mgr));
-        glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+        glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
         // FIXED: Bridge the Android Surface to native code so the engine can
         // initialize EGL and unblock the vblank synchronization loop.

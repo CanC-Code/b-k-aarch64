@@ -498,33 +498,8 @@ void osSpTaskStartGo(OSTask *tp) {
     static int s_gfxLogCount = 0;
     if (tp == nullptr) return;
     if (tp->t.type == M_GFXTASK) {
-        if (!s_rt64_handle) {
-            s_rt64_handle = dlopen("librt64_wrapper.so", RTLD_NOW);
-            if (s_rt64_handle) {
-                s_rt64_init = (rt64_init_fn)dlsym(s_rt64_handle, "rt64_init");
-                s_rt64_process = (rt64_process_fn)dlsym(s_rt64_handle, "rt64_process_display_lists");
-                s_rt64_destroy = (rt64_destroy_fn)dlsym(s_rt64_handle, "rt64_destroy");
-                if (s_rt64_init) {
-                    s_rt64_init(nullptr, 0, 0); // TODO: pass ANativeWindow
-                }
-            }
-        }
-        if (s_rt64_process) {
-            uint32_t dl_start = (uint32_t)(uintptr_t)tp->t.data_ptr;
-            uint32_t dl_end = dl_start + tp->t.data_size;
-            s_rt64_process(s_rt64_handle, gN64_RDRAM, dl_start, dl_end, true);
-        }
-        usleep(2000);
-#ifndef OS_EVENT_SP
-#define OS_EVENT_SP 4
-#endif
-#ifndef OS_EVENT_DP
-#define OS_EVENT_DP 9
-#endif
-        HLE_TriggerN64Event(OS_EVENT_SP);
-        HLE_TriggerN64Event(OS_EVENT_DP);
-        osSendMesg(&D_8027FBC8, NULL, OS_MESG_NOBLOCK);
-        } else if (tp->t.type == M_AUDTASK) {
+        RSP_ProcessGfxTask(tp);
+    } else if (tp->t.type == M_AUDTASK) {
         HLE_TriggerN64Event(OS_EVENT_SP);
     }
 }
