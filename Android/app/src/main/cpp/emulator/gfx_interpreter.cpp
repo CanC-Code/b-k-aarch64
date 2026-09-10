@@ -929,8 +929,8 @@ static void Cmd_Mtx(GfxCommand cmd) {
 
     if (s_mtx_log_frame++ < 12) {
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-            "Cmd_Mtx flag=0x%02X src=%p diag=[%.4f %.4f %.4f %.4f]",
-            flag, mtx_src,
+            "Cmd_Mtx flag=0x%02X raw=0x%08X src=%p diag=[%.4f %.4f %.4f %.4f]",
+            flag, cmd.w1, mtx_src,
             newMatrix[0][0], newMatrix[1][1],
             newMatrix[2][2], newMatrix[3][3]);
     }

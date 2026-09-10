@@ -1,3 +1,4 @@
+#include <android/log.h>
 #include <ultra64.h>
 #include "core1/core1.h"
 #include "functions.h"
@@ -173,8 +174,13 @@ void guPerspectiveF(float mf[4][4], u16 *perspNorm, float fovy, float aspect, fl
 void guPerspective(Mtx *m, u16 *perspNorm, f32 fovy, f32 aspect, f32 near, f32 far, f32 scale) {
     f32 sp28[4][4];
 
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+        "guPerspective CALLED m=%p fovy=%.2f aspect=%.4f near=%.2f far=%.2f",
+        m, fovy, aspect, near, far);
     guPerspectiveF(sp28, perspNorm, fovy, aspect, near, far, scale);
     __guMtxF2L(sp28, m);
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+        "guPerspective WROTE m=%p perspNorm=%u", m, *perspNorm);
 }
 
 void _guRotateF(f32 mf[4][4], f32 arg1, f32 arg2, f32 arg3, f32 arg4) {
