@@ -149,9 +149,43 @@ s32  osContInit(void *mq, void *status, void *pad) { if (status) ((u8*)status)[0
 s32  osContSetCh(u8 ch) { return 0; }
 s32  osContStartReadData(void *mq) { __android_log_print(ANDROID_LOG_INFO, "BKA_INPUT", "osContStartReadData called mq=%p", mq); extern s32 osSendMesg(void *mq, void *msg, s32 flag); if (mq) osSendMesg(mq, (void*)1, 0); return 0; }
 s32  osPiReadIo(u32 devAddr, u32 *data) { *data = 0; return 0; }
-void guOrtho(void *m) {}
-void guTranslate(void *m, f32 x, f32 y, f32 z) {}
-void guRotate(void *m, f32 a, f32 x, f32 y, f32 z) {}
+/* ------------------------------------------------------------------
+ * The game carries its own GU implementations in src/core1/code_7F60.c
+ * under the internal "_gu*" names. The original stubs were no-ops,
+ * silently dropping every modelview rotation and translation. Delegate
+ * to the real ones.
+ * ------------------------------------------------------------------ */
+extern void _guRotateF(f32 mf[4][4], f32 a, f32 x, f32 y, f32 z);
+extern void _guTranslateF(f32 mf[4][4], f32 x, f32 y, f32 z);
+extern void _guMtxF2L(f32 mf[4][4], void *m);
+
+void guRotate(void *m, f32 a, f32 x, f32 y, f32 z) {
+    f32 mf[4][4];
+    _guRotateF(mf, a, x, y, z);
+    _guMtxF2L(mf, m);
+}
+
+void guTranslate(void *m, f32 x, f32 y, f32 z) {
+    f32 mf[4][4];
+    _guTranslateF(mf, x, y, z);
+    _guMtxF2L(mf, m);
+}
+
+void guOrtho(void *m, f32 l, f32 r, f32 b, f32 t, f32 n, f32 f, f32 scale) {
+    f32 mf[4][4];
+    int i, j;
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < 4; j++)
+            mf[i][j] = 0.0f;
+    mf[0][0] =  2.0f / (r - l);
+    mf[1][1] =  2.0f / (t - b);
+    mf[2][2] = -2.0f / (f - n);
+    mf[3][0] = -(r + l) / (r - l);
+    mf[3][1] = -(t + b) / (t - b);
+    mf[3][2] = -(f + n) / (f - n);
+    mf[3][3] =  1.0f;
+    _guMtxF2L(mf, m);
+}
 void bkmemset64(void *dst, u32 val, u32 size) {}
 void *osViGetNextFramebuffer(void) { return 0; }
 void osViBlack(u8 active) {}
