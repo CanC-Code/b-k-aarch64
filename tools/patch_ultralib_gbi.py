@@ -5,74 +5,70 @@ import sys
 PATH = 'lib/ultralib/include/PR/gbi.h'
 
 with open(PATH) as f:
-    t = f.read()
+    lines = f.readlines()
 
-if 'BKA_REG_DL_ADDR' in t:
+text = ''.join(lines)
+if 'BKA_REG_DL_ADDR' in text:
     print("already patched")
     sys.exit(0)
 
-anchor = '/*\n * DMA macros\n */\n#define gDma0p(pkt, c, s, l)'
-helper = '''/*
- * DMA macros
- *
- * bka: 64-bit host pointer recovery. Every address the recomp writes into
- * a DL gets truncated to 32 bits. Register the full pointer under its low
- * 32 bits so RDP_TranslateAddr can recover it at decode time.
- */
-extern void bka_add_addr_mapping_c(unsigned int key, void *ptr);
-#define BKA_REG_DL_ADDR(s) do {                                   \\
-        unsigned long long __bka_a = (unsigned long long)(s);     \\
-        if (__bka_a != 0) {                                       \\
-            bka_add_addr_mapping_c((unsigned int)__bka_a,         \\
-                                   (void *)__bka_a);              \\
-        }                                                         \\
-    } while (0)
+# Find the line that defines gDma0p — anchor by its function signature only
+anchor_idx = None
+for i, line in enumerate(lines):
+    if line.lstrip().startswith('#define') and 'gDma0p(pkt, c, s, l)' in line:
+        anchor_idx = i
+        break
 
-#define gDma0p(pkt, c, s, l)'''
+if anchor_idx is None:
+    sys.stderr.write("ERROR: could not find '#define gDma0p(pkt, c, s, l)'\n")
+    sys.exit(1)
 
-if anchor not in t:
-    raise SystemExit("anchor not found")
+helper_lines = [
+    '/*\n',
+    ' * bka: 64-bit host pointer recovery. The N64 Gfx word is 32 bits, so\n',
+    ' * every address the recomp writes into a DL gets truncated. Register\n',
+    ' * the full 64-bit pointer under its low 32 bits so RDP_TranslateAddr\n',
+    ' * can recover it at decode time.\n',
+    ' */\n',
+    'extern void bka_add_addr_mapping_c(unsigned int key, void *ptr);\n',
+    '#define BKA_REG_DL_ADDR(s) do {                                   \\\n',
+    '        unsigned long long __bka_a = (unsigned long long)(s);     \\\n',
+    '        if (__bka_a != 0) {                                       \\\n',
+    '            bka_add_addr_mapping_c((unsigned int)__bka_a,         \\\n',
+    '                                   (void *)__bka_a);              \\\n',
+    '        }                                                         \\\n',
+    '    } while (0)\n',
+    '\n',
+]
+lines = lines[:anchor_idx] + helper_lines + lines[anchor_idx:]
 
-t = t.replace(anchor, helper, 1)
 
-old1 = '''#define    gDma1p(pkt, c, s, l, p)    \\
-{                                          \\
-        Gfx *_g = (Gfx *)(pkt);            \\
-                                           \\
-        _g->words.w0 = (_SHIFTL((c), 24, 8) | _SHIFTL((p), 16, 8) | \\
-                        _SHIFTL((l), 0, 16));                               \\
-        _g->words.w1 = (unsigned int)(s);  \\
-}'''
-new1 = '''#define    gDma1p(pkt, c, s, l, p)    \\
-{                                          \\
-        Gfx *_g = (Gfx *)(pkt);            \\
-        BKA_REG_DL_ADDR(s);                \\
-        _g->words.w0 = (_SHIFTL((c), 24, 8) | _SHIFTL((p), 16, 8) | \\
-                        _SHIFTL((l), 0, 16));                               \\
-        _g->words.w1 = (unsigned int)(s);  \\
-}'''
-if old1 not in t: raise SystemExit("gDma1p block missing")
-t = t.replace(old1, new1, 1)
+def inject_after_gfx_line(lines, macro_name, param):
+    """Insert BKA_REG_DL_ADDR(param) after the `Gfx *_g = ...` line in a macro."""
+    start = None
+    for i, line in enumerate(lines):
+        if '#define' in line and macro_name + '(' in line:
+            start = i
+            break
+    if start is None:
+        raise SystemExit(f"macro {macro_name} not found")
 
-old2 = '''#define gDma2p(pkt, c, adrs, len, idx, ofs)\\
-{                                          \\
-        Gfx *_g = (Gfx *)(pkt);            \\
-        _g->words.w0 = (_SHIFTL((c),24,8)|_SHIFTL(((len)-1)/8,19,5)|        \\
-                        _SHIFTL((ofs)/8,8,8)|_SHIFTL((idx),0,8));   \\
-        _g->words.w1 = (unsigned int)(adrs);\\
-}'''
-new2 = '''#define gDma2p(pkt, c, adrs, len, idx, ofs)\\
-{                                          \\
-        Gfx *_g = (Gfx *)(pkt);            \\
-        BKA_REG_DL_ADDR(adrs);             \\
-        _g->words.w0 = (_SHIFTL((c),24,8)|_SHIFTL(((len)-1)/8,19,5)|        \\
-                        _SHIFTL((ofs)/8,8,8)|_SHIFTL((idx),0,8));   \\
-        _g->words.w1 = (unsigned int)(adrs);\\
-}'''
-if old2 not in t: raise SystemExit("gDma2p block missing")
-t = t.replace(old2, new2, 1)
+    insert_at = None
+    for i in range(start, min(start + 12, len(lines))):
+        if 'Gfx *_g' in lines[i] and '(Gfx *)' in lines[i]:
+            insert_at = i + 1
+            break
+    if insert_at is None:
+        raise SystemExit(f"'Gfx *_g' line not found in {macro_name}")
+
+    lines.insert(insert_at, f'        BKA_REG_DL_ADDR({param});                \\\n')
+    return lines
+
+
+lines = inject_after_gfx_line(lines, 'gDma1p', 's')
+lines = inject_after_gfx_line(lines, 'gDma2p', 'adrs')
 
 with open(PATH, 'w') as f:
-    f.write(t)
+    f.writelines(lines)
 
 print("gbi.h patched")
