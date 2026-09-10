@@ -849,7 +849,16 @@ static void Matrix_Multiply(BKMatrix result, const BKMatrix a, const BKMatrix b)
 
 static void Cmd_Mtx(GfxCommand cmd) {
     uint32_t flag = (cmd.w0 >> 16) & 0xFF;
+    static int mtx_enter = 0;
+    if (mtx_enter++ < 12) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "Cmd_Mtx ENTER raw=0x%08X flag=0x%02X", cmd.w1, flag);
+    }
     void *mtx_src = RDP_TranslateAddr(cmd.w1);
+    if (mtx_enter <= 12) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "Cmd_Mtx XLT raw=0x%08X -> %p", cmd.w1, mtx_src);
+    }
 
     static int mtx_log = 0;
     if (mtx_log++ < 16) {

@@ -64,19 +64,10 @@ void* bka_lookup_addr_mapping(uint32_t low32) {
 
 extern "C" void* bka_lookup_addr_mapping_range_c(uint32_t low32);
 void* bka_lookup_addr_mapping_range(uint32_t low32) {
+    // Exact-match only. The prior linear scan was causing stalls on miss.
     auto it = s_addrMap.find(low32);
     if (it != s_addrMap.end()) return it->second;
-    uint32_t best_diff = 0xFFFFFFFFu;
-    void*    best_ptr  = nullptr;
-    for (auto& kv : s_addrMap) {
-        uint32_t base = kv.first;
-        if (low32 >= base) {
-            uint32_t d = low32 - base;
-            if (d < 0x100000u && d < best_diff) { best_diff = d; best_ptr = (uint8_t*)kv.second + d; }
-        }
-    }
-    if (best_ptr) return best_ptr;
-    return bka_lookup_addr_mapping_c(low32);
+    return nullptr;
 }
 extern "C" void* bka_lookup_addr_mapping_range_c(uint32_t key) {
     return bka_lookup_addr_mapping_range(key);
