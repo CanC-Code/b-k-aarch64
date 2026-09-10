@@ -129,6 +129,17 @@ static void RDP_InitState() {
     // Clear all state except vertices.
     memset(&s_rdp, 0, sizeof(s_rdp));
 
+    // Re-seed segment bases — the memset above wipes them.
+    // These match the defaults set by the RDPStateDefaultSegments constructor.
+    s_rdp.segmentBase[0x00] = 0x00000000u;
+    s_rdp.segmentBase[0x01] = 0x80000000u;
+    s_rdp.segmentBase[0x02] = 0x80000000u;
+    s_rdp.segmentBase[0x03] = 0x80000000u;
+    s_rdp.segmentBase[0x0C] = 0x0C000000u;
+    s_rdp.segmentBase[0x0D] = 0x80000000u;
+    s_rdp.segmentBase[0x0E] = 0x80000000u;
+    s_rdp.segmentBase[0x0F] = 0x80000000u;
+
     // Restore vertices and count.
     memcpy(s_rdp.dmem, saved_dmem, sizeof(saved_dmem));
     s_rdp.dmemVertexCount = saved_dmemVertexCount;
