@@ -791,6 +791,12 @@ static void Cmd_MoveWord(GfxCommand cmd) {
     uint32_t offset =  cmd.w0        & 0xFFFF;
     uint32_t data   =  cmd.w1;
 
+    static int mw_log = 0;
+    if (mw_log++ < 40) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "Cmd_MoveWord index=0x%02X offset=0x%04X data=0x%08X", index, offset, data);
+    }
+
     if (index == 0x06) { // G_MW_SEGMENT
         // RT64 stores segment bases verbatim — no translation. The address
         // in `data` is the segment's own base, which RDP_TranslateAddr
@@ -863,6 +869,26 @@ static void Cmd_Mtx(GfxCommand cmd) {
                 "Cmd_Mtx NULL raw=0x%08X flag=0x%02X", cmd.w1, flag);
         }
         return;
+    }
+
+    // DIAGNOSTIC: dump segment table and the raw bytes at src
+    static int mtx_diag = 0;
+    if (mtx_diag++ < 8) {
+        uint32_t seg = (cmd.w1 >> 24) & 0x0F;
+        uint32_t off = cmd.w1 & 0x00FFFFFF;
+        const uint8_t* mb = (const uint8_t*)mtx_src;
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "MTXDIAG w1=0x%08X seg=%u off=0x%06X segBase[%u]=0x%lX src=%p",
+            cmd.w1, seg, off, seg,
+            (unsigned long)s_rdp.segmentBase[seg], mtx_src);
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "MTXBYTES @%p: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X  "
+            "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+            mtx_src,
+            mb[0],mb[1],mb[2],mb[3],mb[4],mb[5],mb[6],mb[7],
+            mb[8],mb[9],mb[10],mb[11],mb[12],mb[13],mb[14],mb[15],
+            mb[16],mb[17],mb[18],mb[19],mb[20],mb[21],mb[22],mb[23],
+            mb[24],mb[25],mb[26],mb[27],mb[28],mb[29],mb[30],mb[31]);
     }
 
     BKMatrix newMatrix;
