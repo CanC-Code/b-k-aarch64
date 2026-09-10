@@ -41,27 +41,6 @@ static struct RDPStateDefaultSegments {
 
 static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // Prefer the 64-bit host pointer in the recomp's 16-byte DL entry payload.
-    // Recomp DL layout observed:
-    //   bytes 0-7  : F3DEX command (w0 LE, w1 LE)
-    //   bytes 8-11 : original N64 physical address, BIG-ENDIAN (0..8 MB)
-    //   bytes 12-15: constant tag
-    // If w1 above didn't translate, use bytes 8-11 as an RDRAM offset.
-    if (s_current_cmd) {
-        uint32_t be_addr =
-            ((uint32_t)s_current_cmd[8]  << 24) |
-            ((uint32_t)s_current_cmd[9]  << 16) |
-            ((uint32_t)s_current_cmd[10] <<  8) |
-             (uint32_t)s_current_cmd[11];
-        if (be_addr != 0 && be_addr < 0x00800000u && gN64_RDRAM) {
-            static int be_log = 0;
-            if (be_log++ < 40) {
-                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                    "XLT w1=0x%08X be_payload=0x%08X -> RDRAM+0x%X",
-                    addr, be_addr, be_addr);
-            }
-            return gN64_RDRAM + be_addr;
-        }
-    }
 
     if (addr == 0) return nullptr;
 
@@ -880,6 +859,19 @@ static void Cmd_Mtx(GfxCommand cmd) {
     }
 
     if (!mtx_src) return;
+
+    static int mtx_dump = 0;
+    if (mtx_dump++ < 8) {
+        const uint8_t* mb = (const uint8_t*)mtx_src;
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "MTXSRC @%p: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X  "
+            "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+            mtx_src,
+            mb[0],mb[1],mb[2],mb[3],mb[4],mb[5],mb[6],mb[7],
+            mb[8],mb[9],mb[10],mb[11],mb[12],mb[13],mb[14],mb[15],
+            mb[16],mb[17],mb[18],mb[19],mb[20],mb[21],mb[22],mb[23],
+            mb[24],mb[25],mb[26],mb[27],mb[28],mb[29],mb[30],mb[31]);
+    }
 
     BKMatrix newMatrix;
     Matrix_LoadFromN64(newMatrix, mtx_src);
