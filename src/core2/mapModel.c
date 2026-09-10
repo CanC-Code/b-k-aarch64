@@ -343,14 +343,20 @@ void mapModel_opa_draw(Gfx **gfx, Mtx **mtx, Vtx **vtx) {
             modelRender_setAppendageVisibility(6, (jigsawPicture_isJigsawPictureComplete(0xA) || fileProgressFlag_get(FILEPROG_E2_DOOR_OF_GRUNTY_OPEN) || volatileFlag_get(VOLATILE_FLAG_C1_IN_FINAL_CHARACTER_PARADE)));
             break;
         }
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "mapModel_opa_draw: pre-setup");
         modelRender_setRefPoints(mapModel.unk24);
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "mapModel_opa_draw: setRefPoints done");
         modelRender_setDepthMode(MODEL_RENDER_DEPTH_FULL);
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "mapModel_opa_draw: setDepthMode done");
         temp_a0 = mapModel.unk0;
         if (temp_a0 != 0) {
             modelRender_setAnimatedTexturesCacheId(temp_a0);
+            __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "mapModel_opa_draw: setAnimTex done");
         }
         modelRender_setEnvColor(mapModel.env_red, mapModel.env_green, mapModel.env_blue, 0xFF);
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "mapModel_opa_draw: setEnvColor done, calling modelRender_draw");
         modelRender_draw(gfx, mtx, NULL, NULL, mapModel.description->scale, NULL, mapModel.model_bin_opa);
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "mapModel_opa_draw: modelRender_draw returned");
         if (!mapModel_has_xlu_bin()) {
             func_802F7BC0(gfx, mtx, vtx);
         }
