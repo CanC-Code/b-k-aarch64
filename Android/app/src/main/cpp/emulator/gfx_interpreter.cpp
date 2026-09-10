@@ -16,6 +16,7 @@ extern "C" {
     int getActiveFramebuffer(void);
     uint8_t* gN64_RDRAM;
     void* bka_lookup_addr_mapping(uint32_t key);
+    void* bka_lookup_addr_mapping_range_c(uint32_t key);
     int bka_is_mapped(void* ptr);
     uintptr_t bka_get_mapped_end(void* ptr);
 }
@@ -37,7 +38,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     if (addr == 0) return nullptr;
 
     // Try exact mapping table first
-    void* p = bka_lookup_addr_mapping(addr);
+    void* p = bka_lookup_addr_mapping_range_c(addr);
     if (p) return (uint8_t*)p;
 
     // Segment address (F3DEX_GBI)
