@@ -28,28 +28,10 @@ jobs:
           NDK_VERSION=$(ls $ANDROID_HOME/ndk | head -1)
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> $GITHUB_ENV
 
-      - name: Build RT64 wrapper shared library
-        run: |
-          mkdir -p rt64-wrapper-build && cd rt64-wrapper-build
-          cmake -G Ninja ../Android/app/src/main/cpp/rt64_wrapper \
-            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
-            -DANDROID_ABI=arm64-v8a \
-            -DANDROID_PLATFORM=android-24 \
-            -DCMAKE_BUILD_TYPE=Release
-          cmake --build . --target rt64_wrapper -j$(nproc)
-          mkdir -p ../Android/app/src/main/cpp/libs/arm64-v8a
-          cp librt64_wrapper.so ../Android/app/src/main/cpp/libs/arm64-v8a/
-
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.2'
-
-      - name: Build host tools (file_to_c)
-        run: |
-          g++ -std=c++17 -O2 -o file_to_c Android/app/src/main/cpp/rt64/src/tools/file_to_c/file_to_c.cpp
-          chmod +x file_to_c
-          echo "$PWD" >> $GITHUB_PATH
 
       - name: Clean previous build
         run: |
