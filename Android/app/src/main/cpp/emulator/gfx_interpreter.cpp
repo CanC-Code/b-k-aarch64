@@ -22,6 +22,8 @@ extern "C" {
 }
 
 static RDPState s_rdp;
+static int s_mtx_log_frame = 0;
+static int s_mtx_dump_frame = 0;
 static const uint8_t* s_current_cmd = nullptr;
 
 // Deterministic default segment bases (from decomp overlay layout)
@@ -1044,10 +1046,6 @@ static void* RSP_ResolveGfxAddress(uint32_t addr) {
 // =======================================================================
 
 static int s_rspCallCount = 0;
-// Per-frame matrix log counters (reset at task entry)
-static int s_mtx_log_frame = 0;
-static int s_mtx_dump_frame = 0;
-
 void RSP_ProcessGfxTask(OSTask* tp) {
     s_rspCallCount++;
     s_mtx_log_frame = 0;
