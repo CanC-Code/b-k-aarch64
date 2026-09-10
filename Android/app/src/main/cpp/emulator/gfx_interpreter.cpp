@@ -912,8 +912,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
     BKMatrix newMatrix;
     Matrix_LoadFromN64(newMatrix, mtx_src);
 
-    static int mtx_log = 0;
-    if (mtx_log++ < 12) {
+    if (s_mtx_log_frame++ < 12) {
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
             "Cmd_Mtx flag=0x%02X src=%p diag=[%.4f %.4f %.4f %.4f]",
             flag, mtx_src,
@@ -1045,8 +1044,14 @@ static void* RSP_ResolveGfxAddress(uint32_t addr) {
 // =======================================================================
 
 static int s_rspCallCount = 0;
+// Per-frame matrix log counters (reset at task entry)
+static int s_mtx_log_frame = 0;
+static int s_mtx_dump_frame = 0;
+
 void RSP_ProcessGfxTask(OSTask* tp) {
     s_rspCallCount++;
+    s_mtx_log_frame = 0;
+    s_mtx_dump_frame = 0;
     if (s_rspCallCount % 100 == 1) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "RSP_ProcessGfxTask CALL #%d: tp=%p type=%d data=%p size=%u dmemVertexCount=%d",
