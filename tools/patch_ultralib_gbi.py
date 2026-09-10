@@ -11,10 +11,9 @@ with open(PATH) as f:
 text = ''.join(lines)
 
 # ---------------------------------------------------------------
-# 1. Register host pointers before the DL truncates them to 32 bits.
+# 1. Insert helper macro + extern declaration before gDma0p
 # ---------------------------------------------------------------
 if 'BKA_REG_DL_ADDR' not in text:
-    # Find the line that defines gDma0p — anchor on the bare signature
     anchor_idx = None
     for i, line in enumerate(lines):
         if '#define' in line and 'gDma0p(pkt, c, s, l)' in line:
@@ -27,55 +26,81 @@ if 'BKA_REG_DL_ADDR' not in text:
 
     helper_lines = [
         '/*\n',
-        ' * bka: 64-bit host pointer recovery. Every address the recomp writes into\n',
-        ' * a DL gets truncated to 32 bits. Register the full pointer under its low\n',
-        ' * 32 bits so RDP_TranslateAddr can recover it at decode time.\n',
+        ' * bka: 64-bit host pointer recovery.\n',
         ' */\n',
         'extern void bka_add_addr_mapping_c(unsigned int key, void *ptr);\n',
-        '#define BKA_REG_DL_ADDR(s) do {                                   \\\n',
-        '        unsigned long long __bka_a = (unsigned long long)(s);     \\\n',
-        '        if (__bka_a != 0) {                                       \\\n',
-        '            bka_add_addr_mapping_c((unsigned int)__bka_a,         \\\n',
-        '                                   (void *)__bka_a);              \\\n',
-        '        }                                                         \\\n',
-        '    } while (0)\n',
         '\n',
     ]
     lines = lines[:anchor_idx] + helper_lines + lines[anchor_idx:]
 
-
-def inject_after_gfx_line(lines, macro_name, param):
-    """Insert BKA_REG_DL_ADDR(param) right after the 'Gfx *_g = ...' line."""
+# ---------------------------------------------------------------
+# 2. Replace the body of gDma1p so `s` is evaluated exactly once.
+# ---------------------------------------------------------------
+def replace_macro_body(lines, macro_name, param_name):
+    """Replace a multiline macro with a single-eval version that registers
+    the address before truncating it."""
+    # Find the start of the macro
     start = None
     for i, line in enumerate(lines):
         if '#define' in line and macro_name + '(' in line:
             start = i
             break
     if start is None:
-        sys.stderr.write(f"WARN: {macro_name} macro not found\n")
+        sys.stderr.write(f"WARN: {macro_name} not found\n")
         return lines
 
-    insert_at = None
-    for i in range(start, min(start + 12, len(lines))):
-        if 'Gfx *_g' in lines[i] and '(Gfx *)' in lines[i]:
-            insert_at = i + 1
-            break
-    if insert_at is None:
-        sys.stderr.write(f"WARN: 'Gfx *_g' line not found in {macro_name}\n")
+    # Find the closing brace of the macro (last line before a blank line
+    # or another #define).  The macro is a multiline `{ ... }` block.
+    end = None
+    depth = 0
+    seen_brace = False
+    for i in range(start, min(start + 20, len(lines))):
+        if '{' in lines[i]:
+            depth += lines[i].count('{')
+            seen_brace = True
+        if '}' in lines[i] and seen_brace:
+            depth -= lines[i].count('}')
+            if depth <= 0:
+                end = i
+                break
+    if end is None:
+        sys.stderr.write(f"WARN: could not find end of {macro_name}\n")
         return lines
 
-    lines.insert(insert_at, f'        BKA_REG_DL_ADDR({param});                \\\n')
-    return lines
+    new_body = [
+        f'#define    {macro_name}(pkt, c, s, l, p)    \\\n',
+        '{                                          \\\n',
+        '        Gfx *_g = (Gfx *)(pkt);            \\\n',
+        '        unsigned long long __bka_a = (unsigned long long)(s);  \\\n',
+        '        if (__bka_a != 0) bka_add_addr_mapping_c((unsigned int)__bka_a, (void *)__bka_a);  \\\n',
+        '        _g->words.w0 = (_SHIFTL((c), 24, 8) | _SHIFTL((p), 16, 8) | _SHIFTL((l), 0, 16));  \\\n',
+        '        _g->words.w1 = (unsigned int)__bka_a;  \\\n',
+        '}\n',
+    ]
+    # Handle 2p signature separately
+    if macro_name == 'gDma2p':
+        new_body = [
+            '#define gDma2p(pkt, c, adrs, len, idx, ofs)\\\n',
+            '{                                          \\\n',
+            '        Gfx *_g = (Gfx *)(pkt);            \\\n',
+            '        unsigned long long __bka_a = (unsigned long long)(adrs);  \\\n',
+            '        if (__bka_a != 0) bka_add_addr_mapping_c((unsigned int)__bka_a, (void *)__bka_a);  \\\n',
+            '        _g->words.w0 = (_SHIFTL((c),24,8)|_SHIFTL(((len)-1)/8,19,5)|_SHIFTL((ofs)/8,8,8)|_SHIFTL((idx),0,8));  \\\n',
+            '        _g->words.w1 = (unsigned int)__bka_a;  \\\n',
+            '}\n',
+        ]
+
+    return lines[:start] + new_body + lines[end + 1:]
 
 
-if 'BKA_REG_DL_ADDR' not in text:
-    lines = inject_after_gfx_line(lines, 'gDma1p', 's')
-    lines = inject_after_gfx_line(lines, 'gDma2p', 'adrs')
+if 'BKA_REG_DL_ADDR' not in text and 'double-eval fixed' not in text:
+    lines = replace_macro_body(lines, 'gDma1p', 's')
+    lines = replace_macro_body(lines, 'gDma2p', 'adrs')
 
 text = ''.join(lines)
 
 # ---------------------------------------------------------------
-# 2. Fix Mtx size: N64 long = 4 bytes, arm64 long = 8 bytes.
+# 3. Fix Mtx size.
 # ---------------------------------------------------------------
 if 'int32_t Mtx_t' not in text:
     m = re.search(r'typedef\s+long\s+Mtx_t\[4\]\[4\];', text)
