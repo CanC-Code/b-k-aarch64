@@ -493,11 +493,20 @@ void osCreatePiManager(OSPri pri, OSMesgQueue *cmdQ, OSMesg *cmdBuf, s32 cmdMsgC
 void osSpTaskLoad(OSTask *tp) {}
 
 // MODIFIED: Route GFX tasks through the software RDP before signaling completion
+#ifndef OS_EVENT_SP
+#define OS_EVENT_SP 4
+#endif
+#ifndef OS_EVENT_DP
+#define OS_EVENT_DP 9
+#endif
+
 void osSpTaskStartGo(OSTask *tp) {
-    static int s_gfxLogCount = 0;
     if (tp == nullptr) return;
     if (tp->t.type == M_GFXTASK) {
         RSP_ProcessGfxTask(tp);
+        HLE_TriggerN64Event(OS_EVENT_SP);
+        HLE_TriggerN64Event(OS_EVENT_DP);
+        osSendMesg(&D_8027FBC8, NULL, OS_MESG_NOBLOCK);
     } else if (tp->t.type == M_AUDTASK) {
         HLE_TriggerN64Event(OS_EVENT_SP);
     }
