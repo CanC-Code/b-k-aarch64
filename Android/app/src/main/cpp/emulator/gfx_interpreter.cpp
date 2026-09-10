@@ -188,10 +188,19 @@ static void Matrix_MultVec(const BKMatrix m, float x, float y, float z, float w,
 
 // Load N64 fixed-point matrix (int16_t[4][4] with 32-bit integer parts)
 static void Matrix_LoadFromN64(BKMatrix out, const void* src) {
-    // N64 Mtx: 16 s16 integer parts (32 bytes), then 16 u16 fractional
-    // parts (32 bytes). Element (i,j) = int[i*4+j] + frac[i*4+j]/65536.
-    const int16_t*  integer  = (const int16_t*)src;
-    const uint16_t* fraction = (const uint16_t*)((const uint8_t*)src + 32);
+    // The game packs two int16 parts per u32 as (first << 16) | second.
+    // On little-endian arm64 that means native s16[0] holds the SECOND
+    // element's part. Swap each pair before unpacking.
+    const int16_t*  intRaw  = (const int16_t*)src;
+    const uint16_t* fracRaw = (const uint16_t*)((const uint8_t*)src + 32);
+    int16_t  integer[16];
+    uint16_t fraction[16];
+    for (int k = 0; k < 16; k += 2) {
+        integer[k]     = intRaw[k + 1];
+        integer[k + 1] = intRaw[k];
+        fraction[k]     = fracRaw[k + 1];
+        fraction[k + 1] = fracRaw[k];
+    }
     for (int i = 0; i < 4; i++)
         for (int j = 0; j < 4; j++) {
             int idx = i * 4 + j;
