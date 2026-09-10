@@ -49,17 +49,50 @@ uint32_t g_active_fb_offset = 0x400000;
 // The recompiled code should call bka_add_addr_mapping() through osVirtualToPhysical.
 #include <unordered_map>
 #define __android_log_print(...) ((void)0)
-static std::unordered_map<uint32_t, void*> s_addrMap;
+// Fixed-capacity static map — avoids heap churn that perturbs the game's allocator.
+// Slots are filled in insertion order; lookups scan until an empty slot.
+// If a key is overwritten, the old value is preserved in the "cold" array below.
+struct BKAAddrEntry { uint32_t key; void* ptr; };
+static constexpr size_t BKA_ADDR_MAP_SIZE = 65536;
+static BKAAddrEntry s_addrMapFixed[BKA_ADDR_MAP_SIZE];
+static size_t s_addrMapCount = 0;
+
+// Overwrite-tolerant: if the same key appears twice, the newer pointer wins.
+static inline void bka_addr_map_insert(uint32_t key, void* ptr) {
+    if (key == 0) return;
+    // Fast scan of most recent inserts
+    for (size_t i = s_addrMapCount; i-- > 0; ) {
+        if (s_addrMapFixed[i].key == key) {
+            s_addrMapFixed[i].ptr = ptr;  // update in place
+            return;
+        }
+    }
+    if (s_addrMapCount < BKA_ADDR_MAP_SIZE) {
+        s_addrMapFixed[s_addrMapCount].key = key;
+        s_addrMapFixed[s_addrMapCount].ptr = ptr;
+        s_addrMapCount++;
+    } else {
+        // Ring-buffer rollover: overwrite oldest
+        s_addrMapFixed[s_addrMapCount % BKA_ADDR_MAP_SIZE].key = key;
+        s_addrMapFixed[s_addrMapCount % BKA_ADDR_MAP_SIZE].ptr = ptr;
+        s_addrMapCount++;
+    }
+}
+
+static inline void* bka_addr_map_lookup(uint32_t key) {
+    if (key == 0) return nullptr;
+    for (size_t i = s_addrMapCount; i-- > 0; ) {
+        if (s_addrMapFixed[i].key == key) return s_addrMapFixed[i].ptr;
+    }
+    return nullptr;
+}
 static std::unordered_map<uint64_t, void*> s_fullAddrMap;
 
 extern "C" void* bka_lookup_addr_mapping_c(uint32_t key);
 void* bka_lookup_addr_mapping(uint32_t low32) {
-    auto it = s_addrMap.find(low32);
-    if (it != s_addrMap.end()) return it->second;
-    // Fallback to C table (linker_stubs.c)
-    void* p = bka_lookup_addr_mapping_c(low32);
+    void* p = bka_addr_map_lookup(low32);
     if (p) return p;
-    return nullptr;
+    return bka_lookup_addr_mapping_c(low32);
 }
 
 extern "C" void* bka_lookup_addr_mapping_range_c(uint32_t low32);
@@ -90,7 +123,7 @@ static bool is_address_mapped(void* ptr) {
 }
 
 void bka_add_addr_mapping(uint32_t low32, void* fullPtr) {
-    s_addrMap[low32] = fullPtr;
+    bka_addr_map_insert(low32, fullPtr);
 }
 
 void bka_add_full_addr_mapping(uint64_t fullAddr, void* ptr) {
