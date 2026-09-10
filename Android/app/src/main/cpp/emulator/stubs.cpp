@@ -33,7 +33,6 @@ static rt64_destroy_fn s_rt64_destroy = nullptr;
 static bool s_completionMsgPending = false;
 static bool s_unregisteredCompletionPending = false;
 #include "gfx_interpreter.h"
-#include <dlfcn.h>
    // <-- ADDED: F3DEX display list → framebuffer rasterizer
 
 
