@@ -911,6 +911,19 @@ static void Cmd_Mtx(GfxCommand cmd) {
             mb[24],mb[25],mb[26],mb[27],mb[28],mb[29],mb[30],mb[31]);
     }
 
+    if (s_mtx_dump_frame++ < 2) {
+        const uint8_t* mb = (const uint8_t*)mtx_src;
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "MTXSRC @%p: "
+            "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X  "
+            "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+            mtx_src,
+            mb[0],mb[1],mb[2],mb[3],mb[4],mb[5],mb[6],mb[7],
+            mb[8],mb[9],mb[10],mb[11],mb[12],mb[13],mb[14],mb[15],
+            mb[16],mb[17],mb[18],mb[19],mb[20],mb[21],mb[22],mb[23],
+            mb[24],mb[25],mb[26],mb[27],mb[28],mb[29],mb[30],mb[31]);
+    }
+
     BKMatrix newMatrix;
     Matrix_LoadFromN64(newMatrix, mtx_src);
 
