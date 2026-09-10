@@ -74,4 +74,5 @@ undefined_funcs_auto*
 tmp/
 tmp/*
 
-.venv
+.venv*.bak*
+**/*.bak*

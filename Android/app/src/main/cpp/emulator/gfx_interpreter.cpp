@@ -22,6 +22,7 @@ extern "C" {
 }
 
 static RDPState s_rdp;
+static const uint8_t* s_current_cmd = nullptr;
 
 // Deterministic default segment bases (from decomp overlay layout)
 // Populated before any RDP command runs, fixing many unmapped address errors.
@@ -39,9 +40,22 @@ static struct RDPStateDefaultSegments {
 } s_rdpDefaultSegments;
 
 static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
+    // Prefer the 64-bit host pointer in the recomp's 16-byte DL entry payload.
+    if (s_current_cmd) {
+        uint64_t payload;
+        memcpy(&payload, s_current_cmd + 8, 8);
+        if (payload != 0) {
+            uint32_t lo = (uint32_t)(payload & 0xFFFFFFFFu);
+            void* hp = bka_lookup_addr_mapping_range_c(lo);
+            if (hp) return (uint8_t*)hp;
+            if (payload >= 0x100000000ULL && payload < 0x8000000000ULL)
+                return (uint8_t*)(uintptr_t)payload;
+        }
+    }
+
     if (addr == 0) return nullptr;
 
-    // Try exact mapping table first
+    // Try exact/range mapping table
     void* p = bka_lookup_addr_mapping_range_c(addr);
     if (p) return (uint8_t*)p;
 
@@ -1056,7 +1070,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
     DListFrame stack[64];
     int depth = 0;
-    size_t current_stride = 8;
+    size_t current_stride = 16;
     size_t stack_stride[64];
     uintptr_t visited_dl_addrs[256];
     int visited_dl_count = 0;
@@ -1101,6 +1115,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
         GfxCommand c = {0};
         memcpy(&c, cur, 8);
+        s_current_cmd = cur;
         uint8_t opcode = GFX_OPCODE(c);
         if (opcode == 0x04 && total <= 5) {
             const uint8_t *raw = cur;
@@ -1110,13 +1125,10 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 raw[4], raw[5], raw[6], raw[7]);
         }
 
-        // Banjo-Kazooie display lists are 8-byte aligned like the PC.
-        // G_MTX (0x01) is 64 bytes.
-        if (opcode == 0x01) {
-            current_stride = 64;
-        } else {
-            current_stride = 8;
-        }
+        // Banjo-Kazooie recomp emits 16-byte entries:
+        //   8 bytes = F3DEX command
+        //   8 bytes = payload (either zero padding or a 64-bit host pointer)
+        current_stride = 16;
 
         if (total <= 100) {
             if (log_after_jump) jump_log_count++;
