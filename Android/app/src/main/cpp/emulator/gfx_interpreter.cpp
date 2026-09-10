@@ -44,24 +44,16 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
 
     if (addr == 0) return nullptr;
 
-    // --- Recomp host-pointer reconstruction ---
-    // The recomp stores low-32 truncations of 64-bit host pointers in
-    // F3DEX w1 fields. Observed pattern: full ptr = 0x74_XXXXXXXX.
-    if (addr >= 0x40000000u && addr < 0x70000000u) {
-        uint64_t candidate = 0x7400000000ULL | (uint64_t)addr;
-        if (bka_is_mapped((void*)candidate)) {
-            static int rec_log = 0;
-            if (rec_log++ < 8) {
-                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                    "XLT reconstruct 0x%08X -> %p", addr, (void*)candidate);
-            }
-            return (uint8_t*)candidate;
-        }
-    }
-
     // Try exact/range mapping table
     void* p = bka_lookup_addr_mapping_range_c(addr);
     if (p) return (uint8_t*)p;
+
+    // Diagnostic: log misses so we can see what the game asked for
+    static int miss_log = 0;
+    if (miss_log++ < 12) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "XLT miss addr=0x%08X map_size=?", addr);
+    }
 
     // Segment address (F3DEX_GBI)
     uint32_t seg = (addr >> 24) & 0x0F;
