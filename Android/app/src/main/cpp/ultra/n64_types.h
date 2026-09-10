@@ -69,3 +69,33 @@ typedef struct {
 #undef IO_WRITE
 #endif
 #define IO_WRITE(addr,data) ((void)0)
+
+/* ------------------------------------------------------------------
+ * Android recomp host-pointer overrides.
+ *
+ * The N64 OS_*_TO_* macros were designed for a 32-bit flat address space
+ * and to map between physical RDRAM and KSEG windows. On the 64-bit host
+ * they corrupt host pointers. Our emulator works entirely in host
+ * pointers, so these become pass-throughs.
+ * ------------------------------------------------------------------ */
+#ifdef OS_PHYSICAL_TO_K0
+#undef OS_PHYSICAL_TO_K0
+#endif
+#ifdef OS_K0_TO_PHYSICAL
+#undef OS_K0_TO_PHYSICAL
+#endif
+#ifdef OS_PHYSICAL_TO_K1
+#undef OS_PHYSICAL_TO_K1
+#endif
+#ifdef OS_K1_TO_PHYSICAL
+#undef OS_K1_TO_PHYSICAL
+#endif
+#ifdef OS_K0_TO_PHYSICAL_PTR
+#undef OS_K0_TO_PHYSICAL_PTR
+#endif
+
+#define OS_PHYSICAL_TO_K0(x)    ((void *)(uintptr_t)(x))
+#define OS_K0_TO_PHYSICAL(x)    ((void *)(uintptr_t)(x))
+#define OS_PHYSICAL_TO_K1(x)    ((void *)(uintptr_t)(x))
+#define OS_K1_TO_PHYSICAL(x)    ((void *)(uintptr_t)(x))
+#define OS_K0_TO_PHYSICAL_PTR(x) ((void *)(uintptr_t)(x))
