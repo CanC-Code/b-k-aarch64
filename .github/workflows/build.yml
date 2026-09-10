@@ -14,8 +14,9 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Patch ultralib gbi.h for 64-bit DL pointer recovery
-        run: python3 tools/patch_ultralib_gbi.py
+      # TEMP DISABLED for A/B test: re-enable if crash is unrelated to patch
+      # - name: Patch ultralib gbi.h for 64-bit DL pointer recovery
+      #   run: python3 tools/patch_ultralib_gbi.py
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
