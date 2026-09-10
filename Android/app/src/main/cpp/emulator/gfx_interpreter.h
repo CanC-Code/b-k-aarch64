@@ -60,11 +60,12 @@ typedef struct {
     } tiles[8];
     
     // Matrix state
-    BKMatrix projection;
-    BKMatrix modelview;
-    BKMatrix modelviewStack[16];  // Push/pop stack for scene graph traversal
+    BKMatrix projection;              // current projection matrix
+    BKMatrix modelview;               // current modelview matrix (top of stack)
+    BKMatrix viewProj;                // computed: modelview × projection
+    BKMatrix modelviewStack[16];      // saved modelview frames (for POP)
     int modelviewStackDepth;
-    int matrixMode;  // 0=modelview, 1=projection
+    int matrixMode;
 
     // RSP segment base addresses (F3DEX_GBI)
     uintptr_t segmentBase[16];

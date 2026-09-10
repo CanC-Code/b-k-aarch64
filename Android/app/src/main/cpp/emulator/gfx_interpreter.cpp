@@ -113,6 +113,13 @@ static inline int16_t read_int16(const uint8_t* ptr) {
 // =======================================================================
 
 static void RDP_InitState() {
+    // Seed matrices to identity so the first MUL/PUSH ops are well-defined.
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 4; j++)
+            s_rdp.projection[i][j] = s_rdp.modelview[i][j] =
+                s_rdp.viewProj[i][j] = (i == j) ? 1.0f : 0.0f;
+    s_rdp.modelviewStackDepth = 0;
+
     // Preserve vertex buffer and count across display list tasks.
     static BKVertex saved_dmem[DMEM_VERTEX_COUNT];
     static int saved_dmemVertexCount = 0;
@@ -779,33 +786,22 @@ static void Cmd_MoveMem(GfxCommand cmd) {
 // For our initial implementation, we treat the matrix as modelview.
 // =======================================================================
 static void Cmd_MoveWord(GfxCommand cmd) {
-    // F3DEX2 G_MOVEWORD: w0 = (opcode<<24) | (index<<16) | offset
-    uint32_t index = (cmd.w0 >> 16) & 0xFF;
-    uint32_t offset = cmd.w0 & 0xFFFF;
-    uint32_t data = cmd.w1;
+    // F3DEX G_MOVEWORD: w0 = (0xBC << 24) | (index << 16) | offset
+    uint32_t index  = (cmd.w0 >> 16) & 0xFF;
+    uint32_t offset =  cmd.w0        & 0xFFFF;
+    uint32_t data   =  cmd.w1;
 
     if (index == 0x06) { // G_MW_SEGMENT
+        // RT64 stores segment bases verbatim — no translation. The address
+        // in `data` is the segment's own base, which RDP_TranslateAddr
+        // resolves lazily at use time.
         uint32_t segment = (offset / 4) & 0x0F;
-        // First try exact mapping registry
-        void *base_ptr = bka_lookup_addr_mapping(data);
-        // If not found, try direct safe prefix (0x4, 0xB, 0x0C)
-        if (!base_ptr) {
-            uint32_t hi = data & 0xFF000000u;
-            if (hi == 0x40000000u || hi == 0xB0000000u || hi == 0x0C000000u) {
-                uint64_t full64 = 0x7c40000000ULL | (uint64_t)(data & 0x0FFFFFFFu);
-                base_ptr = (void*)full64;
-            }
-        }
-        if (!base_ptr) base_ptr = RDP_TranslateAddr(data);
-        if (segment != 0 || data != 0) {
-            __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "Cmd_MoveWord: setting seg=%u data=0x%08X base=%p", segment, (uint32_t)data, base_ptr);
-        }
-        s_rdp.segmentBase[segment] = (uintptr_t)base_ptr;
-        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-            "Cmd_MoveWord SEGMENT seg=%u offset=0x%04X data=0x%08X base=%p", segment, offset, data, base_ptr);
-        if (segment == 1) {
-            s_rdp.segmentBase[4] = (uintptr_t)base_ptr;
-            s_rdp.segmentBase[12] = (uintptr_t)base_ptr;
+        s_rdp.segmentBase[segment] = (uintptr_t)data;
+
+        static int seg_log = 0;
+        if (seg_log++ < 20) {
+            __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
+                "Cmd_MoveWord SEGMENT seg=%u base=0x%08X", segment, data);
         }
     }
 }
@@ -847,78 +843,53 @@ static void Matrix_Multiply(BKMatrix result, const BKMatrix a, const BKMatrix b)
 #define G_MTX_PUSH        0x04
 #endif
 
+#ifndef G_MTX_PROJECTION
+#define G_MTX_PROJECTION  0x01
+#endif
+#ifndef G_MTX_LOAD
+#define G_MTX_LOAD        0x02
+#endif
+#ifndef G_MTX_PUSH
+#define G_MTX_PUSH        0x04
+#endif
+
 static void Cmd_Mtx(GfxCommand cmd) {
     uint32_t flag = (cmd.w0 >> 16) & 0xFF;
-    static int mtx_enter = 0;
-    if (mtx_enter++ < 12) {
-        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-            "Cmd_Mtx ENTER raw=0x%08X flag=0x%02X", cmd.w1, flag);
-    }
     void *mtx_src = RDP_TranslateAddr(cmd.w1);
-    if (mtx_enter <= 12) {
-        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-            "Cmd_Mtx XLT raw=0x%08X -> %p", cmd.w1, mtx_src);
-    }
-
-    static int mtx_log = 0;
-    if (mtx_log++ < 16) {
-        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-            "Cmd_Mtx flag=0x%02X raw=0x%08X translated=%p",
-            flag, cmd.w1, mtx_src);
-    }
-
     if (!mtx_src) {
         static int null_log = 0;
-        if (null_log++ < 12) {
-            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                "Cmd_Mtx NULL raw=0x%08X flag=0x%02X "
-                "segs[0]=%08lX [1]=%08lX [2]=%08lX [3]=%08lX [0C]=%08lX [0D]=%08lX [0E]=%08lX [0F]=%08lX",
-                cmd.w1, flag,
-                (unsigned long)s_rdp.segmentBase[0x00],
-                (unsigned long)s_rdp.segmentBase[0x01],
-                (unsigned long)s_rdp.segmentBase[0x02],
-                (unsigned long)s_rdp.segmentBase[0x03],
-                (unsigned long)s_rdp.segmentBase[0x0C],
-                (unsigned long)s_rdp.segmentBase[0x0D],
-                (unsigned long)s_rdp.segmentBase[0x0E],
-                (unsigned long)s_rdp.segmentBase[0x0F]);
+        if (null_log++ < 6) {
+            __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                "Cmd_Mtx NULL raw=0x%08X flag=0x%02X", cmd.w1, flag);
         }
         return;
-    }
-
-    static int mtx_dump = 0;
-    if (mtx_dump++ < 8) {
-        const uint8_t* mb = (const uint8_t*)mtx_src;
-        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-            "MTXSRC @%p: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X  "
-            "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
-            mtx_src,
-            mb[0],mb[1],mb[2],mb[3],mb[4],mb[5],mb[6],mb[7],
-            mb[8],mb[9],mb[10],mb[11],mb[12],mb[13],mb[14],mb[15],
-            mb[16],mb[17],mb[18],mb[19],mb[20],mb[21],mb[22],mb[23],
-            mb[24],mb[25],mb[26],mb[27],mb[28],mb[29],mb[30],mb[31]);
     }
 
     BKMatrix newMatrix;
     Matrix_LoadFromN64(newMatrix, mtx_src);
 
-    if (mtx_log <= 16) {
+    static int mtx_log = 0;
+    if (mtx_log++ < 12) {
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-            "  diag [%.4f %.4f %.4f %.4f]",
+            "Cmd_Mtx flag=0x%02X src=%p diag=[%.4f %.4f %.4f %.4f]",
+            flag, mtx_src,
             newMatrix[0][0], newMatrix[1][1],
             newMatrix[2][2], newMatrix[3][3]);
     }
 
     if (flag & G_MTX_PROJECTION) {
+        // Projection matrix slot
         if (flag & G_MTX_LOAD) {
             memcpy(s_rdp.projection, newMatrix, sizeof(BKMatrix));
         } else {
             BKMatrix tmp;
-            Matrix_Multiply(tmp, s_rdp.projection, newMatrix);
+            Matrix_Multiply(tmp, newMatrix, s_rdp.projection); // new × existing
             memcpy(s_rdp.projection, tmp, sizeof(BKMatrix));
         }
     } else {
+        // Modelview matrix slot
         if (flag & G_MTX_PUSH) {
+            // RT64: PUSH saves current top, doesn't itself multiply.
             if (s_rdp.modelviewStackDepth < 16) {
                 memcpy(s_rdp.modelviewStack[s_rdp.modelviewStackDepth],
                        s_rdp.modelview, sizeof(BKMatrix));
@@ -929,10 +900,13 @@ static void Cmd_Mtx(GfxCommand cmd) {
             memcpy(s_rdp.modelview, newMatrix, sizeof(BKMatrix));
         } else {
             BKMatrix tmp;
-            Matrix_Multiply(tmp, s_rdp.modelview, newMatrix);
+            Matrix_Multiply(tmp, newMatrix, s_rdp.modelview); // new × existing
             memcpy(s_rdp.modelview, tmp, sizeof(BKMatrix));
         }
     }
+
+    // RT64 recomputes viewProj after every matrix op.
+    Matrix_Multiply(s_rdp.viewProj, s_rdp.modelview, s_rdp.projection);
 }
 
 // =======================================================================
