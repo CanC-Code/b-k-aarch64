@@ -37,16 +37,6 @@ static void __guMtxF2L(float mf[4][4], Mtx *m)
 		*(ai++) = ( e1 & 0xffff0000 ) | ((e2 >> 16)&0xffff);
 		*(af++) = ((e1 << 16) & 0xffff0000) | (e2 & 0xffff);
 	}
-
-    {
-        unsigned int* w = (unsigned int*)m;
-        static int f2l_log = 0;
-        if (f2l_log++ < 4) {
-            __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-                "__guMtxF2L OUT m=%p w0=%08X w1=%08X w8=%08X w9=%08X mf00=%.4f mf11=%.4f",
-                (void*)m, w[0], w[1], w[8], w[9], mf[0][0], mf[1][1]);
-        }
-    }
 }
 
 void _guMtxF2L(float mf[4][4], Mtx *m) //should be mf[4][4]
@@ -178,10 +168,6 @@ void guPerspectiveF(float mf[4][4], u16 *perspNorm, float fovy, float aspect, fl
       }
     }
   }
-
-    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-        "guPerspectiveF OUT mf00=%.4f mf11=%.4f mf22=%.4f mf23=%.4f mf32=%.4f mf33=%.4f",
-        mf[0][0], mf[1][1], mf[2][2], mf[2][3], mf[3][2], mf[3][3]);
 }
 
 
