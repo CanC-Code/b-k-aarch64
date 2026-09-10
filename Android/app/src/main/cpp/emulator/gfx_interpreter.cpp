@@ -45,11 +45,20 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         uint64_t payload;
         memcpy(&payload, s_current_cmd + 8, 8);
         if (payload != 0) {
+            // Recomp writes the full 64-bit host pointer here.
+            // Prefer it verbatim if it looks like a userspace address.
+            if (payload >= 0x100000000ULL && payload < 0x8000000000ULL) {
+                static int pl_log = 0;
+                if (pl_log++ < 20) {
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                        "XLT payload raw=0x%08X payload=0x%016llX",
+                        addr, (unsigned long long)payload);
+                }
+                return (uint8_t*)(uintptr_t)payload;
+            }
             uint32_t lo = (uint32_t)(payload & 0xFFFFFFFFu);
             void* hp = bka_lookup_addr_mapping_range_c(lo);
             if (hp) return (uint8_t*)hp;
-            if (payload >= 0x100000000ULL && payload < 0x8000000000ULL)
-                return (uint8_t*)(uintptr_t)payload;
         }
     }
 
@@ -1023,7 +1032,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     {
         const uint8_t* d = (const uint8_t*)tp->t.data_ptr;
         uint32_t sz = tp->t.data_size;
-        uint32_t lim = sz < 256 ? sz : 256;
+        uint32_t lim = sz < 512 ? sz : 512;
         for (uint32_t off = 0; off < lim; off += 32) {
             uint32_t o2 = off + 16;
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
