@@ -175,8 +175,8 @@ void guPerspective(Mtx *m, u16 *perspNorm, f32 fovy, f32 aspect, f32 near, f32 f
     f32 sp28[4][4];
 
     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-        "guPerspective CALLED m=%p fovy=%.2f aspect=%.4f near=%.2f far=%.2f",
-        m, fovy, aspect, near, far);
+        "guPerspective CALLED m=%p sizeof(Mtx)=%zu m[0][0]@%p m[2][0]@%p fovy=%.2f",
+        m, sizeof(Mtx), (void*)&m->m[0][0], (void*)&m->m[2][0], fovy);
     guPerspectiveF(sp28, perspNorm, fovy, aspect, near, far, scale);
     __guMtxF2L(sp28, m);
     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
