@@ -27,14 +27,10 @@ static RDPState s_rdp;
 // Populated before any RDP command runs, fixing many unmapped address errors.
 static struct RDPStateDefaultSegments {
     RDPStateDefaultSegments() {
-        s_rdp.segmentBase[0x00] = 0x00000000u;
         s_rdp.segmentBase[0x01] = 0x80000000u;
         s_rdp.segmentBase[0x02] = 0x80000000u;
         s_rdp.segmentBase[0x03] = 0x80000000u;
-        s_rdp.segmentBase[0x0C] = 0x0C000000u;
-        s_rdp.segmentBase[0x0D] = 0x80000000u;
-        s_rdp.segmentBase[0x0E] = 0x80000000u;
-        s_rdp.segmentBase[0x0F] = 0x80000000u;
+        s_rdp.segmentBase[0x0C] = 0x0C000000u; // core2 overlay data (guessed)
     }
 } s_rdpDefaultSegments;
 
@@ -157,15 +153,21 @@ static void Matrix_MultVec(const BKMatrix m, float x, float y, float z, float w,
 }
 
 // Load N64 fixed-point matrix (int16_t[4][4] with 32-bit integer parts)
-static void Matrix_LoadFromN64(BKMatrix out, const void* src) {
-    // N64 Mtx layout: 16 s16 integer parts (32 bytes), then 16 u16 fractional
-    // parts (32 bytes). Element (i,j) = integer[i*4+j] + fraction[i*4+j]/65536.
-    const int16_t*  integer  = (const int16_t*)src;
-    const uint16_t* fraction = (const uint16_t*)((const uint8_t*)src + 32);
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            int idx = i * 4 + j;
-            out[i][j] = (float)integer[idx] + (float)fraction[idx] / 65536.0f;
+static void Matrix_LoadFromN64(BKMatrix dst, const void* src) {
+    const uint8_t* bytes = (const uint8_t*)src;
+    // N64 F3DEX matrices are stored COLUMN-MAJOR (M[i][j] = column i, row j).
+    // Our Matrix_MultVec expects ROW-MAJOR (m[row][col]).
+    // So we transpose during load.
+    for (int col = 0; col < 4; col++) {
+        for (int row = 0; row < 4; row++) {
+            // N64 matrix entries are 32-bit fixed-point (16.16), stored big-endian.
+            uint32_t raw = ((uint32_t)bytes[0] << 24) |
+                           ((uint32_t)bytes[1] << 16) |
+                           ((uint32_t)bytes[2] << 8)  |
+                           ((uint32_t)bytes[3]);
+            bytes += 4;
+            int32_t val = (int32_t)raw;
+            dst[row][col] = (float)val / 65536.0f;
         }
     }
 }
@@ -824,62 +826,34 @@ static void Matrix_Multiply(BKMatrix result, const BKMatrix a, const BKMatrix b)
     memcpy(result, temp, sizeof(BKMatrix));
 }
 
-// F3DEX (non-2) matrix flag bits — Banjo-Kazooie
-#ifndef G_MTX_PROJECTION
-#define G_MTX_PROJECTION  0x01
-#endif
-#ifndef G_MTX_LOAD
-#define G_MTX_LOAD        0x02
-#endif
-#ifndef G_MTX_PUSH
-#define G_MTX_PUSH        0x04
-#endif
-
 static void Cmd_Mtx(GfxCommand cmd) {
     uint32_t flag = (cmd.w0 >> 16) & 0xFF;
-    void *mtx_src = RDP_TranslateAddr(cmd.w1);
-    if (!mtx_src) {
-        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-            "Cmd_Mtx: translate fail raw=0x%08X flag=0x%02X", cmd.w1, flag);
-        return;
-    }
-
+    uint32_t raw_addr = cmd.w1;
+    void *mtx_src = RDP_TranslateAddr(raw_addr);
+    if (!mtx_src) return;
+    
     BKMatrix newMatrix;
     Matrix_LoadFromN64(newMatrix, mtx_src);
-
-    static int mtx_log = 0;
-    if (mtx_log++ < 12) {
-        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-            "Cmd_Mtx flag=0x%02X diag=[%.4f %.4f %.4f %.4f]",
-            flag,
-            newMatrix[0][0], newMatrix[1][1],
-            newMatrix[2][2], newMatrix[3][3]);
-    }
-
-    if (flag & G_MTX_PROJECTION) {
-        // Projection matrix op
-        if (flag & G_MTX_LOAD) {
-            memcpy(s_rdp.projection, newMatrix, sizeof(BKMatrix));
-        } else {
-            BKMatrix tmp;
-            Matrix_Multiply(tmp, s_rdp.projection, newMatrix);
-            memcpy(s_rdp.projection, tmp, sizeof(BKMatrix));
-        }
+    
+    // G_MTX flags: bit 0 = push, bit 2 = projection
+    if (flag & 0x04) {
+        // Projection matrix
+        Matrix_LoadFromN64(s_rdp.projection, mtx_src);
     } else {
-        // Modelview matrix op
-        if (flag & G_MTX_PUSH) {
+        if (flag & 0x01) {
+            // G_MTX_PUSH: push current matrix and multiply
             if (s_rdp.modelviewStackDepth < 16) {
-                memcpy(s_rdp.modelviewStack[s_rdp.modelviewStackDepth],
-                       s_rdp.modelview, sizeof(BKMatrix));
+                memcpy(s_rdp.modelviewStack[s_rdp.modelviewStackDepth], s_rdp.modelview, sizeof(BKMatrix));
                 s_rdp.modelviewStackDepth++;
             }
-        }
-        if (flag & G_MTX_LOAD) {
-            memcpy(s_rdp.modelview, newMatrix, sizeof(BKMatrix));
+            Matrix_Multiply(s_rdp.modelview, s_rdp.modelview, newMatrix);
         } else {
-            BKMatrix tmp;
-            Matrix_Multiply(tmp, s_rdp.modelview, newMatrix);
-            memcpy(s_rdp.modelview, tmp, sizeof(BKMatrix));
+            // G_MTX_NOPUSH: Load the view-projection matrix (from gSPLookAt)
+            // into modelview AND set projection to identity
+            Matrix_LoadFromN64(s_rdp.modelview, mtx_src);
+            for (int i = 0; i < 4; i++)
+                for (int j = 0; j < 4; j++)
+                    s_rdp.projection[i][j] = (i == j) ? 1.0f : 0.0f;
         }
     }
 }
