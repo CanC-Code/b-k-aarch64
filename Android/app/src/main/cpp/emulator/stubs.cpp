@@ -23,13 +23,6 @@
 #include "rarezip_stub_cpp.h"
 extern OSMesgQueue D_8027FBC8;
 
-typedef void* (*rt64_init_fn)(void*, uint32_t, uint32_t);
-typedef void (*rt64_process_fn)(void*, uint8_t*, uint32_t, uint32_t, bool);
-typedef void (*rt64_destroy_fn)(void*);
-static void* s_rt64_handle = nullptr;
-static rt64_init_fn s_rt64_init = nullptr;
-static rt64_process_fn s_rt64_process = nullptr;
-static rt64_destroy_fn s_rt64_destroy = nullptr;
 static bool s_completionMsgPending = false;
 static bool s_unregisteredCompletionPending = false;
 #include "gfx_interpreter.h"
