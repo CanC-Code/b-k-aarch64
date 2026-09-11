@@ -151,6 +151,7 @@ static void RDP_InitState() {
             s_rdp.projection[i][j] = s_rdp.modelview[i][j] =
                 s_rdp.viewProj[i][j] = (i == j) ? 1.0f : 0.0f;
     s_rdp.modelviewStackDepth = 0;
+    s_rdp.dmemVertexCount = 0;
 
     // Preserve vertex buffer and count across display list tasks.
     static BKVertex saved_dmem[DMEM_VERTEX_COUNT];
