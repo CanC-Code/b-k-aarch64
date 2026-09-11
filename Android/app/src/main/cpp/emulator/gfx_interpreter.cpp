@@ -1370,6 +1370,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xB1:
             case 0xC4:
             case 0x34:
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "DISPATCH TRI opcode=0x%02X", opcode);
                 {
                     static int tri_log_count = 0;
                     if (++tri_log_count <= 10) {
