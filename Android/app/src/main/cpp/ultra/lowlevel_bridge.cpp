@@ -97,7 +97,12 @@ void* bka_lookup_addr_mapping(uint32_t low32) {
 
 extern "C" void* bka_lookup_addr_mapping_range_c(uint32_t low32);
 void* bka_lookup_addr_mapping_range(uint32_t low32) {
-    return bka_addr_map_lookup(low32);
+    void* p = bka_addr_map_lookup(low32);
+    if (p) return p;
+    // Also consult the C-side table (linker_stubs.c) so this matches
+    // bka_lookup_addr_mapping's behavior. Without this fallback, RDP_TranslateAddr
+    // misses entries that the G_DL diagnostic finds.
+    return bka_lookup_addr_mapping_c(low32);
 }
 extern "C" void* bka_lookup_addr_mapping_range_c(uint32_t key) {
     return bka_lookup_addr_mapping_range(key);
