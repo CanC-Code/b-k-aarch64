@@ -291,6 +291,14 @@ static void RasterizeTriangle(
     uint8_t r1, uint8_t g1, uint8_t b1, uint8_t a1,
     uint8_t r2, uint8_t g2, uint8_t b2, uint8_t a2)
 {
+    {
+        static int s_raster_enter = 0;
+        if (++s_raster_enter < 5 || s_raster_enter % 5000 == 1) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "RasterizeTriangle #%d ENTER: (%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f)",
+                s_raster_enter, x0, y0, x1, y1, x2, y2);
+        }
+    }
     if (!std::isfinite(x0) || !std::isfinite(y0) ||
         !std::isfinite(x1) || !std::isfinite(y1) ||
         !std::isfinite(x2) || !std::isfinite(y2)) {
@@ -703,6 +711,16 @@ static void Cmd_Tri2(GfxCommand cmd) {
         TransformVertex(vt0, &sx0, &sy0);
         TransformVertex(vt1, &sx1, &sy1);
         TransformVertex(vt2, &sx2, &sy2);
+        {
+            static int s_tri2_raster_log = 0;
+            if (++s_tri2_raster_log < 5 || s_tri2_raster_log % 5000 == 1) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "TRI2 -> raster #%d: screen=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f) fin=%d%d%d",
+                    s_tri2_raster_log,
+                    sx0, sy0, sx1, sy1, sx2, sy2,
+                    std::isfinite(sx0), std::isfinite(sy0), std::isfinite(sx2));
+            }
+        }
         RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
             vt0->r, vt0->g, vt0->b, vt0->a,
             vt1->r, vt1->g, vt1->b, vt1->a,
@@ -717,6 +735,16 @@ static void Cmd_Tri2(GfxCommand cmd) {
         TransformVertex(vt0, &sx0, &sy0);
         TransformVertex(vt1, &sx1, &sy1);
         TransformVertex(vt2, &sx2, &sy2);
+        {
+            static int s_tri2_raster_log = 0;
+            if (++s_tri2_raster_log < 5 || s_tri2_raster_log % 5000 == 1) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "TRI2 -> raster #%d: screen=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f) fin=%d%d%d",
+                    s_tri2_raster_log,
+                    sx0, sy0, sx1, sy1, sx2, sy2,
+                    std::isfinite(sx0), std::isfinite(sy0), std::isfinite(sx2));
+            }
+        }
         RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
             vt0->r, vt0->g, vt0->b, vt0->a,
             vt1->r, vt1->g, vt1->b, vt1->a,
@@ -795,6 +823,16 @@ static void Cmd_Tri2_F3DEX2(GfxCommand cmd) {
         TransformVertex(vt0, &sx0, &sy0);
         TransformVertex(vt1, &sx1, &sy1);
         TransformVertex(vt2, &sx2, &sy2);
+        {
+            static int s_tri2_raster_log = 0;
+            if (++s_tri2_raster_log < 5 || s_tri2_raster_log % 5000 == 1) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "TRI2 -> raster #%d: screen=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f) fin=%d%d%d",
+                    s_tri2_raster_log,
+                    sx0, sy0, sx1, sy1, sx2, sy2,
+                    std::isfinite(sx0), std::isfinite(sy0), std::isfinite(sx2));
+            }
+        }
         RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
             vt0->r, vt0->g, vt0->b, vt0->a,
             vt1->r, vt1->g, vt1->b, vt1->a,
@@ -809,6 +847,16 @@ static void Cmd_Tri2_F3DEX2(GfxCommand cmd) {
         TransformVertex(vt0, &sx0, &sy0);
         TransformVertex(vt1, &sx1, &sy1);
         TransformVertex(vt2, &sx2, &sy2);
+        {
+            static int s_tri2_raster_log = 0;
+            if (++s_tri2_raster_log < 5 || s_tri2_raster_log % 5000 == 1) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "TRI2 -> raster #%d: screen=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f) fin=%d%d%d",
+                    s_tri2_raster_log,
+                    sx0, sy0, sx1, sy1, sx2, sy2,
+                    std::isfinite(sx0), std::isfinite(sy0), std::isfinite(sx2));
+            }
+        }
         RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
             vt0->r, vt0->g, vt0->b, vt0->a,
             vt1->r, vt1->g, vt1->b, vt1->a,
