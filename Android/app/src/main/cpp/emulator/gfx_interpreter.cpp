@@ -1164,6 +1164,13 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 "runaway display list: exceeded %u total commands", (unsigned)MAX_TOTAL_CMDS);
             break;
         }
+
+        if (total >= 36 && total <= 60) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "LOOP iter=%zu cur=%p cur_end=%p depth=%d stride=%zu",
+                total, cur, cur_end, depth, current_stride);
+        }
+
         if (++dl_cmds > MAX_DL_CMDS) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "runaway display list: exceeded %u commands in current DL", (unsigned)MAX_DL_CMDS);
