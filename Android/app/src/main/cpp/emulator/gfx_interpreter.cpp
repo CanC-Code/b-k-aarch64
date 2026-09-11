@@ -1397,23 +1397,26 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                         dl_ptr, dump[0], dump[1], dump[2], dump[3], dump[4], dump[5], dump[6], dump[7],
                         dump[8], dump[9], dump[10], dump[11], dump[12], dump[13], dump[14], dump[15]);
                 }
-                uintptr_t mapped_end = bka_get_mapped_end(dl_ptr);
-                if (mapped_end != 0 && mapped_end > (uintptr_t)dl_ptr) {
-                    cur_end = (uint8_t*)mapped_end;
-                } else {
-                    cur_end = (uint8_t*)dl_ptr + 4096;
-                }
                 if (depth >= 63) {
                     __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                         "G_DL: max depth reached");
                     break;
                 }
 
-                // Save current position/end for ENDDL
+                // Save the OUTER DL's position/end BEFORE we overwrite cur_end
+                // with the nested DL's end.
                 stack[depth].ptr = cur;
-                stack[depth].end = cur_end;
+                stack[depth].end = cur_end;      // outer cur_end preserved
                 stack_stride[depth] = current_stride;
                 depth++;
+
+                // Now safe to update cur_end for the nested DL
+                uintptr_t mapped_end = bka_get_mapped_end(dl_ptr);
+                if (mapped_end != 0 && mapped_end > (uintptr_t)dl_ptr) {
+                    cur_end = (uint8_t*)mapped_end;
+                } else {
+                    cur_end = (uint8_t*)dl_ptr + 4096;
+                }
 
                 cur = (uint8_t*)dl_ptr;
                 // Use a safe upper bound based on MAX_DL_CMDS to avoid
