@@ -89,10 +89,20 @@ static inline void* bka_addr_map_lookup(uint32_t key) {
 static std::unordered_map<uint64_t, void*> s_fullAddrMap;
 
 extern "C" void* bka_lookup_addr_mapping_c(uint32_t key);
+int bka_is_mapped(void* ptr);
 extern "C" void* bka_lookup_addr_mapping(uint32_t low32) {
     void* p = bka_addr_map_lookup(low32);
-    if (p) return p;
-    return bka_lookup_addr_mapping_c(low32);
+    if (p) {
+        uintptr_t addr = (uintptr_t)p;
+        if (addr < 0x100000000ULL) {
+            uint64_t cand = 0x7200000000ULL | (uint64_t)addr;
+            if (bka_is_mapped((void*)cand)) return (void*)cand;
+            cand = 0x7300000000ULL | (uint64_t)addr;
+            if (bka_is_mapped((void*)cand)) return (void*)cand;
+        }
+        return p;
+    }
+    return nullptr;
 }
 
 extern "C" void* bka_lookup_addr_mapping_range_c(uint32_t low32);
@@ -144,8 +154,10 @@ void bka_add_addr_mapping_c(uint32_t key, void *ptr) {
     bka_add_addr_mapping(key, ptr);
 }
 
-void* bka_lookup_addr_mapping_c(uint32_t key) {
-    return bka_lookup_addr_mapping(key);
+extern "C" void* bka_lookup_addr_mapping_c(uint32_t key) {
+    // Do NOT recurse into the C++ map function — return null so callers
+    // can fall through to a different lookup path.
+    return nullptr;
 }
 
 void bka_store_full_addr_mapping(uint64_t fullAddr, void *ptr) {
