@@ -509,7 +509,7 @@ BKCollisionTriangle *collisionList_func_802E805C(BKCollisionList *this, BKVertex
     return sp34;
 }
 
-s32 func_802E81CC(BKCollisionList *collisionList, BKVertexList *vertexList, f32 p1[3], f32 p2[3], f32 velocity[3], f32 margin, s32 flagFilter, s32 **activeTriStartPtr, s32 *activeTriEndPtr) {
+s32 func_802E81CC(BKCollisionList *collisionList, BKVertexList *vertexList, f32 p1[3], f32 p2[3], f32 velocity[3], f32 margin, s32 flagFilter, Struct_core2_5FD90_0 **activeTriStartPtr, Struct_core2_5FD90_0 **activeTriEndPtr) {
     BKCollisionGeometry **start_geo;
     BKCollisionGeometry **i_geo;
     BKCollisionGeometry **end_geo;
@@ -615,8 +615,8 @@ s32 func_802E81CC(BKCollisionList *collisionList, BKVertexList *vertexList, f32 
         if ((var_s2 - D_8037EAD0) > 100) 
             break; 
     }
-    *activeTriStartPtr = (s32) D_8037EAD0; //activeTriPool
-    *activeTriEndPtr = (s32) var_s2; //activeTriPoolEnd
+    *activeTriStartPtr = D_8037EAD0; //activeTriPool (full 64-bit pointer)
+    *activeTriEndPtr   = var_s2;     //activeTriPoolEnd
     return var_s2 - D_8037EAD0 > 0; //Count
 }
 
