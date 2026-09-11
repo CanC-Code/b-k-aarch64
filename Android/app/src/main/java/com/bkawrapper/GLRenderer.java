@@ -169,10 +169,24 @@ public class GLRenderer implements GLSurfaceView.Renderer {
     @Override
     public void onDrawFrame(GL10 gl) {
         if (!isSurfaceReady) return;
+        NativeBridge.updateTexture(mTextureId);
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
-        // Framebuffer upload and quad draw restored once RenderThread crash is
-        // confirmed fixed. Leave the shader path off for now so we can measure
-        // whether the WHEN_DIRTY change stopped the system crash.
+        GLES20.glUseProgram(mProgram);
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextureId);
+        int loc = GLES20.glGetUniformLocation(mProgram, "uTexture");
+        GLES20.glUniform1i(loc, 0);
+        int posLoc = GLES20.glGetAttribLocation(mProgram, "aPosition");
+        int texLoc = GLES20.glGetAttribLocation(mProgram, "aTexCoord");
+        mQuadVertices.position(0);
+        GLES20.glVertexAttribPointer(posLoc, 3, GLES20.GL_FLOAT, false, 0, mQuadVertices);
+        GLES20.glEnableVertexAttribArray(posLoc);
+        mQuadTexCoords.position(0);
+        GLES20.glVertexAttribPointer(texLoc, 2, GLES20.GL_FLOAT, false, 0, mQuadTexCoords);
+        GLES20.glEnableVertexAttribArray(texLoc);
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+        GLES20.glDisableVertexAttribArray(posLoc);
+        GLES20.glDisableVertexAttribArray(texLoc);
     }
 
 }
