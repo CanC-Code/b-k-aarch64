@@ -6,6 +6,8 @@
 #include "core2/core2.h"
 #include "animation.h"
 #include <android/log.h>
+
+static void bka_mr_log(const char *msg);
 #define __android_log_print(...) ((void)0)  /* re-enabled for debugging */
 
 
