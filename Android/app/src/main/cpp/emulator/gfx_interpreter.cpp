@@ -74,7 +74,10 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // Fallback: reconstruct the 64-bit host pointer from a 32-bit truncation.
     // Every allocation in this build lands in the 0x72xxxxxxxx / 0x73xxxxxxxx
     // heap range. If the low32 matches an allocation, use it directly.
-    {
+    // Reconstruct only when the low32 looks like a real heap pointer.
+    // Flag/length fields (e.g. G_VTX's 0xFFFF153F) must not be treated
+    // as truncated host addresses.
+    if (addr > 0x100000ULL && addr < 0x7F000000ULL) {
         uint64_t cand72 = 0x7200000000ULL | (uint64_t)addr;
         if (bka_is_mapped((void*)cand72)) {
             static int rec_log72 = 0;
