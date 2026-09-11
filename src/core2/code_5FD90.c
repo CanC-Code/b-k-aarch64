@@ -244,6 +244,68 @@ void calculateBoundsAndDirection(f32 startPoint[3], f32 endPoint[3], s32 minBoun
     directionVector[2] = (endPoint[2] - startPoint[2]);
 }
 
+
+/* ------------------------------------------------------------------
+ * bka: collision data in the ROM is big-endian. The game reads it as
+ * native s16/s32, which gives huge indices and SIGSEGV. Swap every
+ * field of the collision list once, then mark it as visited.
+ * ------------------------------------------------------------------ */
+static uintptr_t s_bka_coll_swapped[4096];
+static int s_bka_coll_swapped_count = 0;
+
+static int bka_coll_already_swapped(uintptr_t p) {
+    for (int i = 0; i < s_bka_coll_swapped_count; i++)
+        if (s_bka_coll_swapped[i] == p) return 1;
+    if (s_bka_coll_swapped_count < 4096)
+        s_bka_coll_swapped[s_bka_coll_swapped_count++] = p;
+    return 0;
+}
+
+static inline s16 bka_bsw16(s16 v) {
+    return (s16)(((u16)v << 8) | ((u16)v >> 8));
+}
+static inline s32 bka_bsw32(s32 v) {
+    return (s32)__builtin_bswap32((u32)v);
+}
+
+static void bka_swap_collision_list(BKCollisionList *list) {
+    if (!list) return;
+    if (bka_coll_already_swapped((uintptr_t)list)) return;
+
+    list->unk0[0] = bka_bsw16(list->unk0[0]);
+    list->unk0[1] = bka_bsw16(list->unk0[1]);
+    list->unk0[2] = bka_bsw16(list->unk0[2]);
+    list->unk6[0] = bka_bsw16(list->unk6[0]);
+    list->unk6[1] = bka_bsw16(list->unk6[1]);
+    list->unk6[2] = bka_bsw16(list->unk6[2]);
+    list->unkC  = bka_bsw16(list->unkC);
+    list->unkE  = bka_bsw16(list->unkE);
+    list->unk10 = bka_bsw16(list->unk10);
+    list->unk12 = bka_bsw16(list->unk12);
+    list->unk14 = bka_bsw16(list->unk14);
+
+    BKCollisionGeometry *geos = (BKCollisionGeometry *)(list + 1);
+    s16 geo_count = list->unk10;
+    if (geo_count <= 0 || geo_count > 4096) return;
+
+    for (int i = 0; i < geo_count; i++) {
+        geos[i].start_tri_index = bka_bsw16(geos[i].start_tri_index);
+        geos[i].tri_count       = bka_bsw16(geos[i].tri_count);
+    }
+
+    BKCollisionTriangle *tris = (BKCollisionTriangle *)(geos + geo_count);
+    s16 tri_count = list->unk14;
+    if (tri_count <= 0 || tri_count > 20000) return;
+
+    for (int i = 0; i < tri_count; i++) {
+        tris[i].unk0[0] = bka_bsw16(tris[i].unk0[0]);
+        tris[i].unk0[1] = bka_bsw16(tris[i].unk0[1]);
+        tris[i].unk0[2] = bka_bsw16(tris[i].unk0[2]);
+        tris[i].unk6    = bka_bsw16(tris[i].unk6);
+        tris[i].flags   = bka_bsw32(tris[i].flags);
+    }
+}
+
 BKCollisionTriangle *func_802E76B0(BKCollisionList *collisionList, BKVertexList *vertexList, f32 startPoint[3], f32 endPoint[3], f32 arg4[3], u32 flagFilter) {
     s32 i;
     s32 j;
@@ -284,6 +346,7 @@ BKCollisionTriangle *func_802E76B0(BKCollisionList *collisionList, BKVertexList 
     BKCollisionTriangle *result_collision;
 
     if (collisionList == NULL || vertexList == NULL) return NULL;
+    bka_swap_collision_list(collisionList);
     result_collision = NULL;
     temp_f20 = (f32) vertexList->global_norm;
     calculateBoundsAndDirection(startPoint, endPoint, min_bounds, max_bounds, direction_vector);
