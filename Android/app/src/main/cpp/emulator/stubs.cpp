@@ -496,6 +496,15 @@ void osSpTaskLoad(OSTask *tp) {}
 void osSpTaskStartGo(OSTask *tp) {
     if (tp == nullptr) return;
     if (tp->t.type == M_GFXTASK) {
+        static int s_task_dump = 0;
+        if (s_task_dump++ < 6) {
+            const uint8_t *d = (const uint8_t*)tp->t.data_ptr;
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "TASK SUBMIT: ptr=%p size=%u first_w0=0x%08X last_w0=0x%08X",
+                tp->t.data_ptr, tp->t.data_size,
+                d ? *(uint32_t*)(d + 0) : 0,
+                d ? *(uint32_t*)(d + ((tp->t.data_size >= 16) ? tp->t.data_size - 16 : 0)) : 0);
+        }
         RSP_ProcessGfxTask(tp);
         HLE_TriggerN64Event(OS_EVENT_SP);
         HLE_TriggerN64Event(OS_EVENT_DP);
