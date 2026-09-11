@@ -622,6 +622,12 @@ static void Cmd_Vtx(GfxCommand cmd) {
 
 static void Cmd_Tri1(GfxCommand cmd) {
     static int s_tri1_calls = 0;
+    if (++s_tri1_calls % 200 == 1 || s_tri1_calls < 5) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "Cmd_Tri1 CALLED #%d: w0=0x%08X w1=0x%08X dmem=%d",
+            s_tri1_calls, cmd.w0, cmd.w1, s_rdp.dmemVertexCount);
+    }
+    static int s_tri1_calls = 0;
     if (s_tri1_calls++ < 20) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "Cmd_Tri1 CALLED #%d: w0=0x%08X w1=0x%08X dmem=%d",
@@ -667,7 +673,7 @@ static void Cmd_Tri1(GfxCommand cmd) {
 
 static void Cmd_Tri2(GfxCommand cmd) {
     static int s_tri2_calls = 0;
-    if (s_tri2_calls++ < 20) {
+    if (++s_tri2_calls % 200 == 1 || s_tri2_calls < 5) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "Cmd_Tri2 CALLED #%d: w0=0x%08X w1=0x%08X dmem=%d",
             s_tri2_calls, cmd.w0, cmd.w1, s_rdp.dmemVertexCount);
