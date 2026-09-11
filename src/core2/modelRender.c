@@ -1015,10 +1015,11 @@ void modelRender_executeGeoCmds(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data)
     static int s_geo_log_count = 0;
     static int s_geo_call_count = 0;
     s_geo_call_count++;
-    if (s_geo_call_count < 10) {
-        __android_log_print(ANDROID_LOG_INFO, "BKA-MODEL",
-            "executeGeoCmds call#%d data=%p D_80370990=%d\n",
-            s_geo_call_count, data, D_80370990);
+    if (s_geo_call_count < 6) {
+        char buf[128];
+        snprintf(buf, sizeof(buf), "BKA-MODEL: executeGeoCmds #%d data=%p D_80370990=%d",
+                 s_geo_call_count, (void*)data, D_80370990);
+        __android_log_write(ANDROID_LOG_INFO, "BKA-MODEL", buf);
     }
     while (TRUE) {
         u32 raw_cmd = *(u32*)&data->cmd;
@@ -1044,12 +1045,20 @@ void modelRender_executeGeoCmds(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data)
             modelRender_geoCmd_bswap(data, cmd_index);
         }
 
+        {
+            char buf[128];
+            snprintf(buf, sizeof(buf), "BKA-MODEL: dispatch cmd_index=%u data=%p", cmd_index, (void*)data);
+            __android_log_write(ANDROID_LOG_INFO, "BKA-MODEL", buf);
+        }
         sGeoCmdList[cmd_index](gfx, mtx, data);
 
-        if (next_offset == 0)
+        if (next_offset == 0) {
+            __android_log_write(ANDROID_LOG_INFO, "BKA-MODEL", "BKA-MODEL: walker END (next_offset==0)");
             return;
+        }
         data = (struct bk_geo_cmd_s *) ((u8 *) data + next_offset);
-    };
+    }
+    __android_log_write(ANDROID_LOG_INFO, "BKA-MODEL", "BKA-MODEL: walker END (loop exit)");;
 }
 
 BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation[3], f32 scale, f32*arg5, BKModelBin* model_bin) {
