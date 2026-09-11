@@ -77,7 +77,8 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // Reconstruct only when the low32 looks like a real heap pointer.
     // Flag/length fields (e.g. G_VTX's 0xFFFF153F) must not be treated
     // as truncated host addresses.
-    if (addr > 0x100000ULL && addr < 0x7F000000ULL) {
+    // Skip addresses that live inside RDRAM (below 16 MB) and flag/\n    // length fields (above 0x7F000000). Only reconstruct in between.
+    if (addr > 0x1000000ULL && addr < 0x7F000000ULL) {
         uint64_t cand72 = 0x7200000000ULL | (uint64_t)addr;
         if (bka_is_mapped((void*)cand72)) {
             static int rec_log72 = 0;
