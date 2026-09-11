@@ -67,11 +67,33 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
 
     if (addr == 0) return nullptr;
 
-    // Try exact-match mapping table. The C-side bka_lookup_addr_mapping
-    // is the one that has been populated by osVirtualToPhysical, so use it
-    // directly rather than the C++-side range-lookup which has an empty table.
+    // Try exact-match mapping table first.
     void* p = bka_lookup_addr_mapping(addr);
     if (p) return (uint8_t*)p;
+
+    // Fallback: reconstruct the 64-bit host pointer from a 32-bit truncation.
+    // Every allocation in this build lands in the 0x72xxxxxxxx / 0x73xxxxxxxx
+    // heap range. If the low32 matches an allocation, use it directly.
+    {
+        uint64_t cand72 = 0x7200000000ULL | (uint64_t)addr;
+        if (bka_is_mapped((void*)cand72)) {
+            static int rec_log72 = 0;
+            if (rec_log72++ < 6) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "XLT RECONSTRUCT 0x%08X -> %p (0x72 base)", addr, (void*)cand72);
+            }
+            return (uint8_t*)cand72;
+        }
+        uint64_t cand73 = 0x7300000000ULL | (uint64_t)addr;
+        if (bka_is_mapped((void*)cand73)) {
+            static int rec_log73 = 0;
+            if (rec_log73++ < 6) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "XLT RECONSTRUCT 0x%08X -> %p (0x73 base)", addr, (void*)cand73);
+            }
+            return (uint8_t*)cand73;
+        }
+    }
 
     // Diagnostic: log misses so we can see what the game asked for
     static int miss_log = 0;

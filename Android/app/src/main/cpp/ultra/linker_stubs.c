@@ -40,20 +40,6 @@ static uint32_t s_bka_addr_key[BKA_ADDR_MAP_SIZE];
 static void    *s_bka_addr_ptr[BKA_ADDR_MAP_SIZE];
 static int       s_bka_addr_count = 0;
 
-void* bka_lookup_addr_mapping(uint32_t key);
-void bka_store_addr_mapping(uint32_t key, void *ptr) {
-    for (int i = 0; i < s_bka_addr_count; i++) {
-        if (s_bka_addr_key[i] == key) {
-            s_bka_addr_ptr[i] = ptr;
-            return;
-        }
-    }
-    if (s_bka_addr_count < BKA_ADDR_MAP_SIZE) {
-        s_bka_addr_key[s_bka_addr_count] = key;
-        s_bka_addr_ptr[s_bka_addr_count] = ptr;
-        s_bka_addr_count++;
-    }
-}
 
 uintptr_t bka_get_mapped_end(void* ptr) {
     uintptr_t addr = (uintptr_t)ptr;
@@ -92,7 +78,7 @@ int bka_is_mapped(void* ptr) {
     return result;
 }
 
-void* bka_lookup_addr_mapping(uint32_t key) {
+void* bka_lookup_addr_mapping_cside_impl(uint32_t key) {
     for (int i = 0; i < s_bka_addr_count; i++) {
         if (s_bka_addr_key[i] == key) {
             return s_bka_addr_ptr[i];
@@ -101,7 +87,7 @@ void* bka_lookup_addr_mapping(uint32_t key) {
     return 0;
 }
 
-void* bka_lookup_addr_mapping_c(uint32_t key) { return bka_lookup_addr_mapping(key); }
+void* bka_lookup_addr_mapping_cside(uint32_t key) { return bka_lookup_addr_mapping_cside_impl(key); }
 
 u32  osVirtualToPhysical(void *vaddr) {
     u32 key = (u32)(uintptr_t)vaddr;
