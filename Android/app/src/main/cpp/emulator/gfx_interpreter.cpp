@@ -237,15 +237,25 @@ static void Matrix_MultVec(const BKMatrix m, float x, float y, float z, float w,
 
 // Load N64 fixed-point matrix (int16_t[4][4] with 32-bit integer parts)
 static void Matrix_LoadFromN64(BKMatrix out, const void* src) {
-    // N64 Mtx: 16 s16 integers (row-major, 4 per row) then 16 u16 fractions.
-    // Element (i,j) = integer[i*4+j] + fraction[i*4+j]/65536.
-    // No pair-swapping — the layout is already row-major within each block.
+    // _guMtxF2L packs each pair of elements into one u32:
+    //   word[i] = (e1_integer << 16) | e2_integer
+    //   frac[i] = (e1_fraction << 16) | e2_fraction
+    // So reading the memory as native LE s16 gives the pair in reverse order
+    // and we must swap each pair back.
     const int16_t*  ip = (const int16_t*)src;
     const uint16_t* fp = (const uint16_t*)((const uint8_t*)src + 32);
+    int16_t  integer[16];
+    uint16_t fraction[16];
+    for (int k = 0; k < 16; k += 2) {
+        integer[k]     = ip[k + 1];
+        integer[k + 1] = ip[k];
+        fraction[k]     = fp[k + 1];
+        fraction[k + 1] = fp[k];
+    }
     for (int i = 0; i < 4; i++)
         for (int j = 0; j < 4; j++) {
             int idx = i * 4 + j;
-            out[i][j] = (float)ip[idx] + (float)fp[idx] / 65536.0f;
+            out[i][j] = (float)integer[idx] + (float)fraction[idx] / 65536.0f;
         }
 }
 
@@ -617,6 +627,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
         LOGW("Cmd_Vtx: failed to translate addr=0x%08X", addr);
         return;
     }
+    uint8_t* src_base = src;
 
     for (uint32_t i = 0; i < n; i++) {
         BKVertex* v = &s_rdp.dmem[v0 + i];
@@ -635,6 +646,22 @@ static void Cmd_Vtx(GfxCommand cmd) {
 
     if (v0 + n > (uint32_t)s_rdp.dmemVertexCount)
         s_rdp.dmemVertexCount = v0 + n;
+
+    static int s_vtx_hex = 0;
+    if (s_vtx_hex++ < 3 && n >= 3 && src) {
+        const uint8_t* raw = src_base;
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "VTXRAW %u bytes @%p: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+            n * 16, (const void*)raw,
+            raw[0],raw[1],raw[2],raw[3],raw[4],raw[5],raw[6],raw[7],
+            raw[8],raw[9],raw[10],raw[11],raw[12],raw[13],raw[14],raw[15]);
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "VTXDEC v0=(%d,%d,%d) v1=(%d,%d,%d) v2=(%d,%d,%d)",
+            s_rdp.dmem[v0].x, s_rdp.dmem[v0].y, s_rdp.dmem[v0].z,
+            s_rdp.dmem[v0+1].x, s_rdp.dmem[v0+1].y, s_rdp.dmem[v0+1].z,
+            s_rdp.dmem[v0+2].x, s_rdp.dmem[v0+2].y, s_rdp.dmem[v0+2].z);
+    }
+
     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
         "Cmd_Vtx: loaded %u vertices, dmemVertexCount=%d", n, s_rdp.dmemVertexCount);
 }
