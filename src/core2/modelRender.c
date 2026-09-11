@@ -8,6 +8,12 @@
 #include <android/log.h>
 #define __android_log_print(...) ((void)0)  /* re-enabled for debugging */
 
+/* Since __android_log_print is disabled in this TU, use __android_log_write */
+static void bka_logmr(const char *msg) {
+    __android_log_write(ANDROID_LOG_INFO, "BKA-MR", msg);
+}
+
+
 #define ARRAYLEN(x) (sizeof(x) / sizeof((x)[0]))
 
 extern void assetCache_free(BKModelBin *);
@@ -1062,6 +1068,7 @@ void modelRender_executeGeoCmds(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data)
 }
 
 BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation[3], f32 scale, f32*arg5, BKModelBin* model_bin) {
+    bka_logmr("modelRender_draw ENTER");
     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "modelRender_draw ENTER model_bin=%p", model_bin);
     f32 camera_focus[3];
     f32 camera_focus_distance;
@@ -1077,7 +1084,7 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
     f32 padB8;
     
     if ((!model_bin && !sSecondaryModelData.model_id) || (model_bin && sSecondaryModelData.model_id)) {
-        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "modelRender_draw EARLY RETURN 1: model_bin mismatch");
+        bka_logmr("EARLY RETURN 1: model_bin mismatch");
         modelRender_reset();
         return NULL;
     }
@@ -1122,7 +1129,7 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
     camera_focus[1] = object_position[1] - modelRenderCameraPosition[1];
     camera_focus[2] = object_position[2] - modelRenderCameraPosition[2];
 
-    // TEMP: bypass distance check (EARLY RETURN 2)
+    bka_logmr("past distance check bypass");
     if(0){
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "modelRender_draw EARLY RETURN 2: camera_focus=%.1f %.1f %.1f", camera_focus[0], camera_focus[1], camera_focus[2]);
         modelRender_reset();
@@ -1159,20 +1166,21 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
         D_80383708 = spD4*scale*D_8038370C*50.0f;
     }
 
-    // TEMP: bypass distance culling (EARLY RETURN 3)
+    bka_logmr("past distance cull bypass");
     if(0){
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "modelRender_draw EARLY RETURN 3: D_80383708=%f camera_focus_distance=%f", D_80383708, camera_focus_distance);
         modelRender_reset();
         return 0;
     }
 
-    D_80370990 = TRUE; // TEMP: disable frustum culling
+    D_80370990 = TRUE; bka_logmr("frustum cull bypass set");
     if (!D_80370990) {
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "modelRender_draw EARLY RETURN 4: frustum culled");
         modelRender_reset();
         return 0;
     }
 
+    bka_logmr("pre_draw callback check");
     if (modelRenderCallback.pre_draw != NULL) {
         modelRenderCallback.pre_draw(modelRenderCallback.pre_draw_arg);
     }
@@ -1353,7 +1361,9 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
         __android_log_print(ANDROID_LOG_ERROR, "BKA-MODEL",
             "modelRender_draw: model_bin=%p raw_geo_off=0x%08x swapped=0x%08x geoCmd=%p\n",
             model_bin, raw_offset, swapped_offset, geoCmd);
-        modelRender_executeGeoCmds(gfx, mtx, geoCmd);
+        bka_logmr("about to call executeGeoCmds");
+    modelRender_executeGeoCmds(gfx, mtx, geoCmd);
+    bka_logmr("executeGeoCmds returned");
     }
     gSPPopMatrix((*gfx)++, G_MTX_MODELVIEW);
 
