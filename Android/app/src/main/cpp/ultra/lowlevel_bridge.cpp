@@ -94,7 +94,12 @@ extern "C" void* bka_lookup_addr_mapping(uint32_t low32) {
     void* p = bka_addr_map_lookup(low32);
     if (p) {
         uintptr_t addr = (uintptr_t)p;
-        if (addr < 0x100000000ULL) {
+        // Only reconstruct if the low32 looks like a plausible heap
+        // pointer low32: not in the top of the 32-bit range (which is
+        // almost always a flag/length field, not a truncated pointer).
+        // Valid heap low32s are in the 0x00000001..0x7FFFFFFF range,
+        // with the top bit typically clear.
+        if (addr < 0x100000000ULL && addr > 0x100000ULL && addr < 0x7F000000ULL) {
             uint64_t cand = 0x7200000000ULL | (uint64_t)addr;
             if (bka_is_mapped((void*)cand)) return (void*)cand;
             cand = 0x7300000000ULL | (uint64_t)addr;

@@ -67,9 +67,11 @@ int bka_is_mapped(void* ptr) {
     int result = 0;
     while (fgets(line, sizeof(line), f)) {
         uintptr_t start, end;
-        if (sscanf(line, "%lx-%lx", &start, &end) == 2) {
+        char perms[5] = {0};
+        if (sscanf(line, "%lx-%lx %4s", &start, &end, perms) == 3) {
+            // Only accept regions that are readable.
             if (addr >= start && addr < end) {
-                result = 1;
+                if (perms[0] == 'r') result = 1;
                 break;
             }
         }
