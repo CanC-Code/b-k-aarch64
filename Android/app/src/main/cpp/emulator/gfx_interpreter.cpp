@@ -697,9 +697,12 @@ static void Cmd_Tri2(GfxCommand cmd) {
         v10 >= (uint32_t)s_rdp.dmemVertexCount ||
         v11 >= (uint32_t)s_rdp.dmemVertexCount ||
         v12 >= (uint32_t)s_rdp.dmemVertexCount) {
-        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-            "Cmd_Tri2: INVALID vertex indices %u,%u,%u,%u,%u,%u (dmemVertexCount=%d)",
-            v00, v01, v02, v10, v11, v12, s_rdp.dmemVertexCount);
+        static int s_tri2_inv_log = 0;
+        if (s_tri2_inv_log++ < 50) {
+            __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                "Cmd_Tri2: INVALID vertex indices %u,%u,%u,%u,%u,%u (dmemVertexCount=%d) w0=0x%08X w1=0x%08X",
+                v00, v01, v02, v10, v11, v12, s_rdp.dmemVertexCount, cmd.w0, cmd.w1);
+        }
         return;
     }
 
@@ -713,7 +716,7 @@ static void Cmd_Tri2(GfxCommand cmd) {
         TransformVertex(vt2, &sx2, &sy2);
         {
             static int s_tri2_raster_log = 0;
-            if (++s_tri2_raster_log < 5 || s_tri2_raster_log % 5000 == 1) {
+            if (++s_tri2_raster_log % 200 == 1 || s_tri2_raster_log < 5) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "TRI2 -> raster #%d: screen=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f) fin=%d%d%d",
                     s_tri2_raster_log,
@@ -737,7 +740,7 @@ static void Cmd_Tri2(GfxCommand cmd) {
         TransformVertex(vt2, &sx2, &sy2);
         {
             static int s_tri2_raster_log = 0;
-            if (++s_tri2_raster_log < 5 || s_tri2_raster_log % 5000 == 1) {
+            if (++s_tri2_raster_log % 200 == 1 || s_tri2_raster_log < 5) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "TRI2 -> raster #%d: screen=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f) fin=%d%d%d",
                     s_tri2_raster_log,
@@ -825,7 +828,7 @@ static void Cmd_Tri2_F3DEX2(GfxCommand cmd) {
         TransformVertex(vt2, &sx2, &sy2);
         {
             static int s_tri2_raster_log = 0;
-            if (++s_tri2_raster_log < 5 || s_tri2_raster_log % 5000 == 1) {
+            if (++s_tri2_raster_log % 200 == 1 || s_tri2_raster_log < 5) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "TRI2 -> raster #%d: screen=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f) fin=%d%d%d",
                     s_tri2_raster_log,
@@ -849,7 +852,7 @@ static void Cmd_Tri2_F3DEX2(GfxCommand cmd) {
         TransformVertex(vt2, &sx2, &sy2);
         {
             static int s_tri2_raster_log = 0;
-            if (++s_tri2_raster_log < 5 || s_tri2_raster_log % 5000 == 1) {
+            if (++s_tri2_raster_log % 200 == 1 || s_tri2_raster_log < 5) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "TRI2 -> raster #%d: screen=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f) fin=%d%d%d",
                     s_tri2_raster_log,
