@@ -151,7 +151,6 @@ static void RDP_InitState() {
             s_rdp.projection[i][j] = s_rdp.modelview[i][j] =
                 s_rdp.viewProj[i][j] = (i == j) ? 1.0f : 0.0f;
     s_rdp.modelviewStackDepth = 0;
-    s_rdp.dmemVertexCount = 0;
 
     // Preserve vertex buffer and count across display list tasks.
     static BKVertex saved_dmem[DMEM_VERTEX_COUNT];
@@ -298,7 +297,7 @@ static void RasterizeTriangle(
         return;
     }
     s_triangleCount++;
-    if (s_triangleCount <= 10) {
+    if (s_triangleCount % 5000 == 1 || s_triangleCount < 5) {
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
             "RasterizeTriangle #%d: (%.1f,%.1f) (%.1f,%.1f) (%.1f,%.1f)",
             s_triangleCount, x0, y0, x1, y1, x2, y2);
