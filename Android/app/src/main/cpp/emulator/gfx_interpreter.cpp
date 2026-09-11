@@ -1163,6 +1163,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     };
 
     DListFrame stack[64];
+    bool be_mode[64];
+    be_mode[0] = false;  /* runtime DL is little-endian */
     int depth = 0;
     size_t current_stride = 16;
     size_t stack_stride[64];
@@ -1218,18 +1220,10 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         memcpy(&c, cur, 8);
         s_current_cmd = cur;
 
-        /* ROM-copied geometry sub-DLs are stored big-endian: the opcode sits
-         * in the LOW byte of the u32 instead of the high.  Detect and swap. */
-        {
-            uint8_t op_le = (uint8_t)(c.w0 >> 24);
-            if (!bka_is_f3dex_opcode(op_le)) {
-                uint32_t w0_be = __builtin_bswap32(c.w0);
-                uint8_t op_be = (uint8_t)(w0_be >> 24);
-                if (bka_is_f3dex_opcode(op_be)) {
-                    c.w0 = w0_be;
-                    c.w1 = __builtin_bswap32(c.w1);
-                }
-            }
+        /* If this DL level came from the ROM, all its u32s are big-endian. */
+        if (depth < 64 && be_mode[depth]) {
+            c.w0 = __builtin_bswap32(c.w0);
+            c.w1 = __builtin_bswap32(c.w1);
         }
         uint8_t opcode = GFX_OPCODE(c);
         if (opcode == 0x04 && total <= 5) {
@@ -1445,6 +1439,12 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 stack[depth].ptr = cur;
                 stack[depth].end = cur_end;      // outer cur_end preserved
                 stack_stride[depth] = current_stride;
+                /* Mark whether the nested DL is ROM data (BE) or runtime (LE). */
+                {
+                    uint8_t* base = (uint8_t*)tp->t.data_ptr;
+                    uint8_t* lim = base + tp->t.data_size;
+                    be_mode[depth] = !((uint8_t*)dl_ptr >= base && (uint8_t*)dl_ptr < lim);
+                }
                 depth++;
 
                 // Now safe to update cur_end for the nested DL
