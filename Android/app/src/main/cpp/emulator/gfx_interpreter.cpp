@@ -627,12 +627,6 @@ static void Cmd_Tri1(GfxCommand cmd) {
             "Cmd_Tri1 CALLED #%d: w0=0x%08X w1=0x%08X dmem=%d",
             s_tri1_calls, cmd.w0, cmd.w1, s_rdp.dmemVertexCount);
     }
-    static int s_tri1_calls = 0;
-    if (s_tri1_calls++ < 20) {
-        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-            "Cmd_Tri1 CALLED #%d: w0=0x%08X w1=0x%08X dmem=%d",
-            s_tri1_calls, cmd.w0, cmd.w1, s_rdp.dmemVertexCount);
-    }
     // No vertices loaded yet; skip to avoid out-of-bounds and crash.
     if (s_rdp.dmemVertexCount == 0) return;
 
