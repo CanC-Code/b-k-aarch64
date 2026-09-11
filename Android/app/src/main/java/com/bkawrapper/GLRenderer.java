@@ -168,9 +168,11 @@ public class GLRenderer implements GLSurfaceView.Renderer {
 
     @Override
     public void onDrawFrame(GL10 gl) {
-        // TEMP: disabled to isolate RenderThread crash
         if (!isSurfaceReady) return;
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+        // Framebuffer upload and quad draw restored once RenderThread crash is
+        // confirmed fixed. Leave the shader path off for now so we can measure
+        // whether the WHEN_DIRTY change stopped the system crash.
     }
 
 }

@@ -228,13 +228,22 @@ public class MainActivity extends AppCompatActivity {
         glSurfaceView.setWillNotDraw(false);
 
         glSurfaceView.setRenderer(new GLRenderer(this, assetDir, mgr));
-        glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+        glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
 
         // FIXED: Bridge the Android Surface to native code so the engine can
         // initialize EGL and unblock the vblank synchronization loop.
         // Without this callback, g_nativeWindow stays null and the engine
         // thread hangs forever in BKA_FrameSyncHook waiting for g_windowCond.
-        glSurfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
+                final android.os.Handler renderTick = new android.os.Handler(android.os.Looper.getMainLooper());
+        final Runnable renderRunnable = new Runnable() {
+            @Override public void run() {
+                glSurfaceView.requestRender();
+                renderTick.postDelayed(this, 33);
+            }
+        };
+        renderTick.postDelayed(renderRunnable, 33);
+
+glSurfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
             @Override
             public void surfaceCreated(SurfaceHolder holder) {
                 NativeBridge.setSurface(holder.getSurface());
