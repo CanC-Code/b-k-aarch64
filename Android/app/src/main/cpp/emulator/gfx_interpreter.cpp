@@ -237,23 +237,15 @@ static void Matrix_MultVec(const BKMatrix m, float x, float y, float z, float w,
 
 // Load N64 fixed-point matrix (int16_t[4][4] with 32-bit integer parts)
 static void Matrix_LoadFromN64(BKMatrix out, const void* src) {
-    // The game packs two int16 parts per u32 as (first << 16) | second.
-    // On little-endian arm64 that means native s16[0] holds the SECOND
-    // element's part. Swap each pair before unpacking.
-    const int16_t*  intRaw  = (const int16_t*)src;
-    const uint16_t* fracRaw = (const uint16_t*)((const uint8_t*)src + 32);
-    int16_t  integer[16];
-    uint16_t fraction[16];
-    for (int k = 0; k < 16; k += 2) {
-        integer[k]     = intRaw[k + 1];
-        integer[k + 1] = intRaw[k];
-        fraction[k]     = fracRaw[k + 1];
-        fraction[k + 1] = fracRaw[k];
-    }
+    // N64 Mtx: 16 s16 integers (row-major, 4 per row) then 16 u16 fractions.
+    // Element (i,j) = integer[i*4+j] + fraction[i*4+j]/65536.
+    // No pair-swapping — the layout is already row-major within each block.
+    const int16_t*  ip = (const int16_t*)src;
+    const uint16_t* fp = (const uint16_t*)((const uint8_t*)src + 32);
     for (int i = 0; i < 4; i++)
         for (int j = 0; j < 4; j++) {
             int idx = i * 4 + j;
-            out[i][j] = (float)integer[idx] + (float)fraction[idx] / 65536.0f;
+            out[i][j] = (float)ip[idx] + (float)fp[idx] / 65536.0f;
         }
 }
 
@@ -603,31 +595,31 @@ static void Cmd_LoadBlock(GfxCommand cmd) {
 static int s_vtxCallCount = 0;
 static void Cmd_Vtx(GfxCommand cmd) {
     s_vtxCallCount++;
-    if (s_vtxCallCount <= 50) {
-        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-            "Cmd_Vtx CALL #%d: w0=0x%08X w1=0x%08X", s_vtxCallCount, cmd.w0, cmd.w1);
+    uint32_t v0 = (cmd.w0 >> 16) & 0xFF;         // base vertex index in DMEM
+    uint32_t n  = ((cmd.w0 >> 10) & 0x3F) + 1;   // count - 1
+    uint32_t addr = cmd.w1;
+
+    static int s_vtx_dump = 0;
+    if (s_vtx_dump++ < 20) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "Cmd_Vtx CALL #%d: v0=%u n=%u addr=0x%08X w0=0x%08X",
+            s_vtxCallCount, v0, n, addr, cmd.w0);
     }
-    uint32_t v0 = (cmd.w0 >> 16) & 0xFF; // Base vertex index in DMEM
-    uint32_t n  = ((cmd.w0 >> 10) & 0x3F) + 1;  // F3DEX_GBI stores (count-1)
-    uint32_t length = cmd.w0 & 0x3FF;           // Data length
-    uint32_t addr = cmd.w1;                     // Source address
-    
-    
-    
-    if (v0 + n > DMEM_VERTEX_COUNT || !gN64_RDRAM) {
-        LOGW("Cmd_Vtx: v0=%u n=%u exceeds DMEM limit", v0, n);
+
+    if (v0 >= DMEM_VERTEX_COUNT || v0 + n > DMEM_VERTEX_COUNT) {
+        LOGW("Cmd_Vtx: v0=%u n=%u exceeds DMEM limit (%d)",
+             v0, n, DMEM_VERTEX_COUNT);
         return;
     }
-    
+
     uint8_t* src = RDP_TranslateAddr(addr);
     if (!src) {
         LOGW("Cmd_Vtx: failed to translate addr=0x%08X", addr);
         return;
     }
-    // Debug logging removed for performance
+
     for (uint32_t i = 0; i < n; i++) {
         BKVertex* v = &s_rdp.dmem[v0 + i];
-        // N64 Vtx format (16 bytes): ob[3](6 bytes), flag(2), tc[2](4), cn[4](4)
         v->x = read_int16(src + 0);
         v->y = read_int16(src + 2);
         v->z = read_int16(src + 4);
@@ -640,7 +632,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
         v->a = src[15];
         src += 16;
     }
-    
+
     if (v0 + n > (uint32_t)s_rdp.dmemVertexCount)
         s_rdp.dmemVertexCount = v0 + n;
     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
