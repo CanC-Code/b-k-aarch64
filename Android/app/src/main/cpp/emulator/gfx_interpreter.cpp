@@ -46,8 +46,10 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
 
     if (addr == 0) return nullptr;
 
-    // Try exact/range mapping table
-    void* p = bka_lookup_addr_mapping_range_c(addr);
+    // Try exact-match mapping table. The C-side bka_lookup_addr_mapping
+    // is the one that has been populated by osVirtualToPhysical, so use it
+    // directly rather than the C++-side range-lookup which has an empty table.
+    void* p = bka_lookup_addr_mapping(addr);
     if (p) return (uint8_t*)p;
 
     // Diagnostic: log misses so we can see what the game asked for
