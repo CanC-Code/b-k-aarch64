@@ -159,7 +159,11 @@ void thread5_startF3DEXTask(struct ucode_task_data_s *task_data) {
     sGfxTask.t.ucode = (u64 *) gspF3DEX_fifoTextStart;
     sGfxTask.t.ucode_data = (u64 *) gspF3DEX_fifoDataStart;
     sGfxTask.t.data_ptr = task_data->data_ptr;
-    sGfxTask.t.data_size = (task_data->data_ptr_end - task_data->data_ptr) << 3;
+    /* Each F3DEX entry is 16 bytes (8-byte command + 8-byte physical-addr tag).
+     * The original N64 build was << 3 because entries were 8 bytes; our recomp
+     * doubles the stride, so we must << 4.  Reported size was halving the
+     * real DL length, which caused the parser to stop at cmd[38]. */
+    sGfxTask.t.data_size = (task_data->data_ptr_end - task_data->data_ptr) << 4;
     osWritebackDCache(sGfxTask.t.data_ptr , sGfxTask.t.data_size);
     osWritebackDCache(&sGfxTask, sizeof(OSTask));
     osSpTaskLoad(&sGfxTask);
@@ -177,7 +181,7 @@ void thread5_startL3DEXTask(struct ucode_task_data_s *task_data) {
     sGfxTask.t.ucode = (u64 *) gspL3DEX_fifoTextStart;
     sGfxTask.t.ucode_data = (u64 *) gspL3DEX_fifoDataStart;
     sGfxTask.t.data_ptr = task_data->data_ptr;
-    sGfxTask.t.data_size = (task_data->data_ptr_end - task_data->data_ptr) << 3;
+    sGfxTask.t.data_size = (task_data->data_ptr_end - task_data->data_ptr) << 4;
     osWritebackDCache(sGfxTask.t.data_ptr , sGfxTask.t.data_size);
     osWritebackDCache(&sGfxTask, sizeof(OSTask));
     osSpTaskLoad(&sGfxTask);
