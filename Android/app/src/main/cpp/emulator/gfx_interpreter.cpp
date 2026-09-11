@@ -605,7 +605,7 @@ static void Cmd_LoadBlock(GfxCommand cmd) {
 static int s_vtxCallCount = 0;
 static void Cmd_Vtx(GfxCommand cmd) {
     s_vtxCallCount++;
-    uint32_t v0 = (cmd.w0 >> 16) & 0xFF;         // base vertex index in DMEM
+    uint32_t v0 = ((cmd.w0 >> 16) & 0xFF) / 2;   // F3DEX stores v0*2
     uint32_t n  = ((cmd.w0 >> 10) & 0x3F) + 1;   // count - 1
     uint32_t addr = cmd.w1;
 
@@ -1501,10 +1501,12 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0x04:
                 {
                     static int vtx_log_count = 0;
-                    if (++vtx_log_count <= 10) {
-                        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-                            "GEOMETRY: op=0x04 (G_VTX) w0=0x%08X w1=0x%08X total=%zu depth=%d",
-                            c.w0, c.w1, total-1, depth);
+                    if (++vtx_log_count <= 20) {
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                            "G_VTX@%p w0=0x%08X w1=0x%08X next8=%02X%02X%02X%02X %02X%02X%02X%02X",
+                            cur, c.w0, c.w1,
+                            cur[8],cur[9],cur[10],cur[11],
+                            cur[12],cur[13],cur[14],cur[15]);
                     }
                 }
                 Cmd_Vtx(c);
