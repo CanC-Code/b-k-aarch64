@@ -1434,6 +1434,9 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             }
 
             case 0xB8: // F3DEX G_ENDDL - end of display list
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "G_ENDDL before pop: depth=%d cur=%p cur_end=%p",
+                    depth, cur, cur_end);
                 if (depth > 0) {
                     depth--;
                     cur = stack[depth].ptr;
@@ -1441,6 +1444,9 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     current_stride = stack_stride[depth];
                     dl_cmds = 0;
                     zero_run = 0;
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                        "G_ENDDL after pop: depth=%d cur=%p cur_end=%p",
+                        depth, cur, cur_end);
                 }
                 break;
 
