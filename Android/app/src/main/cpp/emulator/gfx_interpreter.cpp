@@ -1163,8 +1163,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     };
 
     DListFrame stack[64];
-    bool be_mode[64];
-    be_mode[0] = false;  /* runtime DL is little-endian */
     int depth = 0;
     size_t current_stride = 16;
     size_t stack_stride[64];
@@ -1220,10 +1218,23 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         memcpy(&c, cur, 8);
         s_current_cmd = cur;
 
-        /* If this DL level came from the ROM, all its u32s are big-endian. */
-        if (depth < 64 && be_mode[depth]) {
-            c.w0 = __builtin_bswap32(c.w0);
-            c.w1 = __builtin_bswap32(c.w1);
+        /* Some ROM-copied geometry sub-DLs are big-endian: the F3DEX opcode
+         * sits in the LOW byte of w0 instead of the high.  Detect by checking
+         * for the distinctive 0xB0-0xCF opcode range and swapping only when
+         * the high byte is NOT in that range.  This correctly handles the
+         * mixed LE-runtime / BE-ROM command stream we see for Banjo-Kazooie. */
+        {
+            uint8_t hi = (uint8_t)(c.w0 >> 24);
+            uint8_t lo = (uint8_t)(c.w0 & 0xFF);
+            bool hi_is_g = (hi >= 0xB0 && hi <= 0xCF);
+            bool lo_is_g = (lo >= 0xB0 && lo <= 0xCF);
+            if (lo_is_g && !hi_is_g) {
+                c.w0 = __builtin_bswap32(c.w0);
+                c.w1 = __builtin_bswap32(c.w1);
+            } else if (hi == 0x00 && lo != 0x00 && lo_is_g) {
+                c.w0 = __builtin_bswap32(c.w0);
+                c.w1 = __builtin_bswap32(c.w1);
+            }
         }
         uint8_t opcode = GFX_OPCODE(c);
         if (opcode == 0x04 && total <= 5) {
@@ -1439,12 +1450,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 stack[depth].ptr = cur;
                 stack[depth].end = cur_end;      // outer cur_end preserved
                 stack_stride[depth] = current_stride;
-                /* Mark whether the nested DL is ROM data (BE) or runtime (LE). */
-                {
-                    uint8_t* base = (uint8_t*)tp->t.data_ptr;
-                    uint8_t* lim = base + tp->t.data_size;
-                    be_mode[depth] = !((uint8_t*)dl_ptr >= base && (uint8_t*)dl_ptr < lim);
-                }
                 depth++;
 
                 // Now safe to update cur_end for the nested DL
