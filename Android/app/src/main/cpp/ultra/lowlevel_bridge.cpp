@@ -89,7 +89,7 @@ static inline void* bka_addr_map_lookup(uint32_t key) {
 static std::unordered_map<uint64_t, void*> s_fullAddrMap;
 
 extern "C" void* bka_lookup_addr_mapping_c(uint32_t key);
-void* bka_lookup_addr_mapping(uint32_t low32) {
+extern "C" void* bka_lookup_addr_mapping(uint32_t low32) {
     void* p = bka_addr_map_lookup(low32);
     if (p) return p;
     return bka_lookup_addr_mapping_c(low32);
