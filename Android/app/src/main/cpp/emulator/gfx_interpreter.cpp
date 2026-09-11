@@ -748,6 +748,18 @@ static void Cmd_Tri2(GfxCommand cmd) {
                     s_tri2_raster_log,
                     sx0, sy0, sx1, sy1, sx2, sy2,
                     std::isfinite(sx0), std::isfinite(sy0), std::isfinite(sx2));
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "  PROJ  row0=(%.3f %.3f %.3f %.3f) row3=(%.3f %.3f %.3f %.3f)",
+                    s_rdp.projection[0][0], s_rdp.projection[0][1],
+                    s_rdp.projection[0][2], s_rdp.projection[0][3],
+                    s_rdp.projection[3][0], s_rdp.projection[3][1],
+                    s_rdp.projection[3][2], s_rdp.projection[3][3]);
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "  MV    row0=(%.3f %.3f %.3f %.3f) row3=(%.3f %.3f %.3f %.3f)",
+                    s_rdp.modelview[0][0], s_rdp.modelview[0][1],
+                    s_rdp.modelview[0][2], s_rdp.modelview[0][3],
+                    s_rdp.modelview[3][0], s_rdp.modelview[3][1],
+                    s_rdp.modelview[3][2], s_rdp.modelview[3][3]);
             }
         }
         RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
@@ -772,6 +784,18 @@ static void Cmd_Tri2(GfxCommand cmd) {
                     s_tri2_raster_log,
                     sx0, sy0, sx1, sy1, sx2, sy2,
                     std::isfinite(sx0), std::isfinite(sy0), std::isfinite(sx2));
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "  PROJ  row0=(%.3f %.3f %.3f %.3f) row3=(%.3f %.3f %.3f %.3f)",
+                    s_rdp.projection[0][0], s_rdp.projection[0][1],
+                    s_rdp.projection[0][2], s_rdp.projection[0][3],
+                    s_rdp.projection[3][0], s_rdp.projection[3][1],
+                    s_rdp.projection[3][2], s_rdp.projection[3][3]);
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "  MV    row0=(%.3f %.3f %.3f %.3f) row3=(%.3f %.3f %.3f %.3f)",
+                    s_rdp.modelview[0][0], s_rdp.modelview[0][1],
+                    s_rdp.modelview[0][2], s_rdp.modelview[0][3],
+                    s_rdp.modelview[3][0], s_rdp.modelview[3][1],
+                    s_rdp.modelview[3][2], s_rdp.modelview[3][3]);
             }
         }
         RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
@@ -860,6 +884,18 @@ static void Cmd_Tri2_F3DEX2(GfxCommand cmd) {
                     s_tri2_raster_log,
                     sx0, sy0, sx1, sy1, sx2, sy2,
                     std::isfinite(sx0), std::isfinite(sy0), std::isfinite(sx2));
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "  PROJ  row0=(%.3f %.3f %.3f %.3f) row3=(%.3f %.3f %.3f %.3f)",
+                    s_rdp.projection[0][0], s_rdp.projection[0][1],
+                    s_rdp.projection[0][2], s_rdp.projection[0][3],
+                    s_rdp.projection[3][0], s_rdp.projection[3][1],
+                    s_rdp.projection[3][2], s_rdp.projection[3][3]);
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "  MV    row0=(%.3f %.3f %.3f %.3f) row3=(%.3f %.3f %.3f %.3f)",
+                    s_rdp.modelview[0][0], s_rdp.modelview[0][1],
+                    s_rdp.modelview[0][2], s_rdp.modelview[0][3],
+                    s_rdp.modelview[3][0], s_rdp.modelview[3][1],
+                    s_rdp.modelview[3][2], s_rdp.modelview[3][3]);
             }
         }
         RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
@@ -884,6 +920,18 @@ static void Cmd_Tri2_F3DEX2(GfxCommand cmd) {
                     s_tri2_raster_log,
                     sx0, sy0, sx1, sy1, sx2, sy2,
                     std::isfinite(sx0), std::isfinite(sy0), std::isfinite(sx2));
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "  PROJ  row0=(%.3f %.3f %.3f %.3f) row3=(%.3f %.3f %.3f %.3f)",
+                    s_rdp.projection[0][0], s_rdp.projection[0][1],
+                    s_rdp.projection[0][2], s_rdp.projection[0][3],
+                    s_rdp.projection[3][0], s_rdp.projection[3][1],
+                    s_rdp.projection[3][2], s_rdp.projection[3][3]);
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "  MV    row0=(%.3f %.3f %.3f %.3f) row3=(%.3f %.3f %.3f %.3f)",
+                    s_rdp.modelview[0][0], s_rdp.modelview[0][1],
+                    s_rdp.modelview[0][2], s_rdp.modelview[0][3],
+                    s_rdp.modelview[3][0], s_rdp.modelview[3][1],
+                    s_rdp.modelview[3][2], s_rdp.modelview[3][3]);
             }
         }
         RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
