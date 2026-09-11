@@ -620,6 +620,12 @@ static void Cmd_Vtx(GfxCommand cmd) {
 // =======================================================================
 
 static void Cmd_Tri1(GfxCommand cmd) {
+    static int s_tri1_calls = 0;
+    if (s_tri1_calls++ < 20) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "Cmd_Tri1 CALLED #%d: w0=0x%08X w1=0x%08X dmem=%d",
+            s_tri1_calls, cmd.w0, cmd.w1, s_rdp.dmemVertexCount);
+    }
     // No vertices loaded yet; skip to avoid out-of-bounds and crash.
     if (s_rdp.dmemVertexCount == 0) return;
 
@@ -659,6 +665,12 @@ static void Cmd_Tri1(GfxCommand cmd) {
 // =======================================================================
 
 static void Cmd_Tri2(GfxCommand cmd) {
+    static int s_tri2_calls = 0;
+    if (s_tri2_calls++ < 20) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "Cmd_Tri2 CALLED #%d: w0=0x%08X w1=0x%08X dmem=%d",
+            s_tri2_calls, cmd.w0, cmd.w1, s_rdp.dmemVertexCount);
+    }
     if (s_rdp.dmemVertexCount == 0) return;
 
     uint32_t tri1 = cmd.w0 & 0xFFFFFF;  // first triangle packed in lower 24 bits
@@ -1226,10 +1238,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         {
             uint8_t hi = (uint8_t)(c.w0 >> 24);
             uint8_t lo = (uint8_t)(c.w0 & 0xFF);
-            /* "G_*" opcode ranges in F3DEX: B0-CF and E0-FF (RDP commands).
-             * These appear in the LOW byte when the source data is BE. */
-            bool hi_is_g = (hi >= 0xB0 && hi <= 0xCF) || (hi >= 0xE0 && hi <= 0xFF);
-            bool lo_is_g = (lo >= 0xB0 && lo <= 0xCF) || (lo >= 0xE0 && lo <= 0xFF);
+            bool hi_is_g = (hi >= 0xB0 && hi <= 0xCF);
+            bool lo_is_g = (lo >= 0xB0 && lo <= 0xCF);
             if (lo_is_g && !hi_is_g) {
                 c.w0 = __builtin_bswap32(c.w0);
                 c.w1 = __builtin_bswap32(c.w1);
