@@ -26,6 +26,27 @@ static int s_mtx_log_frame = 0;
 static int s_mtx_dump_frame = 0;
 static const uint8_t* s_current_cmd = nullptr;
 
+/* F3DEX opcodes that we recognize.  Used to distinguish LE-encoded runtime
+ * commands from BE-encoded ROM-copied geometry commands. */
+static inline bool bka_is_f3dex_opcode(uint8_t op) {
+    switch (op) {
+    case 0x00: case 0x01: case 0x02: case 0x03: case 0x04: case 0x05:
+    case 0x06: case 0x07:
+    case 0xB1: case 0xB6: case 0xB7: case 0xB8: case 0xB9:
+    case 0xBA: case 0xBB: case 0xBC: case 0xBD: case 0xBE: case 0xBF:
+    case 0xC0:
+    case 0xE4: case 0xE5: case 0xE6: case 0xE7: case 0xE8: case 0xE9:
+    case 0xED: case 0xEF:
+    case 0xF0: case 0xF1: case 0xF2: case 0xF3: case 0xF4: case 0xF5:
+    case 0xF6: case 0xF7: case 0xF8: case 0xF9: case 0xFA: case 0xFB:
+    case 0xFC: case 0xFD: case 0xFE: case 0xFF:
+        return true;
+    default:
+        return false;
+    }
+}
+
+
 // Deterministic default segment bases (from decomp overlay layout)
 // Populated before any RDP command runs, fixing many unmapped address errors.
 static struct RDPStateDefaultSegments {
@@ -1196,6 +1217,20 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         GfxCommand c = {0};
         memcpy(&c, cur, 8);
         s_current_cmd = cur;
+
+        /* ROM-copied geometry sub-DLs are stored big-endian: the opcode sits
+         * in the LOW byte of the u32 instead of the high.  Detect and swap. */
+        {
+            uint8_t op_le = (uint8_t)(c.w0 >> 24);
+            if (!bka_is_f3dex_opcode(op_le)) {
+                uint32_t w0_be = __builtin_bswap32(c.w0);
+                uint8_t op_be = (uint8_t)(w0_be >> 24);
+                if (bka_is_f3dex_opcode(op_be)) {
+                    c.w0 = w0_be;
+                    c.w1 = __builtin_bswap32(c.w1);
+                }
+            }
+        }
         uint8_t opcode = GFX_OPCODE(c);
         if (opcode == 0x04 && total <= 5) {
             const uint8_t *raw = cur;
