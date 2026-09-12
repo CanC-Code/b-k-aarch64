@@ -235,6 +235,18 @@ extern "C" int bka_is_mapped(void* ptr) {
     return is_address_mapped(ptr) ? 1 : 0;
 }
 
+
+extern "C" void bka_log_gdma_ra(void* ra, unsigned long long v) {
+    static uintptr_t seen[256];
+    static int n = 0;
+    uintptr_t r = (uintptr_t)ra;
+    for (int i = 0; i < n; i++) if (seen[i] == r) return;
+    if (n >= 256) return;
+    seen[n++] = r;
+    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+        "GDMARA #%d ra=%p first_v=0x%llx", n, ra, v);
+}
+
 extern "C" int bka_is_readable(void* ptr) {
     return is_address_readable(ptr) ? 1 : 0;
 }
