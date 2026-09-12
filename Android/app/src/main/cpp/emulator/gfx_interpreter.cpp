@@ -67,6 +67,17 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
 
     if (addr == 0) return nullptr;
 
+    if (addr == 0xFFF9153F || addr == 0xFFFF153F) {
+        static int s_xtrace = 0;
+        if (s_xtrace++ < 40) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "XLTPATH addr=0x%08X seg=%X segBase=%08lX gRDRAM=%p",
+                addr, (addr >> 24) & 0x0F,
+                (unsigned long)s_rdp.segmentBase[(addr >> 24) & 0x0F],
+                (void*)gN64_RDRAM);
+        }
+    }
+
     // Try exact-match mapping table first.
     void* p = bka_lookup_addr_mapping(addr);
     if (p) return (uint8_t*)p;
@@ -112,19 +123,43 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     if (seg != 0 && s_rdp.segmentBase[seg] != 0) {
         uint32_t base = s_rdp.segmentBase[seg];
         void *base_pm = bka_lookup_addr_mapping(base);
-        if (base_pm) return (uint8_t*)base_pm + off;
+        if (base_pm) {
+            if (addr == 0xFFF9153F || addr == 0xFFFF153F)
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "XLTPATH-USE segbase (base=%08X off=%X)", base, off);
+            return (uint8_t*)base_pm + off;
+        }
         uint32_t combined = base + off;
         void *pm = bka_lookup_addr_mapping(combined);
-        if (pm) return (uint8_t*)pm;
-        if (combined < 0x4000000u && gN64_RDRAM)
+        if (pm) {
+            if (addr == 0xFFF9153F || addr == 0xFFFF153F)
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "XLTPATH-USE combined (combined=%08X)", combined);
+            return (uint8_t*)pm;
+        }
+        if (combined < 0x4000000u && gN64_RDRAM) {
+            if (addr == 0xFFF9153F || addr == 0xFFFF153F)
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "XLTPATH-USE combined-rdram (combined=%08X)", combined);
             return gN64_RDRAM + combined;
+        }
         if (combined >= 0x80000000u && combined < 0x84000000u && gN64_RDRAM) {
-            uint32_t off = combined - 0x80000000u;
-            if (off < 0x1000000u) return gN64_RDRAM + off;
+            uint32_t off2 = combined - 0x80000000u;
+            if (off2 < 0x1000000u) {
+                if (addr == 0xFFF9153F || addr == 0xFFFF153F)
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                        "XLTPATH-USE kseg0 (combined=%08X off=%X)", combined, off2);
+                return gN64_RDRAM + off2;
+            }
         }
         if (combined >= 0xA0000000u && combined < 0xA4000000u && gN64_RDRAM) {
-            uint32_t off = combined - 0xA0000000u;
-            if (off < 0x1000000u) return gN64_RDRAM + off;
+            uint32_t off2 = combined - 0xA0000000u;
+            if (off2 < 0x1000000u) {
+                if (addr == 0xFFF9153F || addr == 0xFFFF153F)
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                        "XLTPATH-USE kseg1 (combined=%08X off=%X)", combined, off2);
+                return gN64_RDRAM + off2;
+            }
         }
         // fall through if none matched
     }

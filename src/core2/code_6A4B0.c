@@ -34,6 +34,14 @@ void func_802F1440(Struct_Core2_6A4B0_2 *arg0, Gfx **gfx, Mtx **mtx, Vtx **vtx) 
     Vtx *vtx_start;
 
     Vtx *i_vtx;
+    {
+        static int s_f1440_hit = 0;
+        if (s_f1440_hit++ < 20) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "F1440 ENTER #%d arg0=%p vtx_p=%p *vtx=%p",
+                s_f1440_hit, (void*)arg0, (void*)vtx, vtx ? (void*)*vtx : 0);
+        }
+    }
     s32 var_s3;
     s32 sp54;
     s32 sp50;
