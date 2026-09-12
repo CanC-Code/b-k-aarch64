@@ -1112,6 +1112,22 @@ static void Cmd_Mtx(GfxCommand cmd) {
             mb[24],mb[25],mb[26],mb[27],mb[28],mb[29],mb[30],mb[31]);
     }
 
+    static int s_mtx_dual = 0;
+    if (s_mtx_dual++ < 8) {
+        const uint8_t* p8 = (const uint8_t*)s_current_cmd;
+        if (p8) {
+            uint32_t w0_le = *(const uint32_t*)(p8 + 0);
+            uint32_t w1_le = *(const uint32_t*)(p8 + 4);
+            uint32_t w0_be = ((uint32_t)p8[8] << 24) | ((uint32_t)p8[9] << 16) |
+                             ((uint32_t)p8[10] << 8) | (uint32_t)p8[11];
+            uint32_t w1_be = ((uint32_t)p8[12] << 24) | ((uint32_t)p8[13] << 16) |
+                             ((uint32_t)p8[14] << 8) | (uint32_t)p8[15];
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "MTXDUAL LE: w0=0x%08X w1=0x%08X | BE: w0=0x%08X w1=0x%08X",
+                w0_le, w1_le, w0_be, w1_be);
+        }
+    }
+
     BKMatrix newMatrix;
     Matrix_LoadFromN64(newMatrix, mtx_src);
 
