@@ -166,7 +166,9 @@ static bool is_address_mapped(void* ptr) {
         char perms[5];
         if (sscanf(line.c_str(), "%lx-%lx %4s", &start, &end, perms) == 3) {
             if (addr >= start && addr < end) {
-                return true;
+                // Only report as "mapped" if the page is actually readable;
+                // Android reserves huge PROT_NONE regions that fault on load.
+                return perms[0] == 'r';
             }
         }
     }

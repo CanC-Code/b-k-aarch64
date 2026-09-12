@@ -125,7 +125,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // AND require the first 16 bytes to look like vertex data (not all 0x00/0xFF).
     if ((addr & 0xFF000000u) == 0xFF000000u || (addr & 0xC0000000u) == 0xC0000000u) {
         int ndump = 0;
-        for (uint64_t pfx = 0x7000000000ULL; pfx <= 0x7F00000000ULL; pfx += 0x0100000000ULL) {
+        for (uint64_t pfx = 0x7200000000ULL; pfx <= 0x7300000000ULL; pfx += 0x0100000000ULL) {
             uint64_t cand = pfx | (uint64_t)addr;
             if (!bka_is_mapped((void*)cand)) continue;
 
