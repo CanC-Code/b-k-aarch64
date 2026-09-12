@@ -1,4 +1,5 @@
 #include <ultra64.h>
+#include <android/log.h>
 #include "core1/core1.h"
 #include "functions.h"
 #include "variables.h"
@@ -214,6 +215,15 @@ void spriteRender_draw(Gfx **gfx, Vtx **vtx, BKSprite *sp, u32 frame){
 }
 
 void spriteRender_drawWithSegment(Gfx **gfx, Vtx **vtx, BKSprite *sprite, u32 frame, u32 segment) {
+    {
+        static int s_e = 0;
+        if (s_e++ < 30) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "AEDA0-DWS ENTER #%d segment=0x%08X *vtx=%p *gfx=%p",
+                s_e, (unsigned)segment,
+                (void*)(vtx?*vtx:0), (void*)(gfx?*gfx:0));
+        }
+    }
     s32 ix;
     s32 pixel_size_nibbles; //sp1C0
     s32 sp1BC;
@@ -235,6 +245,14 @@ void spriteRender_drawWithSegment(Gfx **gfx, Vtx **vtx, BKSprite *sprite, u32 fr
     s32 iy;
     
     vtx_start = *vtx;
+    {
+        static int s_e2 = 0;
+        if (s_e2++ < 30) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "AEDA0-VTXSTART #%d segment=0x%08X vtx_start=%p",
+                s_e2, (unsigned)segment, (void*)vtx_start);
+        }
+    }
 
     //get pize size in nibs
     func_80349AD0();
@@ -280,7 +298,17 @@ void spriteRender_drawWithSegment(Gfx **gfx, Vtx **vtx, BKSprite *sprite, u32 fr
     sp1B4 = *gfx;
     sp1B0 = var_a3;
     if(segment != 0){
-        gSPVertex((*gfx)++, SEGMENT_ADDR(segment, (s32)sp1B0 - (s32)vtx_start), 0, 0);
+        {
+            u32 __bka_segaddr = SEGMENT_ADDR(segment, (s32)sp1B0 - (s32)vtx_start);
+            static int s_l1 = 0;
+            if (s_l1++ < 30) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "AEDA0-EMIT1 seg=0x%08X sp1B0=%p vtx_start=%p diff=0x%08X segaddr=0x%08X",
+                    (unsigned)segment, (void*)sp1B0, (void*)vtx_start,
+                    (unsigned)((s32)sp1B0 - (s32)vtx_start), (unsigned)__bka_segaddr);
+            }
+            gSPVertex((*gfx)++, __bka_segaddr, 0, 0);
+        }
     }else{
         gSPVertex((*gfx)++, sp1B0, 0, 0);
     }
@@ -376,6 +404,14 @@ void spriteRender_drawWithSegment(Gfx **gfx, Vtx **vtx, BKSprite *sprite, u32 fr
 }
 
 void func_80337B68(Gfx **gfx, Vtx **vtx, Struct84s *texture_list, s32 texture_index) {
+    {
+        static int s_e3 = 0;
+        if (s_e3++ < 30) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "AEDA0-337B68 ENTER #%d *vtx=%p *gfx=%p",
+                s_e3, (void*)(vtx?*vtx:0), (void*)(gfx?*gfx:0));
+        }
+    }
     s32 var_s1;
     s32 var_t2;
     s32 var_v1;
@@ -411,6 +447,14 @@ void func_80337B68(Gfx **gfx, Vtx **vtx, Struct84s *texture_list, s32 texture_in
     } 
     
     tmem = (u16*)(txtr_ptr + 1);
+    {
+        static int s_l2 = 0;
+        if (s_l2++ < 30) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "AEDA0-337B68-EMIT start_vtx=%p (u32)=0x%08X",
+                (void*)start_vtx, (unsigned)(uintptr_t)start_vtx);
+        }
+    }
     gSPVertex((*gfx)++, start_vtx, 12, 0);
 
     i_vtx0 = 0;
