@@ -125,7 +125,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // AND require the first 16 bytes to look like vertex data (not all 0x00/0xFF).
     if ((addr & 0xFF000000u) == 0xFF000000u || (addr & 0xC0000000u) == 0xC0000000u) {
         int ndump = 0;
-        for (uint64_t pfx = 0x7200000000ULL; pfx <= 0x7300000000ULL; pfx += 0x0100000000ULL) {
+        for (uint64_t pfx = 0x7000000000ULL; pfx <= 0x7F00000000ULL; pfx += 0x0100000000ULL) {
             uint64_t cand = pfx | (uint64_t)addr;
             if (!bka_is_mapped((void*)cand)) continue;
 
@@ -1735,9 +1735,14 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
                         "G_DL: addr=0x%08X resolved=%p", raw_addr, dl_ptr);
                 }
-                if (!dl_ptr) {
-                    __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                        "G_DL: cannot resolve addr=0x%08X", raw_addr);
+                if (!dl_ptr || !bka_is_mapped(dl_ptr)) {
+                    static int s_nomap = 0;
+                    if (s_nomap++ < 8) {
+                        void* m = bka_lookup_addr_mapping(raw_addr);
+                        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                            "G_DL: refusing addr=0x%08X (dl_ptr=%p map_lookup=%p)",
+                            raw_addr, dl_ptr, m);
+                    }
                     break;
                 }
                 // NOTE: Do not skip lists with zero first words. They are not truly empty;
