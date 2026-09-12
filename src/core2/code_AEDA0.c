@@ -1,4 +1,5 @@
 #include <ultra64.h>
+#include <PR/os.h>
 #include <android/log.h>
 #include "core1/core1.h"
 #include "functions.h"
@@ -299,7 +300,7 @@ void spriteRender_drawWithSegment(Gfx **gfx, Vtx **vtx, BKSprite *sprite, u32 fr
     sp1B0 = var_a3;
     if(segment != 0){
         {
-            u32 __bka_segaddr = SEGMENT_ADDR(segment, (s32)sp1B0 - (s32)vtx_start);
+            u32 __bka_segaddr = SEGMENT_ADDR(segment, (s32)(uintptr_t)osVirtualToPhysical(sp1B0) - (s32)(uintptr_t)osVirtualToPhysical(vtx_start));
             static int s_l1 = 0;
             if (s_l1++ < 30) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -310,7 +311,7 @@ void spriteRender_drawWithSegment(Gfx **gfx, Vtx **vtx, BKSprite *sprite, u32 fr
             gSPVertex((*gfx)++, __bka_segaddr, 0, 0);
         }
     }else{
-        gSPVertex((*gfx)++, sp1B0, 0, 0);
+        gSPVertex((*gfx)++, osVirtualToPhysical(sp1B0), 0, 0);
     }
     //for each texture (chunk) in frame
     // sp1B4 = sp1B4;
@@ -355,17 +356,17 @@ void spriteRender_drawWithSegment(Gfx **gfx, Vtx **vtx, BKSprite *sprite, u32 fr
         if (i_vtx == 0x10) {
             i_vtx = 0;
             if(segment != 0){
-                gSPVertex(sp1B4, SEGMENT_ADDR(segment, (s32)sp1B0 - (s32)vtx_start), 16, 0);
+                gSPVertex(sp1B4, SEGMENT_ADDR(segment, (s32)(uintptr_t)osVirtualToPhysical(sp1B0) - (s32)(uintptr_t)osVirtualToPhysical(vtx_start)), 16, 0);
             }else{
-                gSPVertex(sp1B4, sp1B0, 16, 0);
+                gSPVertex(sp1B4, osVirtualToPhysical(sp1B0), 16, 0);
             }
             //start new vtx seg
             sp1B4 = *gfx;
             sp1B0 = var_a3;
             if (segment) {
-                gSPVertex((*gfx)++, SEGMENT_ADDR(segment, (s32)sp1B0 - (s32)vtx_start), 0, 0);
+                gSPVertex((*gfx)++, SEGMENT_ADDR(segment, (s32)(uintptr_t)osVirtualToPhysical(sp1B0) - (s32)(uintptr_t)osVirtualToPhysical(vtx_start)), 0, 0);
             } else {
-                gSPVertex((*gfx)++, sp1B0, 0, 0);
+                gSPVertex((*gfx)++, osVirtualToPhysical(sp1B0), 0, 0);
             }
         }
         var_t2 = (BKSpriteTextureBlock *)(tmem + ((s32) (var_t2->w * var_t2->h) * pixel_size_nibbles / 2));
@@ -377,10 +378,10 @@ void spriteRender_drawWithSegment(Gfx **gfx, Vtx **vtx, BKSprite *sprite, u32 fr
     //rewrite vtx seg start with correct vtx count
     if (i_vtx > 0) {
         if(segment != 0){
-            gSPVertex(sp1B4, SEGMENT_ADDR(segment, (s32)sp1B0 - (s32)vtx_start), i_vtx, 0);
+            gSPVertex(sp1B4, SEGMENT_ADDR(segment, (s32)(uintptr_t)osVirtualToPhysical(sp1B0) - (s32)(uintptr_t)osVirtualToPhysical(vtx_start)), i_vtx, 0);
         }else{
             if(1); 
-            gSPVertex(sp1B4, sp1B0, i_vtx, 0);
+            gSPVertex(sp1B4, osVirtualToPhysical(sp1B0), i_vtx, 0);
         }
     }
     else {
@@ -455,7 +456,7 @@ void func_80337B68(Gfx **gfx, Vtx **vtx, Struct84s *texture_list, s32 texture_in
                 (void*)start_vtx, (unsigned)(uintptr_t)start_vtx);
         }
     }
-    gSPVertex((*gfx)++, start_vtx, 12, 0);
+    gSPVertex((*gfx)++, osVirtualToPhysical(start_vtx), 12, 0);
 
     i_vtx0 = 0;
     for(var_s1 = 0; var_s1 < size; var_s1++){

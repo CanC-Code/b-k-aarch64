@@ -739,7 +739,7 @@ void _printbuffer_draw_letter(char letter, f32* xPtr, f32* yPtr, f32 scale, Gfx 
             spD0 = letter_sprite->y - 1.0;
             temp_f26 = (f64) x - (f32) gFramebufferWidth * 0.5;
             spC0 = (f64)y - (f32)gFramebufferHeight*0.5 -0.5f;
-            gSPVertex((*gfx)++, *vtx, 4, 0);
+            gSPVertex((*gfx)++, osVirtualToPhysical(*vtx), 4, 0);
             for(iy = 0.0f; iy < 2.0; iy+= 1.0){
                 for(ix = 0.0f; ix < 2.0; ix += 1.0){
                     s32 s = (ix * temp_f24 * 64.0f);

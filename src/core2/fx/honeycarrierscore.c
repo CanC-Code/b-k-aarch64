@@ -155,7 +155,7 @@ void fxhoneycarrierscore_draw(s32 arg0, struct8s *arg1, Gfx **arg2, Mtx **arg3, 
             sp130 = cosf(((D_803815CC + sp110) * 0.017453292519943295)) * (var_f24 * 24.5) * D_803815D0;
             var_f24 = MIN(1.0, MAX(0.0, D_803815C8));
             sp12C = sinf(((D_803815CC + sp110) * 0.017453292519943295))* (var_f24 * 24.5) * D_803815D0;
-            gSPVertex((*arg2)++, *arg4, 4, 0);
+            gSPVertex((*arg2)++, osVirtualToPhysical(*arg4), 4, 0);
             for(var_v1 = 0; var_v1 < 2; var_v1++){
                     for(var_v0 = 0; var_v0 < 2; var_v0++, (*arg4)++){
                         (*arg4)->v.ob[0] = ((((sp13C * D_803815D0) * var_v0) - ((sp13C * D_803815D0) / 2)) + (s32) (sp130 + sp128)) * 4.0f;

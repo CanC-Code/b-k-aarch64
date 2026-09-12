@@ -143,7 +143,7 @@ void func_802FD360(struct8s *arg0, Gfx **gfx, Mtx **mtx, Vtx **vtx){
         gDPSetCombineMode((*gfx)++, G_CC_MODULATEIA, G_CC_MODULATEIA);
     }
     viewport_setRenderViewportAndOrthoMatrix(gfx, mtx);
-    gSPVertex((*gfx)++, *vtx, 4, 0);
+    gSPVertex((*gfx)++, osVirtualToPhysical(*vtx), 4, 0);
     if(arg0->unk20 == ITEM_0_HOURGLASS_TIMER){
         tmp_s2 = 0xC;
     }

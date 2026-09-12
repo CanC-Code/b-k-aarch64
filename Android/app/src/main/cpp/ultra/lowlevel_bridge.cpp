@@ -180,7 +180,14 @@ void* bka_lookup_full_addr_mapping_internal(uint64_t fullAddr) {
 // C-compatible wrappers for linker_stubs.c
 extern "C" {
 void bka_add_addr_mapping_c(uint32_t key, void *ptr) {
-    bka_add_addr_mapping(key, ptr);
+    if ((key & 0xFF000000u) == 0xFF000000u) {
+        static int s_susp = 0;
+        if (s_susp++ < 60) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "REGSUS key=0x%08X ptr=%p", key, ptr);
+        }
+    }
+    bka_addr_map_insert(key, ptr);
 }
 
 extern "C" void* bka_lookup_addr_mapping_c(uint32_t key) {
