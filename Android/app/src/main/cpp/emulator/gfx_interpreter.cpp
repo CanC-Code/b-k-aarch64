@@ -121,17 +121,40 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
             return (uint8_t*)byLow;
         }
     }
-    // Prefix reconstruction: try every plausible 40-bit user-space prefix.
+    // Prefix reconstruction: try every plausible 40-bit user-space prefix
+    // AND require the first 16 bytes to look like vertex data (not all 0x00/0xFF).
     if ((addr & 0xFF000000u) == 0xFF000000u || (addr & 0xC0000000u) == 0xC0000000u) {
+        int ndump = 0;
         for (uint64_t pfx = 0x7000000000ULL; pfx <= 0x7F00000000ULL; pfx += 0x0100000000ULL) {
             uint64_t cand = pfx | (uint64_t)addr;
-            if (bka_is_mapped((void*)cand)) {
-                static int b2 = 0;
-                if (b2++ < 8) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                    "PREFIXRECON addr=0x%08X pfx=0x%llX -> %p",
-                    addr, (unsigned long long)(pfx >> 32), (void*)cand);
-                return (uint8_t*)cand;
+            if (!bka_is_mapped((void*)cand)) continue;
+
+            // Dump first 16 bytes for diagnosis (only first time per addr).
+            if (ndump < 16) {
+                uint8_t* b = (uint8_t*)cand;
+                int allZero = 1, allSame = 1;
+                uint8_t v0 = b[0];
+                for (int k = 0; k < 16; k++) {
+                    if (b[k] != 0) allZero = 0;
+                    if (b[k] != v0) allSame = 0;
+                }
+                static int s_dump = 0;
+                if (s_dump++ < 40) {
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                        "PREFIXDUMP addr=0x%08X pfx=0x%llX @%p: %02X %02X %02X %02X %02X %02X %02X %02X | %02X %02X %02X %02X %02X %02X %02X %02X",
+                        addr, (unsigned long long)(pfx >> 32), (void*)cand,
+                        b[0],b[1],b[2],b[3],b[4],b[5],b[6],b[7],
+                        b[8],b[9],b[10],b[11],b[12],b[13],b[14],b[15]);
+                }
+                ndump++;
+                if (allZero || allSame) continue;  // reject
             }
+
+            static int b2 = 0;
+            if (b2++ < 8) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "PREFIXRECON addr=0x%08X pfx=0x%llX -> %p (accepted: data present)",
+                addr, (unsigned long long)(pfx >> 32), (void*)cand);
+            return (uint8_t*)cand;
         }
     }
 
