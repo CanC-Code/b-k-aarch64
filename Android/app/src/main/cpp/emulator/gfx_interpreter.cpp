@@ -1681,6 +1681,25 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                                 cur[0],cur[1],cur[2],cur[3],cur[4],cur[5],cur[6],cur[7],
                                 cur[8],cur[9],cur[10],cur[11],cur[12],cur[13],cur[14],cur[15],
                                 cur[-8],cur[-7],cur[-6],cur[-5],cur[-4],cur[-3],cur[-2],cur[-1]);
+                            // Scan RDRAM for the 4-byte pattern FF F9 15 3F (BE order for 0xFFF9153F).
+                            if (gN64_RDRAM) {
+                                const uint8_t pat[4] = {0xFF, 0xF9, 0x15, 0x3F};
+                                int found = 0;
+                                for (uint32_t off = 0; off + 4 <= 0x800000u && found < 8; off += 4) {
+                                    if (gN64_RDRAM[off]     == pat[0] &&
+                                        gN64_RDRAM[off + 1] == pat[1] &&
+                                        gN64_RDRAM[off + 2] == pat[2] &&
+                                        gN64_RDRAM[off + 3] == pat[3]) {
+                                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                                            "PATFIND fff9153f @ rdram+0x%06X", off);
+                                        found++;
+                                    }
+                                }
+                                if (found == 0) {
+                                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                                        "PATFIND fff9153f: not present in first 8 MB of RDRAM");
+                                }
+                            }
                         }
                     }
                 }
