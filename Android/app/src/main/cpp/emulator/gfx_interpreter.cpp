@@ -15,7 +15,8 @@ extern "C" {
     extern uint16_t gFramebuffers[2][FB_WIDTH * FB_HEIGHT];
     int getActiveFramebuffer(void);
     uint8_t* gN64_RDRAM;
-    void* bka_lookup_addr_mapping(uint32_t key);
+    extern "C" void* bka_lookup_addr_by_low32(uint32_t low32);
+void* bka_lookup_addr_mapping(uint32_t key);
     void* bka_lookup_addr_mapping_range_c(uint32_t key);
     int bka_is_mapped(void* ptr);
     uintptr_t bka_get_mapped_end(void* ptr);
@@ -112,7 +113,6 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
 
     // By-low32 lookup: search all registrations for a pointer whose low32 matches.
     {
-        extern "C" void* bka_lookup_addr_by_low32(uint32_t low32);
         void* byLow = bka_lookup_addr_by_low32(addr);
         if (byLow) {
             static int b1 = 0;
