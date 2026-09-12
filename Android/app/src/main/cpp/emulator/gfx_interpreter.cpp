@@ -112,7 +112,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
 
     // By-low32 lookup: search all registrations for a pointer whose low32 matches.
     {
-        extern void* bka_lookup_addr_by_low32(uint32_t low32);
+        extern "C" void* bka_lookup_addr_by_low32(uint32_t low32);
         void* byLow = bka_lookup_addr_by_low32(addr);
         if (byLow) {
             static int b1 = 0;
