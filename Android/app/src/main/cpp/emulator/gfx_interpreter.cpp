@@ -629,6 +629,42 @@ static void Cmd_Vtx(GfxCommand cmd) {
     }
     uint8_t* src_base = src;
 
+    static int s_vtx_resolve_log = 0;
+    if (s_vtx_resolve_log++ < 8) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "VTXRESOLVE addr=0x%08X -> src=%p bytes: "
+            "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+            addr, (void*)src,
+            src[0],src[1],src[2],src[3],src[4],src[5],src[6],src[7],
+            src[8],src[9],src[10],src[11],src[12],src[13],src[14],src[15]);
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "VTXSEGS [0]=%08lX [1]=%08lX [2]=%08lX [3]=%08lX "
+            "[4]=%08lX [5]=%08lX [6]=%08lX [7]=%08lX "
+            "[8]=%08lX [9]=%08lX [A]=%08lX [B]=%08lX "
+            "[C]=%08lX [D]=%08lX [E]=%08lX [F]=%08lX",
+            (unsigned long)s_rdp.segmentBase[0x0],
+            (unsigned long)s_rdp.segmentBase[0x1],
+            (unsigned long)s_rdp.segmentBase[0x2],
+            (unsigned long)s_rdp.segmentBase[0x3],
+            (unsigned long)s_rdp.segmentBase[0x4],
+            (unsigned long)s_rdp.segmentBase[0x5],
+            (unsigned long)s_rdp.segmentBase[0x6],
+            (unsigned long)s_rdp.segmentBase[0x7],
+            (unsigned long)s_rdp.segmentBase[0x8],
+            (unsigned long)s_rdp.segmentBase[0x9],
+            (unsigned long)s_rdp.segmentBase[0xA],
+            (unsigned long)s_rdp.segmentBase[0xB],
+            (unsigned long)s_rdp.segmentBase[0xC],
+            (unsigned long)s_rdp.segmentBase[0xD],
+            (unsigned long)s_rdp.segmentBase[0xE],
+            (unsigned long)s_rdp.segmentBase[0xF]);
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "RDRAM=%p max_offset=%08lX (alloc 0x%lX)",
+            (void*)gN64_RDRAM,
+            (unsigned long)(addr & 0x00FFFFFF),
+            (unsigned long)0x1001000);
+    }
+
     for (uint32_t i = 0; i < n; i++) {
         BKVertex* v = &s_rdp.dmem[v0 + i];
         v->x = read_int16(src + 0);
@@ -1265,6 +1301,33 @@ static void* RSP_ResolveGfxAddress(uint32_t addr) {
 static int s_rspCallCount = 0;
 void RSP_ProcessGfxTask(OSTask* tp) {
     s_rspCallCount++;
+
+    // Probe known RDRAM offsets where the DL thinks vertex data lives
+    static int s_probe = 0;
+    if (s_probe++ < 1 && gN64_RDRAM) {
+        const uint8_t* rdram = gN64_RDRAM;
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "RDRAMPROBE @0x79153F: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+            rdram[0x79153F],rdram[0x791540],rdram[0x791541],rdram[0x791542],
+            rdram[0x791543],rdram[0x791544],rdram[0x791545],rdram[0x791546],
+            rdram[0x791547],rdram[0x791548],rdram[0x791549],rdram[0x79154A],
+            rdram[0x79154B],rdram[0x79154C],rdram[0x79154D],rdram[0x79154E]);
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "RDRAMPROBE @0xF9153F: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+            rdram[0xF9153F],rdram[0xF91540],rdram[0xF91541],rdram[0xF91542],
+            rdram[0xF91543],rdram[0xF91544],rdram[0xF91545],rdram[0xF91546],
+            rdram[0xF91547],rdram[0xF91548],rdram[0xF91549],rdram[0xF9154A],
+            rdram[0xF9154B],rdram[0xF9154C],rdram[0xF9154D],rdram[0xF9154E]);
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "RDRAMPROBE @0x3E45C0: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+            rdram[0x3E45C0],rdram[0x3E45C1],rdram[0x3E45C2],rdram[0x3E45C3],
+            rdram[0x3E45C4],rdram[0x3E45C5],rdram[0x3E45C6],rdram[0x3E45C7],
+            rdram[0x3E45C8],rdram[0x3E45C9],rdram[0x3E45CA],rdram[0x3E45CB],
+            rdram[0x3E45CC],rdram[0x3E45CD],rdram[0x3E45CE],rdram[0x3E45CF]);
+    }
+
+    uint8_t* rsp_rdram = gN64_RDRAM;  // avoid unused warning
+    (void)rsp_rdram;
     s_mtx_log_frame = 0;
     s_mtx_dump_frame = 0;
     if (s_rspCallCount % 100 == 1) {
