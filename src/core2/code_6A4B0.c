@@ -1,3 +1,4 @@
+#include <android/log.h>
 #include <ultra64.h>
 #include "core1/core1.h"
 #include "functions.h"
@@ -71,6 +72,9 @@ void func_802F1440(Struct_Core2_6A4B0_2 *arg0, Gfx **gfx, Mtx **mtx, Vtx **vtx) 
     *vtx = i_vtx;
     i_vtx = vtx_start;
     var_s3 = 0;
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-MODEL",
+        "func_802F1440: i_vtx=%p vtx_start=%p *vtx=%p arg0->vtx_coord=%p",
+        (void*)i_vtx, (void*)vtx_start, (void*)*vtx, (void*)arg0->vtx_coord);
     gSPVertex((*gfx)++, osVirtualToPhysical(i_vtx), 16, 0);
     for(sp4C = 0; sp4C < 6; sp4C++){
         for(sp50 = 0; sp50 < 9; sp50++){
