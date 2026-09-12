@@ -95,7 +95,11 @@ u32  osVirtualToPhysical(void *vaddr) {
     u32 key = (u32)(uintptr_t)vaddr;
     extern void bka_add_addr_mapping_c(uint32_t key, void *ptr);
     bka_add_addr_mapping_c(key, vaddr);
-    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "osVirtualToPhysical: vaddr=%p key=0x%08X", vaddr, key);
+    static int s_reg_log = 0;
+    if (s_reg_log++ < 30) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "MAPREG key=0x%08X vaddr=%p", key, vaddr);
+    }
     return key;
 }
 

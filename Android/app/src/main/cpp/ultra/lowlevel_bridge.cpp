@@ -92,6 +92,11 @@ extern "C" void* bka_lookup_addr_mapping_c(uint32_t key);
 extern "C" int bka_is_mapped(void* ptr);
 extern "C" void* bka_lookup_addr_mapping(uint32_t low32) {
     void* p = bka_addr_map_lookup(low32);
+    static int s_lookup_log = 0;
+    if (s_lookup_log++ < 30) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "MAPLOOKUP key=0x%08X -> %p", low32, p);
+    }
     if (p) {
         uintptr_t addr = (uintptr_t)p;
         // Only reconstruct if the low32 looks like a plausible heap
