@@ -1570,7 +1570,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         if (total <= 100) {
             if (log_after_jump) jump_log_count++;
             __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-                "cmd[%zu] op=0x%02X w0=0x%08X w1=0x%08X depth=%d stride=%zu",
+                "CMD_QUIET cmd[%zu] op=0x%02X w0=0x%08X w1=0x%08X depth=%d stride=%zu",
                 total-1, opcode, c.w0, c.w1, depth, current_stride);
         }
 
@@ -1665,7 +1665,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0x04:
                 {
                     static int vtx_log_count = 0;
-                    if (++vtx_log_count <= 20) {
+                    if (++vtx_log_count <= 3) {
                         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                             "G_VTX@%p w0=0x%08X w1=0x%08X next8=%02X%02X%02X%02X %02X%02X%02X%02X",
                             cur, c.w0, c.w1,
