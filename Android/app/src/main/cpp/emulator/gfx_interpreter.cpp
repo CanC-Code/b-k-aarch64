@@ -1681,9 +1681,9 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                                 cur[0],cur[1],cur[2],cur[3],cur[4],cur[5],cur[6],cur[7],
                                 cur[8],cur[9],cur[10],cur[11],cur[12],cur[13],cur[14],cur[15],
                                 cur[-8],cur[-7],cur[-6],cur[-5],cur[-4],cur[-3],cur[-2],cur[-1]);
-                            // Scan RDRAM for the 4-byte pattern FF F9 15 3F (BE order for 0xFFF9153F).
+                            // Scan RDRAM for LE-encoded 0xFFF9153F = bytes 3F 15 F9 FF.
                             if (gN64_RDRAM) {
-                                const uint8_t pat[4] = {0xFF, 0xF9, 0x15, 0x3F};
+                                const uint8_t pat[4] = {0x3F, 0x15, 0xF9, 0xFF};
                                 int found = 0;
                                 for (uint32_t off = 0; off + 4 <= 0x800000u && found < 8; off += 4) {
                                     if (gN64_RDRAM[off]     == pat[0] &&
@@ -1697,7 +1697,22 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                                 }
                                 if (found == 0) {
                                     __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                                        "PATFIND fff9153f: not present in first 8 MB of RDRAM");
+                                        "PATFIND fff9153f: not present in RDRAM");
+                                }
+                            }
+                            // Dump the 40 preceding 8-byte commands in the DL containing this G_VTX.
+                            {
+                                static int s_dumpprev = 0;
+                                if (s_dumpprev++ < 2) {
+                                    uint8_t* base = cur - 40 * 8;
+                                    for (int k = 0; k < 40; k++) {
+                                        uint8_t* e = base + k * 8;
+                                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                                            "DLPREV[%02d] %02X%02X%02X%02X %02X%02X%02X%02X",
+                                            k,
+                                            e[0], e[1], e[2], e[3],
+                                            e[4], e[5], e[6], e[7]);
+                                    }
                                 }
                             }
                         }
