@@ -48,7 +48,7 @@ uint32_t g_active_fb_offset = 0x400000;
 // Virtual-to-physical mapping registry.
 // The recompiled code should call bka_add_addr_mapping() through osVirtualToPhysical.
 #include <unordered_map>
-#define __android_log_print(...) ((void)0)
+#include <android/log.h>
 // Fixed-capacity static map — avoids heap churn that perturbs the game's allocator.
 // Slots are filled in insertion order; lookups scan until an empty slot.
 // If a key is overwritten, the old value is preserved in the "cold" array below.
@@ -60,6 +60,10 @@ static size_t s_addrMapCount = 0;
 // Overwrite-tolerant: if the same key appears twice, the newer pointer wins.
 static inline void bka_addr_map_insert(uint32_t key, void* ptr) {
     if (key == 0) return;
+    if (key == 0xFFF9153F || key == 0xFFFF153F) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "MAPINS key=0x%08X ptr=%p count=%zu", key, ptr, s_addrMapCount);
+    }
     // Fast scan of most recent inserts
     for (size_t i = s_addrMapCount; i-- > 0; ) {
         if (s_addrMapFixed[i].key == key) {
@@ -82,7 +86,17 @@ static inline void bka_addr_map_insert(uint32_t key, void* ptr) {
 static inline void* bka_addr_map_lookup(uint32_t key) {
     if (key == 0) return nullptr;
     for (size_t i = s_addrMapCount; i-- > 0; ) {
-        if (s_addrMapFixed[i].key == key) return s_addrMapFixed[i].ptr;
+        if (s_addrMapFixed[i].key == key) {
+            if (key == 0xFFF9153F || key == 0xFFFF153F) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "MAPLUK key=0x%08X -> %p (hit)", key, s_addrMapFixed[i].ptr);
+            }
+            return s_addrMapFixed[i].ptr;
+        }
+    }
+    if (key == 0xFFF9153F || key == 0xFFFF153F) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "MAPLUK key=0x%08X -> MISS count=%zu", key, s_addrMapCount);
     }
     return nullptr;
 }

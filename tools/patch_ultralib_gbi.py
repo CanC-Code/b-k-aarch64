@@ -72,7 +72,7 @@ def replace_macro_body(lines, macro_name, param_name):
         '{                                          \\\n',
         '        Gfx *_g = (Gfx *)(pkt);            \\\n',
         '        unsigned long long __bka_a = (unsigned long long)(s);  \\\n',
-        '        if (__bka_a != 0) bka_add_addr_mapping_c((unsigned int)__bka_a, (void *)__bka_a);  \\\n',
+        '        if (__bka_a > 0xFFFFFFFFULL) bka_add_addr_mapping_c((unsigned int)__bka_a, (void *)__bka_a);  \\\n',
         '        _g->words.w0 = (_SHIFTL((c), 24, 8) | _SHIFTL((p), 16, 8) | _SHIFTL((l), 0, 16));  \\\n',
         '        _g->words.w1 = (unsigned int)__bka_a;  \\\n',
         '}\n',
@@ -84,7 +84,7 @@ def replace_macro_body(lines, macro_name, param_name):
             '{                                          \\\n',
             '        Gfx *_g = (Gfx *)(pkt);            \\\n',
             '        unsigned long long __bka_a = (unsigned long long)(adrs);  \\\n',
-            '        if (__bka_a != 0) bka_add_addr_mapping_c((unsigned int)__bka_a, (void *)__bka_a);  \\\n',
+            '        if (__bka_a > 0xFFFFFFFFULL) bka_add_addr_mapping_c((unsigned int)__bka_a, (void *)__bka_a);  \\\n',
             '        _g->words.w0 = (_SHIFTL((c),24,8)|_SHIFTL(((len)-1)/8,19,5)|_SHIFTL((ofs)/8,8,8)|_SHIFTL((idx),0,8));  \\\n',
             '        _g->words.w1 = (unsigned int)__bka_a;  \\\n',
             '}\n',
@@ -116,5 +116,10 @@ else:
 
 with open(PATH, 'w') as f:
     f.write(text)
+
+# Self-check: the 32-bit guard MUST be present, otherwise we clobber
+# osVirtualToPhysical's good mapping with a bogus (void*)low32 entry.
+assert text.count("if (__bka_a > 0xFFFFFFFFULL) bka_add_addr_mapping_c") == 2, \
+    "FATAL: gDma1p/gDma2p 32-bit guard not injected; osVirtualToPhysical mappings will be clobbered"
 
 print("gbi.h patched")

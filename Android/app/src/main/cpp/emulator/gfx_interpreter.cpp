@@ -135,21 +135,19 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         if (off < 0x1000000u) return gN64_RDRAM + off;
     }
 
-    // Last resort: treat as direct RDRAM offset (for segment addresses not handled)
-    if (gN64_RDRAM) {
+    // Only allow the "low addr is RDRAM offset" fallback for small addresses.
+    // Anything >= 0x10000000 that got here is a bogus lookup key; return null
+    // so the caller logs a real failure instead of reading random RDRAM.
+    if (gN64_RDRAM && addr < 0x10000000u) {
         uint32_t off2 = addr & 0x00FFFFFF;
-        static int log_count = 0;
-        if (++log_count <= 5) {
-            uint8_t* dump = gN64_RDRAM + off2;
-            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                "RDRAM fallback: addr=0x%08X off=0x%06X ptr=%p bytes: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
-                addr, off2, (void*)dump,
-                dump[0], dump[1], dump[2], dump[3], dump[4], dump[5], dump[6], dump[7],
-                dump[8], dump[9], dump[10], dump[11], dump[12], dump[13], dump[14], dump[15]);
-        }
         return gN64_RDRAM + off2;
     }
 
+    static int miss2 = 0;
+    if (miss2++ < 20) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "XLT GIVEUP addr=0x%08X (not in map, not segment, not RDRAM)", addr);
+    }
     return nullptr;
 }
 
