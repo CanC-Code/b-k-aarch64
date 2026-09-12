@@ -1626,6 +1626,17 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                             cur[8],cur[9],cur[10],cur[11],
                             cur[12],cur[13],cur[14],cur[15]);
                     }
+                    if (c.w1 == 0xFFF9153F || c.w1 == 0xFFFF153F) {
+                        static int s_raw = 0;
+                        if (s_raw++ < 6) {
+                            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                                "VTXRAW32 @%p = %02X%02X%02X%02X %02X%02X%02X%02X | %02X%02X%02X%02X %02X%02X%02X%02X | prev8: %02X%02X%02X%02X %02X%02X%02X%02X",
+                                cur,
+                                cur[0],cur[1],cur[2],cur[3],cur[4],cur[5],cur[6],cur[7],
+                                cur[8],cur[9],cur[10],cur[11],cur[12],cur[13],cur[14],cur[15],
+                                cur[-8],cur[-7],cur[-6],cur[-5],cur[-4],cur[-3],cur[-2],cur[-1]);
+                        }
+                    }
                 }
                 Cmd_Vtx(c);
                 break;
