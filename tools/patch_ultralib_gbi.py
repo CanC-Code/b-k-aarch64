@@ -28,7 +28,8 @@ if 'BKA_REG_DL_ADDR' not in text:
         '/*\n',
         ' * bka: 64-bit host pointer recovery.\n',
         ' */\n',
-        'extern void bka_add_addr_mapping_c(unsigned int key, void *ptr);\n',
+        'extern void bka_add_addr_mapping_c(unsigned int key, void *ptr);
+extern void bka_trace_ff_val(unsigned long long v);\n',
         '\n',
     ]
     lines = lines[:anchor_idx] + helper_lines + lines[anchor_idx:]
@@ -72,7 +73,7 @@ def replace_macro_body(lines, macro_name, param_name):
         '{                                          \\\n',
         '        Gfx *_g = (Gfx *)(pkt);            \\\n',
         '        unsigned long long __bka_a = (unsigned long long)(s);  \\\n',
-        '        if (__bka_a > 0xFFFFFFFFULL) bka_add_addr_mapping_c((unsigned int)__bka_a, (void *)__bka_a);  \\\n',
+        '        if (__bka_a != 0) { bka_add_addr_mapping_c((unsigned int)__bka_a, (void *)__bka_a); if ((__bka_a & 0xFF000000ULL) == 0xFF000000ULL) bka_trace_ff_val(__bka_a); }  \\\n',
         '        _g->words.w0 = (_SHIFTL((c), 24, 8) | _SHIFTL((p), 16, 8) | _SHIFTL((l), 0, 16));  \\\n',
         '        _g->words.w1 = (unsigned int)__bka_a;  \\\n',
         '}\n',
@@ -84,7 +85,7 @@ def replace_macro_body(lines, macro_name, param_name):
             '{                                          \\\n',
             '        Gfx *_g = (Gfx *)(pkt);            \\\n',
             '        unsigned long long __bka_a = (unsigned long long)(adrs);  \\\n',
-            '        if (__bka_a > 0xFFFFFFFFULL) bka_add_addr_mapping_c((unsigned int)__bka_a, (void *)__bka_a);  \\\n',
+            '        if (__bka_a != 0) { bka_add_addr_mapping_c((unsigned int)__bka_a, (void *)__bka_a); if ((__bka_a & 0xFF000000ULL) == 0xFF000000ULL) bka_trace_ff_val(__bka_a); }  \\\n',
             '        _g->words.w0 = (_SHIFTL((c),24,8)|_SHIFTL(((len)-1)/8,19,5)|_SHIFTL((ofs)/8,8,8)|_SHIFTL((idx),0,8));  \\\n',
             '        _g->words.w1 = (unsigned int)__bka_a;  \\\n',
             '}\n',
