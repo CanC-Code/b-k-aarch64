@@ -54,7 +54,7 @@ def replace_macro(lines, name):
     return lines[:start], end
 
 GUARD = ('if (__bka_a != 0) { bka_add_addr_mapping_c((unsigned int)__bka_a, (void *)__bka_a); '
-         'if ((__bka_a & 0xFF000000ULL) == 0xFF000000ULL) bka_trace_ff_val(__bka_a); }')
+         'if ((unsigned int)__bka_a == 0xFFF9153F || (unsigned int)__bka_a == 0xFFFF153F || ((unsigned int)__bka_a & 0xFF000000u) == 0xFF000000u) bka_trace_ff_val(__bka_a); }')
 
 gdma1p_body = [
     '#define    gDma1p(pkt, c, s, l, p)    \\\n',
