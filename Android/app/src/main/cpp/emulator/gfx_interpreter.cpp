@@ -110,6 +110,31 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         }
     }
 
+    // By-low32 lookup: search all registrations for a pointer whose low32 matches.
+    {
+        extern void* bka_lookup_addr_by_low32(uint32_t low32);
+        void* byLow = bka_lookup_addr_by_low32(addr);
+        if (byLow) {
+            static int b1 = 0;
+            if (b1++ < 8) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "XLT LOW32MATCH addr=0x%08X -> %p", addr, byLow);
+            return (uint8_t*)byLow;
+        }
+    }
+    // Prefix reconstruction: try every plausible 40-bit user-space prefix.
+    if ((addr & 0xFF000000u) == 0xFF000000u || (addr & 0xC0000000u) == 0xC0000000u) {
+        for (uint64_t pfx = 0x7000000000ULL; pfx <= 0x7F00000000ULL; pfx += 0x0100000000ULL) {
+            uint64_t cand = pfx | (uint64_t)addr;
+            if (bka_is_mapped((void*)cand)) {
+                static int b2 = 0;
+                if (b2++ < 8) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "PREFIXRECON addr=0x%08X pfx=0x%llX -> %p",
+                    addr, (unsigned long long)(pfx >> 32), (void*)cand);
+                return (uint8_t*)cand;
+            }
+        }
+    }
+
     // Diagnostic: log misses so we can see what the game asked for
     static int miss_log = 0;
     if (miss_log++ < 12) {
@@ -145,10 +170,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         }
         if (combined >= 0x80000000u && combined < 0x84000000u && gN64_RDRAM) {
             uint32_t off2 = combined - 0x80000000u;
-            if (off2 < 0x1000000u) {
-                if (addr == 0xFFF9153F || addr == 0xFFFF153F)
-                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                        "XLTPATH-USE kseg0 (combined=%08X off=%X)", combined, off2);
+            if (off2 < 0x800000u) {   // must be within an 8 MB RDRAM
                 return gN64_RDRAM + off2;
             }
         }

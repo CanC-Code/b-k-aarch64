@@ -104,6 +104,19 @@ static std::unordered_map<uint64_t, void*> s_fullAddrMap;
 
 extern "C" void* bka_lookup_addr_mapping_c(uint32_t key);
 extern "C" int bka_is_mapped(void* ptr);
+extern "C" void* bka_lookup_addr_by_low32(uint32_t low32);
+
+
+extern "C" void* bka_lookup_addr_by_low32(uint32_t low32) {
+    // Search all registrations for one whose pointer low32 matches.
+    for (size_t i = s_addrMapCount; i-- > 0; ) {
+        if ((uint32_t)(uintptr_t)s_addrMapFixed[i].ptr == low32) {
+            return s_addrMapFixed[i].ptr;
+        }
+    }
+    return nullptr;
+}
+
 extern "C" void* bka_lookup_addr_mapping(uint32_t low32) {
     void* p = bka_addr_map_lookup(low32);
     static int s_lookup_diag = 0;
