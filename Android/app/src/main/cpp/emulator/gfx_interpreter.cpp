@@ -19,6 +19,7 @@ extern "C" {
 void* bka_lookup_addr_mapping(uint32_t key);
     void* bka_lookup_addr_mapping_range_c(uint32_t key);
     int bka_is_mapped(void* ptr);
+    int bka_is_readable(void* ptr);
     uintptr_t bka_get_mapped_end(void* ptr);
 }
 
@@ -92,7 +93,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // Skip addresses that live inside RDRAM (below 16 MB) and flag/\n    // length fields (above 0x7F000000). Only reconstruct in between.
     if (addr >= 0x20000000ULL && addr < 0x22F00000ULL) {
         uint64_t cand72 = 0x7200000000ULL | (uint64_t)addr;
-        if (bka_is_mapped((void*)cand72)) {
+        if (bka_is_readable((void*)cand72)) {
             static int rec_log72 = 0;
             if (rec_log72++ < 6) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -101,7 +102,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
             return (uint8_t*)cand72;
         }
         uint64_t cand73 = 0x7300000000ULL | (uint64_t)addr;
-        if (bka_is_mapped((void*)cand73)) {
+        if (bka_is_readable((void*)cand73)) {
             static int rec_log73 = 0;
             if (rec_log73++ < 6) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -127,7 +128,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         int ndump = 0;
         for (uint64_t pfx = 0x7000000000ULL; pfx <= 0x7F00000000ULL; pfx += 0x0100000000ULL) {
             uint64_t cand = pfx | (uint64_t)addr;
-            if (!bka_is_mapped((void*)cand)) continue;
+            if (!bka_is_readable((void*)cand)) continue;
 
             // Dump first 16 bytes for diagnosis (only first time per addr).
             if (ndump < 16) {

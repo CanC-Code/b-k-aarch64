@@ -166,9 +166,7 @@ static bool is_address_mapped(void* ptr) {
         char perms[5];
         if (sscanf(line.c_str(), "%lx-%lx %4s", &start, &end, perms) == 3) {
             if (addr >= start && addr < end) {
-                // Only report as "mapped" if the page is actually readable;
-                // Android reserves huge PROT_NONE regions that fault on load.
-                return perms[0] == 'r';
+                return true;
             }
         }
     }
@@ -217,8 +215,28 @@ void bka_store_full_addr_mapping(uint64_t fullAddr, void *ptr) {
 void* bka_lookup_full_addr_mapping(uint64_t fullAddr) {
     return bka_lookup_full_addr_mapping_internal(fullAddr);
 }
+static bool is_address_readable(void* ptr) {
+    uintptr_t addr = (uintptr_t)ptr;
+    std::ifstream maps("/proc/self/maps");
+    std::string line;
+    while (std::getline(maps, line)) {
+        uintptr_t start, end;
+        char perms[5];
+        if (sscanf(line.c_str(), "%lx-%lx %4s", &start, &end, perms) == 3) {
+            if (addr >= start && addr < end) {
+                return perms[0] == 'r';
+            }
+        }
+    }
+    return false;
+}
+
 extern "C" int bka_is_mapped(void* ptr) {
     return is_address_mapped(ptr) ? 1 : 0;
+}
+
+extern "C" int bka_is_readable(void* ptr) {
+    return is_address_readable(ptr) ? 1 : 0;
 }
 }
 
