@@ -1,6 +1,6 @@
 #include <android/log.h>
 
-void bka_trace_ff_val(unsigned long long v) {
+extern "C" void bka_trace_ff_val(unsigned long long v) {
     static int n = 0;
     if (n++ > 60) return;
     __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",

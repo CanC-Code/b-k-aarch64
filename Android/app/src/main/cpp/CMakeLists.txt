@@ -11,7 +11,7 @@ set(CPP_BRIDGE_SOURCES
     ultra/NativeBridge.cpp ultra/otr_builder.cpp ultra/parameters.cpp
     ultra/libm_vals.cpp ultra/exceptasm.cpp ultra/LinkerSymbols.cpp
     ultra/setintmask.cpp ultra/math_bridge.cpp ultra/audio_bridge.cpp
-    ultra/lowlevel_bridge.cpp ultra/bka_trace_ff.c emulator/stubs.cpp emulator/pi_hle.cpp
+    ultra/lowlevel_bridge.cpp ultra/bka_trace_ff.cpp emulator/stubs.cpp emulator/pi_hle.cpp
     emulator/resource_mgr.cpp
     emulator/gfx_interpreter.cpp
     tools/rare_decompression.cpp ultra/HardwareRegs.cpp
