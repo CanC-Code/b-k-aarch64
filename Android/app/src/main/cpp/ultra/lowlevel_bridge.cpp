@@ -53,7 +53,7 @@ uint32_t g_active_fb_offset = 0x400000;
 // Slots are filled in insertion order; lookups scan until an empty slot.
 // If a key is overwritten, the old value is preserved in the "cold" array below.
 struct BKAAddrEntry { uint32_t key; void* ptr; };
-static constexpr size_t BKA_ADDR_MAP_SIZE = 65536;
+static constexpr size_t BKA_ADDR_MAP_SIZE = 1048576;
 static BKAAddrEntry s_addrMapFixed[BKA_ADDR_MAP_SIZE];
 static size_t s_addrMapCount = 0;
 
@@ -92,6 +92,11 @@ extern "C" void* bka_lookup_addr_mapping_c(uint32_t key);
 extern "C" int bka_is_mapped(void* ptr);
 extern "C" void* bka_lookup_addr_mapping(uint32_t low32) {
     void* p = bka_addr_map_lookup(low32);
+    static int s_lookup_diag = 0;
+    if (!p && s_lookup_diag++ < 8) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "MAPMISS key=0x%08X map_count=%zu", low32, s_addrMapCount);
+    }
     static int s_lookup_log = 0;
     if (s_lookup_log++ < 30) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",

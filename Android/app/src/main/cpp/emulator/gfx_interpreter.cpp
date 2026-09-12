@@ -78,7 +78,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // Flag/length fields (e.g. G_VTX's 0xFFFF153F) must not be treated
     // as truncated host addresses.
     // Skip addresses that live inside RDRAM (below 16 MB) and flag/\n    // length fields (above 0x7F000000). Only reconstruct in between.
-    if (addr >= 0x20000000ULL && addr < 0x23000000ULL) {
+    if (addr >= 0x20000000ULL && addr < 0x22F00000ULL) {
         uint64_t cand72 = 0x7200000000ULL | (uint64_t)addr;
         if (bka_is_mapped((void*)cand72)) {
             static int rec_log72 = 0;
@@ -118,16 +118,22 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         if (pm) return (uint8_t*)pm;
         if (combined < 0x4000000u && gN64_RDRAM)
             return gN64_RDRAM + combined;
-        if (combined >= 0x80000000u && combined < 0x84000000u && gN64_RDRAM)
-            return gN64_RDRAM + (combined - 0x80000000u);
-        if (combined >= 0xA0000000u && combined < 0xA4000000u && gN64_RDRAM)
-            return gN64_RDRAM + (combined - 0xA0000000u);
+        if (combined >= 0x80000000u && combined < 0x84000000u && gN64_RDRAM) {
+            uint32_t off = combined - 0x80000000u;
+            if (off < 0x1000000u) return gN64_RDRAM + off;
+        }
+        if (combined >= 0xA0000000u && combined < 0xA4000000u && gN64_RDRAM) {
+            uint32_t off = combined - 0xA0000000u;
+            if (off < 0x1000000u) return gN64_RDRAM + off;
+        }
         // fall through if none matched
     }
 
     // Direct physical RDRAM fallback
-    if ((addr < 0x4000000u || (addr >= 0x80000000u && addr < 0x84000000u) || (addr >= 0xA0000000u && addr < 0xA4000000u)) && gN64_RDRAM)
-        return gN64_RDRAM + (addr & 0x003FFFFF);
+    if ((addr < 0x4000000u || (addr >= 0x80000000u && addr < 0x84000000u) || (addr >= 0xA0000000u && addr < 0xA4000000u)) && gN64_RDRAM) {
+        uint32_t off = addr & 0x00FFFFFFu;
+        if (off < 0x1000000u) return gN64_RDRAM + off;
+    }
 
     // Last resort: treat as direct RDRAM offset (for segment addresses not handled)
     if (gN64_RDRAM) {
