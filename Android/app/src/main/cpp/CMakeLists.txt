@@ -46,6 +46,9 @@ if(NOT EXCLUDE_GAME_SRC)
 endif()
 
 
+
+add_library(bkawrapper SHARED ${CPP_BRIDGE_SOURCES} ${C_BRIDGE_SOURCES} ${GAME_SOURCES})
+
 # RT64 RSP interpreter sources
 set(RT64_INTERP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/rt64/src)
 set(RT64_INTERP_SOURCES
@@ -58,11 +61,7 @@ set(RT64_INTERP_SOURCES
     ${RT64_INTERP_DIR}/gbi/rt64_gbi_rdp.cpp
     ${RT64_INTERP_DIR}/common/rt64_math.cpp
 )
-
-# Add to bkawrapper sources
 target_sources(bkawrapper PRIVATE ${RT64_INTERP_SOURCES})
-
-# Add RT64 include paths for all compilations
 target_include_directories(bkawrapper PRIVATE
     ${RT64_INTERP_DIR}
     ${RT64_INTERP_DIR}/hle
@@ -71,8 +70,6 @@ target_include_directories(bkawrapper PRIVATE
     ${RT64_INTERP_DIR}/shared
     ${RT64_INTERP_DIR}/contrib/hlslpp/include
 )
-
-add_library(bkawrapper SHARED ${CPP_BRIDGE_SOURCES} ${C_BRIDGE_SOURCES} ${GAME_SOURCES})
 target_link_options(bkawrapper PRIVATE "-Wl,--allow-multiple-definition" "-Wl,--export-dynamic" "-Wl,--wrap=__osInitialize_common" )
 
 # ============================================================
