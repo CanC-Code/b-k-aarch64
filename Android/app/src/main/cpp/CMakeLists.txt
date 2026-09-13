@@ -11,7 +11,7 @@ set(CPP_BRIDGE_SOURCES
     ultra/NativeBridge.cpp ultra/otr_builder.cpp ultra/parameters.cpp
     ultra/libm_vals.cpp ultra/exceptasm.cpp ultra/LinkerSymbols.cpp
     ultra/setintmask.cpp ultra/math_bridge.cpp ultra/audio_bridge.cpp
-    ultra/lowlevel_bridge.cpp ultra/bka_trace_ff.cpp emulator/stubs.cpp emulator/pi_hle.cpp
+    ultra/lowlevel_bridge.cpp ultra/bka_trace_ff.cpp ultra/bka_memcpy_hook.cpp emulator/stubs.cpp emulator/pi_hle.cpp
     emulator/resource_mgr.cpp
     emulator/gfx_interpreter.cpp
     tools/rare_decompression.cpp ultra/HardwareRegs.cpp
@@ -49,7 +49,7 @@ endif()
 
 add_library(bkawrapper SHARED ${CPP_BRIDGE_SOURCES} ${C_BRIDGE_SOURCES} ${GAME_SOURCES})
 
-target_link_options(bkawrapper PRIVATE "-Wl,--allow-multiple-definition" "-Wl,--export-dynamic" "-Wl,--wrap=__osInitialize_common" )
+target_link_options(bkawrapper PRIVATE -Wl,--wrap=memcpy -Wl,--wrap=memmove "-Wl,--allow-multiple-definition" "-Wl,--export-dynamic" "-Wl,--wrap=__osInitialize_common" )
 
 # ============================================================
 # Include Directories
