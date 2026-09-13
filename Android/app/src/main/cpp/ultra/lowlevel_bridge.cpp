@@ -448,8 +448,18 @@ extern "C" {
                 }
             }
             /* TEMP disabled for crash diagnosis */
-            if (0) glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fbWidth, fbHeight, 0,
-                         GL_RGBA, GL_UNSIGNED_BYTE, s_convBuffer);
+/* Use cached allocation + glTexSubImage2D to avoid per-frame
+               texture reallocations that trigger Android 14's libgui
+               buffer-callback bug. */
+            static s32 s_allocW = 0, s_allocH = 0;
+            if (s_allocW != fbWidth || s_allocH != fbHeight) {
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fbWidth, fbHeight, 0,
+                             GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+                s_allocW = fbWidth;
+                s_allocH = fbHeight;
+            }
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, fbWidth, fbHeight,
+                            GL_RGBA, GL_UNSIGNED_BYTE, s_convBuffer);
         }
     }
 
