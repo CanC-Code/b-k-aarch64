@@ -163,15 +163,27 @@ public class GLRenderer implements GLSurfaceView.Renderer {
             engineBooted = true;
             Log.i(TAG, "Game thread starting — assetDir=" + assetDir);
 
-            // CRITICAL FIX: Removed the unnecessary Java Thread wrapper.
-            // nativeGameBoot safely spawns its own detached C++ pthread, so calling
-            // it here is perfectly non-blocking and prevents transient thread GC crashes.
-            NativeBridge.nativeGameBoot(assetDir, mgr);
+            // Boot on a separate Java thread so the GL thread is never blocked.
+            // The GL thread must return from onSurfaceChanged for GLSurfaceView to
+            // start calling onDrawFrame, and nativeGameBoot does boot-time work
+            // (ROM parse, resource init, thread spawn) that can take seconds.
+            new Thread(new Runnable() {
+                @Override public void run() {
+                    Log.i(TAG, "Game thread dispatch — assetDir=" + assetDir);
+                    NativeBridge.nativeGameBoot(assetDir, mgr);
+                    Log.i(TAG, "nativeGameBoot returned");
+                }
+            }, "GameBoot").start();
         }
     }
 
     @Override
     public void onDrawFrame(GL10 gl) {
+        static int s_frame = 0;
+        s_frame++;
+        if (s_frame <= 3 || s_frame % 120 == 0) {
+            Log.i(TAG, "onDrawFrame #" + s_frame + " surfaceReady=" + isSurfaceReady);
+        }
         if (!isSurfaceReady) return;
         NativeBridge.updateTexture(mTextureId);
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);

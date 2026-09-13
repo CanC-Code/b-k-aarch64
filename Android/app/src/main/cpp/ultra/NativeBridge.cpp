@@ -205,6 +205,7 @@ JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_nativeGameBoot(JNIEnv* env, jclass clazz,
                                                  jstring otrPathStr,
                                                  jobject assetManagerObj) {
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-BOOT", "nativeGameBoot ENTER");
     LOGI("NativeBridge: nativeGameBoot sequence triggered.");
 
     if (!otrPathStr) {
@@ -251,6 +252,8 @@ Java_com_bkawrapper_NativeBridge_nativeGameBoot(JNIEnv* env, jclass clazz,
     } else {
         LOGI("NativeBridge: Engine thread is already active. Bypassing redundant creation.");
     }
+
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-BOOT", "nativeGameBoot RETURN");
 }
 
 JNIEXPORT void JNICALL
