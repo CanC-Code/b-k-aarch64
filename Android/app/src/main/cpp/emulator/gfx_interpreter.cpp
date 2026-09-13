@@ -111,7 +111,7 @@ static uint8_t* bka_scan_heap_for_vertex_base(uint32_t dl_addr) {
             if (delta && !bka_plausible_vtx(p2)) continue;
 
             static int s_h = 0;
-            if (s_h++ < 6) {
+            if (s_h++ < 2) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "HEAPVTX dl=0x%08X cand=%p delta=0x%X "
                     "b1=%02X%02X%02X%02X  b2=%02X%02X%02X%02X",
@@ -134,8 +134,16 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
 
     // Known-bad DL address?  Try scanning the heap for the real buffer.
     if (addr == 0xFFF9153F || addr == 0xFFFF153F) {
-        uint8_t* hit = bka_scan_heap_for_vertex_base(addr);
-        if (hit) return hit;
+        // Cache the resolved base for the process lifetime.
+        static uint8_t* cached_ff = nullptr;
+        static uint8_t* cached_ffff = nullptr;
+        if (addr == 0xFFF9153F) {
+            if (!cached_ff) cached_ff = bka_scan_heap_for_vertex_base(addr);
+            if (cached_ff) return cached_ff;
+        } else {
+            if (!cached_ffff) cached_ffff = bka_scan_heap_for_vertex_base(addr);
+            if (cached_ffff) return cached_ffff;
+        }
     }
 
     if (addr == 0xFFF9153F || addr == 0xFFFF153F) {
@@ -763,7 +771,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
     uint32_t addr = cmd.w1;
 
     static int s_vtx_dump = 0;
-    if (s_vtx_dump++ < 200) {
+    if (s_vtx_dump++ < 3) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "Cmd_Vtx CALL #%d: v0=%u n=%u addr=0x%08X w0=0x%08X",
             s_vtxCallCount, v0, n, addr, cmd.w0);
@@ -841,7 +849,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
         s_rdp.dmemVertexCount = v0 + n;
     {
         static int s_l = 0;
-        if (s_l++ < 200) {
+        if (s_l++ < 3) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "VtxOK addr=0x%08X v0=%u n=%u first8=%02X%02X%02X%02X %02X%02X%02X%02X",
                 addr, v0, n,
@@ -1737,13 +1745,13 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0x04:
                 {
                     static int vtx_log_count = 0;
-                    if (++vtx_log_count <= 200) {
+                    if (++vtx_log_count <= 3) {
                         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                             "G_VTX@%p w0=0x%08X w1=0x%08X next8=%02X%02X%02X%02X %02X%02X%02X%02X",
                             cur, c.w0, c.w1,
                             cur[8],cur[9],cur[10],cur[11],
                             cur[12],cur[13],cur[14],cur[15]);
-                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                        /* SYNC disabled */ (void)0; __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                             "SYNC cur=%p bytes_cur=%02X%02X%02X%02X %02X%02X%02X%02X "
                             "LE_w0=0x%08X LE_w1=0x%08X BE_w0=0x%08X BE_w1=0x%08X "
                             "c.w0=0x%08X c.w1=0x%08X",
