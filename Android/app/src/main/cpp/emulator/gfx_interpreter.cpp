@@ -1578,6 +1578,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     int depth = 0;
     size_t current_stride = 8;
     size_t stack_stride[64];
+    int stack_enc[64];          /* per-frame: 0=unknown, 1=LE, 2=BE */
+    int cur_dl_enc = 0;         /* current DL encoding */
     uintptr_t visited_dl_addrs[256];
     int visited_dl_count = 0;
     uint8_t *cur = (uint8_t*)tp->t.data_ptr;
@@ -1630,19 +1632,34 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         memcpy(&c, cur, 8);
         s_current_cmd = cur;
 
-        /* Some ROM-copied geometry sub-DLs are big-endian: the F3DEX opcode
-         * sits in the LOW byte of w0 instead of the high.  Detect by checking
-         * for the distinctive 0xB0-0xCF opcode range and swapping only when
-         * the high byte is NOT in that range.  This correctly handles the
-         * mixed LE-runtime / BE-ROM command stream we see for Banjo-Kazooie. */
+        /* Per-DL encoding detection.  Once a DL is detected as BE, every
+         * command in it must be byte-swapped -- not just the ones whose low
+         * byte happens to fall in [0xB0, 0xCF].  RDP setup opcodes
+         * (G_RDPSETOTHERMODE=0xE7, G_SETCOMBINE=0xFC, ...) live above 0xCF
+         * and would otherwise be misread as a stale G_VTX.  Sticky per DL;
+         * reset to unknown on G_DL jump. */
         {
             uint8_t hi = (uint8_t)(c.w0 >> 24);
             uint8_t lo = (uint8_t)(c.w0 & 0xFF);
-            bool hi_is_g = (hi >= 0xB0 && hi <= 0xCF);
-            bool lo_is_g = (lo >= 0xB0 && lo <= 0xCF);
-            if (lo_is_g && !hi_is_g) {
+            if (cur_dl_enc == 2) {
                 c.w0 = __builtin_bswap32(c.w0);
                 c.w1 = __builtin_bswap32(c.w1);
+            } else if (cur_dl_enc == 0) {
+                bool hi_is_g = (hi >= 0xB0 && hi <= 0xCF);
+                bool lo_is_g = (lo >= 0xB0 && lo <= 0xCF);
+                if (lo_is_g && !hi_is_g) {
+                    c.w0 = __builtin_bswap32(c.w0);
+                    c.w1 = __builtin_bswap32(c.w1);
+                    cur_dl_enc = 2;
+                    static int s_be_log = 0;
+                    if (s_be_log++ < 8)
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                            "DLENC BE @%p first bytes %02X%02X%02X%02X -> op=0x%02X",
+                            cur, cur[0],cur[1],cur[2],cur[3],
+                            (uint8_t)(c.w0 >> 24));
+                } else if (hi_is_g && !lo_is_g) {
+                    cur_dl_enc = 1;
+                }
             }
         }
         uint8_t opcode = GFX_OPCODE(c);
@@ -1689,6 +1706,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                         cur = stack[depth].ptr;
                         cur_end = stack[depth].end;
                         current_stride = stack_stride[depth];
+                        cur_dl_enc = stack_enc[depth];
                         dl_cmds = 0;
                         zero_run = 0;
                         continue;
@@ -1926,7 +1944,9 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 stack[depth].ptr = cur;
                 stack[depth].end = cur_end;      // outer cur_end preserved
                 stack_stride[depth] = current_stride;
+                stack_enc[depth] = cur_dl_enc;
                 depth++;
+                cur_dl_enc = 0;   /* new DL: encoding unknown until detected */
 
                 // Now safe to update cur_end for the nested DL
                 uintptr_t mapped_end = bka_get_mapped_end(dl_ptr);
@@ -1963,6 +1983,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     cur = stack[depth].ptr;
                     cur_end = stack[depth].end;
                     current_stride = stack_stride[depth];
+                    cur_dl_enc = stack_enc[depth];
                     dl_cmds = 0;
                     zero_run = 0;
                     __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -1977,6 +1998,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     cur = stack[depth].ptr;
                     cur_end = stack[depth].end;
                     current_stride = stack_stride[depth];
+                    cur_dl_enc = stack_enc[depth];
                     dl_cmds = 0;
                     zero_run = 0;
                 } else {
