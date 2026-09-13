@@ -149,6 +149,8 @@ public class GLRenderer implements GLSurfaceView.Renderer {
     public void onSurfaceChanged(GL10 gl, int width, int height) {
         Log.i(TAG, "onSurfaceChanged: " + width + "×" + height);
         GLES20.glViewport(0, 0, width, height);
+        gSurfaceW = width;
+        gSurfaceH = height;
 
         // Tell the native side the GL context is alive and provide ACTUAL dimensions
         NativeBridge.surfaceReady(width, height);
@@ -171,6 +173,26 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         if (!isSurfaceReady) return;
         NativeBridge.updateTexture(mTextureId);
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+
+        // Fit 4:3 content into the current surface with letterboxing.
+        // Framebuffer is 292x216; surface aspect comes from onSurfaceChanged.
+        float contentAspect = 292.0f / 216.0f;
+        float surfaceAspect = (float)gSurfaceW / (float)gSurfaceH;
+        float sx = 1.0f, sy = 1.0f;
+        if (surfaceAspect > contentAspect) {
+            sx = contentAspect / surfaceAspect;
+        } else {
+            sy = surfaceAspect / contentAspect;
+        }
+        float[] quad = {
+            -sx, -sy, 0.0f,
+             sx, -sy, 0.0f,
+            -sx,  sy, 0.0f,
+             sx,  sy, 0.0f
+        };
+        mQuadVertices.position(0);
+        mQuadVertices.put(quad);
+        mQuadVertices.position(0);
         GLES20.glUseProgram(mProgram);
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextureId);
