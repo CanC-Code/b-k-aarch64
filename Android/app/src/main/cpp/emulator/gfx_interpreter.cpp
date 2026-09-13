@@ -1670,6 +1670,17 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                             cur, c.w0, c.w1,
                             cur[8],cur[9],cur[10],cur[11],
                             cur[12],cur[13],cur[14],cur[15]);
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                            "SYNC cur=%p bytes_cur=%02X%02X%02X%02X %02X%02X%02X%02X "
+                            "LE_w0=0x%08X LE_w1=0x%08X BE_w0=0x%08X BE_w1=0x%08X "
+                            "c.w0=0x%08X c.w1=0x%08X",
+                            cur,
+                            cur[0],cur[1],cur[2],cur[3],cur[4],cur[5],cur[6],cur[7],
+                            (unsigned)(cur[0] | (cur[1]<<8) | (cur[2]<<16) | (cur[3]<<24)),
+                            (unsigned)(cur[4] | (cur[5]<<8) | (cur[6]<<16) | (cur[7]<<24)),
+                            (unsigned)((cur[0]<<24) | (cur[1]<<16) | (cur[2]<<8) | cur[3]),
+                            (unsigned)((cur[4]<<24) | (cur[5]<<16) | (cur[6]<<8) | cur[7]),
+                            c.w0, c.w1);
                     }
                     if (c.w1 == 0xFFF9153F || c.w1 == 0xFFFF153F) {
                         static int s_raw = 0;
