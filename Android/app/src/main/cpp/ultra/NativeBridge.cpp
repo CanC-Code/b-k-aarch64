@@ -299,6 +299,13 @@ Java_com_bkawrapper_NativeBridge_surfaceReady(JNIEnv* env, jclass clazz, jint w,
 
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass clazz, jint textureId) {
+    static int s_diag = 0;
+    if (s_diag++ < 30) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-UPD",
+            "updateTexture #%d rdr=%p regBase=%p ready=%d texId=%d",
+            s_diag, gN64_RDRAM, gN64_Reg_Base,
+            (int)g_bridgeResourcesReady, (int)textureId);
+    }
     if (gN64_RDRAM == nullptr || gN64_Reg_Base == nullptr) return;
 
     // Fast-path bypass: return immediately if engine resources are still initializing
