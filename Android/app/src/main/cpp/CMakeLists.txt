@@ -49,7 +49,7 @@ endif()
 
 add_library(bkawrapper SHARED ${CPP_BRIDGE_SOURCES} ${C_BRIDGE_SOURCES} ${GAME_SOURCES})
 
-target_link_options(bkawrapper PRIVATE -Wl,--wrap=memcpy -Wl,--wrap=memmove "-Wl,--allow-multiple-definition" "-Wl,--export-dynamic" "-Wl,--wrap=__osInitialize_common" )
+target_link_options(bkawrapper PRIVATE -Wl,--wrap=memcpy -Wl,--wrap=memmove -Wl,--wrap=memset "-Wl,--allow-multiple-definition" "-Wl,--export-dynamic" "-Wl,--wrap=__osInitialize_common" )
 
 # ============================================================
 # Include Directories
