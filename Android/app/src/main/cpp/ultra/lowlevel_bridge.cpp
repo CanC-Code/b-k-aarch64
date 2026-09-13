@@ -447,7 +447,8 @@ extern "C" {
                     *dst++ = a;
                 }
             }
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fbWidth, fbHeight, 0,
+            /* TEMP disabled for crash diagnosis */
+            if (0) glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fbWidth, fbHeight, 0,
                          GL_RGBA, GL_UNSIGNED_BYTE, s_convBuffer);
         }
     }
