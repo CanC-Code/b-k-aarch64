@@ -694,7 +694,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
     uint32_t addr = cmd.w1;
 
     static int s_vtx_dump = 0;
-    if (s_vtx_dump++ < 20) {
+    if (s_vtx_dump++ < 200) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "Cmd_Vtx CALL #%d: v0=%u n=%u addr=0x%08X w0=0x%08X",
             s_vtxCallCount, v0, n, addr, cmd.w0);
@@ -708,7 +708,11 @@ static void Cmd_Vtx(GfxCommand cmd) {
 
     uint8_t* src = RDP_TranslateAddr(addr);
     if (!src) {
-        LOGW("Cmd_Vtx: failed to translate addr=0x%08X", addr);
+        static int s_ft = 0;
+        if (s_ft++ < 200) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "VtxFAIL addr=0x%08X v0=%u n=%u w0=0x%08X", addr, v0, n, cmd.w0);
+        }
         return;
     }
     uint8_t* src_base = src;
@@ -766,6 +770,16 @@ static void Cmd_Vtx(GfxCommand cmd) {
 
     if (v0 + n > (uint32_t)s_rdp.dmemVertexCount)
         s_rdp.dmemVertexCount = v0 + n;
+    {
+        static int s_l = 0;
+        if (s_l++ < 200) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "VtxOK addr=0x%08X v0=%u n=%u first8=%02X%02X%02X%02X %02X%02X%02X%02X",
+                addr, v0, n,
+                src_base[0],src_base[1],src_base[2],src_base[3],
+                src_base[4],src_base[5],src_base[6],src_base[7]);
+        }
+    }
 
     static int s_vtx_hex = 0;
     if (s_vtx_hex++ < 3 && n >= 3 && src) {
@@ -1654,7 +1668,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0x04:
                 {
                     static int vtx_log_count = 0;
-                    if (++vtx_log_count <= 1) {
+                    if (++vtx_log_count <= 200) {
                         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                             "G_VTX@%p w0=0x%08X w1=0x%08X next8=%02X%02X%02X%02X %02X%02X%02X%02X",
                             cur, c.w0, c.w1,
