@@ -154,7 +154,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
             return (uint8_t*)cand;
         }
         static int b3 = 0;
-        if (b3++ < 12) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+        if (b3++ < 3) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "VTXRECON FAILED addr=0x%08X (no plausible prefix)", addr);
     }
 
@@ -1664,7 +1664,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0x04:
                 {
                     static int vtx_log_count = 0;
-                    if (++vtx_log_count <= 3) {
+                    if (++vtx_log_count <= 1) {
                         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                             "G_VTX@%p w0=0x%08X w1=0x%08X next8=%02X%02X%02X%02X %02X%02X%02X%02X",
                             cur, c.w0, c.w1,
@@ -1705,7 +1705,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                                         found++;
                                     }
                                 }
-                                if (found == 0) {
+                                static int s_pf = 0;
+                                if (found == 0 && s_pf++ < 2) {
                                     __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                                         "PATFIND fff9153f: not present in RDRAM");
                                 }
