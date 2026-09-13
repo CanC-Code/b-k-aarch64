@@ -64,10 +64,79 @@ static struct RDPStateDefaultSegments {
     }
 } s_rdpDefaultSegments;
 
+
+// Heuristic: the two known bad DL addresses (0xFFF9153F, 0xFFFF153F)
+// share low16 = 0x153F and differ by 0x60000.  Search readable heap
+// regions for a base with that low16 whose two Vtx arrays look real.
+static inline int bka_plausible_vtx(const uint8_t* b) {
+    int16_t x = (int16_t)(b[0] | (b[1] << 8));
+    int16_t y = (int16_t)(b[2] | (b[3] << 8));
+    int16_t z = (int16_t)(b[4] | (b[5] << 8));
+    if (x < -0x4000 || x > 0x4000) return 0;
+    if (y < -0x4000 || y > 0x4000) return 0;
+    if (z < -0x4000 || z > 0x4000) return 0;
+    // Not all-zero, not all-same, not all-FF.
+    int nonZero = 0, nonFF = 0;
+    for (int i = 0; i < 16; i++) {
+        if (b[i] != 0) nonZero = 1;
+        if (b[i] != 0xFF) nonFF = 1;
+    }
+    if (!nonZero || !nonFF) return 0;
+    return 1;
+}
+
+static uint8_t* bka_scan_heap_for_vertex_base(uint32_t dl_addr) {
+    uint32_t off16 = dl_addr & 0xFFFF;
+    uint32_t delta = (dl_addr == 0xFFFF153F) ? 0x60000u : 0u;
+
+    FILE* f = fopen("/proc/self/maps", "r");
+    if (!f) return nullptr;
+    char line[512];
+    uint8_t* found = nullptr;
+    while (fgets(line, sizeof line, f)) {
+        uintptr_t start, end;
+        char perms[8];
+        if (sscanf(line, "%lx-%lx %7s", &start, &end, perms) != 3) continue;
+        if (perms[0] != 'r') continue;
+        if (start < 0x7000000000ULL || start > 0x7700000000ULL) continue;
+        if (end - start < (0x60000ULL + 0x40)) continue;
+
+        // First 64K-aligned address in this region with low16 == off16.
+        uintptr_t c = (start & ~(uintptr_t)0xFFFF) | (uintptr_t)off16;
+        if (c < start) c += 0x10000;
+        for (; c + 0x60000 + 0x40 <= end; c += 0x10000) {
+            const uint8_t* p1 = (const uint8_t*)c;
+            const uint8_t* p2 = p1 + delta;
+            if (!bka_plausible_vtx(p1)) continue;
+            if (delta && !bka_plausible_vtx(p2)) continue;
+
+            static int s_h = 0;
+            if (s_h++ < 6) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "HEAPVTX dl=0x%08X cand=%p delta=0x%X "
+                    "b1=%02X%02X%02X%02X  b2=%02X%02X%02X%02X",
+                    dl_addr, (void*)c, delta,
+                    p1[0],p1[1],p1[2],p1[3], p2[0],p2[1],p2[2],p2[3]);
+            }
+            found = (uint8_t*)c;
+            break;
+        }
+        if (found) break;
+    }
+    fclose(f);
+    return found;
+}
+
 static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // Prefer the 64-bit host pointer in the recomp's 16-byte DL entry payload.
 
     if (addr == 0) return nullptr;
+
+    // Known-bad DL address?  Try scanning the heap for the real buffer.
+    if (addr == 0xFFF9153F || addr == 0xFFFF153F) {
+        uint8_t* hit = bka_scan_heap_for_vertex_base(addr);
+        if (hit) return hit;
+    }
 
     if (addr == 0xFFF9153F || addr == 0xFFFF153F) {
         static int s_xtrace = 0;
