@@ -132,18 +132,64 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
 
     if (addr == 0) return nullptr;
 
-    // Known-bad DL address?  Try scanning the heap for the real buffer.
+    // Known-bad DL address?  The full 64-bit pointer was truncated into
+    // w1 by the recomp.  Scan ALL readable memory for the 8-byte value
+    // whose low32 == addr and whose top byte is in the heap range
+    // (0x70..0x7F).  That value IS the real pointer.
     if (addr == 0xFFF9153F || addr == 0xFFFF153F) {
-        // Cache the resolved base for the process lifetime.
-        static uint8_t* cached_ff = nullptr;
-        static uint8_t* cached_ffff = nullptr;
-        if (addr == 0xFFF9153F) {
-            if (!cached_ff) cached_ff = bka_scan_heap_for_vertex_base(addr);
-            if (cached_ff) return cached_ff;
-        } else {
-            if (!cached_ffff) cached_ffff = bka_scan_heap_for_vertex_base(addr);
-            if (cached_ffff) return cached_ffff;
+        static uint64_t cached_ff_ptr = 0;
+        static uint64_t cached_ffff_ptr = 0;
+        static int s_scan_done = 0;
+        uint64_t* slot = (addr == 0xFFF9153F) ? &cached_ff_ptr : &cached_ffff_ptr;
+
+        if (*slot == 0 && !s_scan_done) {
+            s_scan_done = 1;
+            FILE* f = fopen("/proc/self/maps", "r");
+            if (f) {
+                char line[512];
+                int total_hits = 0;
+                while (fgets(line, sizeof line, f)) {
+                    uintptr_t start, end;
+                    char perms[8];
+                    if (sscanf(line, "%lx-%lx %7s", &start, &end, perms) != 3) continue;
+                    if (perms[0] != 'r') continue;
+                    // Only scan plausible app heap / mmap regions, not system libs.
+                    if (start < 0x7000000000ULL || start > 0x7800000000ULL) continue;
+
+                    for (uintptr_t a = (start + 7) & ~(uintptr_t)7;
+                         a + 8 <= end;
+                         a += 8) {
+                        uint64_t v = *(const uint64_t*)a;
+                        uint32_t lo = (uint32_t)v;
+                        if (lo != addr) continue;
+                        uint8_t hi_byte = (v >> 56) & 0xFF;
+                        if (hi_byte < 0x70 || hi_byte > 0x7F) continue;
+
+                        // Verify it's actually readable vertex data:
+                        // do a quick plausibility check at that pointer.
+                        if (!bka_is_readable((void*)v)) continue;
+                        const uint8_t* b = (const uint8_t*)v;
+                        int nonZero = 0;
+                        for (int k = 0; k < 16; k++) if (b[k] != 0) { nonZero = 1; break; }
+                        if (!nonZero) continue;
+
+                        *slot = v;
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA-FULLPTR",
+                            "found full pointer for 0x%08X: 0x%llx (found at 0x%lx)",
+                            addr, (unsigned long long)v, (unsigned long)a);
+                        if (++total_hits >= 4) break;
+                    }
+                    if (total_hits >= 4) break;
+                }
+                fclose(f);
+                if (*slot == 0) {
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA-FULLPTR",
+                        "no full pointer found for 0x%08X", addr);
+                }
+            }
         }
+
+        if (*slot) return (uint8_t*)*slot;
     }
 
     if (addr == 0xFFF9153F || addr == 0xFFFF153F) {
