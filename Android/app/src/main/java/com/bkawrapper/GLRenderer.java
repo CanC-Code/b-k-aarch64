@@ -185,7 +185,12 @@ public class GLRenderer implements GLSurfaceView.Renderer {
             Log.i(TAG, "onDrawFrame #" + mFrameCount + " surfaceReady=" + isSurfaceReady);
         }
         if (!isSurfaceReady) return;
-        NativeBridge.updateTexture(mTextureId);
+        try {
+            NativeBridge.updateTexture(mTextureId);
+        } catch (Throwable t) {
+            Log.e(TAG, "updateTexture threw: " + t);
+            android.util.Log.e(TAG, "stack:", t);
+        }
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
         // Fit 4:3 content into the current surface with letterboxing.
@@ -223,6 +228,10 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
         GLES20.glDisableVertexAttribArray(posLoc);
         GLES20.glDisableVertexAttribArray(texLoc);
+        if (mFrameCount <= 5) {
+            int err = GLES20.glGetError();
+            Log.i(TAG, "onDrawFrame #" + mFrameCount + " END err=" + err);
+        }
     }
 
 }
