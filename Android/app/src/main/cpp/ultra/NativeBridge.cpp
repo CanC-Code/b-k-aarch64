@@ -15,7 +15,6 @@
 #include <GLES2/gl2.h>
 #include <EGL/egl.h>
 #include <malloc.h>
-#define __android_log_print(...) ((void)0)
 
 #define LOG_TAG "NativeBridge"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
@@ -302,6 +301,7 @@ Java_com_bkawrapper_NativeBridge_surfaceReady(JNIEnv* env, jclass clazz, jint w,
 
 JNIEXPORT void JNICALL
 Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass clazz, jint textureId) {
+
     static int s_diag = 0;
     if (s_diag++ < 30) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA-UPD",
