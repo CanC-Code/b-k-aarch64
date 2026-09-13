@@ -228,6 +228,7 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
         GLES20.glDisableVertexAttribArray(posLoc);
         GLES20.glDisableVertexAttribArray(texLoc);
+        GLES20.glFinish();  // fix: force completion before implicit swap
         if (mFrameCount <= 5) {
             int err = GLES20.glGetError();
             Log.i(TAG, "onDrawFrame #" + mFrameCount + " END err=" + err);

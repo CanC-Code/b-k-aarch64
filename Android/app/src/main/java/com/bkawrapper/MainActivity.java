@@ -224,7 +224,7 @@ public class MainActivity extends AppCompatActivity {
         glSurfaceView = new GLSurfaceView(this);
         glSurfaceView.setEGLContextClientVersion(2);
         glSurfaceView.setEGLConfigChooser(8, 8, 8, 8, 16, 0);
-        glSurfaceView.setPreserveEGLContextOnPause(true);
+        glSurfaceView.setPreserveEGLContextOnPause(false);  // fix: avoid stale GL context triggering libgui callback UAF
         glSurfaceView.setWillNotDraw(false);
 
         glSurfaceView.setRenderer(new GLRenderer(this, assetDir, mgr));

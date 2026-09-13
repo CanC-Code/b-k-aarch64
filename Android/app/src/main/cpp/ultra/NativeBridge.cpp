@@ -364,8 +364,21 @@ Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass clazz, jint t
     }
     pthread_mutex_unlock(&g_vblankMutex);
 
-    // Skip GL upload from this thread - it crashes the binder thread.
-    // The GLRenderer.onDrawFrame will handle texture upload itself.
+    // Limit swap rate to vsync. Prevents transaction-callback pileup on
+    // Android 14 that leads to a UAF in libgui.so TransactionCompletedListener.
+    {
+        static int s_interval_set = 0;
+        if (!s_interval_set) {
+            EGLDisplay dpy = eglGetCurrentDisplay();
+            if (dpy != EGL_NO_DISPLAY) {
+                eglSwapInterval(dpy, 1);
+                s_interval_set = 1;
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-UPD",
+                    "eglSwapInterval set to 1");
+            }
+        }
+    }
+
     VideoPlugin_OutputFrameTexture((uint32_t)textureId);
 
     // NOTE: BKA_DropEngineLock removed along with the claim.
