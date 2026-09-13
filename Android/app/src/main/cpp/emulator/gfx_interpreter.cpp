@@ -494,23 +494,7 @@ static void RasterizeTriangle(
         !std::isfinite(x2) || !std::isfinite(y2)) {
         return;
     }
-    // SYNTH TEST: once per process, draw a big magenta triangle into the middle
-    // of the active framebuffer. If this shows up on screen, the pipeline is
-    // correct end-to-end and only the vertex data is wrong.
-    if (!s_synth_test_done) {
-        s_synth_test_done = 1;
-        int activeFb = getActiveFramebuffer();
-        uint16_t* fbs = gFramebuffers[activeFb];
-        for (int y = 40; y < 180; y++) {
-            for (int x = 40; x < 250; x++) {
-                if (x - 40 < (y - 40) * 2) {
-                    fbs[y * FB_WIDTH + x] = 0xF81F;  // RGB565 magenta
-                }
-            }
-        }
-        __android_log_print(ANDROID_LOG_ERROR, "BKA-SYNTH",
-            "synthetic magenta triangle written to FB[%d]", activeFb);
-    }
+
     s_triangleCount++;
     if (s_triangleCount % 5000 == 1 || s_triangleCount < 5) {
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",

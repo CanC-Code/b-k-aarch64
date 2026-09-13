@@ -236,9 +236,17 @@ public class MainActivity extends AppCompatActivity {
 
         glSurfaceView = new GLSurfaceView(this);
         glSurfaceView.setEGLContextClientVersion(2);
-        glSurfaceView.setEGLConfigChooser(8, 8, 8, 8, 16, 0);
-        glSurfaceView.setPreserveEGLContextOnPause(false);  // fix: avoid stale GL context triggering libgui callback UAF
+        // Match the framebuffer's RGB565 format to minimize internal format
+        // conversions. Android 14 libgui does extra transactions when the
+        // window format differs from the app's render target.
+        glSurfaceView.getHolder().setFormat(android.graphics.PixelFormat.RGB_565);
+        glSurfaceView.setEGLConfigChooser(5, 6, 5, 0, 16, 0);
+        glSurfaceView.setPreserveEGLContextOnPause(false);
         glSurfaceView.setWillNotDraw(false);
+        glSurfaceView.setZOrderOnTop(true);       // put us above any other layers
+        glSurfaceView.setZOrderMediaOverlay(false);
+        glSurfaceView.setFocusable(false);
+        glSurfaceView.setFocusableInTouchMode(false);
 
         glSurfaceView.setRenderer(new GLRenderer(this, assetDir, mgr));
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
