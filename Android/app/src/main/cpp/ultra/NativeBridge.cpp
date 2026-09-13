@@ -320,6 +320,11 @@ Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass clazz, jint t
     if (!ready) {
         return;
     }
+    static int s_past = 0;
+    if (s_past++ < 5) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-UPD",
+            "past-ready #%d", s_past);
+    }
 
     // FIXED: GLSurfaceView manages the EGL context. The active GL context is
     // already bound when onDrawFrame calls updateTexture. We just set the
@@ -327,7 +332,10 @@ Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass clazz, jint t
     // was failing with "already connected").
     glViewport(0, 0, g_surfaceWidth, g_surfaceHeight);
 
-    BKA_ClaimEngineLock();
+    // NOTE: BKA_ClaimEngineLock removed. The GL thread only reads
+    // gFramebuffers (host-side memory) and memcpy's into RDRAM. The GIL
+    // is held by the game thread during its render and would block us
+    // indefinitely, causing the GL thread to stall on frame #10.
 
     // ===================================================================
     // FRAMEBUFFER SYNC: Copy the game's host-side framebuffer to RDRAM.
@@ -360,7 +368,7 @@ Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass clazz, jint t
     // The GLRenderer.onDrawFrame will handle texture upload itself.
     VideoPlugin_OutputFrameTexture((uint32_t)textureId);
 
-    BKA_DropEngineLock();
+    // NOTE: BKA_DropEngineLock removed along with the claim.
 
     // FIXED: GLSurfaceView calls eglSwapBuffers automatically after
     // onDrawFrame returns. We don't need to do it here.
