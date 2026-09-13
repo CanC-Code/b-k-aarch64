@@ -33,6 +33,8 @@ public class GLRenderer implements GLSurfaceView.Renderer {
     // GL resources
     private int mTextureId = 0;
     private int mProgram = 0;
+    private int gSurfaceW = 720;
+    private int gSurfaceH = 1449;
     private FloatBuffer mQuadVertices;
     private FloatBuffer mQuadTexCoords;
 
