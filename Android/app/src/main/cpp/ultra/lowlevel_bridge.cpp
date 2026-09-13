@@ -408,6 +408,22 @@ extern "C" {
         }
 
         if (s_convBuffer) {
+            // Diagnostic: sample the framebuffer once every 120 calls.
+            static int s_sample = 0;
+            s_sample++;
+            if (s_sample <= 5 || s_sample % 120 == 0) {
+                uint16_t* fbs = (uint16_t*)fbBase;
+                int nonZero = 0, nonFFFF = 0;
+                for (int i = 0; i < fbWidth * fbHeight; i += 37) {
+                    if (fbs[i] != 0) nonZero++;
+                    if (fbs[i] != 0xFFFF) nonFFFF++;
+                }
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-FB",
+                    "frame %d: nonZero=%d nonFFFF=%d first16=%04X %04X %04X %04X",
+                    s_sample, nonZero, nonFFFF,
+                    fbs[0], fbs[1], fbs[2], fbs[3]);
+            }
+
             uint16_t* src = (uint16_t*)fbBase;
             uint8_t*  dst = s_convBuffer;
             for (s32 y = 0; y < fbHeight; y++) {
@@ -457,6 +473,15 @@ extern "C" {
                              GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
                 s_allocW = fbWidth;
                 s_allocH = fbHeight;
+            }
+            static int s_conv_sample = 0;
+            s_conv_sample++;
+            if (s_conv_sample <= 5 || s_conv_sample % 120 == 0) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-FB",
+                    "conv frame %d: rgba[0..3] = %02X %02X %02X %02X  %02X %02X %02X %02X",
+                    s_conv_sample,
+                    s_convBuffer[0],s_convBuffer[1],s_convBuffer[2],s_convBuffer[3],
+                    s_convBuffer[4],s_convBuffer[5],s_convBuffer[6],s_convBuffer[7]);
             }
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, fbWidth, fbHeight,
                             GL_RGBA, GL_UNSIGNED_BYTE, s_convBuffer);
