@@ -307,9 +307,9 @@ Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass clazz, jint t
     bool ready = g_bridgeResourcesReady;
     pthread_mutex_unlock(&g_bridgeGateMutex);
 
-    if (!ready) {
-        return;
-    }
+    // TEMP: force ready so we can see framebuffer output
+    // if (!ready) { return; }
+    (void)ready;
 
     // FIXED: GLSurfaceView manages the EGL context. The active GL context is
     // already bound when onDrawFrame calls updateTexture. We just set the
