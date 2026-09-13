@@ -86,7 +86,20 @@ public class MainActivity extends AppCompatActivity {
 
         if (hasExtractionCompleted()) {
             Log.i(TAG, "Extraction sentinel and base ROM verified — skipping ROM selection");
-            bootGameEngine();
+            // Wait for the splash screen to fully exit before creating the GL
+            // surface. On Android 12+ / Motorola libgui, the splash surface
+            // teardown races with GLSurfaceView creation and can leave a
+            // stale TransactionCompletedListener in the framework, causing
+            // a UAF on the app's binder thread.
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                getSplashScreen().setOnExitAnimationListener(splash -> {
+                    Log.i(TAG, "Splash exited; starting GL engine");
+                    splash.remove();
+                    bootGameEngine();
+                });
+            } else {
+                bootGameEngine();
+            }
         } else {
             setContentView(R.layout.activity_main);
             neutralizeXmlGLSurfaceView((ViewGroup) findViewById(android.R.id.content));
