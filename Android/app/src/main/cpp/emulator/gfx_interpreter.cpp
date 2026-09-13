@@ -1439,15 +1439,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         uint32_t lim = sz < 512 ? sz : 512;
         for (uint32_t off = 0; off < lim; off += 32) {
             uint32_t o2 = off + 16;
-            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                "DLRAW[%03u]: "
-                "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X  "
-                "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
-                off,
-                d[off+0],d[off+1],d[off+2],d[off+3],d[off+4],d[off+5],d[off+6],d[off+7],
-                d[off+8],d[off+9],d[off+10],d[off+11],d[off+12],d[off+13],d[off+14],d[off+15],
-                d[o2+0],d[o2+1],d[o2+2],d[o2+3],d[o2+4],d[o2+5],d[o2+6],d[o2+7],
-                d[o2+8],d[o2+9],d[o2+10],d[o2+11],d[o2+12],d[o2+13],d[o2+14],d[o2+15]);
+            /* DLRAW disabled */;
         }
     }
     // ---- end DL_DUMP_ADDED ----
@@ -1525,7 +1517,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             if ((total & 0x0F) == 0) {
                 clock_gettime(CLOCK_MONOTONIC, &now_ts);
                 long long elapsed_ms = (now_ts.tv_sec - start_ts.tv_sec) * 1000 + (now_ts.tv_nsec - start_ts.tv_nsec) / 1000000;
-                if (elapsed_ms > 50) {
+                if (elapsed_ms > 2000) {
                     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                         "RSP time budget exceeded at cmd %zu (%lld ms), breaking", total-1, elapsed_ms);
                     break;
@@ -1568,9 +1560,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
         if (total <= 100) {
             if (log_after_jump) jump_log_count++;
-            __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-                "CMD_QUIET cmd[%zu] op=0x%02X w0=0x%08X w1=0x%08X depth=%d stride=%zu",
-                total-1, opcode, c.w0, c.w1, depth, current_stride);
+            /* CMDX disabled */;
         }
 
         cur += current_stride;
