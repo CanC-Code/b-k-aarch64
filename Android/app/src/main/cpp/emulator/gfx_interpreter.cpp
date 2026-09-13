@@ -1685,7 +1685,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                             if (gN64_RDRAM) {
                                 const uint8_t pat[4] = {0x3F, 0x15, 0xF9, 0xFF};
                                 int found = 0;
-                                for (uint32_t off = 0; off + 4 <= 0x800000u && found < 8; off += 4) {
+                                for (uint32_t off = 0; off + 4 <= 0x1000000u && found < 8; off += 4) {
                                     if (gN64_RDRAM[off]     == pat[0] &&
                                         gN64_RDRAM[off + 1] == pat[1] &&
                                         gN64_RDRAM[off + 2] == pat[2] &&

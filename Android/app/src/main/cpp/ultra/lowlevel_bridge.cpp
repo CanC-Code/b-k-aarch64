@@ -239,12 +239,31 @@ extern "C" int bka_is_mapped(void* ptr) {
 extern "C" void bka_log_gdma_ra(void* ra, unsigned long long v) {
     static uintptr_t seen[256];
     static int n = 0;
+    static int total = 0;
+    total++;
     uintptr_t r = (uintptr_t)ra;
-    for (int i = 0; i < n; i++) if (seen[i] == r) return;
-    if (n >= 256) return;
-    seen[n++] = r;
-    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-        "GDMARA #%d ra=%p first_v=0x%llx", n, ra, v);
+
+    // Log any call with the suspicious low32.
+    if ((unsigned int)v == 0xFFF9153F || (unsigned int)v == 0xFFFF153F) {
+        static int bad = 0;
+        if (bad++ < 20) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "GDMARA-BAD ra=%p v=0x%llx total=%d", ra, v, total);
+        }
+        return;
+    }
+
+    // Log first-seen per unique caller + every 500th call (for totals).
+    int found = 0;
+    for (int i = 0; i < n; i++) if (seen[i] == r) { found = 1; break; }
+    if (!found && n < 256) {
+        seen[n++] = r;
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "GDMARA #%d ra=%p first_v=0x%llx total=%d", n, ra, v, total);
+    } else if ((total % 500) == 0) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "GDMARA-CNT total=%d ra=%p v=0x%llx", total, ra, v);
+    }
 }
 
 extern "C" int bka_is_readable(void* ptr) {
