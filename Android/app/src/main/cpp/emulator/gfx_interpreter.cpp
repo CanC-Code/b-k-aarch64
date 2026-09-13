@@ -474,6 +474,7 @@ static void RDP_FetchTexel(int tile, uint32_t s, uint32_t t, uint8_t* outRGBA) {
 static int s_triangleCount = 0;
 static int s_invalidTriCount = 0;
 
+static int s_synth_test_done = 0;
 static void RasterizeTriangle(
     float x0, float y0, float x1, float y1, float x2, float y2,
     uint8_t r0, uint8_t g0, uint8_t b0, uint8_t a0,
@@ -493,6 +494,23 @@ static void RasterizeTriangle(
         !std::isfinite(x2) || !std::isfinite(y2)) {
         return;
     }
+    // SYNTH TEST: once per process, draw a big magenta triangle into the middle
+    // of the active framebuffer. If this shows up on screen, the pipeline is
+    // correct end-to-end and only the vertex data is wrong.
+    if (!s_synth_test_done) {
+        s_synth_test_done = 1;
+        int activeFb = getActiveFramebuffer();
+        uint16_t* fbs = gFramebuffers[activeFb];
+        for (int y = 40; y < 180; y++) {
+            for (int x = 40; x < 250; x++) {
+                if (x - 40 < (y - 40) * 2) {
+                    fbs[y * FB_WIDTH + x] = 0xF81F;  // RGB565 magenta
+                }
+            }
+        }
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-SYNTH",
+            "synthetic magenta triangle written to FB[%d]", activeFb);
+    }
     s_triangleCount++;
     if (s_triangleCount % 5000 == 1 || s_triangleCount < 5) {
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
@@ -510,6 +528,14 @@ static void RasterizeTriangle(
 
     int activeFb = getActiveFramebuffer();
     uint16_t* fb = gFramebuffers[activeFb];
+    static int s_pix_total = 0;
+    static int s_call = 0;
+    s_call++;
+    if (s_call <= 3 || s_call % 500 == 0) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST",
+            "call #%d activeFb=%d fb=%p x0y0=%.1f,%.1f x1y1=%.1f,%.1f x2y2=%.1f,%.1f",
+            s_call, activeFb, (void*)fb, x0, y0, x1, y1, x2, y2);
+    }
 
     float dy10 = y1 - y0, dy21 = y2 - y1, dy20 = y2 - y0;
     float dx10 = x1 - x0, dx21 = x2 - x1, dx20 = x2 - x0;
