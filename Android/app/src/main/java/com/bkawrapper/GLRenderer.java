@@ -34,6 +34,7 @@ public class GLRenderer implements GLSurfaceView.Renderer {
     private int mTextureId = 0;
     private int mProgram = 0;
     private int gSurfaceW = 720;
+    private int mFrameCount = 0;
     private int gSurfaceH = 1449;
     private FloatBuffer mQuadVertices;
     private FloatBuffer mQuadTexCoords;
@@ -179,10 +180,9 @@ public class GLRenderer implements GLSurfaceView.Renderer {
 
     @Override
     public void onDrawFrame(GL10 gl) {
-        static int s_frame = 0;
-        s_frame++;
-        if (s_frame <= 3 || s_frame % 120 == 0) {
-            Log.i(TAG, "onDrawFrame #" + s_frame + " surfaceReady=" + isSurfaceReady);
+        mFrameCount++;
+        if (mFrameCount <= 3 || mFrameCount % 120 == 0) {
+            Log.i(TAG, "onDrawFrame #" + mFrameCount + " surfaceReady=" + isSurfaceReady);
         }
         if (!isSurfaceReady) return;
         NativeBridge.updateTexture(mTextureId);
