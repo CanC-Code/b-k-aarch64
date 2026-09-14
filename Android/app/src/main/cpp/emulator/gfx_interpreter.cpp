@@ -1690,7 +1690,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         cur += current_stride;
 
         if (c.w0 == 0 && c.w1 == 0) {
-            zero_run++;
+            zero_run = (c.w0 == 0 && c.w1 == 0) ? (zero_run + 1) : 0;
             if (zero_run >= 2) {
                 if (depth > 0) {
                     // Skip zero padding to find actual commands in nested DL
