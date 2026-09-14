@@ -253,6 +253,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // Segment address (F3DEX_GBI)
     uint32_t seg = (addr >> 24) & 0x0F;
     uint32_t off = addr & 0x00FFFFFF;
+    { static int s_sc = 0; if (s_sc++ < 6) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "SEGCHK addr=0x%08X seg=%u segB1=0x%lX dlbase=0x%lX cur=%p", addr, seg, (unsigned long)s_rdp.segmentBase[1], (unsigned long)s_dl_base, (void*)s_current_cmd); }
     if (seg == 1 && s_rdp.segmentBase[1] == 0x80000000u && s_dl_base) { static int s_scanned = 0; if (!s_scanned) { s_scanned = 1; int found = 0; if (gN64_RDRAM) { for (uint32_t i = 0; i < 0x1000000 - 16 && found < 6; i += 16) { uint8_t* b = gN64_RDRAM + i; if (b[12]==0x80 && b[13]==0x7F && b[14]==0x00 && b[15]==0x00) { __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "VTXSCAN RDRAM+0x%X bytes=%02X%02X %02X%02X %02X%02X %02X%02X", i, b[0],b[1],b[2],b[3],b[4],b[5],b[6],b[7]); found++; } } } for (uintptr_t q = s_dl_base - 0x200000; q < s_dl_base + 0x200000 && found < 20; q += 16) { if (!bka_is_readable((void*)q)) continue; uint8_t* b = (uint8_t*)q; if (b[12]==0x80 && b[13]==0x7F && b[14]==0x00 && b[15]==0x00) { __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "VTXSCAN heap 0x%lX delta=-0x%lX bytes=%02X%02X %02X%02X %02X%02X %02X%02X", (unsigned long)q, (unsigned long)(s_dl_base - q), b[0],b[1],b[2],b[3],b[4],b[5],b[6],b[7]); found++; } } __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "VTXSCAN done, %d hits, dlbase=0x%lX", found, (unsigned long)s_dl_base); } uintptr_t vtx = s_dl_base - 0x1A0; if (bka_is_readable((void*)vtx)) return (uint8_t*)(vtx + off); vtx = s_dl_base - 0x190; if (bka_is_readable((void*)vtx)) return (uint8_t*)(vtx + off); }
     if (seg != 0 && s_rdp.segmentBase[seg] != 0) {
         uint32_t base = s_rdp.segmentBase[seg];
@@ -1930,11 +1931,11 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     visited_dl_addrs[visited_dl_count++] = (uintptr_t)dl_ptr;
                 }
                 static int dl_jump_log_count = 0;
+                s_dl_base = (uintptr_t)dl_ptr;
                 if (++dl_jump_log_count <= 5) {
                     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
                         "G_DL JUMP to addr=0x%08X resolved=%p cur_end=%p depth=%d",
                         raw_addr, dl_ptr, cur_end, depth);
-                s_dl_base = (uintptr_t)dl_ptr;
                 }
                 // Diagnostic: dump first 16 bytes at resolved pointer
                 if (dl_jump_log_count <= 3) {
