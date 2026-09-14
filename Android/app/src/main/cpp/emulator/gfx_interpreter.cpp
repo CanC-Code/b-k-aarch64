@@ -1689,6 +1689,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
         cur += current_stride;
 
+        if (c.w0 != 0 || c.w1 != 0) zero_run = 0;
         if (c.w0 == 0 && c.w1 == 0) {
             zero_run = (c.w0 == 0 && c.w1 == 0) ? (zero_run + 1) : 0;
             if (zero_run >= 2) {
