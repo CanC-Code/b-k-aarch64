@@ -34,6 +34,7 @@ static RDPState s_rdp;
 static int s_mtx_log_frame = 0;
 static int s_mtx_dump_frame = 0;
 static const uint8_t* s_current_cmd = nullptr;
+static uintptr_t s_dl_base = 0;
 
 /* F3DEX opcodes that we recognize.  Used to distinguish LE-encoded runtime
  * commands from BE-encoded ROM-copied geometry commands. */
@@ -1933,6 +1934,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
                         "G_DL JUMP to addr=0x%08X resolved=%p cur_end=%p depth=%d",
                         raw_addr, dl_ptr, cur_end, depth);
+                s_dl_base = (uintptr_t)dl_ptr;
                 }
                 // Diagnostic: dump first 16 bytes at resolved pointer
                 if (dl_jump_log_count <= 3) {
