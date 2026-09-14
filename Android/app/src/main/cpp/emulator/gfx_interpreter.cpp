@@ -27,6 +27,7 @@ void* bka_lookup_addr_mapping(uint32_t key);
     int bka_is_mapped(void* ptr);
     int bka_is_readable(void* ptr);
     uintptr_t bka_get_mapped_end(void* ptr);
+    void* bka_find_registered_in_range(uintptr_t lo, uintptr_t hi);
 }
 
 static RDPState s_rdp;
@@ -251,6 +252,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // Segment address (F3DEX_GBI)
     uint32_t seg = (addr >> 24) & 0x0F;
     uint32_t off = addr & 0x00FFFFFF;
+    if (seg == 1 && s_rdp.segmentBase[1] == 0x80000000u && s_current_cmd) { uintptr_t dl = (uintptr_t)s_current_cmd; void* sb = bka_find_registered_in_range(dl - 0x8000, dl); if (sb) { static int s_s1fb = 0; if (s_s1fb++ < 20) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "SEG1FALLBACK dl=0x%lX base=0x%lX off=0x%X addr=0x%08X", (unsigned long)dl, (unsigned long)(uintptr_t)sb, off, addr); return (uint8_t*)sb + off; } }
     if (seg != 0 && s_rdp.segmentBase[seg] != 0) {
         uint32_t base = s_rdp.segmentBase[seg];
         void *base_pm = bka_lookup_addr_mapping(base);
