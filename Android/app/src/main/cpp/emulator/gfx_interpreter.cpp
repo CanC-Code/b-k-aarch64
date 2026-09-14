@@ -252,7 +252,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // Segment address (F3DEX_GBI)
     uint32_t seg = (addr >> 24) & 0x0F;
     uint32_t off = addr & 0x00FFFFFF;
-    if (seg == 1 && s_rdp.segmentBase[1] == 0x80000000u && s_current_cmd) { uintptr_t dl = (uintptr_t)s_current_cmd; void* sb = bka_find_registered_in_range(dl - 0x8000, dl); if (sb) { static int s_s1fb = 0; if (s_s1fb++ < 20) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "SEG1FALLBACK dl=0x%lX base=0x%lX off=0x%X addr=0x%08X", (unsigned long)dl, (unsigned long)(uintptr_t)sb, off, addr); return (uint8_t*)sb + off; } }
+    if (seg == 1 && s_rdp.segmentBase[1] == 0x80000000u && s_current_cmd) { uintptr_t dl = (uintptr_t)s_current_cmd; uintptr_t vtxbuf = 0; for (uintptr_t p = dl & ~0xFULL; p > dl - 0x10000; p -= 0x10) { if (!bka_is_readable((void*)p)) continue; int16_t x0 = *(int16_t*)(p); int16_t y0 = *(int16_t*)(p+2); int16_t z0 = *(int16_t*)(p+4); if (z0 != 0) continue; if (x0 < -1024 || x0 > 1024) continue; if (y0 < -1024 || y0 > 1024) continue; if (p + 40 >= dl) continue; int16_t x1 = *(int16_t*)(p+16); int16_t y1 = *(int16_t*)(p+18); int16_t z1 = *(int16_t*)(p+20); if (z1 != 0) continue; if (x1 < -1024 || x1 > 1024) continue; if (y1 < -1024 || y1 > 1024) continue; vtxbuf = p; break; } if (vtxbuf) { static int s_s1fb = 0; if (s_s1fb++ < 20) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "SEG1SCAN dl=0x%lX vtxbuf=0x%lX off=0x%X", (unsigned long)dl, (unsigned long)vtxbuf, off); return (uint8_t*)(vtxbuf + off); } }
     if (seg != 0 && s_rdp.segmentBase[seg] != 0) {
         uint32_t base = s_rdp.segmentBase[seg];
         void *base_pm = bka_lookup_addr_mapping(base);
