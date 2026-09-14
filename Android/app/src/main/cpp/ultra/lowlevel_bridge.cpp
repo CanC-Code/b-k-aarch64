@@ -492,3 +492,13 @@ extern "C" {
 extern "C" int getActiveFramebuffer(void) {
     return (g_active_fb_offset == 0x400000) ? 0 : 1;
 }
+
+// Added for segment-1 fallback in RDP_TranslateAddr. Searches the fixed
+// address map for any registered pointer inside [lo, hi).
+extern "C" void* bka_find_registered_in_range(uintptr_t lo, uintptr_t hi) {
+    for (size_t i = s_addrMapCount; i-- > 0; ) {
+        uintptr_t p = (uintptr_t)s_addrMapFixed[i].ptr;
+        if (p >= lo && p < hi) return (void*)p;
+    }
+    return nullptr;
+}
