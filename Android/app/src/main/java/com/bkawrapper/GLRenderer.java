@@ -21,7 +21,6 @@ import javax.microedition.khronos.opengles.GL10;
  */
 public class GLRenderer implements GLSurfaceView.Renderer {
     private long mLastFrameMs = 0L;
-    private long mLastFrameMs = 0L;
 
     private static final String TAG = "BKA-GLRenderer";
 
@@ -182,12 +181,6 @@ public class GLRenderer implements GLSurfaceView.Renderer {
 
     @Override
     public void onDrawFrame(GL10 gl) {
-        long __nowMs = android.os.SystemClock.uptimeMillis();
-        long __since = __nowMs - mLastFrameMs;
-        if (__since < 33L) {
-            try { Thread.sleep(33L - __since); } catch (InterruptedException ignored) {}
-        }
-        mLastFrameMs = android.os.SystemClock.uptimeMillis();
         // Throttle to ~30 fps.  The Motorola Android 14 libgui.so
         // TransactionCompletedListener bug is triggered by queueBuffer
         // churn; halving the swap rate halves the exposure.
