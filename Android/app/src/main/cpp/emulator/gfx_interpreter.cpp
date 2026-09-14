@@ -11,6 +11,12 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
 
+/* High-volume per-command traces.  These were essential for bootstrapping the
+ * decoder but each RSP task fires ~1000 of them, throttling the RSP thread to
+ * ~1 Hz on device.  Flip to true to re-enable for a focused debugging session. */
+static const bool BKA_GFX_VERBOSE = false;
+#define LOGV(...) do { if (BKA_GFX_VERBOSE) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__); } while (0)
+
 extern "C" {
     extern uint16_t gFramebuffers[2][FB_WIDTH * FB_HEIGHT];
     int getActiveFramebuffer(void);
@@ -1222,7 +1228,7 @@ static void Cmd_MoveWord(GfxCommand cmd) {
 
     static int mw_log = 0;
     if (mw_log++ < 40) {
-        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+        LOGV(
             "Cmd_MoveWord index=0x%02X offset=0x%04X data=0x%08X", index, offset, data);
     }
 
@@ -1306,11 +1312,11 @@ static void Cmd_Mtx(GfxCommand cmd) {
         uint32_t seg = (cmd.w1 >> 24) & 0x0F;
         uint32_t off = cmd.w1 & 0x00FFFFFF;
         const uint8_t* mb = (const uint8_t*)mtx_src;
-        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+        LOGV(
             "MTXDIAG w1=0x%08X seg=%u off=0x%06X segBase[%u]=0x%lX src=%p",
             cmd.w1, seg, off, seg,
             (unsigned long)s_rdp.segmentBase[seg], mtx_src);
-        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+        LOGV(
             "MTXBYTES @%p: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X  "
             "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
             mtx_src,
@@ -1322,7 +1328,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
 
     if (s_mtx_dump_frame++ < 2) {
         const uint8_t* mb = (const uint8_t*)mtx_src;
-        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+        LOGV(
             "MTXSRC @%p: "
             "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X  "
             "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
@@ -1343,7 +1349,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
                              ((uint32_t)p8[10] << 8) | (uint32_t)p8[11];
             uint32_t w1_be = ((uint32_t)p8[12] << 24) | ((uint32_t)p8[13] << 16) |
                              ((uint32_t)p8[14] << 8) | (uint32_t)p8[15];
-            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            LOGV(
                 "MTXDUAL LE: w0=0x%08X w1=0x%08X | BE: w0=0x%08X w1=0x%08X",
                 w0_le, w1_le, w0_be, w1_be);
         }
@@ -1491,19 +1497,19 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     static int s_probe = 0;
     if (s_probe++ < 1 && gN64_RDRAM) {
         const uint8_t* rdram = gN64_RDRAM;
-        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+        LOGV(
             "RDRAMPROBE @0x79153F: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
             rdram[0x79153F],rdram[0x791540],rdram[0x791541],rdram[0x791542],
             rdram[0x791543],rdram[0x791544],rdram[0x791545],rdram[0x791546],
             rdram[0x791547],rdram[0x791548],rdram[0x791549],rdram[0x79154A],
             rdram[0x79154B],rdram[0x79154C],rdram[0x79154D],rdram[0x79154E]);
-        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+        LOGV(
             "RDRAMPROBE @0xF9153F: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
             rdram[0xF9153F],rdram[0xF91540],rdram[0xF91541],rdram[0xF91542],
             rdram[0xF91543],rdram[0xF91544],rdram[0xF91545],rdram[0xF91546],
             rdram[0xF91547],rdram[0xF91548],rdram[0xF91549],rdram[0xF9154A],
             rdram[0xF9154B],rdram[0xF9154C],rdram[0xF9154D],rdram[0xF9154E]);
-        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+        LOGV(
             "RDRAMPROBE @0x3E45C0: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
             rdram[0x3E45C0],rdram[0x3E45C1],rdram[0x3E45C2],rdram[0x3E45C3],
             rdram[0x3E45C4],rdram[0x3E45C5],rdram[0x3E45C6],rdram[0x3E45C7],
@@ -1549,7 +1555,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     {
         const unsigned char *dp = (const unsigned char*)tp->t.data_ptr;
         for (int off = 0; off < 32; off += 16) {
-            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            LOGV(
                 "RSP task data[%02d]: %02x %02x %02x %02x %02x %02x %02x %02x  %02x %02x %02x %02x %02x %02x %02x %02x",
                 off,
                 dp[off+0], dp[off+1], dp[off+2], dp[off+3],
@@ -1603,7 +1609,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         }
 
         if (total >= 36 && total <= 60) {
-            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            LOGV(
                 "LOOP iter=%zu cur=%p cur_end=%p depth=%d stride=%zu",
                 total, cur, cur_end, depth, current_stride);
         }
@@ -1844,7 +1850,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xB1:
             case 0xC4:
             case 0x34:
-                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                LOGV(
                     "DISPATCH TRI opcode=0x%02X", opcode);
                 {
                     static int tri_log_count = 0;
@@ -1975,7 +1981,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             }
 
             case 0xB8: // F3DEX G_ENDDL - end of display list
-                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                LOGV(
                     "G_ENDDL before pop: depth=%d cur=%p cur_end=%p",
                     depth, cur, cur_end);
                 if (depth > 0) {
@@ -1986,7 +1992,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     cur_dl_enc = stack_enc[depth];
                     dl_cmds = 0;
                     zero_run = 0;
-                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    LOGV(
                         "G_ENDDL after pop: depth=%d cur=%p cur_end=%p",
                         depth, cur, cur_end);
                 }
