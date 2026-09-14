@@ -1227,7 +1227,7 @@ static void Cmd_MoveWord(GfxCommand cmd) {
     uint32_t data   =  cmd.w1;
 
     static int mw_log = 0;
-    if (mw_log++ < 40) {
+    if (1) {
         LOGV(
             "Cmd_MoveWord index=0x%02X offset=0x%04X data=0x%08X", index, offset, data);
     }
@@ -1797,7 +1797,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                             (unsigned)((cur[4]<<24) | (cur[5]<<16) | (cur[6]<<8) | cur[7]),
                             c.w0, c.w1);
                     }
-                    if (c.w1 == 0xFFF9153F || c.w1 == 0xFFFF153F) {
+                    if (c.w1 >= 0x01000000) {
                         static int s_raw = 0;
                         if (s_raw++ < 6) {
                             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
