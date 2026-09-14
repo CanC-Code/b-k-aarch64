@@ -7,6 +7,14 @@
 #include "animation.h"
 #include <android/log.h>
 
+/* BKA-MODEL hot-path traces.  Very noisy: fires per-command in the model
+ * geometry walker.  Flip to 1 to re-enable for focused debugging. */
+#ifndef BKA_MODEL_VERBOSE
+#define BKA_MODEL_VERBOSE 0
+#endif
+#define MODEL_LOGV(...) do { if (BKA_MODEL_VERBOSE) __android_log_print(ANDROID_LOG_INFO, "BKA-MODEL", __VA_ARGS__); } while (0)
+
+
 static void bka_mr_log(const char *msg);
 #define __android_log_print(...) ((void)0)  /* re-enabled for debugging */
 
@@ -1052,18 +1060,17 @@ void modelRender_executeGeoCmds(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data)
 
         {
             char buf[128];
-            snprintf(buf, sizeof(buf), "BKA-MODEL: dispatch cmd_index=%u data=%p", cmd_index, (void*)data);
-            __android_log_write(ANDROID_LOG_INFO, "BKA-MODEL", buf);
+            if (BKA_MODEL_VERBOSE) { snprintf(buf, sizeof(buf), "BKA-MODEL: dispatch cmd_index=%u data=%p", cmd_index, (void*)data); __android_log_write(ANDROID_LOG_INFO, "BKA-MODEL", buf); }
         }
         sGeoCmdList[cmd_index](gfx, mtx, data);
 
         if (next_offset == 0) {
-            __android_log_write(ANDROID_LOG_INFO, "BKA-MODEL", "BKA-MODEL: walker END (next_offset==0)");
+            MODEL_LOGV("BKA-MODEL: walker END (next_offset==0)");
             return;
         }
         data = (struct bk_geo_cmd_s *) ((u8 *) data + next_offset);
     }
-    __android_log_write(ANDROID_LOG_INFO, "BKA-MODEL", "BKA-MODEL: walker END (loop exit)");;
+    MODEL_LOGV("BKA-MODEL: walker END (loop exit)");
 }
 
 
