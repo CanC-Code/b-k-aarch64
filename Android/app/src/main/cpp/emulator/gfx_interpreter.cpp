@@ -1742,7 +1742,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xF1:
             case 0xF0:
             case 0x02:
-            case 0xDB:
             case 0xDA:            case 0xBE:
             case 0xBB:
             case 0xBA:
@@ -1866,6 +1865,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 else if (opcode == 0x34) Cmd_Tri1_F3DEX2(c);
                 break;
             case 0x03: Cmd_MoveMem(c); break;
+            case 0xDB: Cmd_MoveWord(c); break;
             case 0xBC: Cmd_MoveWord(c); break;
 
             case 0x06: {
