@@ -52,7 +52,7 @@ def find_macro(lines, name):
                 break
     return start, end
 
-GUARD = ('bka_log_gdma_ra((void*)__builtin_return_address(0), __bka_a); if ((__bka_a >> 24) == 1) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "SEG1EMIT ra=%p a=0x%llx l=%u p=%u", __builtin_return_address(0), __bka_a, (unsigned)(l), (unsigned)(p)); '
+GUARD = ('bka_log_gdma_ra((void*)__builtin_return_address(0), __bka_a); if ((__bka_a >> 24) == 1) bka_log_seg1_emit((void*)__builtin_return_address(0), __bka_a, (unsigned)(l), (unsigned)(p)); '
          'if (__bka_a != 0) { '
          'bka_add_addr_mapping_c((unsigned int)__bka_a, (void *)__bka_a); '
          'if ((unsigned int)__bka_a == 0xFFF9153F || (unsigned int)__bka_a == 0xFFFF153F '
