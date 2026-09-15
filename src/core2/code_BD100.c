@@ -211,6 +211,12 @@ void func_803449FC(BKSpriteDisplayData *arg0){
 }
 
 BKSpriteDisplayData * func_80344A1C(BKSprite *arg0){
+    {
+        static int s_44A1C = 0;
+        if (s_44A1C++ < 20)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "CACHE44A1C ENTER #%d sprite=%p", s_44A1C, (void*)arg0);
+    }
     s32 header_size; //s7
     BKSpriteDisplayData *s6;
     Gfx *gfx_end; //sp394
