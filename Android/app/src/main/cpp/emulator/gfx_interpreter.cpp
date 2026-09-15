@@ -14,7 +14,7 @@
 /* High-volume per-command traces.  These were essential for bootstrapping the
  * decoder but each RSP task fires ~1000 of them, throttling the RSP thread to
  * ~1 Hz on device.  Flip to true to re-enable for a focused debugging session. */
-static const bool BKA_GFX_VERBOSE = true;
+static const bool BKA_GFX_VERBOSE = false;
 #define LOGV(...) do { if (BKA_GFX_VERBOSE) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__); } while (0)
 
 extern "C" {
@@ -34,6 +34,26 @@ static RDPState s_rdp;
 static int s_mtx_log_frame = 0;
 static int s_mtx_dump_frame = 0;
 static const uint8_t* s_current_cmd = nullptr;
+
+#include <signal.h>
+#include <sys/mman.h>
+#include <unistd.h>
+static void bka_sigsegv_handler(int sig, siginfo_t* si, void* uc) {
+    uintptr_t page = (uintptr_t)si->si_addr & ~0xFFFULL;
+    static int s_seen = 0;
+    if (s_seen++ < 20)
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "WRITEHIT addr=%p page=0x%lX ra=%p",
+            si->si_addr, (unsigned long)page, __builtin_return_address(0));
+    mprotect((void*)page, 0x1000, PROT_READ | PROT_WRITE);
+}
+static void bka_install_watch(void) {
+    struct sigaction sa = {0};
+    sa.sa_sigaction = bka_sigsegv_handler;
+    sa.sa_flags = SA_SIGINFO;
+    sigaction(SIGSEGV, &sa, nullptr);
+}
+
 static uintptr_t s_dl_base = 0;
 
 /* F3DEX opcodes that we recognize.  Used to distinguish LE-encoded runtime
@@ -1934,6 +1954,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 }
                 static int dl_jump_log_count = 0;
                 s_dl_base = (uintptr_t)dl_ptr;
+                { static int s_w = 0; if (s_w++ < 3) { bka_install_watch(); mprotect((void*)((uintptr_t)dl_ptr & ~0xFFFULL), 0x1000, PROT_READ); } }
                 if (++dl_jump_log_count <= 5) {
                     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
                         "G_DL JUMP to addr=0x%08X resolved=%p cur_end=%p depth=%d",
