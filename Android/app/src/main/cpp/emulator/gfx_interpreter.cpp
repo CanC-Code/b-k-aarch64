@@ -36,15 +36,19 @@ static int s_mtx_dump_frame = 0;
 static const uint8_t* s_current_cmd = nullptr;
 
 #include <signal.h>
+#include <ucontext.h>
 #include <sys/mman.h>
 #include <unistd.h>
 static void bka_sigsegv_handler(int sig, siginfo_t* si, void* uc) {
+    ucontext_t* ctx = (ucontext_t*)uc;
+    uintptr_t pc = (uintptr_t)ctx->uc_mcontext.pc;
+    uintptr_t lr = (uintptr_t)ctx->uc_mcontext.regs[30];
     uintptr_t page = (uintptr_t)si->si_addr & ~0xFFFULL;
     static int s_seen = 0;
     if (s_seen++ < 20)
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-            "WRITEHIT addr=%p page=0x%lX ra=%p",
-            si->si_addr, (unsigned long)page, __builtin_return_address(0));
+            "WRITEHIT addr=%p page=0x%lX pc=0x%lX lr=0x%lX",
+            si->si_addr, (unsigned long)page, (unsigned long)pc, (unsigned long)lr);
     mprotect((void*)page, 0x1000, PROT_READ | PROT_WRITE);
 }
 static void bka_install_watch(void) {
