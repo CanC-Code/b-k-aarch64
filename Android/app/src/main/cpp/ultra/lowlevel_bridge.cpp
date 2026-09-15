@@ -271,7 +271,7 @@ extern "C" void bka_log_gdma_ra(void* ra, unsigned long long v) {
 
 extern "C" void bka_log_gdma_full(void* ra, unsigned long long v, unsigned int c, unsigned int l, unsigned int p) {
     static int s_seen = 0;
-    if (s_seen++ > 60) return;
+    if (s_seen++ > 50000) return;
     Dl_info di = {0};
     dladdr(ra, &di);
     uintptr_t r = (uintptr_t)ra;
