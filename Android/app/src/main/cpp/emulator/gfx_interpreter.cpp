@@ -39,16 +39,36 @@ static const uint8_t* s_current_cmd = nullptr;
 #include <ucontext.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <dlfcn.h>
 static void bka_sigsegv_handler(int sig, siginfo_t* si, void* uc) {
     ucontext_t* ctx = (ucontext_t*)uc;
     uintptr_t pc = (uintptr_t)ctx->uc_mcontext.pc;
     uintptr_t lr = (uintptr_t)ctx->uc_mcontext.regs[30];
     uintptr_t page = (uintptr_t)si->si_addr & ~0xFFFULL;
+
+    Dl_info di_pc = {0}, di_lr = {0};
+    dladdr((void*)pc, &di_pc);
+    dladdr((void*)lr, &di_lr);
+
+    const char* pc_name = di_pc.dli_sname ? di_pc.dli_sname : "?";
+    const char* pc_lib  = di_pc.dli_fname ? di_pc.dli_fname : "?";
+    uintptr_t pc_off = di_pc.dli_saddr ? (pc - (uintptr_t)di_pc.dli_saddr) : pc;
+    uintptr_t pc_base = di_pc.dli_fbase ? ((uintptr_t)di_pc.dli_fbase) : 0;
+
+    const char* lr_name = di_lr.dli_sname ? di_lr.dli_sname : "?";
+    const char* lr_lib  = di_lr.dli_fname ? di_lr.dli_fname : "?";
+    uintptr_t lr_off = di_lr.dli_saddr ? (lr - (uintptr_t)di_lr.dli_saddr) : lr;
+    uintptr_t lr_base = di_lr.dli_fbase ? ((uintptr_t)di_lr.dli_fbase) : 0;
+
     static int s_seen = 0;
     if (s_seen++ < 20)
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-            "WRITEHIT addr=%p page=0x%lX pc=0x%lX lr=0x%lX",
-            si->si_addr, (unsigned long)page, (unsigned long)pc, (unsigned long)lr);
+            "WRITEHIT addr=%p page=0x%lX pc=0x%lX pc_off=0x%lX pc_base=0x%lX pc_sym=%s+0x%lX lib=%s lr=0x%lX lr_off=0x%lX lr_sym=%s+0x%lX",
+            si->si_addr, (unsigned long)page,
+            (unsigned long)pc, (unsigned long)pc_off, (unsigned long)pc_base,
+            pc_name, (unsigned long)pc_off, pc_lib,
+            (unsigned long)lr, (unsigned long)lr_off,
+            lr_name, (unsigned long)lr_off);
     mprotect((void*)page, 0x1000, PROT_READ | PROT_WRITE);
 }
 static void bka_install_watch(void) {
