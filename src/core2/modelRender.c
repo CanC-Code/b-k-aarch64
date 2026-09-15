@@ -1233,6 +1233,16 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
     }
 
     // Set up segments 1 and 2 to point to vertices and textures respectively
+    {
+        static int s_sm = 0;
+        if (s_sm++ < 10)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "SEGSETUP vtx=%p vtx_phys=0x%08X tex=%p tex_phys=0x%08X",
+                (void*)&modelRendervertexList->vertices,
+                (unsigned)osVirtualToPhysical(&modelRendervertexList->vertices),
+                (void*)&modelRenderTextureList->texture_infos[modelRenderTextureList->count],
+                (unsigned)osVirtualToPhysical(&modelRenderTextureList->texture_infos[modelRenderTextureList->count]));
+    }
     gSPSegment((*gfx)++, 0x01, osVirtualToPhysical(&modelRendervertexList->vertices));
     gSPSegment((*gfx)++, 0x02, osVirtualToPhysical(&modelRenderTextureList->texture_infos[modelRenderTextureList->count]));
 
