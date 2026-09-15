@@ -1,4 +1,3 @@
-/* BKA_CACHE_BUST 1789449710 */
 #include <ultra64.h>
 #include <math.h>
 #include "functions.h"
@@ -7,6 +6,8 @@
 #include "core2/core2.h"
 #include "animation.h"
 #include <android/log.h>
+#define BKA_MODEL_RENDERER_BUILD 99
+
 
 /* BKA-MODEL hot-path traces.  Very noisy: fires per-command in the model
  * geometry walker.  Flip to 1 to re-enable for focused debugging. */
@@ -1238,7 +1239,7 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
         static int s_sm = 0;
         if (s_sm++ < 10)
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                "SEGSETUP vtx=%p vtx_phys=0x%08X tex=%p tex_phys=0x%08X",
+                "SEGSETUP-b99 vtx=%p vtx_phys=0x%08X tex=%p tex_phys=0x%08X",
                 (void*)&modelRendervertexList->vertices,
                 (unsigned)osVirtualToPhysical(&modelRendervertexList->vertices),
                 (void*)&modelRenderTextureList->texture_infos[modelRenderTextureList->count],
