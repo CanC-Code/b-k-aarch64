@@ -265,6 +265,11 @@ extern "C" void bka_log_gdma_ra(void* ra, unsigned long long v) {
             "GDMARA-CNT total=%d ra=%p v=0x%llx", total, ra, v);
     }
 }
+extern "C" void bka_log_seg1_emit(void* ra, unsigned long long a, unsigned int l, unsigned int p) {
+    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+        "SEG1EMIT ra=%p a=0x%llx l=%u p=%u", ra, a, l, p);
+}
+
 
 extern "C" int bka_is_readable(void* ptr) {
     return is_address_readable(ptr) ? 1 : 0;
