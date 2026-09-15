@@ -1,3 +1,4 @@
+#include <dlfcn.h>
 #include "n64_os_types_cpp.h"
 // File: Android/app/src/main/cpp/ultra/lowlevel_bridge.cpp
 
@@ -269,8 +270,21 @@ extern "C" void bka_log_gdma_ra(void* ra, unsigned long long v) {
 }
 
 extern "C" void bka_log_gdma_full(void* ra, unsigned long long v, unsigned int c, unsigned int l, unsigned int p) {
+    static int s_seen = 0;
+    if (s_seen++ > 60) return;
+    Dl_info di = {0};
+    dladdr(ra, &di);
+    uintptr_t r = (uintptr_t)ra;
+    uintptr_t base = di.dli_fbase ? (uintptr_t)di.dli_fbase : 0;
+    uintptr_t off  = (base && r >= base) ? (r - base) : r;
     __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-        "GDMARA ra=%p first_v=0x%llx c=0x%02X l=%u p=0x%X", ra, v, c, l, p);
+        "GDMARA ra=%p sym=%s+0x%lX base=0x%lX off=0x%lX lib=%s c=0x%02X l=%u p=0x%X first_v=0x%llx",
+        ra,
+        di.dli_sname ? di.dli_sname : "?",
+        (unsigned long)(di.dli_saddr ? (r - (uintptr_t)di.dli_saddr) : 0),
+        (unsigned long)base, (unsigned long)off,
+        di.dli_fname ? di.dli_fname : "?",
+        c, l, p, v);
 }
 
 extern "C" void bka_log_seg1_emit(void* ra, unsigned long long a, unsigned int l, unsigned int p) {
