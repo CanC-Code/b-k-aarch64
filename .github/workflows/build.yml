@@ -43,6 +43,12 @@ jobs:
           rm -rf Android/app/.cxx
           rm -rf Android/app/build
 
+      - name: Hard clean caches
+        run: |
+          rm -rf ~/.gradle/caches ~/.gradle/wrapper ~/.android/build-cache
+          rm -rf Android/app/.cxx Android/app/build Android/.gradle
+          find . -name '*.o' -not -path './lib/*' -delete 2>/dev/null || true
+
       - name: Build APK
         id: build
         run: |
