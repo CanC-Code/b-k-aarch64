@@ -254,7 +254,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     uint32_t seg = (addr >> 24) & 0x0F;
     uint32_t off = addr & 0x00FFFFFF;
     { static int s_sc = 0; if (s_sc++ < 6) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "SEGCHK addr=0x%08X seg=%u segB1=0x%lX dlbase=0x%lX cur=%p", addr, seg, (unsigned long)s_rdp.segmentBase[1], (unsigned long)s_dl_base, (void*)s_current_cmd); }
-    if (seg == 1 && s_rdp.segmentBase[1] == 0x80000000u && s_dl_base) { static int s_once = 0; if (s_once++ < 1) { uintptr_t d = s_dl_base; for (int r = -16; r < 4; r++) { uintptr_t a = (d - 0x100) + r * 0x10; if (!bka_is_readable((void*)a)) continue; uint8_t* b = (uint8_t*)a; __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "VDUMP %+5d x%lX: %02X%02X %02X%02X %02X%02X %02X%02X  %02X%02X %02X%02X %02X%02X %02X%02X", r*16 - 256, (unsigned long)a, b[0],b[1],b[2],b[3],b[4],b[5],b[6],b[7],b[8],b[9],b[10],b[11],b[12],b[13],b[14],b[15]); } } uintptr_t vtx = s_dl_base - 0x1A0; if (bka_is_readable((void*)vtx)) return (uint8_t*)(vtx + off); }
+    if (seg == 1 && s_rdp.segmentBase[1] == 0x80000000u && s_dl_base) { static int s_once = 0; if (s_once++ < 1) { uintptr_t d = s_dl_base; for (int r = 0; r < 32; r++) { uintptr_t a = d - 0xC80 + r * 0x10; if (!bka_is_readable((void*)a)) continue; uint8_t* b = (uint8_t*)a; __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "VDUMP %+5d x%lX: %02X%02X %02X%02X %02X%02X %02X%02X  %02X%02X %02X%02X %02X%02X %02X%02X", r*16 - 0xC80, (unsigned long)a, b[0],b[1],b[2],b[3],b[4],b[5],b[6],b[7],b[8],b[9],b[10],b[11],b[12],b[13],b[14],b[15]); } } uintptr_t vtx = s_dl_base - 0xC80; if (bka_is_readable((void*)vtx)) return (uint8_t*)(vtx + off); }
     if (seg != 0 && s_rdp.segmentBase[seg] != 0) {
         uint32_t base = s_rdp.segmentBase[seg];
         void *base_pm = bka_lookup_addr_mapping(base);
@@ -1588,6 +1588,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     int depth = 0;
     size_t current_stride = 8;
     size_t stack_stride[64];
+    uintptr_t stack_dl_base[64];
     int stack_enc[64];          /* per-frame: 0=unknown, 1=LE, 2=BE */
     int cur_dl_enc = 0;         /* current DL encoding */
     uintptr_t visited_dl_addrs[256];
@@ -1717,6 +1718,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                         cur = stack[depth].ptr;
                         cur_end = stack[depth].end;
                         current_stride = stack_stride[depth];
+                        s_dl_base = stack_dl_base[depth];
                         cur_dl_enc = stack_enc[depth];
                         dl_cmds = 0;
                         zero_run = 0;
@@ -1956,6 +1958,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 stack[depth].ptr = cur;
                 stack[depth].end = cur_end;      // outer cur_end preserved
                 stack_stride[depth] = current_stride;
+                stack_dl_base[depth] = s_dl_base;
                 stack_enc[depth] = cur_dl_enc;
                 depth++;
                 cur_dl_enc = 0;   /* new DL: encoding unknown until detected */
@@ -1995,6 +1998,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     cur = stack[depth].ptr;
                     cur_end = stack[depth].end;
                     current_stride = stack_stride[depth];
+                        s_dl_base = stack_dl_base[depth];
                     cur_dl_enc = stack_enc[depth];
                     dl_cmds = 0;
                     zero_run = 0;
@@ -2010,6 +2014,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     cur = stack[depth].ptr;
                     cur_end = stack[depth].end;
                     current_stride = stack_stride[depth];
+                        s_dl_base = stack_dl_base[depth];
                     cur_dl_enc = stack_enc[depth];
                     dl_cmds = 0;
                     zero_run = 0;
