@@ -250,6 +250,12 @@ extern "C" void bka_log_gdma_ra(void* ra, unsigned long long v) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "GDMARA-BAD ra=%p v=0x%llx total=%d", ra, v, total);
         }
+
+extern "C" void bka_log_gdma_full(void* ra, unsigned long long v, unsigned int c, unsigned int l, unsigned int p) {
+    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+        "GDMARA ra=%p first_v=0x%llx c=0x%02X l=%u p=0x%X", ra, v, c, l, p);
+}
+
         return;
     }
 
