@@ -23,8 +23,8 @@ static void check_and_log(const char* what, const void* dst, const void* src, si
         // Match "opcode 0x04" at byte[3] or byte[7] and 0xFF in the other half's top byte.
         const unsigned char* q = p + i;
         int hit = 0;
-        if (q[3] == 0x04 && q[7] == 0xFF) hit = 1;  // w0 LE, w1 LE high-byte 0xFF
-        if (q[0] == 0x04 && q[4] == 0xFF) hit = 1;  // w0 BE, w1 BE high-byte 0xFF
+        if (q[3] == 0x04 && (q[7] == 0xFF || q[7] == 0x01)) hit = 1;  // w0 LE, w1 LE high-byte 0xFF
+        if (q[0] == 0x04 && (q[4] == 0xFF || q[4] == 0x01)) hit = 1;  // w0 BE, w1 BE high-byte 0xFF
         if (hit) {
             static int s_n = 0;
             if (s_n++ < 30) {
