@@ -1,3 +1,4 @@
+/* BKA_CACHE_BUST 1789449710 */
 #include <ultra64.h>
 #include <math.h>
 #include "functions.h"
