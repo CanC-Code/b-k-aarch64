@@ -14,7 +14,7 @@
 /* High-volume per-command traces.  These were essential for bootstrapping the
  * decoder but each RSP task fires ~1000 of them, throttling the RSP thread to
  * ~1 Hz on device.  Flip to true to re-enable for a focused debugging session. */
-static const bool BKA_GFX_VERBOSE = false;
+static const bool BKA_GFX_VERBOSE = true;
 #define LOGV(...) do { if (BKA_GFX_VERBOSE) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__); } while (0)
 
 extern "C" {
@@ -1270,8 +1270,17 @@ static void Cmd_MoveMem(GfxCommand cmd) {
 // =======================================================================
 static void Cmd_MoveWord(GfxCommand cmd) {
     // F3DEX G_MOVEWORD: w0 = (0xBC << 24) | (index << 16) | offset
-    uint32_t index  = (cmd.w0 >> 16) & 0xFF;
-    uint32_t offset =  cmd.w0        & 0xFFFF;
+    uint32_t op     = (cmd.w0 >> 24) & 0xFF;
+    uint32_t index, offset;
+    if (op == 0xDB) {
+        // F3DEX_GBI_2 (gDma1p): w0 = [op][index][offset_hi][offset_lo]
+        index  = (cmd.w0 >> 16) & 0xFF;
+        offset =  cmd.w0        & 0xFFFF;
+    } else {
+        // F3DEX_GBI (gImmp21): w0 = [op][offset_hi][offset_lo][index]
+        index  =  cmd.w0        & 0xFF;
+        offset = (cmd.w0 >> 8)  & 0xFFFF;
+    }
     uint32_t data   =  cmd.w1;
 
     static int mw_log = 0;
