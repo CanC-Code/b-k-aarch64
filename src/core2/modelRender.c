@@ -1650,4 +1650,3 @@ void modelRender_defrag(void) {
         modelRenderAnimMtxList = animMtxList_defrag(modelRenderAnimMtxList);
     }
 }
-THIS IS A DELIBERATE SYNTAX ERROR
