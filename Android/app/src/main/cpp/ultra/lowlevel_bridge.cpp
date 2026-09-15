@@ -251,10 +251,6 @@ extern "C" void bka_log_gdma_ra(void* ra, unsigned long long v) {
                 "GDMARA-BAD ra=%p v=0x%llx total=%d", ra, v, total);
         }
 
-extern "C" void bka_log_gdma_full(void* ra, unsigned long long v, unsigned int c, unsigned int l, unsigned int p) {
-    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-        "GDMARA ra=%p first_v=0x%llx c=0x%02X l=%u p=0x%X", ra, v, c, l, p);
-}
 
         return;
     }
@@ -271,6 +267,12 @@ extern "C" void bka_log_gdma_full(void* ra, unsigned long long v, unsigned int c
             "GDMARA-CNT total=%d ra=%p v=0x%llx", total, ra, v);
     }
 }
+
+extern "C" void bka_log_gdma_full(void* ra, unsigned long long v, unsigned int c, unsigned int l, unsigned int p) {
+    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+        "GDMARA ra=%p first_v=0x%llx c=0x%02X l=%u p=0x%X", ra, v, c, l, p);
+}
+
 extern "C" void bka_log_seg1_emit(void* ra, unsigned long long a, unsigned int l, unsigned int p) {
     __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
         "SEG1EMIT ra=%p a=0x%llx l=%u p=%u", ra, a, l, p);
