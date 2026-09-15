@@ -6,6 +6,11 @@
 #include "core2/core2.h"
 #include "animation.h"
 #include <android/log.h>
+
+/* Build identity probe — visible in symbol table if this file is compiled. */
+const char bka_build_probe_2026_09_15[] = "BKA_PROBE_2026_09_15_UNIQUE_STRING";
+int bka_build_probe_fn_2026_09_15(void) { return 0x20260915; }
+
 #define BKA_MODEL_RENDERER_BUILD 99
 
 
