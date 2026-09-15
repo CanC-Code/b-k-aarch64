@@ -5,6 +5,28 @@ import sys
 
 PATH = 'lib/ultralib/include/PR/gbi.h'
 
+
+# 2b. Instrument the F3DEX_GBI_2 gSPVertex (direct-write) to log seg-1 emits.
+spvertex_old = """# define        gSPVertex(pkt, v, n, v0)   \\
+{                                          \\
+        Gfx *_g = (Gfx *)(pkt);            \\
+        _g->words.w0 =                     \\
+          _SHIFTL(G_VTX,24,8)|_SHIFTL((n),12,8)|_SHIFTL((v0)+(n),1,7);      \\
+        _g->words.w1 = (unsigned int)(v);  \\
+}"""
+spvertex_new = """# define        gSPVertex(pkt, v, n, v0)   \\
+{                                          \\
+        Gfx *_g = (Gfx *)(pkt);            \\
+        if (((unsigned long long)(v) >> 24) == 1 && ((unsigned long long)(v) & 0xFFFFFF) != 0) \\
+            bka_log_seg1_emit((void*)__builtin_return_address(0), (unsigned long long)(v), (unsigned long long)(n), (unsigned long long)(v0));  \\
+        _g->words.w0 =                     \\
+          _SHIFTL(G_VTX,24,8)|_SHIFTL((n),12,8)|_SHIFTL((v0)+(n),1,7);      \\
+        _g->words.w1 = (unsigned int)(v);  \\
+}"""
+if 'bka_log_seg1_emit' not in text:
+    assert spvertex_old in text, "gSPVertex F3DEX_GBI_2 block not found in gbi.h"
+    text = text.replace(spvertex_old, spvertex_new, 1)
+
 with open(PATH) as f:
     lines = f.readlines()
 text = ''.join(lines)
