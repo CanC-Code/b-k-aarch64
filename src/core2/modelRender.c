@@ -23,7 +23,6 @@ int bka_build_probe_fn_2026_09_15(void) { return 0x20260915; }
 
 
 static void bka_mr_log(const char *msg);
-#define __android_log_print(...) ((void)0)  /* re-enabled for debugging */
 
 
 
