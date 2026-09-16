@@ -438,7 +438,7 @@ extern "C" {
             // Diagnostic: sample the framebuffer once every 120 calls.
             static int s_sample = 0;
             s_sample++;
-            if (s_sample <= 5 || s_sample % 120 == 0) {
+            if (s_sample <= 5 || s_sample % 1 == 0) {
                 uint16_t* fbs = (uint16_t*)fbBase;
                 int nonZero = 0, nonFFFF = 0;
                 for (int i = 0; i < fbWidth * fbHeight; i += 37) {
