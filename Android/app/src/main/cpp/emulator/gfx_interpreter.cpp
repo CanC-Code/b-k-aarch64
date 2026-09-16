@@ -1371,6 +1371,29 @@ static void Cmd_Mtx(GfxCommand cmd) {
         return;
     }
 
+    // DIAGNOSTIC: always dump full 64 bytes for PROJECTION matrices
+    if ((flag & 0x04) != 0) {
+        static int s_proj_dump = 0;
+        if (s_proj_dump++ < 3) {
+            const uint8_t* mb = (const uint8_t*)mtx_src;
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "PROJBYTES raw=0x%08X src=%p: "
+                "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X "
+                "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X "
+                "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X "
+                "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+                cmd.w1, mtx_src,
+                mb[0],mb[1],mb[2],mb[3],mb[4],mb[5],mb[6],mb[7],
+                mb[8],mb[9],mb[10],mb[11],mb[12],mb[13],mb[14],mb[15],
+                mb[16],mb[17],mb[18],mb[19],mb[20],mb[21],mb[22],mb[23],
+                mb[24],mb[25],mb[26],mb[27],mb[28],mb[29],mb[30],mb[31],
+                mb[32],mb[33],mb[34],mb[35],mb[36],mb[37],mb[38],mb[39],
+                mb[40],mb[41],mb[42],mb[43],mb[44],mb[45],mb[46],mb[47],
+                mb[48],mb[49],mb[50],mb[51],mb[52],mb[53],mb[54],mb[55],
+                mb[56],mb[57],mb[58],mb[59],mb[60],mb[61],mb[62],mb[63]);
+        }
+    }
+
     // DIAGNOSTIC: dump segment table and the raw bytes at src
     static int mtx_diag = 0;
     if (mtx_diag++ < 8) {
