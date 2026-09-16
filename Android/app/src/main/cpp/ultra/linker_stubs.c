@@ -110,13 +110,15 @@ u32  osVirtualToPhysical(void *vaddr) {
 }
 
 // Graphics
-// The game carries its real implementations in src/core1/code_7F60.c under
-// the internal "_gu*" names.  Delegate so external callers get real behavior.
-extern void _guMtxIdentF(f32 mf[4][4]);
+// guMtxF2L delegates to the game's own _guMtxF2L (which is extern-visible).
+// guMtxIdentF is implemented inline (the game's copy is static in code_7F60.c).
 extern void _guMtxF2L(f32 mf[4][4], void *m);
 
 void guMtxIdentF(void *mf) {
-    _guMtxIdentF((f32 (*)[4])mf);
+    f32 (*m)[4] = (f32 (*)[4])mf;
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 4; j++)
+            m[i][j] = (i == j) ? 1.0f : 0.0f;
 }
 
 void guMtxF2L(void *mf, void *m) {
