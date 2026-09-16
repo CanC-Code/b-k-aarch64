@@ -2052,7 +2052,12 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 stack_dl_base[depth] = s_dl_base;
                 stack_enc[depth] = cur_dl_enc;
                 depth++;
-                cur_dl_enc = 0;   /* new DL: encoding unknown until detected */
+                /* Inherit parent encoding — Banjo's sub-DLs are almost always
+                 * same-encoding as their parent.  Resetting to 0 causes
+                 * ambiguous-first-command DLs (e.g. a leading G_SETCOMBINE
+                 * bytes 'FC 62 FE 04' which decode as valid G_VTX in LE) to be
+                 * misdetected as LE, producing phantom seg-1 vertex loads. */
+                cur_dl_enc = stack_enc[depth - 1];
 
                 // Now safe to update cur_end for the nested DL
                 uintptr_t mapped_end = bka_get_mapped_end(dl_ptr);
