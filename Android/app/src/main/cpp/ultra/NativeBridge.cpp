@@ -349,6 +349,7 @@ Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass clazz, jint t
     {
         int activeFb = getActiveFramebuffer();
         size_t fbSize = (size_t)gFramebufferWidth * gFramebufferHeight * sizeof(uint16_t);
+        { static int s_cp = 0; if (s_cp++ < 8) { uint16_t* src_fb = gFramebuffers[activeFb]; int nz = 0; for (int i = 0; i < 1000; i++) if (src_fb[i]) { nz++; if (nz > 20) break; } __android_log_print(ANDROID_LOG_ERROR, "BKA-UPD", "COPYCHECK #%d activeFb=%d src_fb=%p nz_first1000=%d", s_cp, activeFb, (void*)src_fb, nz); } }
         memcpy(gN64_RDRAM + g_active_fb_offset, gFramebuffers[activeFb], fbSize);
     }
 

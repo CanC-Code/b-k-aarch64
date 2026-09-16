@@ -598,6 +598,7 @@ static void RasterizeTriangle(
                 uint8_t r = (uint8_t)(((int)r0 + r1 + r2) / 3);
                 uint8_t g = (uint8_t)(((int)g0 + g1 + g2) / 3);
                 uint8_t b = (uint8_t)(((int)b0 + b1 + b2) / 3);
+            { static int s_px = 0; if (s_px++ < 5 || s_px % 10000 == 0) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "PIXWRITE #%d y=%d x=%d", s_px, (int)y, (int)x); }
                 fb[y * FB_WIDTH + x] = RGBA8_TO_RGB565(r, g, b);
             }
         }
