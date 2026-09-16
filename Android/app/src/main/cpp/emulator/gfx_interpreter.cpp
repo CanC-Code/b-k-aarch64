@@ -444,10 +444,13 @@ static void Matrix_Identity(BKMatrix m) {
 
 static void Matrix_MultVec(const BKMatrix m, float x, float y, float z, float w,
                            float* ox, float* oy, float* oz, float* ow) {
-    *ox = m[0][0]*x + m[0][1]*y + m[0][2]*z + m[0][3]*w;
-    *oy = m[1][0]*x + m[1][1]*y + m[1][2]*z + m[1][3]*w;
-    *oz = m[2][0]*x + m[2][1]*y + m[2][2]*z + m[2][3]*w;
-    *ow = m[3][0]*x + m[3][1]*y + m[3][2]*z + m[3][3]*w;
+    // N64 SDK convention: v' = v * M  where M is column-major
+    //     out[col] = sum over rows of  m[row][col] * v[row]
+    // (equivalently, transpose of the row-vector convention)
+    *ox = m[0][0]*x + m[1][0]*y + m[2][0]*z + m[3][0]*w;
+    *oy = m[0][1]*x + m[1][1]*y + m[2][1]*z + m[3][1]*w;
+    *oz = m[0][2]*x + m[1][2]*y + m[2][2]*z + m[3][2]*w;
+    *ow = m[0][3]*x + m[1][3]*y + m[2][3]*z + m[3][3]*w;
 }
 
 // Load N64 fixed-point matrix (int16_t[4][4] with 32-bit integer parts)
