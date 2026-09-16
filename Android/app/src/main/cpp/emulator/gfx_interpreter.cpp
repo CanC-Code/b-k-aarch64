@@ -1977,21 +1977,20 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 // NOTE: Do not skip lists with zero first words. They are not truly empty;
                 // the address resolver may see zeros due to segment mapping.
 
-                // Loop detection: prevent infinite G_DL recursion
-                bool already_visited = false;
-                for (int i = 0; i < visited_dl_count; i++) {
-                    if (visited_dl_addrs[i] == (uintptr_t)dl_ptr) {
-                        already_visited = true;
+                // Loop detection: refuse only if the target is currently ON the
+                // active stack (a genuine recursion).  Re-entering a DL after its
+                // G_ENDDL has popped it is legitimate.
+                bool already_on_stack = false;
+                for (int i = 0; i < depth; i++) {
+                    if (stack[i].ptr && (uintptr_t)stack[i].ptr == (uintptr_t)dl_ptr) {
+                        already_on_stack = true;
                         break;
                     }
                 }
-                if (already_visited) {
+                if (already_on_stack) {
                     __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                        "G_DL loop detected at addr=0x%08X, breaking", raw_addr);
+                        "G_DL recursion detected at addr=0x%08X, breaking", raw_addr);
                     break;
-                }
-                if (visited_dl_count < 256) {
-                    visited_dl_addrs[visited_dl_count++] = (uintptr_t)dl_ptr;
                 }
                 static int dl_jump_log_count = 0;
                 s_dl_base = (uintptr_t)dl_ptr;
