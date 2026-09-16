@@ -1744,8 +1744,11 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 c.w0 = __builtin_bswap32(c.w0);
                 c.w1 = __builtin_bswap32(c.w1);
             } else if (cur_dl_enc == 0) {
-                bool hi_is_g = (hi >= 0xB0 && hi <= 0xCF);
-                bool lo_is_g = (lo >= 0xB0 && lo <= 0xCF);
+                // Use the full F3DEX opcode table, not just [0xB0,0xCF].
+                // Opcodes 0xFC (SETCOMBINE), 0xE7 (RDPSETOTHERMODE), etc.
+                // are outside that range but still legitimate BE opcodes.
+                bool hi_is_g = bka_is_f3dex_opcode(hi);
+                bool lo_is_g = bka_is_f3dex_opcode(lo);
                 if (lo_is_g && !hi_is_g) {
                     c.w0 = __builtin_bswap32(c.w0);
                     c.w1 = __builtin_bswap32(c.w1);
