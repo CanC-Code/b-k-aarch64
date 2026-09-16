@@ -1445,7 +1445,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
 
     BKMatrix newMatrix;
     Matrix_LoadFromN64(newMatrix, mtx_src);
-    { static int s_w0 = 0; if (s_w0++ < 8) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "MTXW0 cmd.w0=0x%08X cmd.w1=0x%08X flag_decoded=0x%02X", cmd.w0, cmd.w1, flag); }
+    { static int s_w0 = 0; if (s_w0++ < 12) { const uint8_t* raw = (const uint8_t*)s_current_cmd; __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "MTXW0 cur=%p raw=%02X%02X%02X%02X %02X%02X%02X%02X decoded_w0=0x%08X flag=0x%02X", (void*)raw, raw?raw[0]:0,raw?raw[1]:0,raw?raw[2]:0,raw?raw[3]:0,raw?raw[4]:0,raw?raw[5]:0,raw?raw[6]:0,raw?raw[7]:0, cmd.w0, flag); } }
 
     if (s_mtx_log_frame++ < 12) {
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
