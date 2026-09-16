@@ -1445,6 +1445,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
 
     BKMatrix newMatrix;
     Matrix_LoadFromN64(newMatrix, mtx_src);
+    { static int s_w0 = 0; if (s_w0++ < 8) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "MTXW0 cmd.w0=0x%08X cmd.w1=0x%08X flag_decoded=0x%02X", cmd.w0, cmd.w1, flag); }
 
     if (s_mtx_log_frame++ < 12) {
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
