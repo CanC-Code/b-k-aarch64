@@ -2,6 +2,7 @@
 #include "core1/core1.h"
 #include "functions.h"
 #include "variables.h"
+#include <android/log.h>
 
 
 extern void guPerspective(Mtx *, u16*, f32, f32, f32, f32, f32);
