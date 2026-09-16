@@ -452,26 +452,36 @@ static void Matrix_MultVec(const BKMatrix m, float x, float y, float z, float w,
 
 // Load N64 fixed-point matrix (int16_t[4][4] with 32-bit integer parts)
 static void Matrix_LoadFromN64(BKMatrix out, const void* src) {
-    // _guMtxF2L packs each pair of elements into one u32:
-    //   word[i] = (e1_integer << 16) | e2_integer
-    //   frac[i] = (e1_fraction << 16) | e2_fraction
-    // So reading the memory as native LE s16 gives the pair in reverse order
-    // and we must swap each pair back.
-    const int16_t*  ip = (const int16_t*)src;
-    const uint16_t* fp = (const uint16_t*)((const uint8_t*)src + 32);
-    int16_t  integer[16];
-    uint16_t fraction[16];
-    for (int k = 0; k < 16; k += 2) {
-        integer[k]     = ip[k + 1];
-        integer[k + 1] = ip[k];
-        fraction[k]     = fp[k + 1];
-        fraction[k + 1] = fp[k];
-    }
-    for (int i = 0; i < 4; i++)
-        for (int j = 0; j < 4; j++) {
-            int idx = i * 4 + j;
-            out[i][j] = (float)integer[idx] + (float)fraction[idx] / 65536.0f;
+    // N64 Mtx layout (64 bytes, big-endian):
+    //   bytes  0-31: 16 x int16  - integer parts (paired per row across 4-byte words)
+    //   bytes 32-63: 16 x uint16 - fraction parts
+    // Each 4-byte word holds two adjacent elements' parts:
+    //   word = (e_left << 16) | e_right   (big-endian on N64)
+    //
+    // We must read each int16 with explicit big-endian byte order and place it
+    // at the correct matrix position. Row-major pairing is:
+    //   word 0 -> (m00, m01), word 1 -> (m02, m03),
+    //   word 2 -> (m10, m11), word 3 -> (m12, m13), etc.
+    const uint8_t* p = (const uint8_t*)src;
+    for (int r = 0; r < 4; r++) {
+        for (int c = 0; c < 4; c++) {
+            int idx       = r * 4 + c;
+            int word_idx  = idx >> 1;      // which 4-byte word
+            int side      = idx & 1;       // 0 = high half, 1 = low half
+            const uint8_t* iw = p + word_idx * 4;
+            const uint8_t* fw = p + 32 + word_idx * 4;
+            int16_t  e_int;
+            uint16_t e_frac;
+            if (side == 0) {
+                e_int  = (int16_t)(((uint16_t)iw[0] << 8) | iw[1]);
+                e_frac = (uint16_t)(((uint16_t)fw[0] << 8) | fw[1]);
+            } else {
+                e_int  = (int16_t)(((uint16_t)iw[2] << 8) | iw[3]);
+                e_frac = (uint16_t)(((uint16_t)fw[2] << 8) | fw[3]);
+            }
+            out[r][c] = (float)e_int + (float)e_frac / 65536.0f;
         }
+    }
 }
 
 // =======================================================================
@@ -651,24 +661,11 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
     *sx = (ox + 1.0f) * 0.5f * (float)FB_WIDTH;
     *sy = (1.0f - oy) * 0.5f * (float)FB_HEIGHT;
 
-    // DEBUG FALLBACK: Always ensure vertices are on-screen.
-    // If matrices produce off-screen coordinates, normalize model space
-    // to screen space using a generous range.
-    if (*sx < 0 || *sx > FB_WIDTH || *sy < 0 || *sy > FB_HEIGHT) {
-        // Map model space [-1024, 1024] to screen [0, FB_WIDTH/HEIGHT]
-        *sx = (x + 1024.0f) * 0.5f * (float)FB_WIDTH / 1024.0f;
-        *sy = (y + 1024.0f) * 0.5f * (float)FB_HEIGHT / 1024.0f;
-        // Clamp to framebuffer
-        if (*sx < 0) *sx = 0;
-        if (*sx >= FB_WIDTH) *sx = FB_WIDTH - 1;
-        if (*sy < 0) *sy = 0;
-        if (*sy >= FB_HEIGHT) *sy = FB_HEIGHT - 1;
-        static int debugCount = 0;
-        if (debugCount++ < 5) {
-            __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                "TransformVertex: off-screen after matrix (%.1f, %.1f) fallback (%.1f, %.1f) orig(%.1f,%.1f,%.1f)",
-                (ox+1)*0.5f*FB_WIDTH, (1-oy)*0.5f*FB_HEIGHT, *sx, *sy, x, y, z);
-        }
+    static int s_off = 0;
+    if ((*sx < 0 || *sx > FB_WIDTH || *sy < 0 || *sy > FB_HEIGHT) && s_off++ < 5) {
+        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+            "TransformVertex: off-screen (%.1f, %.1f) orig(%.1f,%.1f,%.1f) ndc(%.3f,%.3f)",
+            *sx, *sy, x, y, z, ox, oy);
     }
 }
 
