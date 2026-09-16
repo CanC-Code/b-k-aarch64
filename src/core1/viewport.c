@@ -100,9 +100,12 @@ void viewport_setRenderPerspectiveMatrix(Gfx **gfx, Mtx **mtx, f32 near, f32 far
     }
 #endif
     
+    __android_log_print(ANDROID_LOG_ERROR, "BKA_VP", "pre-persp *mtx=%p mtx=%p", (void*)*mtx, (void*)mtx);
     guPerspective(*mtx, &perspNorm, sViewportFOVy, sViewportAspect, near, far, 0.5f);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA_VP", "post-persp *mtx=%p", (void*)*mtx);
     gSPPerspNormalize((*gfx)++, perspNorm);
     gSPMatrix((*gfx)++, OS_PHYSICAL_TO_K0((*mtx)++), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA_VP", "post-spmatrix *mtx=%p gfx=%p", (void*)*mtx, (void*)*gfx);
 
     guRotate(*mtx, -sViewportRotation[2], 0.0f, 0.0f, -1.0f);
     gSPMatrix((*gfx)++, OS_PHYSICAL_TO_K0((*mtx)++), G_MTX_NOPUSH | G_MTX_MUL | G_MTX_PROJECTION);
