@@ -80,7 +80,7 @@ void _guFustrumF(f32 mf[4][4], f32 arg1, f32 arg2, f32 arg3, f32 arg4, f32 arg5,
 	}
 }
 
-static void _guMtxIdentF(float mf[4][4]) //static
+void _guMtxIdentF(float mf[4][4])
 {
 	int	i, j;
 
