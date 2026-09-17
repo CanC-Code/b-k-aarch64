@@ -2137,9 +2137,19 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     return;
                 }
                 static int dl_jump_log_count = 0;
-                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                    "G_DL JUMP depth=%d target_raw=0x%08X resolved=%p",
-                    depth, raw_addr, dl_ptr);
+                {
+                    static int s_jump_dump = 0;
+                    if ((s_jump_dump++ % 40) == 0) {
+                        uint8_t* b = (uint8_t*)dl_ptr;
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                            "G_DL JUMP depth=%d target=0x%08X first32=%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+                            depth, raw_addr,
+                            b[0],b[1],b[2],b[3],b[4],b[5],b[6],b[7],
+                            b[8],b[9],b[10],b[11],b[12],b[13],b[14],b[15],
+                            b[16],b[17],b[18],b[19],b[20],b[21],b[22],b[23],
+                            b[24],b[25],b[26],b[27],b[28],b[29],b[30],b[31]);
+                    }
+                }
                 s_dl_base = (uintptr_t)dl_ptr;
                 { static int s_w = 0; if (s_w++ < 3) { bka_install_watch(); mprotect((void*)((uintptr_t)dl_ptr & ~0xFFFULL), 0x1000, PROT_READ); } }
                 if (++dl_jump_log_count <= 50) {
