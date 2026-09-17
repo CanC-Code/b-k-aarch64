@@ -1421,7 +1421,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
         uint32_t off = cmd.w1 & 0x00FFFFFF;
         const uint8_t* mb = (const uint8_t*)mtx_src;
         LOGV(
-//             "MTXDIAG w1=0x%08X seg=%u off=0x%06X segBase[%u]=0x%lX src=%p",
+"MTXDIAG w1=0x%08X seg=%u off=0x%06X segBase[%u]=0x%lX src=%p",
             cmd.w1, seg, off, seg,
             (unsigned long)s_rdp.segmentBase[seg], mtx_src);
         LOGV(
@@ -1458,7 +1458,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
             uint32_t w1_be = ((uint32_t)p8[12] << 24) | ((uint32_t)p8[13] << 16) |
                              ((uint32_t)p8[14] << 8) | (uint32_t)p8[15];
             LOGV(
-//                 "MTXDUAL LE: w0=0x%08X w1=0x%08X | BE: w0=0x%08X w1=0x%08X",
+"MTXDUAL LE: w0=0x%08X w1=0x%08X | BE: w0=0x%08X w1=0x%08X",
                 w0_le, w1_le, w0_be, w1_be);
         }
     }
@@ -1600,19 +1600,6 @@ static void* RSP_ResolveGfxAddress(uint32_t addr) {
 
 static int s_rspCallCount = 0;
 void RSP_ProcessGfxTask(OSTask* tp) {
-    if (tp && tp->data_ptr) {
-        uint8_t* raw = (uint8_t*)RDP_TranslateAddr((uint32_t)(uintptr_t)tp->data_ptr);
-        if (raw) {
-            char buf[256];
-            snprintf(buf, sizeof(buf),
-                "TASK_HEADER_DUMP addr=0x%08X: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
-                (uint32_t)(uintptr_t)tp->data_ptr,
-                raw[0],raw[1],raw[2],raw[3], raw[4],raw[5],raw[6],raw[7],
-                raw[8],raw[9],raw[10],raw[11], raw[12],raw[13],raw[14],raw[15]);
-            BKA_LOG("%s", buf);
-        }
-    }
-
     s_rspCallCount++;
 
     // Probe known RDRAM offsets where the DL thinks vertex data lives
