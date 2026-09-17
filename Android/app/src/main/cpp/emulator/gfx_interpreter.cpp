@@ -1842,7 +1842,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             }
         }
         {
-            if (total <= 30) {
+            if (total <= 100) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "CMD t#%zu @%p raw=%02X%02X%02X%02X %02X%02X%02X%02X w0=0x%08X w1=0x%08X op=0x%02X enc=%d depth=%d",
                     total, cur, cur[0],cur[1],cur[2],cur[3],cur[4],cur[5],cur[6],cur[7],
@@ -2137,6 +2137,9 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     return;
                 }
                 static int dl_jump_log_count = 0;
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "G_DL JUMP depth=%d target_raw=0x%08X resolved=%p",
+                    depth, raw_addr, dl_ptr);
                 s_dl_base = (uintptr_t)dl_ptr;
                 { static int s_w = 0; if (s_w++ < 3) { bka_install_watch(); mprotect((void*)((uintptr_t)dl_ptr & ~0xFFFULL), 0x1000, PROT_READ); } }
                 if (++dl_jump_log_count <= 50) {
