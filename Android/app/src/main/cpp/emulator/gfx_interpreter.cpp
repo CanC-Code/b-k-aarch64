@@ -2157,6 +2157,13 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     LOGV(
                         "G_ENDDL after pop: depth=%d cur=%p cur_end=%p",
                         depth, cur, cur_end);
+                } else {
+                    /* Top-level ENDDL — this RSP task's DL is finished.
+                     * Previously this just broke the switch, letting the
+                     * walker drift past the DL into unmapped memory. */
+                    LOGV("G_ENDDL top-level, vertices=%d",
+                         s_rdp.dmemVertexCount);
+                    return;
                 }
                 break;
 
