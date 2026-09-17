@@ -2049,7 +2049,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 }
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "G_DL RECOGNIZED cur=%p w0=0x%08X w1=0x%08X", cur, c.w0, c.w1);
-                { static int s_stage1 = 0; if (s_stage1++ < 10) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "G_DL S1 dl_ptr=%p is_mapped=%d", dl_ptr, dl_ptr ? bka_is_mapped(dl_ptr) : 0); }
+                { static int s_stage1 = 0; if (s_stage1++ < 10) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "G_DL S1 dl_ptr=%p", dl_ptr); }
                 static int dl_log_count = 0;
                 if (++dl_log_count <= 20) {
                     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
