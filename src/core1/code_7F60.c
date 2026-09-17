@@ -174,13 +174,12 @@ void guPerspectiveF(float mf[4][4], u16 *perspNorm, float fovy, float aspect, fl
 void guPerspective(Mtx *m, u16 *perspNorm, f32 fovy, f32 aspect, f32 near, f32 far, f32 scale) {
     f32 sp28[4][4];
 
-    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-        "guPerspective CALLED m=%p sizeof(Mtx)=%zu m[0][0]@%p m[2][0]@%p fovy=%.2f",
-        m, sizeof(Mtx), (void*)&m->m[0][0], (void*)&m->m[2][0], fovy);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+        "guPerspective CALLED m=%p", m);
     guPerspectiveF(sp28, perspNorm, fovy, aspect, near, far, scale);
     __guMtxF2L(sp28, m);
-    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
-        "guPerspective WROTE m=%p perspNorm=%u", m, *perspNorm);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+        "guPerspective WROTE m=%p", m);
 }
 
 void _guRotateF(f32 mf[4][4], f32 arg1, f32 arg2, f32 arg3, f32 arg4) {
