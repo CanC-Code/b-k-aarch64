@@ -1715,12 +1715,14 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     uint8_t *cur = (uint8_t*)tp->t.data_ptr;
     uint8_t *cur_end = cur + tp->t.data_size;
 
-    const size_t MAX_TOTAL_CMDS = 20000;
+    const size_t MAX_TOTAL_CMDS = 3000;   /* real RSP tasks are <2000 cmds */
     const size_t MAX_DL_CMDS = 5000;
     size_t total = 0;
     size_t dl_cmds = 0;
     int zero_run = 0;
     int unknown_opcode_run = 0;
+    size_t gdl_jumps = 0;
+    const size_t MAX_GDL_JUMPS = 200;
     int consecutive_bad_gdl = 0;
     struct timespec start_ts, now_ts;
     clock_gettime(CLOCK_MONOTONIC, &start_ts);
@@ -2128,6 +2130,12 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     break;
                 }
                 { static int s_stage2 = 0; if (s_stage2++ < 10) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "G_DL S2 depth=%d dl_ptr=%p", depth, dl_ptr); }
+                if (++gdl_jumps > MAX_GDL_JUMPS) {
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                        "walker: %zu G_DL jumps in one task — bailing (DL tree too deep, "
+                        "drifted past real content)", gdl_jumps);
+                    return;
+                }
                 static int dl_jump_log_count = 0;
                 s_dl_base = (uintptr_t)dl_ptr;
                 { static int s_w = 0; if (s_w++ < 3) { bka_install_watch(); mprotect((void*)((uintptr_t)dl_ptr & ~0xFFFULL), 0x1000, PROT_READ); } }
