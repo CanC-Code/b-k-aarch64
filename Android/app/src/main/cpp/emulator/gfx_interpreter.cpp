@@ -2028,7 +2028,20 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
             case 0x06: {
                 uint32_t raw_addr = c.w1;
-                void *dl_ptr = RDP_TranslateAddr(raw_addr);
+                /* STRICT G_DL resolution: real G_DL targets are either
+                 * registered in the address map, or inside RDRAM.  Any other
+                 * target (e.g. an arbitrary heap page that happens to be
+                 * mapped) means the walker has drifted into non-DL memory. */
+                void *dl_ptr = bka_lookup_addr_mapping(raw_addr);
+                if (!dl_ptr) {
+                    uint8_t* tmp = RDP_TranslateAddr(raw_addr);
+                    if (tmp) {
+                        uintptr_t p  = (uintptr_t)tmp;
+                        uintptr_t r0 = (uintptr_t)gN64_RDRAM;
+                        uintptr_t r1 = r0 + 0x1000000;
+                        if (p >= r0 && p < r1) dl_ptr = tmp;
+                    }
+                }
 
                 static int debug_gdl_count = 0;
                 if (++debug_gdl_count <= 20) {
