@@ -2049,6 +2049,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 }
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "G_DL RECOGNIZED cur=%p w0=0x%08X w1=0x%08X", cur, c.w0, c.w1);
+                { static int s_stage1 = 0; if (s_stage1++ < 10) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "G_DL S1 dl_ptr=%p is_mapped=%d", dl_ptr, dl_ptr ? bka_is_mapped(dl_ptr) : 0); }
                 static int dl_log_count = 0;
                 if (++dl_log_count <= 20) {
                     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
@@ -2089,6 +2090,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                         "G_DL recursion detected at addr=0x%08X, breaking", raw_addr);
                     break;
                 }
+                { static int s_stage2 = 0; if (s_stage2++ < 10) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "G_DL S2 depth=%d dl_ptr=%p", depth, dl_ptr); }
                 static int dl_jump_log_count = 0;
                 s_dl_base = (uintptr_t)dl_ptr;
                 { static int s_w = 0; if (s_w++ < 3) { bka_install_watch(); mprotect((void*)((uintptr_t)dl_ptr & ~0xFFFULL), 0x1000, PROT_READ); } }
