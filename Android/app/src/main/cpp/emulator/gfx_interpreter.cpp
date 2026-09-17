@@ -1784,29 +1784,21 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 } else if (lo == 0x00 && hi != 0x00 && hi_is_g) {
                     /* Mirror: BE reads as NOP, LE is real. */
                     cur_dl_enc = 1;
-                } else if (hi_is_g && lo_is_g) {
-                    /* Ambiguous: byte[0] and byte[3] are both valid opcodes
-                     * (e.g. B6 00 00 00 -> BE G_DL, LE NOP).  Use w1-mappedness
-                     * as a tiebreaker.  Real G_DL/G_VTX w1 resolves to a mapped
-                     * pointer; the misparsed w1 typically does not. */
-                    void* p_le = RDP_TranslateAddr(c.w1);
-                    uint32_t be_w1 = __builtin_bswap32(c.w1);
-                    void* p_be = RDP_TranslateAddr(be_w1);
-                    if (p_be && !p_le) {
-                        c.w0 = __builtin_bswap32(c.w0);
-                        c.w1 = be_w1;
-                        cur_dl_enc = 2;
-                        static int s_amb_be = 0;
-                        if (s_amb_be++ < 6)
-                            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                                "DLENC AMBIG->BE @%p bytes %02X%02X%02X%02X w1_le=0x%08X w1_be=0x%08X",
-                                cur, cur[0],cur[1],cur[2],cur[3],
-                                (uint32_t)(uintptr_t)p_le ? 1 : 0,
-                                (uint32_t)(uintptr_t)p_be ? 1 : 0);
-                    } else if (p_le && !p_be) {
-                        cur_dl_enc = 1;
-                    }
-                    /* else: neither informative — leave enc=0, next cmd decides */
+                } else                 if (hi_is_g && lo_is_g) {
+                    /* Ambiguous: both byte[0] and byte[3] are valid F3DEX
+                     * opcodes (e.g. BC 00 04 06 -> BE G_MOVEWORD / LE G_DL).
+                     * Banjo-Kazooie is a BE-native F3DEX_GBI game; the vast
+                     * majority of DLs are BE.  Runtime-built LE DLs (sprite
+                     * renderer output) usually start with B6 00 00 00 which
+                     * the NOP rule above already catches.  Default to BE. */
+                    c.w0 = __builtin_bswap32(c.w0);
+                    c.w1 = __builtin_bswap32(c.w1);
+                    cur_dl_enc = 2;
+                    static int s_amb_be = 0;
+                    if (s_amb_be++ < 8)
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                            "DLENC AMBIG->BE @%p bytes %02X%02X%02X%02X",
+                            cur, cur[0],cur[1],cur[2],cur[3]);
                 } else if (lo_is_g && !hi_is_g) {
                     c.w0 = __builtin_bswap32(c.w0);
                     c.w1 = __builtin_bswap32(c.w1);
