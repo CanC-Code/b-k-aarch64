@@ -1792,7 +1792,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     c.w1 = __builtin_bswap32(c.w1);
                     cur_dl_enc = 2;
                     static int s_nop_be = 0;
-                    if (s_nop_be++ < 6)
+                    if ((s_nop_be++ % 500) == 0)
                         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                             "DLENC NOP->BE @%p bytes %02X%02X%02X%02X -> op=0x%02X",
                             cur, cur[0],cur[1],cur[2],cur[3],
@@ -1812,7 +1812,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                      * with a byte[0] opcode and byte[3]=0x00). */
                     cur_dl_enc = 1;
                     static int s_amb = 0;
-                    if (s_amb++ < 8)
+                    if ((s_amb++ % 500) == 0)
                         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                             "DLENC AMBIG->LE @%p bytes %02X%02X%02X%02X",
                             cur, cur[0],cur[1],cur[2],cur[3]);
@@ -1821,7 +1821,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     c.w1 = __builtin_bswap32(c.w1);
                     cur_dl_enc = 2;
                     static int s_be_log = 0;
-                    if (s_be_log++ < 8)
+                    if ((s_be_log++ % 500) == 0)
                         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                             "DLENC BE @%p first bytes %02X%02X%02X%02X -> op=0x%02X",
                             cur, cur[0],cur[1],cur[2],cur[3],
@@ -1842,7 +1842,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             }
         }
         {
-            if (total <= 100) {
+            if ((total % 500) == 0 || total <= 5) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "CMD t#%zu @%p raw=%02X%02X%02X%02X %02X%02X%02X%02X w0=0x%08X w1=0x%08X op=0x%02X enc=%d depth=%d",
                     total, cur, cur[0],cur[1],cur[2],cur[3],cur[4],cur[5],cur[6],cur[7],

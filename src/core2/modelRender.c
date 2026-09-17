@@ -869,7 +869,7 @@ void modelRender_geoCmd_BONE(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data) {
 void modelRender_geoCmd_LOADDL(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data) {
     struct geo_cmd_load_dl_s *cmd = (struct geo_cmd_load_dl_s *) data;
     Gfx *gfx_sub_list;
-    { static int s_in = 0; if (s_in++ < 10) __android_log_print(ANDROID_LOG_ERROR, "BKA-MODEL", "LOADDL enter idx=%d D_80370990=%d", (int)cmd->gfx_index, (int)D_80370990); }
+    { static int s_in = 0; if ((s_in++ % 500) == 0) __android_log_print(ANDROID_LOG_ERROR, "BKA-MODEL", "LOADDL enter idx=%d D_80370990=%d", (int)cmd->gfx_index, (int)D_80370990); }
 
     if (D_80370990) {
         gfx_sub_list = &modelRenderDisplayList->list[cmd->gfx_index];
@@ -906,7 +906,7 @@ void modelRender_geoCmd_LOADDL(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data) 
 void modelRender_geoCmd_SKINNING(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data) {
     struct geo_cmd_skinning_s *cmd = (struct geo_cmd_skinning_s *) data;
     int i;
-    { static int s_in = 0; if (s_in++ < 10) __android_log_print(ANDROID_LOG_ERROR, "BKA-MODEL", "SKINNING enter idx0=%d", (int)cmd->gfx_index[0]); }
+    { static int s_in = 0; if ((s_in++ % 500) == 0) __android_log_print(ANDROID_LOG_ERROR, "BKA-MODEL", "SKINNING enter idx0=%d", (int)cmd->gfx_index[0]); }
 
     if (1) {
         Gfx* sub = modelRenderDisplayList->list + cmd->gfx_index[0];
@@ -920,10 +920,17 @@ void modelRender_geoCmd_SKINNING(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data
     }
 
     if (D_80370990) {
-        for (i = 1; cmd->gfx_index[i] != 0; i++) {
+        for (i = 1; cmd->gfx_index[i] != 0 && i < 32; i++) {
+            Gfx* sub = modelRenderDisplayList->list + cmd->gfx_index[i];
+            if (!bka_geoCmd_looks_like_dl((void*)sub)) {
+                __android_log_print(ANDROID_LOG_WARN, "BKA-MODEL",
+                    "SKINNING loop refusing i=%d idx=%d ptr=%p (not a DL)",
+                    i, (int)cmd->gfx_index[i], sub);
+                break;
+            }
             mlMtxApply(*mtx);
             gSPMatrix((*gfx)++, (*mtx)++, G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-            gSPDisplayList((*gfx)++, osVirtualToPhysical(modelRenderDisplayList->list + cmd->gfx_index[i]));
+            gSPDisplayList((*gfx)++, osVirtualToPhysical(sub));
         }
     }
 }
@@ -936,7 +943,7 @@ void modelRender_geoCmd_CALL(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data) {
 
 void modelRender_geoCmd_LOADDL2(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data) {
     int idx = ((struct geo_cmd_load_dl_2_s *) data)->gfx_index;
-    { static int s_in = 0; if (s_in++ < 10) __android_log_print(ANDROID_LOG_ERROR, "BKA-MODEL", "LOADDL2 enter idx=%d", idx); }
+    { static int s_in = 0; if ((s_in++ % 500) == 0) __android_log_print(ANDROID_LOG_ERROR, "BKA-MODEL", "LOADDL2 enter idx=%d", idx); }
     if (1) {
         Gfx* sub = &modelRenderDisplayList->list[idx];
         if (!bka_geoCmd_looks_like_dl((void*)sub)) {
@@ -1138,7 +1145,7 @@ void modelRender_executeGeoCmds(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data)
              * gets emitted as a bogus G_DL target.  Reject anything that is
              * not a small forward step. */
             static int s_walk_dump = 0;
-            if (s_walk_dump++ < 30) {
+            if ((s_walk_dump++ % 500) == 0) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA-MODEL",
                     "geoCmd next_offset=0x%08X cmd_index=%u data=%p",
                     (unsigned)next_offset, (unsigned)cmd_index, (void*)data);
