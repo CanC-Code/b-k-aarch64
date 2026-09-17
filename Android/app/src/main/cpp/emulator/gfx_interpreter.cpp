@@ -1786,18 +1786,19 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     cur_dl_enc = 1;
                 } else                 if (hi_is_g && lo_is_g) {
                     /* Ambiguous: both byte[0] and byte[3] are valid F3DEX
-                     * opcodes (e.g. BC 00 04 06 -> BE G_MOVEWORD / LE G_DL).
-                     * Banjo-Kazooie is a BE-native F3DEX_GBI game; the vast
-                     * majority of DLs are BE.  Runtime-built LE DLs (sprite
-                     * renderer output) usually start with B6 00 00 00 which
-                     * the NOP rule above already catches.  Default to BE. */
-                    c.w0 = __builtin_bswap32(c.w0);
-                    c.w1 = __builtin_bswap32(c.w1);
-                    cur_dl_enc = 2;
-                    static int s_amb_be = 0;
-                    if (s_amb_be++ < 8)
+                     * opcodes.  Examples:
+                     *   06 00 00 BC: LE = gSPSegment(0,0), BE = G_DL
+                     *   FC 62 FE 04: LE = G_VTX,          BE = G_SETCOMBINE
+                     * Cannot distinguish by opcode alone.  Default to LE
+                     * (ARM-native writes go through recompiled code that
+                     * stores u32 as LE), and rely on the NOP-detection rule
+                     * above to catch BE-formatted DLs (they always start
+                     * with a byte[0] opcode and byte[3]=0x00). */
+                    cur_dl_enc = 1;
+                    static int s_amb = 0;
+                    if (s_amb++ < 8)
                         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                            "DLENC AMBIG->BE @%p bytes %02X%02X%02X%02X",
+                            "DLENC AMBIG->LE @%p bytes %02X%02X%02X%02X",
                             cur, cur[0],cur[1],cur[2],cur[3]);
                 } else if (lo_is_g && !hi_is_g) {
                     c.w0 = __builtin_bswap32(c.w0);
