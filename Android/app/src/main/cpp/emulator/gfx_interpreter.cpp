@@ -1600,6 +1600,19 @@ static void* RSP_ResolveGfxAddress(uint32_t addr) {
 
 static int s_rspCallCount = 0;
 void RSP_ProcessGfxTask(OSTask* tp) {
+    if (task && task->data_ptr) {
+        uint8_t* raw = (uint8_t*)RDP_TranslateAddr((uint32_t)(uintptr_t)task->data_ptr);
+        if (raw) {
+            char buf[256];
+            snprintf(buf, sizeof(buf),
+                "TASK_HEADER_DUMP addr=0x%08X: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+                (uint32_t)(uintptr_t)task->data_ptr,
+                raw[0],raw[1],raw[2],raw[3], raw[4],raw[5],raw[6],raw[7],
+                raw[8],raw[9],raw[10],raw[11], raw[12],raw[13],raw[14],raw[15]);
+            BKA_LOG("%s", buf);
+        }
+    }
+
     s_rspCallCount++;
 
     // Probe known RDRAM offsets where the DL thinks vertex data lives
