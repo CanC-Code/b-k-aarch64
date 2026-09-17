@@ -182,6 +182,12 @@ static uint8_t* bka_scan_heap_for_vertex_base(uint32_t dl_addr) {
 static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // Prefer the 64-bit host pointer in the recomp's 16-byte DL entry payload.
 
+    if (addr == 0x7A7B0620) {
+        static int s_trace = 0;
+        if (s_trace++ < 5)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "XLT TRACE enter addr=0x%08X", addr);
+    }
+
     if (addr == 0) return nullptr;
 
     // Known-bad DL address?  Try scanning the heap for the real buffer.
@@ -287,11 +293,19 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
             "VTXRECON FAILED addr=0x%08X (no plausible prefix)", addr);
     }
 
+    if (addr == 0x7A7B0620) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "XLT TRACE about to miss addr=0x%08X", addr);
+    }
+
     // Diagnostic: log misses so we can see what the game asked for
     static int miss_log = 0;
     if (miss_log++ < 12) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "XLT miss addr=0x%08X map_size=?", addr);
+    }
+
+    if (addr == 0x7A7B0620) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "XLT TRACE reached segment block addr=0x%08X", addr);
     }
 
     // Segment address (F3DEX_GBI)
