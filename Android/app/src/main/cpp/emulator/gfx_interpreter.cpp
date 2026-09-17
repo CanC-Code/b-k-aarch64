@@ -1749,7 +1749,23 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 // are outside that range but still legitimate BE opcodes.
                 bool hi_is_g = bka_is_f3dex_opcode(hi);
                 bool lo_is_g = bka_is_f3dex_opcode(lo);
-                if (hi_is_g && lo_is_g) {
+                if (hi == 0x00 && lo != 0x00 && lo_is_g) {
+                    /* LE reads as NOP (padding) but BE reads as a real opcode.
+                     * Banjo-Kazooie never starts a sub-DL with NOP padding,
+                     * so this is a BE-formatted DL. */
+                    c.w0 = __builtin_bswap32(c.w0);
+                    c.w1 = __builtin_bswap32(c.w1);
+                    cur_dl_enc = 2;
+                    static int s_nop_be = 0;
+                    if (s_nop_be++ < 6)
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                            "DLENC NOP->BE @%p bytes %02X%02X%02X%02X -> op=0x%02X",
+                            cur, cur[0],cur[1],cur[2],cur[3],
+                            (uint8_t)(c.w0 >> 24));
+                } else if (lo == 0x00 && hi != 0x00 && hi_is_g) {
+                    /* Mirror: BE reads as NOP, LE is real. */
+                    cur_dl_enc = 1;
+                } else if (hi_is_g && lo_is_g) {
                     /* Ambiguous: byte[0] and byte[3] are both valid opcodes
                      * (e.g. B6 00 00 00 -> BE G_DL, LE NOP).  Use w1-mappedness
                      * as a tiebreaker.  Real G_DL/G_VTX w1 resolves to a mapped
