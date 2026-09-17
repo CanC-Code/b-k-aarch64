@@ -247,8 +247,11 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         }
     }
 
-    // By-low32 lookup: search all registrations for a pointer whose low32 matches.
-    {
+    // By-low32 lookup: only meaningful for values that could plausibly be
+    // truncated heap pointers (>=16 MB, <2 GB).  Small values like 0x800 are
+    // never truncated heap addresses; matching them just picks up random
+    // allocations whose offset happens to end in those low bits.
+    if (addr >= 0x10000000u && addr < 0x80000000u) {
         void* byLow = bka_lookup_addr_by_low32(addr);
         if (byLow) {
             static int b1 = 0;
@@ -2045,7 +2048,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     }
                 }
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                    "G_DL RECOGNIZED raw=0x%08X", raw_addr);
+                    "G_DL RECOGNIZED cur=%p w0=0x%08X w1=0x%08X", cur, c.w0, c.w1);
                 static int dl_log_count = 0;
                 if (++dl_log_count <= 20) {
                     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
@@ -2053,7 +2056,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 }
                 if (!dl_ptr || !bka_is_mapped(dl_ptr)) {
                     static int s_nomap = 0;
-                    if (s_nomap++ < 8) {
+                    if (s_nomap++ < 50) {
                         void* m = bka_lookup_addr_mapping(raw_addr);
                         __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                             "G_DL: refusing addr=0x%08X (dl_ptr=%p map_lookup=%p)",
@@ -2089,7 +2092,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 static int dl_jump_log_count = 0;
                 s_dl_base = (uintptr_t)dl_ptr;
                 { static int s_w = 0; if (s_w++ < 3) { bka_install_watch(); mprotect((void*)((uintptr_t)dl_ptr & ~0xFFFULL), 0x1000, PROT_READ); } }
-                if (++dl_jump_log_count <= 5) {
+                if (++dl_jump_log_count <= 50) {
                     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
                         "G_DL JUMP to addr=0x%08X resolved=%p cur_end=%p depth=%d",
                         raw_addr, dl_ptr, cur_end, depth);
