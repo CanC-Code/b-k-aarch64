@@ -1637,6 +1637,20 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             tp ? tp->t.data_size : 0, s_rdp.dmemVertexCount);
     }
 
+    {
+        static int s_taskbytes = 0;
+        if (tp && tp->t.data_ptr && s_taskbytes++ < 30) {
+            const uint8_t* d = (const uint8_t*)tp->t.data_ptr;
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "TASK#%d data=%p size=%u bytes: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X | %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+                s_rspCallCount, tp->t.data_ptr, tp->t.data_size,
+                d[0],d[1],d[2],d[3],d[4],d[5],d[6],d[7],
+                d[8],d[9],d[10],d[11],d[12],d[13],d[14],d[15],
+                d[16],d[17],d[18],d[19],d[20],d[21],d[22],d[23],
+                d[24],d[25],d[26],d[27],d[28],d[29],d[30],d[31]);
+        }
+    }
+
     if (!tp || !tp->t.data_ptr || tp->t.data_size == 0) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "early return: tp=%p data=%p size=%u",
@@ -1816,6 +1830,14 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             }
         }
         uint8_t opcode = GFX_OPCODE(c);
+        {
+            static int s_cmds = 0;
+            if (s_cmds++ < 30) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "CMD#%d @%p w0=0x%08X w1=0x%08X op=0x%02X depth=%d",
+                    s_cmds, cur, c.w0, c.w1, opcode, depth);
+            }
+        }
         if (bka_is_f3dex_opcode(opcode)) unknown_opcode_run = 0;
         else unknown_opcode_run++;
         if (opcode == 0x04 && total <= 5) {
