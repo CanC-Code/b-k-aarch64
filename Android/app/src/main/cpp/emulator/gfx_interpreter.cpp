@@ -1705,7 +1705,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
     DListFrame stack[64];
     int depth = 0;
-    size_t current_stride = 8;
+    size_t current_stride = 16;
     size_t stack_stride[64];
     uintptr_t stack_dl_base[64];
     int stack_enc[64];          /* per-frame: 0=unknown, 1=LE, 2=BE */
@@ -1862,7 +1862,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         // Banjo-Kazooie recomp emits 16-byte entries:
         //   8 bytes = F3DEX command
         //   8 bytes = payload (either zero padding or a 64-bit host pointer)
-        current_stride = 8;
+        current_stride = 16;
 
         if (total <= 100) {
             if (log_after_jump) jump_log_count++;
