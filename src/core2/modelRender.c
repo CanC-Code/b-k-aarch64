@@ -1074,6 +1074,25 @@ void modelRender_executeGeoCmds(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data)
             MODEL_LOGV("BKA-MODEL: walker END (next_offset==0)");
             return;
         }
+        {
+            /* Next-offset sanity: the geoCmd walker reads next_offset as u32
+             * from the stream and jumps by it.  A corrupted or mis-bswapped
+             * next_offset sends `data` off into arbitrary heap, which then
+             * gets emitted as a bogus G_DL target.  Reject anything that is
+             * not a small forward step. */
+            static int s_walk_dump = 0;
+            if (s_walk_dump++ < 30) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-MODEL",
+                    "geoCmd next_offset=0x%08X cmd_index=%u data=%p",
+                    (unsigned)next_offset, (unsigned)cmd_index, (void*)data);
+            }
+            if (next_offset < 8 || next_offset > 0x8000) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-MODEL",
+                    "geoCmd BOGUS next_offset=0x%08X at data=%p cmd=%u — breaking",
+                    (unsigned)next_offset, (void*)data, (unsigned)cmd_index);
+                break;
+            }
+        }
         data = (struct bk_geo_cmd_s *) ((u8 *) data + next_offset);
     }
     MODEL_LOGV("BKA-MODEL: walker END (loop exit)");
