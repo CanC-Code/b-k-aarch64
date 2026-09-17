@@ -1704,6 +1704,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     size_t dl_cmds = 0;
     int zero_run = 0;
     int unknown_opcode_run = 0;
+    int consecutive_bad_gdl = 0;
     struct timespec start_ts, now_ts;
     clock_gettime(CLOCK_MONOTONIC, &start_ts);
     bool log_after_jump = false;
@@ -2058,8 +2059,15 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                             "G_DL: refusing addr=0x%08X (dl_ptr=%p map_lookup=%p)",
                             raw_addr, dl_ptr, m);
                     }
+                    if (++consecutive_bad_gdl > 8) {
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                            "walker: %d consecutive failed G_DLs — bailing (drift past DL end)",
+                            consecutive_bad_gdl);
+                        return;
+                    }
                     break;
                 }
+                consecutive_bad_gdl = 0;
                 // NOTE: Do not skip lists with zero first words. They are not truly empty;
                 // the address resolver may see zeros due to segment mapping.
 
