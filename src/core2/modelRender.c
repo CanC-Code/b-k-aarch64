@@ -505,6 +505,33 @@ static bool modelRender_geo_should_bswap(uintptr_t addr) {
     return 1;
 }
 
+static int bka_geoCmd_is_valid_opcode(uint8_t op) {
+    switch (op) {
+    case 0x00: case 0x01: case 0x03: case 0x04: case 0x06:
+    case 0xB1: case 0xB6: case 0xB7: case 0xB8:
+    case 0xBB: case 0xBC: case 0xBD: case 0xBE: case 0xBF:
+    case 0xD7: case 0xDB: case 0xDC: case 0xDD: case 0xDE: case 0xDF:
+    case 0xE0: case 0xE1: case 0xE2: case 0xE3: case 0xE4: case 0xE5:
+    case 0xE6: case 0xE7: case 0xE8: case 0xE9: case 0xEA: case 0xEB:
+    case 0xEC: case 0xED: case 0xEE: case 0xEF:
+    case 0xF0: case 0xF2: case 0xF3: case 0xF4: case 0xF5: case 0xF6:
+    case 0xF7: case 0xFA: case 0xFB: case 0xFC: case 0xFD: case 0xFF:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
+static int bka_geoCmd_looks_like_dl(void* ptr) {
+    if (!ptr) return 0;
+    uint8_t* b = (uint8_t*)ptr;
+    uint8_t byte0 = b[0];   /* BE opcode */
+    uint8_t byte3 = b[3];   /* LE opcode */
+    if (bka_geoCmd_is_valid_opcode(byte0)) return 1;
+    if (bka_geoCmd_is_valid_opcode(byte3)) return 1;
+    return 0;
+}
+
 static f32 bswapf32(f32 value) {
     union { f32 f; u32 u; } tmp;
     tmp.f = value;
@@ -847,12 +874,25 @@ void modelRender_geoCmd_LOADDL(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data) 
         gfx_sub_list = &modelRenderDisplayList->list[cmd->gfx_index];
         {
             static int loaddl_log_count = 0;
-            if (++loaddl_log_count <= 3) {
-                void *phys = osVirtualToPhysical(gfx_sub_list);
+            if (++loaddl_log_count <= 5) {
+                uint8_t b0 = gfx_sub_list ? ((uint8_t*)gfx_sub_list)[0] : 0;
+                uint8_t b3 = gfx_sub_list ? ((uint8_t*)gfx_sub_list)[3] : 0;
                 __android_log_print(ANDROID_LOG_INFO, "BKA-MODEL",
-                    "LOADDL: index=%d gfx_sub_list=%p phys=%p first_cmd=0x%08x",
-                    cmd->gfx_index, gfx_sub_list, phys,
-                    gfx_sub_list ? ((u32*)gfx_sub_list)[0] : 0);
+                    "LOADDL: index=%d ptr=%p first4=%02X%02X%02X%02X",
+                    cmd->gfx_index, gfx_sub_list,
+                    gfx_sub_list ? ((uint8_t*)gfx_sub_list)[0] : 0,
+                    gfx_sub_list ? ((uint8_t*)gfx_sub_list)[1] : 0,
+                    gfx_sub_list ? ((uint8_t*)gfx_sub_list)[2] : 0,
+                    gfx_sub_list ? ((uint8_t*)gfx_sub_list)[3] : 0);
+                // Refuse if the target doesn't look like a DL.
+                // Valid F3DEX command first byte (BE) or third byte (LE).
+                if (!bka_geoCmd_looks_like_dl((void*)gfx_sub_list)) {
+                    __android_log_print(ANDROID_LOG_WARN, "BKA-MODEL",
+                        "LOADDL refusing index=%d ptr=%p (not a DL)",
+                        cmd->gfx_index, gfx_sub_list);
+                    return;
+                }
+                (void)b0; (void)b3;
             }
             gSPDisplayList((*gfx)++, osVirtualToPhysical(gfx_sub_list));
         }
