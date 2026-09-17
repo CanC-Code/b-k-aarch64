@@ -2128,12 +2128,19 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                  * misdetected as LE, producing phantom seg-1 vertex loads. */
                 cur_dl_enc = stack_enc[depth - 1];
 
-                // Now safe to update cur_end for the nested DL
-                uintptr_t mapped_end = bka_get_mapped_end(dl_ptr);
-                if (mapped_end != 0 && mapped_end > (uintptr_t)dl_ptr) {
-                    cur_end = (uint8_t*)mapped_end;
-                } else {
-                    cur_end = (uint8_t*)dl_ptr + 4096;
+                // Now safe to update cur_end for the nested DL.
+                // Cap to 16 KB past the entry point — real sub-DLs are
+                // bounded and walkers that span megabytes are drifting
+                // through unrelated memory.
+                {
+                    uintptr_t hard_cap = (uintptr_t)dl_ptr + 0x4000;
+                    uintptr_t mapped_end = bka_get_mapped_end(dl_ptr);
+                    if (mapped_end != 0 && mapped_end < hard_cap &&
+                        mapped_end > (uintptr_t)dl_ptr) {
+                        cur_end = (uint8_t*)mapped_end;
+                    } else {
+                        cur_end = (uint8_t*)hard_cap;
+                    }
                 }
 
                 cur = (uint8_t*)dl_ptr;
