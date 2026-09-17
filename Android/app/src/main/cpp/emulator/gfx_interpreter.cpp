@@ -1639,7 +1639,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
     {
         static int s_taskbytes = 0;
-        if (tp && tp->t.data_ptr && s_taskbytes++ < 30) {
+        if (tp && tp->t.data_ptr && (s_taskbytes++ % 200) == 0) {
             const uint8_t* d = (const uint8_t*)tp->t.data_ptr;
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "TASK#%d data=%p size=%u bytes: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X | %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
@@ -1832,7 +1832,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         uint8_t opcode = GFX_OPCODE(c);
         {
             static int s_cmds = 0;
-            if (s_cmds++ < 30) {
+            if ((s_cmds++ % 5000) == 0) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "CMD#%d @%p w0=0x%08X w1=0x%08X op=0x%02X depth=%d",
                     s_cmds, cur, c.w0, c.w1, opcode, depth);
