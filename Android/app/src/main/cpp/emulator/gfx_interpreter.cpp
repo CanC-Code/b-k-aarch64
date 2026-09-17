@@ -1639,7 +1639,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
     {
         static int s_taskbytes = 0;
-        if (tp && tp->t.data_ptr && (s_taskbytes++ % 200) == 0) {
+        if (tp && tp->t.data_ptr && (s_taskbytes++ % 50) == 0) {
             const uint8_t* d = (const uint8_t*)tp->t.data_ptr;
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "TASK#%d data=%p size=%u bytes: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X | %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
@@ -1842,11 +1842,11 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             }
         }
         {
-            static int s_cmds = 0;
-            if ((s_cmds++ % 5000) == 0) {
+            if (total <= 30) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                    "CMD#%d @%p w0=0x%08X w1=0x%08X op=0x%02X depth=%d",
-                    s_cmds, cur, c.w0, c.w1, opcode, depth);
+                    "CMD t#%zu @%p raw=%02X%02X%02X%02X %02X%02X%02X%02X w0=0x%08X w1=0x%08X op=0x%02X enc=%d depth=%d",
+                    total, cur, cur[0],cur[1],cur[2],cur[3],cur[4],cur[5],cur[6],cur[7],
+                    c.w0, c.w1, opcode, cur_dl_enc, depth);
             }
         }
         if (bka_is_f3dex_opcode(opcode)) unknown_opcode_run = 0;
