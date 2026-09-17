@@ -14,7 +14,7 @@
 /* High-volume per-command traces.  These were essential for bootstrapping the
  * decoder but each RSP task fires ~1000 of them, throttling the RSP thread to
  * ~1 Hz on device.  Flip to true to re-enable for a focused debugging session. */
-static const bool BKA_GFX_VERBOSE = true;
+static const bool BKA_GFX_VERBOSE = false;
 #define LOGV(...) do { if (BKA_GFX_VERBOSE) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__); } while (0)
 
 extern "C" {
