@@ -1703,6 +1703,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     size_t total = 0;
     size_t dl_cmds = 0;
     int zero_run = 0;
+    int unknown_opcode_run = 0;
     struct timespec start_ts, now_ts;
     clock_gettime(CLOCK_MONOTONIC, &start_ts);
     bool log_after_jump = false;
@@ -1818,6 +1819,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             }
         }
         uint8_t opcode = GFX_OPCODE(c);
+        if (bka_is_f3dex_opcode(opcode)) unknown_opcode_run = 0;
+        else unknown_opcode_run++;
         if (opcode == 0x04 && total <= 5) {
             const uint8_t *raw = cur;
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -2274,6 +2277,13 @@ case 0xDC:
 default:
                 // Quietly skip unknown opcodes to continue processing
                 break;
+        }
+
+        if (unknown_opcode_run > 8) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "walker: %d consecutive unknown opcodes at cur=%p depth=%d — breaking (drifted past DL)",
+                unknown_opcode_run, cur, depth);
+            break;
         }
     }
 }
