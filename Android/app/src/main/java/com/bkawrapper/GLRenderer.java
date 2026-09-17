@@ -186,8 +186,8 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         // churn; halving the swap rate halves the exposure.
         long nowMs = android.os.SystemClock.uptimeMillis();
         long since = nowMs - mLastFrameMs;
-        if (since < 33L) {
-            try { Thread.sleep(33L - since); } catch (InterruptedException ignored) {}
+        if (since < 66L) {
+            try { Thread.sleep(66L - since); } catch (InterruptedException ignored) {}
         }
         mLastFrameMs = android.os.SystemClock.uptimeMillis();
         mFrameCount++;
