@@ -1831,6 +1831,15 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         }
         uint8_t opcode = GFX_OPCODE(c);
         {
+            static int s_enc_dump = 0;
+            if ((s_enc_dump++ % 2000) == 0) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "ENCDUMP @%p enc=%d w0=0x%08X w1=0x%08X op=0x%02X depth=%d first4=%02X%02X%02X%02X",
+                    cur, cur_dl_enc, c.w0, c.w1, opcode, depth,
+                    cur[0], cur[1], cur[2], cur[3]);
+            }
+        }
+        {
             static int s_cmds = 0;
             if ((s_cmds++ % 5000) == 0) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
