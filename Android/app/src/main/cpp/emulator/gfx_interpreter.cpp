@@ -1415,33 +1415,33 @@ static void Matrix_Multiply(BKMatrix result, const BKMatrix a, const BKMatrix b)
 
 // F3DEX (non-2) matrix flag bits — Banjo-Kazooie
 #ifndef G_MTX_PROJECTION
-#define G_MTX_PROJECTION  0x01
+#define G_MTX_PROJECTION  0x04
 #endif
 #ifndef G_MTX_LOAD
 #define G_MTX_LOAD        0x02
 #endif
 #ifndef G_MTX_PUSH
-#define G_MTX_PUSH        0x04
+#define G_MTX_PUSH        0x01
 #endif
 
 #ifndef G_MTX_PROJECTION
-#define G_MTX_PROJECTION  0x01
+#define G_MTX_PROJECTION  0x04
 #endif
 #ifndef G_MTX_LOAD
 #define G_MTX_LOAD        0x02
 #endif
 #ifndef G_MTX_PUSH
-#define G_MTX_PUSH        0x04
+#define G_MTX_PUSH        0x01
 #endif
 
 #ifndef G_MTX_PROJECTION
-#define G_MTX_PROJECTION  0x01
+#define G_MTX_PROJECTION  0x04
 #endif
 #ifndef G_MTX_LOAD
 #define G_MTX_LOAD        0x02
 #endif
 #ifndef G_MTX_PUSH
-#define G_MTX_PUSH        0x04
+#define G_MTX_PUSH        0x01
 #endif
 
 static void Cmd_Mtx(GfxCommand cmd) {
