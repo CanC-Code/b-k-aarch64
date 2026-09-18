@@ -1395,7 +1395,6 @@ static void Cmd_MoveMem(GfxCommand cmd) {
 // For our initial implementation, we treat the matrix as modelview.
 // =======================================================================
 static void Cmd_MoveWord(GfxCommand cmd) {
-    if (1) return;  // BISECT-CMDMWORD
     // F3DEX G_MOVEWORD: w0 = (0xBC << 24) | (index << 16) | offset
     uint32_t op     = (cmd.w0 >> 24) & 0xFF;
     uint32_t index, offset;
@@ -2406,11 +2405,16 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
                     }
 
-                    int probed = bka_probe_dl_encoding((uint8_t*)dl_ptr);
-                    if (probed != 0) {
-                        cur_dl_enc = probed;
+                    int parent_enc = (depth > 0) ? stack_enc[depth - 1] : 0;
+                    int probed = 0;
+                    if (parent_enc != 0) {
+                        // Sub-DLs share their parent's byte order (uniformly
+                        // emitted by the same gSP* macros at build time).
+                        // Trust the parent; do not override with a probe.
+                        cur_dl_enc = parent_enc;
                     } else {
-                        cur_dl_enc = stack_enc[depth - 1];  // fall back to parent
+                        probed = bka_probe_dl_encoding((uint8_t*)dl_ptr);
+                        cur_dl_enc = (probed != 0) ? probed : 1;
                     }
                     static int s_enc_probe = 0;
                     if (s_enc_probe++ < 40) {
