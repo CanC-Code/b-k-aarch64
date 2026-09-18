@@ -472,7 +472,7 @@ static void Matrix_MultVec(const BKMatrix m, float x, float y, float z, float w,
 }
 
 // Load N64 fixed-point matrix (int16_t[4][4] with 32-bit integer parts)
-static void Matrix_LoadFromN64(BKMatrix out, const void* src) {
+static void Matrix_LoadFromN64(BKMatrix* out, const void* src) {
     {
         static int s_raw = 0;
         if (s_raw++ < 2) {
@@ -532,20 +532,20 @@ static void Matrix_LoadFromN64(BKMatrix out, const void* src) {
                 e_int  = (int16_t)(iw32 & 0xFFFF);
                 e_frac = (uint16_t)(fw32 & 0xFFFF);
             }
-            out[r][c] = (float)e_int + (float)e_frac / 65536.0f;
+            (*out)[r][c] = (float)e_int + (float)e_frac / 65536.0f;
         }
     }
     {
         static int s_res = 0;
         if (s_res++ < 2) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                "MTXRES r0=(%.4f %.4f %.4f %.4f)", out[0][0],out[0][1],out[0][2],out[0][3]);
+                "MTXRES r0=(%.4f %.4f %.4f %.4f)", (*out)[0][0],(*out)[0][1],(*out)[0][2],(*out)[0][3]);
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                "MTXRES r1=(%.4f %.4f %.4f %.4f)", out[1][0],out[1][1],out[1][2],out[1][3]);
+                "MTXRES r1=(%.4f %.4f %.4f %.4f)", (*out)[1][0],(*out)[1][1],(*out)[1][2],(*out)[1][3]);
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                "MTXRES r2=(%.4f %.4f %.4f %.4f)", out[2][0],out[2][1],out[2][2],out[2][3]);
+                "MTXRES r2=(%.4f %.4f %.4f %.4f)", (*out)[2][0],(*out)[2][1],(*out)[2][2],(*out)[2][3]);
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                "MTXRES r3=(%.4f %.4f %.4f %.4f)", out[3][0],out[3][1],out[3][2],out[3][3]);
+                "MTXRES r3=(%.4f %.4f %.4f %.4f)", (*out)[3][0],(*out)[3][1],(*out)[3][2],(*out)[3][3]);
         }
     }
 }
@@ -1352,7 +1352,7 @@ static void Cmd_MoveMem(GfxCommand cmd) {
             target = &s_rdp.modelview;
         }
         void *mtx_src = RDP_TranslateAddr(addr);
-        if (mtx_src) Matrix_LoadFromN64(*target, mtx_src);
+        if (mtx_src) Matrix_LoadFromN64(target, mtx_src);
     }
 }
 
@@ -1529,7 +1529,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
     }
 
     BKMatrix newMatrix;
-    Matrix_LoadFromN64(newMatrix, mtx_src);
+    Matrix_LoadFromN64(&newMatrix, mtx_src);
 //     { static int s_w0 = 0; if (s_w0++ < 12) { const uint8_t* raw = (const uint8_t*)s_current_cmd; __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "MTXW0 cur=%p raw=%02X%02X%02X%02X %02X%02X%02X%02X decoded_w0=0x%08X flag=0x%02X", (void*)raw, raw?raw[0]:0,raw?raw[1]:0,raw?raw[2]:0,raw?raw[3]:0,raw?raw[4]:0,raw?raw[5]:0,raw?raw[6]:0,raw?raw[7]:0, cmd.w0, flag); } }
 
     if (s_mtx_log_frame++ < 12) {
