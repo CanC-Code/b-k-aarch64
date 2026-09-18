@@ -1478,7 +1478,6 @@ static void Matrix_Multiply(BKMatrix result, const BKMatrix a, const BKMatrix b)
 #endif
 
 static void Cmd_Mtx(GfxCommand cmd) {
-    if (1) return;  // BISECT-CMDMTX
     uint32_t flag = (cmd.w0 >> 16) & 0xFF;
     void *mtx_src = RDP_TranslateAddr(cmd.w1);
     if (!mtx_src) {
