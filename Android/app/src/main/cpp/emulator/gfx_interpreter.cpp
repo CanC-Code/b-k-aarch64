@@ -925,6 +925,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
 
     for (uint32_t i = 0; i < n; i++) {
         BKVertex* v = &s_rdp.dmem[v0 + i];
+        { static int s_vtxwr = 0; if (s_vtxwr++ < 200) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "VTXWR i=%u v=%p src=%p dmem=%p idx=%u", i, (void*)v, (void*)src, (void*)s_rdp.dmem, v0+i); }
         v->x = read_int16(src + 0);
         v->y = read_int16(src + 2);
         v->z = read_int16(src + 4);
@@ -1009,6 +1010,7 @@ static void Cmd_Tri1(GfxCommand cmd) {
     TransformVertex(vert1, &sx1, &sy1);
     TransformVertex(vert2, &sx2, &sy2);
 
+    { static int s_rt = 0; if (s_rt++ < 20) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "RASTER v=(%p %p %p) dmembase=%p", (void*)vert0, (void*)vert1, (void*)vert2, (void*)s_rdp.dmem); }
     RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
         vert0->r, vert0->g, vert0->b, vert0->a,
         vert1->r, vert1->g, vert1->b, vert1->a,
@@ -2172,7 +2174,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     }
                 }
                 s_dl_base = (uintptr_t)dl_ptr;
-                { static int s_w = 0; if (s_w++ < 3) { bka_install_watch(); mprotect((void*)((uintptr_t)dl_ptr & ~0xFFFULL), 0x1000, PROT_READ); } }
+                /* disabled: { static int s_w = 0; if (s_w++ < 3) { bka_install_watch(); mprotect((void*)((uintptr_t)dl_ptr & ~0xFFFULL), 0x1000, PROT_READ); } } */
                 if (++dl_jump_log_count <= 50) {
                     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
                         "G_DL JUMP to addr=0x%08X resolved=%p cur_end=%p depth=%d",
