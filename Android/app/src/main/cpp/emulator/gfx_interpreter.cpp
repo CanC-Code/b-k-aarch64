@@ -1421,10 +1421,7 @@ static void Cmd_MoveWord(GfxCommand cmd) {
         // values (0x70..0x7F) crash the game when used as segment bases;
         // the only safe values are physical RDRAM and KSEG0.
         uint32_t a = data;
-        bool known_valid = (segment == 0 && a == 0) ||
-                           (a <= 0x01FFFFFFu) ||
-                           (a >= 0x80000000u && a <= 0x807FFFFFu);
-        if (known_valid == false) {
+        if (!((a <= 0x007FFFFFu) || (a >= 0x80000000u && a <= 0x807FFFFFu))) {
             static int s_badseg = 0;
             if (s_badseg++ < 20)
                 __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
