@@ -1049,6 +1049,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
 // =======================================================================
 
 static void Cmd_Tri1(GfxCommand cmd) {
+    if (1) return;  // BISECT: triangle dispatch disabled
     static int s_tri1_calls = 0;
     if (++s_tri1_calls % 200 == 1 || s_tri1_calls < 5) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -1100,6 +1101,7 @@ static void Cmd_Tri1(GfxCommand cmd) {
 // =======================================================================
 
 static void Cmd_Tri2(GfxCommand cmd) {
+    if (1) return;  // BISECT: triangle dispatch disabled
     static int s_tri2_calls = 0;
     if (++s_tri2_calls % 200 == 1 || s_tri2_calls < 5) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -1224,6 +1226,7 @@ static void Cmd_Tri2(GfxCommand cmd) {
 // w1 = flag
 // =======================================================================
 static void Cmd_Tri1_F3DEX2(GfxCommand cmd) {
+    if (1) return;  // BISECT
     if (s_rdp.dmemVertexCount == 0) return;
 
     uint32_t v0 = (cmd.w0 >> 17) & 0x7F;
@@ -1260,6 +1263,7 @@ static void Cmd_Tri1_F3DEX2(GfxCommand cmd) {
 // w1 = [flag:8][v3:8][v4:8][v5:8]     (second triangle, flag ignored)
 // =======================================================================
 static void Cmd_Tri2_F3DEX2(GfxCommand cmd) {
+    if (1) return;  // BISECT
     if (s_rdp.dmemVertexCount == 0) return;
 
     uint32_t v00 = (cmd.w0 >> 17) & 0x7F;
