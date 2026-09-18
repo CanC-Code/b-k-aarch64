@@ -1544,6 +1544,10 @@ static void Cmd_Mtx(GfxCommand cmd) {
         // Projection matrix slot
         if (flag & G_MTX_LOAD) {
             memcpy(s_rdp.projection, newMatrix, sizeof(BKMatrix));
+            { static int s_d = 0; if (s_d++ < 3) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "PROJ-AFTER-LOAD r0=(%.4f %.4f %.4f %.4f) r3=(%.4f %.4f %.4f %.4f)",
+                s_rdp.projection[0][0], s_rdp.projection[0][1], s_rdp.projection[0][2], s_rdp.projection[0][3],
+                s_rdp.projection[3][0], s_rdp.projection[3][1], s_rdp.projection[3][2], s_rdp.projection[3][3]); }
         } else {
             BKMatrix tmp;
             Matrix_Multiply(tmp, newMatrix, s_rdp.projection); // new × existing
@@ -1569,6 +1573,10 @@ static void Cmd_Mtx(GfxCommand cmd) {
     }
 
     // RT64 recomputes viewProj after every matrix op.
+    { static int s_d2 = 0; if (s_d2++ < 3) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+        "PROJ-BEFORE-VP r0=(%.4f %.4f %.4f %.4f) r3=(%.4f %.4f %.4f %.4f) flag=0x%02X",
+        s_rdp.projection[0][0], s_rdp.projection[0][1], s_rdp.projection[0][2], s_rdp.projection[0][3],
+        s_rdp.projection[3][0], s_rdp.projection[3][1], s_rdp.projection[3][2], s_rdp.projection[3][3], flag); }
     Matrix_Multiply(s_rdp.viewProj, s_rdp.modelview, s_rdp.projection);
 }
 
