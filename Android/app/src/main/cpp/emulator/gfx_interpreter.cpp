@@ -1599,6 +1599,25 @@ static void* RSP_ResolveGfxAddress(uint32_t addr) {
 // Main Dispatch
 // =======================================================================
 
+// Probe a sub-DL's encoding by reading its first N commands under both
+// byte orders and counting which interpretation yields more valid F3DEX
+// opcodes.  Returns 0=unknown, 1=LE, 2=BE.
+static int bka_probe_dl_encoding(uint8_t* ptr) {
+    if (!ptr) return 0;
+    int le = 0, be = 0;
+    for (int i = 0; i < 8; i++) {
+        uint8_t* p = ptr + i * 16;
+        if (!bka_is_readable(p + 4)) break;
+        uint32_t w_le = *(uint32_t*)p;
+        uint32_t w_be = __builtin_bswap32(w_le);
+        if (bka_is_f3dex_opcode((uint8_t)(w_le >> 24))) le++;
+        if (bka_is_f3dex_opcode((uint8_t)(w_be >> 24))) be++;
+    }
+    if (le > be + 1) return 1;
+    if (be > le + 1) return 2;
+    return 0;
+}
+
 static int s_rspCallCount = 0;
 void RSP_ProcessGfxTask(OSTask* tp) {
     s_rspCallCount++;
@@ -2186,7 +2205,21 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                  * ambiguous-first-command DLs (e.g. a leading G_SETCOMBINE
                  * bytes 'FC 62 FE 04' which decode as valid G_VTX in LE) to be
                  * misdetected as LE, producing phantom seg-1 vertex loads. */
-                cur_dl_enc = stack_enc[depth - 1];
+                {
+                    int probed = bka_probe_dl_encoding((uint8_t*)dl_ptr);
+                    if (probed != 0) {
+                        cur_dl_enc = probed;
+                    } else {
+                        cur_dl_enc = stack_enc[depth - 1];  // fall back to parent
+                    }
+                    static int s_enc_probe = 0;
+                    if (s_enc_probe++ < 40) {
+                        uint8_t* b = (uint8_t*)dl_ptr;
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                            "G_DL ENC-PROBE target=0x%08X bytes=%02X%02X%02X%02X chosen=%d parent=%d",
+                            raw_addr, b[0],b[1],b[2],b[3], cur_dl_enc, stack_enc[depth - 1]);
+                    }
+                }
 
                 // Now safe to update cur_end for the nested DL.
                 // Cap to 16 KB past the entry point — real sub-DLs are
