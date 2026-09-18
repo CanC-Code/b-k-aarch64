@@ -1395,6 +1395,7 @@ static void Cmd_MoveMem(GfxCommand cmd) {
 // For our initial implementation, we treat the matrix as modelview.
 // =======================================================================
 static void Cmd_MoveWord(GfxCommand cmd) {
+    if (1) return;  // BISECT-CMDMWORD
     // F3DEX G_MOVEWORD: w0 = (0xBC << 24) | (index << 16) | offset
     uint32_t op     = (cmd.w0 >> 24) & 0xFF;
     uint32_t index, offset;
