@@ -1002,7 +1002,6 @@ static void Cmd_Vtx(GfxCommand cmd) {
     }
 
     for (uint32_t i = 0; i < n; i++) {
-        if (1) return;  // BISECT-CMDVTX
         BKVertex* v = &s_rdp.dmem[v0 + i];
         bka_guard_write(v, sizeof(BKVertex), "Cmd_Vtx.dmem");
         { static int s_vtxwr = 0; if (s_vtxwr++ < 0) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "VTXWR i=%u v=%p src=%p dmem=%p idx=%u", i, (void*)v, (void*)src, (void*)s_rdp.dmem, v0+i); }
@@ -1479,6 +1478,7 @@ static void Matrix_Multiply(BKMatrix result, const BKMatrix a, const BKMatrix b)
 #endif
 
 static void Cmd_Mtx(GfxCommand cmd) {
+    if (1) return;  // BISECT-CMDMTX
     uint32_t flag = (cmd.w0 >> 16) & 0xFF;
     void *mtx_src = RDP_TranslateAddr(cmd.w1);
     if (!mtx_src) {
