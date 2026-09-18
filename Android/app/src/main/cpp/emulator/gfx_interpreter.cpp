@@ -32,6 +32,8 @@ void* bka_lookup_addr_by_low32(uint32_t low32);
 }
 
 static RDPState s_rdp;
+static int s_rsp_dump_sizes = [](){ __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "RDP-SIZE=%zu sizeof dmem=%zu offsetof(dmem)=%zu offsetof(dmemVertexCount)=%zu", sizeof(RDPState), sizeof(s_rdp.dmem), offsetof(RDPState, dmem), offsetof(RDPState, dmemVertexCount)); return 0; }();
+static uint64_t bka_canary_post = 0xBEEFCAFEBABE5678ull;
 static inline bool bka_in_rdram(void* p, size_t n) {
     uintptr_t a = (uintptr_t)p;
     uintptr_t lo = (uintptr_t)gN64_RDRAM;
@@ -1239,7 +1241,6 @@ static void Cmd_Tri2(GfxCommand cmd) {
 // w1 = flag
 // =======================================================================
 static void Cmd_Tri1_F3DEX2(GfxCommand cmd) {
-    if (1) return;  // BISECT
     if (s_rdp.dmemVertexCount == 0) return;
 
     uint32_t v0 = (cmd.w0 >> 17) & 0x7F;
@@ -1276,7 +1277,6 @@ static void Cmd_Tri1_F3DEX2(GfxCommand cmd) {
 // w1 = [flag:8][v3:8][v4:8][v5:8]     (second triangle, flag ignored)
 // =======================================================================
 static void Cmd_Tri2_F3DEX2(GfxCommand cmd) {
-    if (1) return;  // BISECT
     if (s_rdp.dmemVertexCount == 0) return;
 
     uint32_t v00 = (cmd.w0 >> 17) & 0x7F;
@@ -1749,6 +1749,17 @@ static int bka_probe_dl_encoding(uint8_t* ptr) {
 
 static int s_rspCallCount = 0;
 void RSP_ProcessGfxTask(OSTask* tp) {
+    if (bka_canary_post != 0xBEEFCAFEBABE5678ull) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "CANARY-OVERFLOW post=%016llX (s_rdp overflowed)",
+            (unsigned long long)bka_canary_post);
+        bka_canary_post = 0xBEEFCAFEBABE5678ull;
+    }
+    if (s_rdp.dmemVertexCount < 0 || s_rdp.dmemVertexCount > DMEM_VERTEX_COUNT) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "DMEM-COUNT-BAD: %d (should be 0..256)", s_rdp.dmemVertexCount);
+        s_rdp.dmemVertexCount = DMEM_VERTEX_COUNT;
+    }
     s_rspCallCount++;
 
     // Probe known RDRAM offsets where the DL thinks vertex data lives
