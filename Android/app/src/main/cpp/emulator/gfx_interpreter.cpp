@@ -1887,6 +1887,17 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         GfxCommand c = {0};
         memcpy(&c, cur, 8);
         s_current_cmd = cur;
+        {
+            static int s_last_enc = -1;
+            static int s_enc_flips = 0;
+            if (s_last_enc != -1 && s_last_enc != cur_dl_enc && s_enc_flips++ < 20) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "ENCFLIP at cur=%p total=%zu depth=%d %d -> %d bytes=%02X%02X%02X%02X",
+                    (void*)cur, total, depth, s_last_enc, cur_dl_enc,
+                    cur[0],cur[1],cur[2],cur[3]);
+            }
+            s_last_enc = cur_dl_enc;
+        }
 
         /* Per-DL encoding detection.  Once a DL is detected as BE, every
          * command in it must be byte-swapped -- not just the ones whose low
