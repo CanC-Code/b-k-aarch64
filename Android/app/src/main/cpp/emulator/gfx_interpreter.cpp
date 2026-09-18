@@ -1417,14 +1417,13 @@ static void Cmd_MoveWord(GfxCommand cmd) {
 
     if (index == 0x06) { // G_MW_SEGMENT
         uint32_t segment = (offset / 4) & 0x0F;
-        // Restrict to values that resolve to real memory.  Allow physical
-        // addresses, KSEG0, segment 0 = 0 (the default), and host-pointer
-        // low-32 in 0x70..0x7F (recompiled-code base for this build).
+        // Segment base must be a real N64 address.  Host-pointer low-32
+        // values (0x70..0x7F) crash the game when used as segment bases;
+        // the only safe values are physical RDRAM and KSEG0.
         uint32_t a = data;
         bool known_valid = (segment == 0 && a == 0) ||
                            (a <= 0x01FFFFFFu) ||
-                           (a >= 0x80000000u && a <= 0x807FFFFFu) ||
-                           (a >= 0x70000000u && a <= 0x7FFFFFFFu);
+                           (a >= 0x80000000u && a <= 0x807FFFFFu);
         if (known_valid == false) {
             static int s_badseg = 0;
             if (s_badseg++ < 20)
