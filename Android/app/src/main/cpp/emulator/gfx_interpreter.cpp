@@ -2148,7 +2148,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     if (c.w1 >= 0xF0000000u) {
                         unknown_opcode_run += 3;
                         opcode = 0xFF;   // force the drift counter below to increment
-                        if (unknown_opcode_run >= 2) {
+                        if (unknown_opcode_run >= 16) {
                             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                                 "walker: spurious G_VTX addr=0x%08X at cur=%p depth=%d — bailing",
                                 c.w1, (void*)cur, depth);
@@ -2613,7 +2613,7 @@ default:
                 (void*)cur, depth, total);
             return;
         }
-        if (unknown_opcode_run > 1) {
+        if (unknown_opcode_run > 15) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "walker: %d consecutive unknown opcodes at cur=%p depth=%d — breaking (drifted past DL)",
                 unknown_opcode_run, cur, depth);
