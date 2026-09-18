@@ -503,12 +503,13 @@ static void Matrix_LoadFromN64(BKMatrix out, const void* src) {
 
             int16_t  e_int;
             uint16_t e_frac;
+            // LE read: low 16 bits = first element in memory, high 16 = second
             if (side == 0) {
-                e_int  = (int16_t)(iw32 >> 16);
-                e_frac = (uint16_t)(fw32 >> 16);
-            } else {
                 e_int  = (int16_t)(iw32 & 0xFFFF);
                 e_frac = (uint16_t)(fw32 & 0xFFFF);
+            } else {
+                e_int  = (int16_t)(iw32 >> 16);
+                e_frac = (uint16_t)(fw32 >> 16);
             }
             out[r][c] = (float)e_int + (float)e_frac / 65536.0f;
         }
