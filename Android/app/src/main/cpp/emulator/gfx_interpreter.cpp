@@ -1714,8 +1714,8 @@ static int bka_probe_dl_encoding(uint8_t* ptr) {
         uint32_t w_be = __builtin_bswap32(w_le);
         uint8_t op_le = (uint8_t)(w_le >> 24);
         uint8_t op_be = (uint8_t)(w_be >> 24);
-        if (bka_is_f3dex_opcode(op_le)) le++; else le_bad++;
-        if (bka_is_f3dex_opcode(op_be)) be++; else be_bad++;
+        if (op_le != 0x00) { if (bka_is_f3dex_opcode(op_le)) le++; else le_bad++; }
+        if (op_be != 0x00) { if (bka_is_f3dex_opcode(op_be)) be++; else be_bad++; }
         if (i >= 7 && be_bad == 0 && be >= 8) return 2;
         if (i >= 7 && le_bad == 0 && le >= 8) return 1;
     }
@@ -2358,6 +2358,22 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                  * bytes 'FC 62 FE 04' which decode as valid G_VTX in LE) to be
                  * misdetected as LE, producing phantom seg-1 vertex loads. */
                 {
+                    uint32_t _w0 = *(uint32_t*)dl_ptr;
+
+                    uint32_t _w4 = *((uint32_t*)dl_ptr + 1);
+
+                    if (_w0 == 0 && _w4 == 0) {
+
+                        static int s_dead = 0;
+
+                        if (s_dead++ < 5) __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+
+                            "G_DL SKIP: dead target 0x%08X (first 8 bytes zero)", raw_addr);
+
+                        break;
+
+                    }
+
                     int probed = bka_probe_dl_encoding((uint8_t*)dl_ptr);
                     if (probed != 0) {
                         cur_dl_enc = probed;
