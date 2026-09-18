@@ -1416,11 +1416,21 @@ static void Cmd_MoveWord(GfxCommand cmd) {
     }
 
     if (index == 0x06) { // G_MW_SEGMENT
-        // RT64 stores segment bases verbatim — no translation. The address
-        // in `data` is the segment's own base, which RDP_TranslateAddr
-        // resolves lazily at use time.
         uint32_t segment = (offset / 4) & 0x0F;
-        s_rdp.segmentBase[segment] = (uintptr_t)data;
+        // Real N64 segment bases are physical RDRAM or the KSEG0 window.
+        // Any other value means the command was misdecoded (wrong encoding
+        // or walker drift). Writing it would poison every subsequent
+        // address translation and eventually crash the game.
+        uint32_t a = data;
+        if (!((a <= 0x007FFFFFu) || (a >= 0x80000000u && a <= 0x807FFFFFu))) {
+            static int s_badseg = 0;
+            if (s_badseg++ < 20)
+                __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                    "Cmd_MoveWord SEGMENT seg=%u base=0x%08X INVALID — skipping",
+                    segment, a);
+            return;
+        }
+        s_rdp.segmentBase[segment] = (uintptr_t)a;
 
         static int seg_log = 0;
         if (seg_log++ < 20) {
