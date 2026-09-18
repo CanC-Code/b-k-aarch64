@@ -2405,16 +2405,14 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
                     }
 
+                    int probed = bka_probe_dl_encoding((uint8_t*)dl_ptr);
                     int parent_enc = (depth > 0) ? stack_enc[depth - 1] : 0;
-                    int probed = 0;
-                    if (parent_enc != 0) {
-                        // Sub-DLs share their parent's byte order (uniformly
-                        // emitted by the same gSP* macros at build time).
-                        // Trust the parent; do not override with a probe.
+                    if (probed != 0) {
+                        cur_dl_enc = probed;
+                    } else if (parent_enc != 0) {
                         cur_dl_enc = parent_enc;
                     } else {
-                        probed = bka_probe_dl_encoding((uint8_t*)dl_ptr);
-                        cur_dl_enc = (probed != 0) ? probed : 1;
+                        cur_dl_enc = 1;
                     }
                     static int s_enc_probe = 0;
                     if (s_enc_probe++ < 40) {
