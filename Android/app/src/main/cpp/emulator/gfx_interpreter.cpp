@@ -1853,6 +1853,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     size_t dl_cmds = 0;
     int zero_run = 0;
     int unknown_opcode_run = 0;
+    int cmds_since_progress = 0;
     size_t gdl_jumps = 0;
     const size_t MAX_GDL_JUMPS = 200;
     int consecutive_bad_gdl = 0;
@@ -2012,6 +2013,13 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             /* CMDX disabled */;
         }
 
+        if (opcode == 0x01 || opcode == 0x04 || opcode == 0xB1 ||
+            opcode == 0xBF || opcode == 0xC0 || opcode == 0xC4 ||
+            opcode == 0xBC || opcode == 0xB6 || opcode == 0xB9) {
+            cmds_since_progress = 0;
+        } else {
+            cmds_since_progress++;
+        }
         cur += current_stride;
 
         if (c.w0 != 0 || c.w1 != 0) zero_run = 0;
@@ -2112,7 +2120,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     if (c.w1 >= 0xF0000000u) {
                         unknown_opcode_run += 3;
                         opcode = 0xFF;   // force the drift counter below to increment
-                        if (unknown_opcode_run >= 9) {
+                        if (unknown_opcode_run >= 2) {
                             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                                 "walker: spurious G_VTX addr=0x%08X at cur=%p depth=%d — bailing",
                                 c.w1, (void*)cur, depth);
@@ -2571,7 +2579,13 @@ default:
                 break;
         }
 
-        if (unknown_opcode_run > 8) {
+        if (cmds_since_progress > 30 && total > 40) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "walker: 30 commands with no progress at cur=%p depth=%d total=%zu — bailing",
+                (void*)cur, depth, total);
+            return;
+        }
+        if (unknown_opcode_run > 1) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "walker: %d consecutive unknown opcodes at cur=%p depth=%d — breaking (drifted past DL)",
                 unknown_opcode_run, cur, depth);
