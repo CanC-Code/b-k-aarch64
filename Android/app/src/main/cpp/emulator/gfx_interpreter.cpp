@@ -680,9 +680,19 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
     float ox, oy, oz, ow;
     Matrix_MultVec(s_rdp.modelview, x, y, z, 1.0f, &ox, &oy, &oz, &ow);
 
-    // Apply projection
-    Matrix_MultVec(s_rdp.projection, ox, oy, oz, ow, &ox, &oy, &oz, &ow);
+    // Apply projection — use locals to avoid aliasing input/output
+    float px, py, pz, pw;
+    Matrix_MultVec(s_rdp.projection, ox, oy, oz, ow, &px, &py, &pz, &pw);
+    ox = px; oy = py; oz = pz; ow = pw;
 
+    {
+        static int s_rd = 0;
+        if (s_rd++ < 20) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "PRE-DIV post-proj ox=%.2f oy=%.2f oz=%.2f ow=%.4f",
+                ox, oy, oz, ow);
+        }
+    }
     // Perspective divide
     if (fabsf(ow) > 0.0001f) {
         ox /= ow; oy /= ow;
@@ -1079,6 +1089,12 @@ static void Cmd_Tri2(GfxCommand cmd) {
                     s_rdp.projection[0][2], s_rdp.projection[0][3],
                     s_rdp.projection[3][0], s_rdp.projection[3][1],
                     s_rdp.projection[3][2], s_rdp.projection[3][3]);
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "PROJFULL row1=(%.4f %.4f %.4f %.4f) row2=(%.4f %.4f %.4f %.4f)",
+                    s_rdp.projection[1][0], s_rdp.projection[1][1],
+                    s_rdp.projection[1][2], s_rdp.projection[1][3],
+                    s_rdp.projection[2][0], s_rdp.projection[2][1],
+                    s_rdp.projection[2][2], s_rdp.projection[2][3]);
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "  MV    row0=(%.3f %.3f %.3f %.3f) row3=(%.3f %.3f %.3f %.3f)",
                     s_rdp.modelview[0][0], s_rdp.modelview[0][1],
