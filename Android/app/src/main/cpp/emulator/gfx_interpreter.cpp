@@ -537,7 +537,7 @@ static void Matrix_LoadFromN64(BKMatrix* out, const void* src) {
     }
     {
         static int s_res = 0;
-        if (s_res++ < 2) {
+        if (s_res++ < 20) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "MTXRES r0=(%.4f %.4f %.4f %.4f)", (*out)[0][0],(*out)[0][1],(*out)[0][2],(*out)[0][3]);
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -1415,33 +1415,33 @@ static void Matrix_Multiply(BKMatrix result, const BKMatrix a, const BKMatrix b)
 
 // F3DEX (non-2) matrix flag bits — Banjo-Kazooie
 #ifndef G_MTX_PROJECTION
-#define G_MTX_PROJECTION  0x04
+#define G_MTX_PROJECTION  0x01
 #endif
 #ifndef G_MTX_LOAD
 #define G_MTX_LOAD        0x02
 #endif
 #ifndef G_MTX_PUSH
-#define G_MTX_PUSH        0x01
+#define G_MTX_PUSH        0x04
 #endif
 
 #ifndef G_MTX_PROJECTION
-#define G_MTX_PROJECTION  0x04
+#define G_MTX_PROJECTION  0x01
 #endif
 #ifndef G_MTX_LOAD
 #define G_MTX_LOAD        0x02
 #endif
 #ifndef G_MTX_PUSH
-#define G_MTX_PUSH        0x01
+#define G_MTX_PUSH        0x04
 #endif
 
 #ifndef G_MTX_PROJECTION
-#define G_MTX_PROJECTION  0x04
+#define G_MTX_PROJECTION  0x01
 #endif
 #ifndef G_MTX_LOAD
 #define G_MTX_LOAD        0x02
 #endif
 #ifndef G_MTX_PUSH
-#define G_MTX_PUSH        0x01
+#define G_MTX_PUSH        0x04
 #endif
 
 static void Cmd_Mtx(GfxCommand cmd) {
@@ -1539,6 +1539,11 @@ static void Cmd_Mtx(GfxCommand cmd) {
             newMatrix[0][0], newMatrix[1][1],
             newMatrix[2][2], newMatrix[3][3]);
     }
+
+    { static int s_act = 0; if (s_act++ < 40) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+        "MTXACT flag=0x%02X src=0x%08X new[0][0]=%.4f new[3][2]=%.4f | PROJ=%d LOAD=%d PUSH=%d",
+        flag, cmd.w1, newMatrix[0][0], newMatrix[3][2],
+        (flag & G_MTX_PROJECTION)?1:0, (flag & G_MTX_LOAD)?1:0, (flag & G_MTX_PUSH)?1:0); }
 
     if (flag & G_MTX_PROJECTION) {
         // Projection matrix slot
