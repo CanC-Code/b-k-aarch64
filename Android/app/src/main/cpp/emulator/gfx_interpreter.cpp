@@ -537,7 +537,7 @@ static void Matrix_LoadFromN64(BKMatrix* out, const void* src) {
     }
     {
         static int s_res = 0;
-        if (s_res++ < 20) {
+        if (s_res++ < 2) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "MTXRES r0=(%.4f %.4f %.4f %.4f)", (*out)[0][0],(*out)[0][1],(*out)[0][2],(*out)[0][3]);
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -724,7 +724,7 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
     float x = (float)v->x, y = (float)v->y, z = (float)v->z;
     {
         static int s_tv = 0;
-        if (s_tv++ < 8) {
+        if (s_tv++ < 0) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "TV-IN v=(%.1f,%.1f,%.1f) m00=%.4f m11=%.4f m22=%.4f m32=%.4f m23=%.4f",
                 x, y, z,
@@ -745,7 +745,7 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
 
     {
         static int s_rd = 0;
-        if (s_rd++ < 20) {
+        if (s_rd++ < 0) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "PRE-DIV post-proj ox=%.2f oy=%.2f oz=%.2f ow=%.4f",
                 ox, oy, oz, ow);
@@ -932,7 +932,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
     uint32_t addr = cmd.w1;
 
     static int s_vtx_dump = 0;
-    if (s_vtx_dump++ < 20) {
+    if (s_vtx_dump++ < 3) {
         extern const uint8_t* s_current_cmd;
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "Cmd_Vtx CALL #%d: v0=%u n=%u addr=0x%08X w0=0x%08X cur=%p cur+8=%p delta=%ld",
@@ -959,7 +959,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
     uint8_t* src_base = src;
 
     static int s_vtx_resolve_log = 0;
-    if (s_vtx_resolve_log++ < 8) {
+    if (s_vtx_resolve_log++ < 0) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "VTXRESOLVE addr=0x%08X -> src=%p bytes: "
             "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
@@ -996,7 +996,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
 
     for (uint32_t i = 0; i < n; i++) {
         BKVertex* v = &s_rdp.dmem[v0 + i];
-        { static int s_vtxwr = 0; if (s_vtxwr++ < 200) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "VTXWR i=%u v=%p src=%p dmem=%p idx=%u", i, (void*)v, (void*)src, (void*)s_rdp.dmem, v0+i); }
+        { static int s_vtxwr = 0; if (s_vtxwr++ < 0) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "VTXWR i=%u v=%p src=%p dmem=%p idx=%u", i, (void*)v, (void*)src, (void*)s_rdp.dmem, v0+i); }
         v->x = read_int16(src + 0);
         v->y = read_int16(src + 2);
         v->z = read_int16(src + 4);
@@ -1557,7 +1557,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
     Matrix_LoadFromN64(&newMatrix, mtx_src);
 //     { static int s_w0 = 0; if (s_w0++ < 12) { const uint8_t* raw = (const uint8_t*)s_current_cmd; __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "MTXW0 cur=%p raw=%02X%02X%02X%02X %02X%02X%02X%02X decoded_w0=0x%08X flag=0x%02X", (void*)raw, raw?raw[0]:0,raw?raw[1]:0,raw?raw[2]:0,raw?raw[3]:0,raw?raw[4]:0,raw?raw[5]:0,raw?raw[6]:0,raw?raw[7]:0, cmd.w0, flag); } }
 
-    if (s_mtx_log_frame++ < 12) {
+    if (s_mtx_log_frame++ < 0) {
         __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
             "Cmd_Mtx flag=0x%02X raw=0x%08X src=%p diag=[%.4f %.4f %.4f %.4f]",
             flag, cmd.w1, mtx_src,
@@ -2094,9 +2094,25 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0x01: Cmd_Mtx(c); break;
             case 0x04:
                 {
+                    /* Guard: a misdecoded byte can produce a "G_VTX" whose w1
+                     * is a flag/length field (top 16 bits all set) rather than
+                     * a real segment address. Real N64 addresses never start
+                     * with 0xFF. Count these as unknown opcodes so the walker
+                     * bails instead of looping on garbage. */
+                    if (c.w1 >= 0xF0000000u) {
+                        unknown_opcode_run += 3;
+                        opcode = 0xFF;   // force the drift counter below to increment
+                        if (unknown_opcode_run >= 9) {
+                            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                                "walker: spurious G_VTX addr=0x%08X at cur=%p depth=%d — bailing",
+                                c.w1, (void*)cur, depth);
+                            return;
+                        }
+                        break;
+                    }
                     {
                         static int s_ctx = 0;
-                        if (s_ctx++ < 3) {
+                        if (s_ctx++ < 0) {
                             uint8_t* p = (uint8_t*)cur;
                             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                                 "GVTX-CTX cur=%p\n"
