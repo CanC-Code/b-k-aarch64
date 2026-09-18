@@ -933,7 +933,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
 
     static int s_vtx_dump = 0;
     if (s_vtx_dump++ < 20) {
-        extern uint8_t* s_current_cmd;
+        extern const uint8_t* s_current_cmd;
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "Cmd_Vtx CALL #%d: v0=%u n=%u addr=0x%08X w0=0x%08X cur=%p cur+8=%p delta=%ld",
             s_vtxCallCount, v0, n, addr, cmd.w0,
