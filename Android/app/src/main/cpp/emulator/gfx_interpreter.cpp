@@ -99,21 +99,12 @@ static uintptr_t s_dl_base = 0;
 /* F3DEX opcodes that we recognize.  Used to distinguish LE-encoded runtime
  * commands from BE-encoded ROM-copied geometry commands. */
 static inline bool bka_is_f3dex_opcode(uint8_t op) {
-    switch (op) {
-    case 0x00: case 0x01: case 0x02: case 0x03: case 0x04: case 0x05:
-    case 0x06: case 0x07:
-    case 0xB1: case 0xB6: case 0xB7: case 0xB8: case 0xB9:
-    case 0xBA: case 0xBB: case 0xBC: case 0xBD: case 0xBE: case 0xBF:
-    case 0xC0:
-    case 0xE4: case 0xE5: case 0xE6: case 0xE7: case 0xE8: case 0xE9:
-    case 0xED: case 0xEF:
-    case 0xF0: case 0xF1: case 0xF2: case 0xF3: case 0xF4: case 0xF5:
-    case 0xF6: case 0xF7: case 0xF8: case 0xF9: case 0xFA: case 0xFB:
-    case 0xFC: case 0xFD: case 0xFE: case 0xFF:
-        return true;
-    default:
-        return false;
-    }
+    if (op <= 0x07) return true;
+    if (op >= 0x08 && op <= 0x1F) return true;
+    if (op >= 0x30 && op <= 0x3F) return true;
+    if (op >= 0xB0 && op <= 0xC0) return true;
+    if (op >= 0xE0 && op <= 0xFF) return true;
+    return false;
 }
 
 
