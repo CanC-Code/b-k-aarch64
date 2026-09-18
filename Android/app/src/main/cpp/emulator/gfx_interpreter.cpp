@@ -1064,7 +1064,6 @@ static void Cmd_Vtx(GfxCommand cmd) {
 // =======================================================================
 
 static void Cmd_Tri1(GfxCommand cmd) {
-    if (1) return;  // BISECT: triangle dispatch disabled
     static int s_tri1_calls = 0;
     if (++s_tri1_calls % 200 == 1 || s_tri1_calls < 5) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -1116,7 +1115,6 @@ static void Cmd_Tri1(GfxCommand cmd) {
 // =======================================================================
 
 static void Cmd_Tri2(GfxCommand cmd) {
-    if (1) return;  // BISECT: triangle dispatch disabled
     static int s_tri2_calls = 0;
     if (++s_tri2_calls % 200 == 1 || s_tri2_calls < 5) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -1751,7 +1749,6 @@ static int bka_probe_dl_encoding(uint8_t* ptr) {
 
 static int s_rspCallCount = 0;
 void RSP_ProcessGfxTask(OSTask* tp) {
-    { static int _bisect = 0; if (_bisect++ < 1) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "BISECT: RSP_ProcessGfxTask disabled"); return; }
     s_rspCallCount++;
 
     // Probe known RDRAM offsets where the DL thinks vertex data lives
