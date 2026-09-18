@@ -708,6 +708,18 @@ static void RasterizeTriangle(
 // Vertex Transform: apply combined matrix + viewport
 // =======================================================================
 
+// Returns the clip-space w for a vertex.  Used to reject triangles with
+// any vertex at or behind the near plane, which would otherwise divide by
+// w <= 0 and produce astronomically large screen coordinates.
+static float ComputeClipW(const BKVertex* v) {
+    float x = (float)v->x, y = (float)v->y, z = (float)v->z;
+    float ox, oy, oz, ow;
+    Matrix_MultVec(s_rdp.modelview, x, y, z, 1.0f, &ox, &oy, &oz, &ow);
+    float px, py, pz, pw;
+    Matrix_MultVec(s_rdp.projection, ox, oy, oz, ow, &px, &py, &pz, &pw);
+    return pw;
+}
+
 static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
     float x = (float)v->x, y = (float)v->y, z = (float)v->z;
     {
@@ -1061,6 +1073,11 @@ static void Cmd_Tri1(GfxCommand cmd) {
     BKVertex* vert1 = &s_rdp.dmem[v1];
     BKVertex* vert2 = &s_rdp.dmem[v2];
 
+    if (ComputeClipW(vert0) <= 0.01f || ComputeClipW(vert1) <= 0.01f ||
+        ComputeClipW(vert2) <= 0.01f) {
+        return;  // vertex at or behind camera; skip
+    }
+
     float sx0, sy0, sx1, sy1, sx2, sy2;
     TransformVertex(vert0, &sx0, &sy0);
     TransformVertex(vert1, &sx1, &sy1);
@@ -1117,6 +1134,11 @@ static void Cmd_Tri2(GfxCommand cmd) {
         BKVertex* vt0 = &s_rdp.dmem[v00];
         BKVertex* vt1 = &s_rdp.dmem[v01];
         BKVertex* vt2 = &s_rdp.dmem[v02];
+        if (ComputeClipW(vt0) <= 0.01f || ComputeClipW(vt1) <= 0.01f ||
+            ComputeClipW(&s_rdp.dmem[v02]) <= 0.01f) {
+            return;
+        }
+
         float sx0, sy0, sx1, sy1, sx2, sy2;
         TransformVertex(vt0, &sx0, &sy0);
         TransformVertex(vt1, &sx1, &sy1);
