@@ -41,18 +41,6 @@ static inline bool bka_in_rdram(void* p, size_t n) {
 static inline void bka_guard_write(void* p, size_t n, const char* tag) {
     if (bka_in_rdram(p, n)) {
         static int _gw = 0;
-        if (_gw++ < 20) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "RDRAM-WRITE %s dst=%p len=%zu", tag, p, n);
-    }
-}
-static inline bool bka_in_rdram(void* p, size_t n) {
-    uintptr_t a = (uintptr_t)p;
-    uintptr_t lo = (uintptr_t)gN64_RDRAM;
-    uintptr_t hi = lo + 0x1001000;
-    return a >= lo && (a + n) <= hi;
-}
-static inline void bka_guard_write(void* p, size_t n, const char* tag) {
-    if (bka_in_rdram(p, n)) {
-        static int _gw = 0;
         if (_gw++ < 20) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "RDRAM-WRITE %s dst=%p len=%zu", tag, p, n);
     }
