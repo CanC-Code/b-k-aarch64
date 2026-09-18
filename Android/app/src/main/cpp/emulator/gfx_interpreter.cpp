@@ -932,10 +932,13 @@ static void Cmd_Vtx(GfxCommand cmd) {
     uint32_t addr = cmd.w1;
 
     static int s_vtx_dump = 0;
-    if (s_vtx_dump++ < 3) {
+    if (s_vtx_dump++ < 20) {
+        extern uint8_t* s_current_cmd;
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-            "Cmd_Vtx CALL #%d: v0=%u n=%u addr=0x%08X w0=0x%08X",
-            s_vtxCallCount, v0, n, addr, cmd.w0);
+            "Cmd_Vtx CALL #%d: v0=%u n=%u addr=0x%08X w0=0x%08X cur=%p cur+8=%p delta=%ld",
+            s_vtxCallCount, v0, n, addr, cmd.w0,
+            (void*)s_current_cmd, (void*)((uintptr_t)s_current_cmd + 8),
+            (long)((intptr_t)0));  // placeholder, filled below
     }
 
     if (v0 >= DMEM_VERTEX_COUNT || v0 + n > DMEM_VERTEX_COUNT) {
@@ -2080,6 +2083,23 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0x01: Cmd_Mtx(c); break;
             case 0x04:
                 {
+                    {
+                        static int s_ctx = 0;
+                        if (s_ctx++ < 3) {
+                            uint8_t* p = (uint8_t*)cur;
+                            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                                "GVTX-CTX cur=%p\n"
+                                "  +0 : %02X%02X%02X%02X %02X%02X%02X%02X\n"
+                                "  +8 : %02X%02X%02X%02X %02X%02X%02X%02X\n"
+                                "  +16: %02X%02X%02X%02X %02X%02X%02X%02X\n"
+                                "  +24: %02X%02X%02X%02X %02X%02X%02X%02X",
+                                (void*)cur,
+                                p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],
+                                p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15],
+                                p[16],p[17],p[18],p[19],p[20],p[21],p[22],p[23],
+                                p[24],p[25],p[26],p[27],p[28],p[29],p[30],p[31]);
+                        }
+                    }
                     static int vtx_log_count = 0;
                     if (++vtx_log_count <= 3) {
                         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
