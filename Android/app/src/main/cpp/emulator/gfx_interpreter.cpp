@@ -1397,7 +1397,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
         if (s_proj_dump++ < 3) {
             const uint8_t* mb = (const uint8_t*)mtx_src;
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-//                 "PROJBYTES raw=0x%08X src=%p: "
+                 "PROJBYTES raw=0x%08X src=%p: "
                 "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X "
                 "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X "
                 "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X "
@@ -1425,7 +1425,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
             cmd.w1, seg, off, seg,
             (unsigned long)s_rdp.segmentBase[seg], mtx_src);
         LOGV(
-//             "MTXBYTES @%p: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X  "
+             "MTXBYTES @%p: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X  "
             "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
             mtx_src,
             mb[0],mb[1],mb[2],mb[3],mb[4],mb[5],mb[6],mb[7],
@@ -1437,7 +1437,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
     if (s_mtx_dump_frame++ < 2) {
         const uint8_t* mb = (const uint8_t*)mtx_src;
         LOGV(
-//             "MTXSRC @%p: "
+             "MTXSRC @%p: "
             "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X  "
             "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
             mtx_src,
@@ -1642,7 +1642,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         if (tp && tp->t.data_ptr && (s_taskbytes++ % 50) == 0) {
             const uint8_t* d = (const uint8_t*)tp->t.data_ptr;
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-//                 "TASK#%d data=%p size=%u bytes: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X | %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+                 "TASK#%d data=%p size=%u bytes: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X | %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
                 s_rspCallCount, tp->t.data_ptr, tp->t.data_size,
                 d[0],d[1],d[2],d[3],d[4],d[5],d[6],d[7],
                 d[8],d[9],d[10],d[11],d[12],d[13],d[14],d[15],
@@ -1738,7 +1738,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
         if (total >= 36 && total <= 60) {
             LOGV(
-//                 "LOOP iter=%zu cur=%p cur_end=%p depth=%d stride=%zu",
+                 "LOOP iter=%zu cur=%p cur_end=%p depth=%d stride=%zu",
                 total, cur, cur_end, depth, current_stride);
         }
 
@@ -1836,7 +1836,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             static int s_enc_dump = 0;
             if ((s_enc_dump++ % 2000) == 0) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-//                     "ENCDUMP @%p enc=%d w0=0x%08X w1=0x%08X op=0x%02X depth=%d first4=%02X%02X%02X%02X",
+                     "ENCDUMP @%p enc=%d w0=0x%08X w1=0x%08X op=0x%02X depth=%d first4=%02X%02X%02X%02X",
                     cur, cur_dl_enc, c.w0, c.w1, opcode, depth,
                     cur[0], cur[1], cur[2], cur[3]);
             }
@@ -1844,7 +1844,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         {
             if ((total % 500) == 0 || total <= 5) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-//                     "CMD t#%zu @%p raw=%02X%02X%02X%02X %02X%02X%02X%02X w0=0x%08X w1=0x%08X op=0x%02X enc=%d depth=%d",
+                     "CMD t#%zu @%p raw=%02X%02X%02X%02X %02X%02X%02X%02X w0=0x%08X w1=0x%08X op=0x%02X enc=%d depth=%d",
                     total, cur, cur[0],cur[1],cur[2],cur[3],cur[4],cur[5],cur[6],cur[7],
                     c.w0, c.w1, opcode, cur_dl_enc, depth);
             }
