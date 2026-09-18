@@ -1417,12 +1417,14 @@ static void Cmd_MoveWord(GfxCommand cmd) {
 
     if (index == 0x06) { // G_MW_SEGMENT
         uint32_t segment = (offset / 4) & 0x0F;
-        // Real N64 segment bases are physical RDRAM or the KSEG0 window.
-        // Any other value means the command was misdecoded (wrong encoding
-        // or walker drift). Writing it would poison every subsequent
-        // address translation and eventually crash the game.
+        // Segment base can be an N64 physical address (0..0x01FFFFFF
+        // for BK's 8MB Expansion Pak), KSEG0 (0x80000000..0x807FFFFF),
+        // or a host pointer low-32 from recompiled code (0x70..0x7F).
+        // Reject only flag/length patterns (0xFF prefix) — those are the
+        // signature of a misdecoded command.  Let everything else through
+        // and let address translation reject it at use time.
         uint32_t a = data;
-        if (!((a <= 0x007FFFFFu) || (a >= 0x80000000u && a <= 0x807FFFFFu))) {
+        if (a == 0 || (a >= 0xFF000000u)) {
             static int s_badseg = 0;
             if (s_badseg++ < 20)
                 __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
