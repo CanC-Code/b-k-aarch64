@@ -32,6 +32,31 @@ void* bka_lookup_addr_by_low32(uint32_t low32);
 }
 
 static RDPState s_rdp;
+static inline bool bka_in_rdram(void* p, size_t n) {
+    uintptr_t a = (uintptr_t)p;
+    uintptr_t lo = (uintptr_t)gN64_RDRAM;
+    uintptr_t hi = lo + 0x1001000;
+    return a >= lo && (a + n) <= hi;
+}
+static inline void bka_guard_write(void* p, size_t n, const char* tag) {
+    if (bka_in_rdram(p, n)) {
+        static int _gw = 0;
+        if (_gw++ < 20) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "RDRAM-WRITE %s dst=%p len=%zu", tag, p, n);
+    }
+}
+static inline bool bka_in_rdram(void* p, size_t n) {
+    uintptr_t a = (uintptr_t)p;
+    uintptr_t lo = (uintptr_t)gN64_RDRAM;
+    uintptr_t hi = lo + 0x1001000;
+    return a >= lo && (a + n) <= hi;
+}
+static inline void bka_guard_write(void* p, size_t n, const char* tag) {
+    if (bka_in_rdram(p, n)) {
+        static int _gw = 0;
+        if (_gw++ < 20) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "RDRAM-WRITE %s dst=%p len=%zu", tag, p, n);
+    }
+}
 static int s_mtx_log_frame = 0;
 static int s_mtx_dump_frame = 0;
 static const uint8_t* s_current_cmd = nullptr;
@@ -675,6 +700,7 @@ static void RasterizeTriangle(
                 uint8_t g = (uint8_t)(((int)g0 + g1 + g2) / 3);
                 uint8_t b = (uint8_t)(((int)b0 + b1 + b2) / 3);
             { static int s_px = 0; if (s_px++ < 5 || s_px % 10000 == 0) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "PIXWRITE #%d y=%d x=%d", s_px, (int)y, (int)x); }
+                bka_guard_write(&fb[y * FB_WIDTH + x], 2, "Raster.fb");
                 fb[y * FB_WIDTH + x] = RGBA8_TO_RGB565(r, g, b);
             }
         }
@@ -996,6 +1022,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
 
     for (uint32_t i = 0; i < n; i++) {
         BKVertex* v = &s_rdp.dmem[v0 + i];
+        bka_guard_write(v, sizeof(BKVertex), "Cmd_Vtx.dmem");
         { static int s_vtxwr = 0; if (s_vtxwr++ < 0) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "VTXWR i=%u v=%p src=%p dmem=%p idx=%u", i, (void*)v, (void*)src, (void*)s_rdp.dmem, v0+i); }
         v->x = read_int16(src + 0);
         v->y = read_int16(src + 2);
