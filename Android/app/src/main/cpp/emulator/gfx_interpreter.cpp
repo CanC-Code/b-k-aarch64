@@ -1736,6 +1736,7 @@ static int bka_probe_dl_encoding(uint8_t* ptr) {
 
 static int s_rspCallCount = 0;
 void RSP_ProcessGfxTask(OSTask* tp) {
+    { static int _bisect = 0; if (_bisect++ < 1) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "BISECT: RSP_ProcessGfxTask disabled"); return; }
     s_rspCallCount++;
 
     // Probe known RDRAM offsets where the DL thinks vertex data lives
