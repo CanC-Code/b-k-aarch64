@@ -1706,17 +1706,23 @@ static void* RSP_ResolveGfxAddress(uint32_t addr) {
 // opcodes.  Returns 0=unknown, 1=LE, 2=BE.
 static int bka_probe_dl_encoding(uint8_t* ptr) {
     if (!ptr) return 0;
-    int le = 0, be = 0;
-    for (int i = 0; i < 8; i++) {
-        uint8_t* p = ptr + i * 16;
-        if (!bka_is_readable(p + 4)) break;
+    int le = 0, be = 0, le_bad = 0, be_bad = 0;
+    for (int i = 0; i < 32; i++) {
+        uint8_t* p = ptr + i * 8;
+        if (!bka_is_readable(p + 8)) break;
         uint32_t w_le = *(uint32_t*)p;
         uint32_t w_be = __builtin_bswap32(w_le);
-        if (bka_is_f3dex_opcode((uint8_t)(w_le >> 24))) le++;
-        if (bka_is_f3dex_opcode((uint8_t)(w_be >> 24))) be++;
+        uint8_t op_le = (uint8_t)(w_le >> 24);
+        uint8_t op_be = (uint8_t)(w_be >> 24);
+        if (bka_is_f3dex_opcode(op_le)) le++; else le_bad++;
+        if (bka_is_f3dex_opcode(op_be)) be++; else be_bad++;
+        if (i >= 7 && be_bad == 0 && be >= 8) return 2;
+        if (i >= 7 && le_bad == 0 && le >= 8) return 1;
     }
-    if (le > be + 1) return 1;
+    if (be_bad == 0 && le_bad > 0) return 2;
+    if (le_bad == 0 && be_bad > 0) return 1;
     if (be > le + 1) return 2;
+    if (le > be + 1) return 1;
     return 0;
 }
 
@@ -2356,11 +2362,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     if (probed != 0) {
                         cur_dl_enc = probed;
                     } else {
-                        /* Probe was ambiguous.  Sub-DLs are compiled from the
-                         * ROM and are always big-endian.  The top-level DL
-                         * (from recompiled host code) is LE, but that is the
-                         * exception.  Default BE for G_DL targets. */
-                        cur_dl_enc = 2;
+                        cur_dl_enc = stack_enc[depth - 1];  // fall back to parent
                     }
                     static int s_enc_probe = 0;
                     if (s_enc_probe++ < 40) {
