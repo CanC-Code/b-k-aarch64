@@ -473,6 +473,28 @@ static void Matrix_MultVec(const BKMatrix m, float x, float y, float z, float w,
 
 // Load N64 fixed-point matrix (int16_t[4][4] with 32-bit integer parts)
 static void Matrix_LoadFromN64(BKMatrix out, const void* src) {
+    {
+        static int s_raw = 0;
+        if (s_raw++ < 2) {
+            const uint8_t* b = (const uint8_t*)src;
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "MTXRAW 00-15: %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X",
+                b[0],b[1],b[2],b[3],b[4],b[5],b[6],b[7],
+                b[8],b[9],b[10],b[11],b[12],b[13],b[14],b[15]);
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "MTXRAW 16-31: %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X",
+                b[16],b[17],b[18],b[19],b[20],b[21],b[22],b[23],
+                b[24],b[25],b[26],b[27],b[28],b[29],b[30],b[31]);
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "MTXRAW 32-47: %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X",
+                b[32],b[33],b[34],b[35],b[36],b[37],b[38],b[39],
+                b[40],b[41],b[42],b[43],b[44],b[45],b[46],b[47]);
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "MTXRAW 48-63: %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X",
+                b[48],b[49],b[50],b[51],b[52],b[53],b[54],b[55],
+                b[56],b[57],b[58],b[59],b[60],b[61],b[62],b[63]);
+        }
+    }
     // N64 Mtx layout (64 bytes):
     //   bytes  0-31: integer parts, packed 2 per int32 word
     //   bytes 32-63: fraction parts, packed 2 per int32 word
@@ -512,6 +534,19 @@ static void Matrix_LoadFromN64(BKMatrix out, const void* src) {
                 e_frac = (uint16_t)(fw32 >> 16);
             }
             out[r][c] = (float)e_int + (float)e_frac / 65536.0f;
+        }
+    }
+    {
+        static int s_res = 0;
+        if (s_res++ < 2) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "MTXRES r0=(%.4f %.4f %.4f %.4f)", out[0][0],out[0][1],out[0][2],out[0][3]);
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "MTXRES r1=(%.4f %.4f %.4f %.4f)", out[1][0],out[1][1],out[1][2],out[1][3]);
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "MTXRES r2=(%.4f %.4f %.4f %.4f)", out[2][0],out[2][1],out[2][2],out[2][3]);
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "MTXRES r3=(%.4f %.4f %.4f %.4f)", out[3][0],out[3][1],out[3][2],out[3][3]);
         }
     }
 }
@@ -676,6 +711,17 @@ static void RasterizeTriangle(
 
 static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
     float x = (float)v->x, y = (float)v->y, z = (float)v->z;
+    {
+        static int s_tv = 0;
+        if (s_tv++ < 8) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "TV-IN v=(%.1f,%.1f,%.1f) m00=%.4f m11=%.4f m22=%.4f m32=%.4f m23=%.4f",
+                x, y, z,
+                s_rdp.projection[0][0], s_rdp.projection[1][1],
+                s_rdp.projection[2][2], s_rdp.projection[3][2],
+                s_rdp.projection[2][3]);
+        }
+    }
 
     // Apply modelview
     float ox, oy, oz, ow;
