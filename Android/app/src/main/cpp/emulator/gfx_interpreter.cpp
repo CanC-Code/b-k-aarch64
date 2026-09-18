@@ -2356,7 +2356,11 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     if (probed != 0) {
                         cur_dl_enc = probed;
                     } else {
-                        cur_dl_enc = stack_enc[depth - 1];  // fall back to parent
+                        /* Probe was ambiguous.  Sub-DLs are compiled from the
+                         * ROM and are always big-endian.  The top-level DL
+                         * (from recompiled host code) is LE, but that is the
+                         * exception.  Default BE for G_DL targets. */
+                        cur_dl_enc = 2;
                     }
                     static int s_enc_probe = 0;
                     if (s_enc_probe++ < 40) {
