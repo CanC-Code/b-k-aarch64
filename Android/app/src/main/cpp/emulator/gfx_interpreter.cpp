@@ -23,6 +23,7 @@ extern "C" {
     uint8_t* gN64_RDRAM;
     extern "C" void* bka_lookup_addr_by_low32(uint32_t low32);
 void* bka_lookup_addr_mapping(uint32_t key);
+void* bka_lookup_addr_by_low32(uint32_t low32);
     void* bka_lookup_addr_mapping_range_c(uint32_t key);
     int bka_is_mapped(void* ptr);
     int bka_is_readable(void* ptr);
@@ -2059,6 +2060,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                  * target (e.g. an arbitrary heap page that happens to be
                  * mapped) means the walker has drifted into non-DL memory. */
                 void *dl_ptr = bka_lookup_addr_mapping(raw_addr);
+                if (!dl_ptr) { dl_ptr = bka_lookup_addr_by_low32(raw_addr); }
                 if (!dl_ptr) {
                     uint8_t* tmp = RDP_TranslateAddr(raw_addr);
                     if (tmp) {

@@ -61,6 +61,7 @@ static size_t s_addrMapCount = 0;
 // Overwrite-tolerant: if the same key appears twice, the newer pointer wins.
 static inline void bka_addr_map_insert(uint32_t key, void* ptr) {
     if (key == 0) return;
+    if ((uintptr_t)ptr == (uintptr_t)key) return;   // reject identity
     if (key == 0xFFF9153F || key == 0xFFFF153F) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "MAPINS key=0x%08X ptr=%p count=%zu", key, ptr, s_addrMapCount);
@@ -111,7 +112,7 @@ extern "C" void* bka_lookup_addr_by_low32(uint32_t low32);
 extern "C" void* bka_lookup_addr_by_low32(uint32_t low32) {
     // Search all registrations for one whose pointer low32 matches.
     for (size_t i = s_addrMapCount; i-- > 0; ) {
-        if ((uint32_t)(uintptr_t)s_addrMapFixed[i].ptr == low32) {
+        if ((uint32_t)(uintptr_t)s_addrMapFixed[i].ptr == low32 && (uintptr_t)s_addrMapFixed[i].ptr != (uintptr_t)low32) {
             return s_addrMapFixed[i].ptr;
         }
     }
@@ -120,6 +121,7 @@ extern "C" void* bka_lookup_addr_by_low32(uint32_t low32) {
 
 extern "C" void* bka_lookup_addr_mapping(uint32_t low32) {
     void* p = bka_addr_map_lookup(low32);
+    if (p && (uintptr_t)p == (uintptr_t)low32) p = bka_lookup_addr_by_low32(low32);
     static int s_lookup_diag = 0;
     if (!p && s_lookup_diag++ < 8) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
