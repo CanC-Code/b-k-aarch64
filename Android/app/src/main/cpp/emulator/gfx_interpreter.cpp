@@ -1719,11 +1719,15 @@ static int bka_probe_dl_encoding(uint8_t* ptr) {
         if (i >= 7 && be_bad == 0 && be >= 8) return 2;
         if (i >= 7 && le_bad == 0 && le >= 8) return 1;
     }
-    if (be_bad == 0 && le_bad > 0) return 2;
-    if (le_bad == 0 && be_bad > 0) return 1;
-    if (be > le + 1) return 2;
-    if (le > be + 1) return 1;
-    return 0;
+    int _res = 0;
+    if (be_bad == 0 && le_bad > 0) _res = 2;
+    else if (le_bad == 0 && be_bad > 0) _res = 1;
+    else if (be > le + 1) _res = 2;
+    else if (le > be + 1) _res = 1;
+    { static int _pc = 0; if (_pc++ < 60) __android_log_print(ANDROID_LOG_ERROR,
+        "BKA_GFX", "PROBE-VOTE ptr=%p le=%d le_bad=%d be=%d be_bad=%d -> %d",
+        (void*)ptr, le, le_bad, be, be_bad, _res); }
+    return _res;
 }
 
 static int s_rspCallCount = 0;
