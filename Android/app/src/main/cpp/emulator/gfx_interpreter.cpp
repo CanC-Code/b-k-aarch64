@@ -38,7 +38,7 @@ static uint64_t bka_canary_post = 0xBEEFCAFEBABE5678ull;
 static inline bool bka_in_rdram(void* p, size_t n) {
     uintptr_t a = (uintptr_t)p;
     uintptr_t lo = (uintptr_t)gN64_RDRAM;
-    uintptr_t hi = lo + 0x1001000;
+    uintptr_t hi = lo + 0x04000000;
     return a >= lo && (a + n) <= hi;
 }
 static inline void bka_guard_write(void* p, size_t n, const char* tag) {
@@ -355,7 +355,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         }
         if (combined >= 0xA0000000u && combined < 0xA4000000u && gN64_RDRAM) {
             uint32_t off2 = combined - 0xA0000000u;
-            if (off2 < 0x1000000u) {
+            if (off2 < 0x04000000u) {
                 if (addr == 0xFFF9153F || addr == 0xFFFF153F)
                     __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                         "XLTPATH-USE kseg1 (combined=%08X off=%X)", combined, off2);
@@ -368,7 +368,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // Direct physical RDRAM fallback
     if ((addr < 0x4000000u || (addr >= 0x80000000u && addr < 0x84000000u) || (addr >= 0xA0000000u && addr < 0xA4000000u)) && gN64_RDRAM) {
         uint32_t off = addr & 0x00FFFFFFu;
-        if (off < 0x1000000u) return gN64_RDRAM + off;
+        if (off < 0x04000000u) return gN64_RDRAM + off;
     }
 
     // Only allow the "low addr is RDRAM offset" fallback for small addresses.
@@ -999,7 +999,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
             "RDRAM=%p max_offset=%08lX (alloc 0x%lX)",
             (void*)gN64_RDRAM,
             (unsigned long)(addr & 0x00FFFFFF),
-            (unsigned long)0x1001000);
+            (unsigned long)0x04000000);
     }
 
     for (uint32_t i = 0; i < n; i++) {
@@ -1438,7 +1438,7 @@ static void Cmd_MoveWord(GfxCommand cmd) {
         // values (0x70..0x7F) crash the game when used as segment bases;
         // the only safe values are physical RDRAM and KSEG0.
         uint32_t a = data;
-        if (!((a <= 0x007FFFFFu) || (a >= 0x80000000u && a <= 0x807FFFFFu))) {
+        if (!((a <= 0x03FFFFFFu) || (a >= 0x80000000u && a <= 0x83FFFFFFu))) {
             static int s_badseg = 0;
             if (s_badseg++ < 20)
                 __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
@@ -2222,7 +2222,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                             if (gN64_RDRAM) {
                                 const uint8_t pat[4] = {0x3F, 0x15, 0xF9, 0xFF};
                                 int found = 0;
-                                for (uint32_t off = 0; off + 4 <= 0x1000000u && found < 8; off += 4) {
+                                for (uint32_t off = 0; off + 4 <= 0x04000000u && found < 8; off += 4) {
                                     if (gN64_RDRAM[off]     == pat[0] &&
                                         gN64_RDRAM[off + 1] == pat[1] &&
                                         gN64_RDRAM[off + 2] == pat[2] &&
@@ -2294,7 +2294,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     if (tmp) {
                         uintptr_t p  = (uintptr_t)tmp;
                         uintptr_t r0 = (uintptr_t)gN64_RDRAM;
-                        uintptr_t r1 = r0 + 0x1000000;
+                        uintptr_t r1 = r0 + 0x04000000;
                         if (p >= r0 && p < r1) dl_ptr = tmp;
                     }
                 }

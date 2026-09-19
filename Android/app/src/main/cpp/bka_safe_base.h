@@ -22,7 +22,7 @@
 #include <android/log.h>
 #include <stdint.h>
 
-#define BKA_RDRAM_ALLOC_SIZE  (0x1000000u)   /* 16 MB – covers 0x800018 over-reads */
+#define BKA_RDRAM_ALLOC_SIZE  (0x04000000u)   /* 16 MB – covers 0x800018 over-reads */
 #define BKA_RDRAM_PHYS_SIZE   (0x800000u)    /* 8 MB  – original N64 RDRAM           */
 
 #ifdef __cplusplus
