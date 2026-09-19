@@ -14,7 +14,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Bkawrapper">
         <meta-data android:name="androidx.profileinstaller.enabled" android:value="false" />
-        <meta-data android:name="androidx.profileinstaller.enabled" android:value="false" />
 
         <activity
             android:name=".MainActivity"
@@ -24,6 +23,16 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".NativeGameActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:screenOrientation="landscape"
+            android:configChanges="orientation|keyboardHidden|screenSize|screenLayout|uiMode|density"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+            <meta-data android:name="android.app.lib_name" android:value="bkawrapper" />
         </activity>
 
         <service 
