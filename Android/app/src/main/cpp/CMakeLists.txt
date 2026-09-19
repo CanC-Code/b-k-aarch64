@@ -117,19 +117,12 @@ target_include_directories(native_app_glue PUBLIC "${NDK_GLUE_DIR}")
 set_source_files_properties("${NDK_GLUE_DIR}/android_native_app_glue.c" PROPERTIES
     COMPILE_FLAGS "-std=gnu11 -w -O2")
 
-target_link_libraries(bkawrapper ${log-lib} ${android-lib} ${egl-lib} ${gles3-lib} ${gles2-lib} atomic m dl)
+target_link_libraries(bkawrapper ${log-lib} ${android-lib} ${egl-lib} ${gles3-lib} ${gles2-lib} native_app_glue atomic m dl)
 
-# native_app_glue provides ANativeActivity_onCreate as a lookup hook that
-# the framework resolves at dlopen time. Nothing in our code references
-# it, so the linker would drop it from a plain static-lib link. Force it
-# in via --whole-archive for the glue, and add an explicit undefined
-# reference so the symbol is always retained.
-target_link_options(bkawrapper PRIVATE
-    "-Wl,--whole-archive"
-    "$<TARGET_FILE:native_app_glue>"
-    "-Wl,--no-whole-archive"
-    "-Wl,-u,ANativeActivity_onCreate"
-)
+# ANativeActivity_onCreate lives in native_app_glue and is resolved by the
+# framework at dlopen time — nothing in our code references it, so the
+# linker would drop it from the static lib.  Force the reference.
+target_link_options(bkawrapper PRIVATE "-Wl,-u,ANativeActivity_onCreate")
 
 # linker_stubs.c must compile without N64 headers
 set_source_files_properties(ultra/linker_stubs.c PROPERTIES
