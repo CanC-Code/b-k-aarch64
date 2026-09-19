@@ -14,6 +14,7 @@ set(CPP_BRIDGE_SOURCES
     ultra/lowlevel_bridge.cpp ultra/bka_trace_ff.cpp ultra/bka_memcpy_hook.cpp emulator/stubs.cpp emulator/pi_hle.cpp
     emulator/resource_mgr.cpp
     emulator/gfx_interpreter.cpp
+    native_main.cpp
     tools/rare_decompression.cpp ultra/HardwareRegs.cpp
     ultra/linker_stubs.c
 )
@@ -99,7 +100,8 @@ target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/rt64/src/contrib
     ${CMAKE_CURRENT_SOURCE_DIR}/rt64/src/contrib/hlslpp/include
 )
-target_link_libraries(bkawrapper ${log-lib} ${android-lib} ${egl-lib} ${gles3-lib} ${gles2-lib} atomic m dl)
+find_package(native_app_glue REQUIRED)
+target_link_libraries(bkawrapper ${log-lib} ${android-lib} ${egl-lib} ${gles3-lib} ${gles2-lib} native_app_glue atomic m dl)
 
 # linker_stubs.c must compile without N64 headers
 set_source_files_properties(ultra/linker_stubs.c PROPERTIES

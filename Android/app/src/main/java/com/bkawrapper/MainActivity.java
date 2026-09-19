@@ -231,62 +231,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void bootGameEngine() {
-        final String assetDir    = getFilesDir().getAbsolutePath();
-        final AssetManager mgr   = getAssets();
-
-        glSurfaceView = new GLSurfaceView(this);
-        glSurfaceView.setEGLContextClientVersion(2);
-        // Match the framebuffer's RGB565 format to minimize internal format
-        // conversions. Android 14 libgui does extra transactions when the
-        // window format differs from the app's render target.
-        glSurfaceView.getHolder().setFormat(android.graphics.PixelFormat.RGB_565);
-        glSurfaceView.setEGLConfigChooser(5, 6, 5, 0, 16, 0);
-        glSurfaceView.setPreserveEGLContextOnPause(false);
-        glSurfaceView.setWillNotDraw(false);
-        glSurfaceView.setZOrderOnTop(true);       // put us above any other layers
-        glSurfaceView.setZOrderMediaOverlay(false);
-        glSurfaceView.setFocusable(false);
-        glSurfaceView.setFocusableInTouchMode(false);
-
-        glSurfaceView.setRenderer(new GLRenderer(this, assetDir, mgr));
-        glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
-
-        // FIXED: Bridge the Android Surface to native code so the engine can
-        // initialize EGL and unblock the vblank synchronization loop.
-        // Without this callback, g_nativeWindow stays null and the engine
-        // thread hangs forever in BKA_FrameSyncHook waiting for g_windowCond.
-                final android.os.Handler renderTick = new android.os.Handler(android.os.Looper.getMainLooper());
-        final Runnable renderRunnable = new Runnable() {
-            @Override public void run() {
-                glSurfaceView.requestRender();
-                renderTick.postDelayed(this, 33);
-            }
-        };
-        renderTick.postDelayed(renderRunnable, 33);
-
-glSurfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
-            @Override
-            public void surfaceCreated(SurfaceHolder holder) {
-                NativeBridge.setSurface(holder.getSurface());
-            }
-
-            @Override
-            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-                // Dimensions are forwarded by GLRenderer.onSurfaceChanged → NativeBridge.surfaceReady
-            }
-
-            @Override
-            public void surfaceDestroyed(SurfaceHolder holder) {
-                NativeBridge.setSurface(null);
-            }
-        });
-
-        FrameLayout frame = new FrameLayout(this);
-        frame.addView(glSurfaceView, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-        TouchControllerView touchController = new TouchControllerView(this);
-        frame.addView(touchController, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-        setContentView(frame);
-    }
+        Intent intent = new Intent(this, NativeGameActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
+        startActivity(intent);
+        finish();
+    
 }

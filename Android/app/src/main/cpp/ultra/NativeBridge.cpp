@@ -299,8 +299,7 @@ Java_com_bkawrapper_NativeBridge_surfaceReady(JNIEnv* env, jclass clazz, jint w,
     LOGI("NativeBridge: Host viewport surface layout geometry set to: %dx%d", w, h);
 }
 
-JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv* env, jclass clazz, jint textureId) {
+static void bka_update_texture_impl(int textureId) {
 
     static int s_diag = 0;
     if (s_diag++ < 30) {
@@ -398,6 +397,63 @@ Java_com_bkawrapper_NativeBridge_nativeUpdateInput(JNIEnv* env, jclass clazz,
     g_inputMirror.stick_y   = (int8_t)(stickY * 80.0f);
     g_inputMirror.errno_val = 0;
     pthread_mutex_unlock(&g_inputMutex);
+}
+
+
+// =====================================================================
+// C-linkage wrappers for NativeActivity (native_main.cpp).
+// =====================================================================
+
+extern "C" void bka_native_game_boot(const char* dir, AAssetManager* mgr) {
+    LOGI("bka_native_game_boot dir=%s mgr=%p", dir ? dir : "(null)", (void*)mgr);
+    if (!dir) { LOGE("bka_native_game_boot: null dir"); return; }
+    if (mgr) g_assetManager = mgr;
+    g_otrPath = dir;
+
+    if (!g_engineThreadActive) {
+        pthread_mutex_lock(&g_bridgeGateMutex);
+        g_bridgeResourcesReady = false;
+        pthread_mutex_unlock(&g_bridgeGateMutex);
+
+        pthread_t t;
+        pthread_attr_t a;
+        pthread_attr_init(&a);
+        pthread_attr_setstacksize(&a, 16 * 1024 * 1024);
+        if (pthread_create(&t, &a, game_thread_fn, nullptr) == 0) {
+            pthread_detach(t);
+            g_engineThreadActive = true;
+            LOGI("bka_native_game_boot: engine thread spawned");
+        } else {
+            LOGE("bka_native_game_boot: pthread_create failed");
+        }
+    } else {
+        LOGI("bka_native_game_boot: engine thread already active");
+    }
+}
+
+extern "C" void bka_surface_ready(int w, int h) {
+    g_surfaceWidth  = w;
+    g_surfaceHeight = h;
+    LOGI("bka_surface_ready %dx%d", w, h);
+}
+
+extern "C" void bka_update_texture(int textureId) {
+    bka_update_texture_impl(textureId);
+}
+
+extern "C" void bka_native_update_input(int buttons, float sx, float sy) {
+    pthread_mutex_lock(&g_inputMutex);
+    g_inputMirror.button    = (uint16_t)buttons;
+    g_inputMirror.stick_x   = (int8_t)(sx * 80.0f);
+    g_inputMirror.stick_y   = (int8_t)(sy * 80.0f);
+    g_inputMirror.errno_val = 0;
+    pthread_mutex_unlock(&g_inputMutex);
+}
+
+// JNI wrapper kept for legacy paths; forwards to the C impl.
+JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeBridge_updateTexture(JNIEnv*, jclass, jint textureId) {
+    bka_update_texture_impl(textureId);
 }
 
 } // extern "C"
