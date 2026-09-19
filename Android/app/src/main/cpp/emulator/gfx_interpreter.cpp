@@ -1146,9 +1146,25 @@ static void Cmd_Tri2(GfxCommand cmd) {
         BKVertex* vt0 = &s_rdp.dmem[v00];
         BKVertex* vt1 = &s_rdp.dmem[v01];
         BKVertex* vt2 = &s_rdp.dmem[v02];
-        if (ComputeClipW(vt0) <= 0.01f || ComputeClipW(vt1) <= 0.01f ||
-            ComputeClipW(&s_rdp.dmem[v02]) <= 0.01f) {
-            return;
+        {
+            float w0 = ComputeClipW(vt0);
+            float w1 = ComputeClipW(vt1);
+            float w2 = ComputeClipW(vt2);
+            if (w0 <= 0.01f || w1 <= 0.01f || w2 <= 0.01f) {
+                static int s_clipskip = 0;
+                if (s_clipskip++ < 20) {
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                        "TRI2-SKIP w=(%.3f %.3f %.3f) z=(%d %d %d) "
+                        "mv=(%.3f %.3f %.3f %.3f) proj=(%.3f %.3f %.3f %.3f)",
+                        w0, w1, w2,
+                        vt0->z, vt1->z, vt2->z,
+                        s_rdp.modelview[2][2], s_rdp.modelview[2][3],
+                        s_rdp.modelview[3][2], s_rdp.modelview[3][3],
+                        s_rdp.projection[2][2], s_rdp.projection[2][3],
+                        s_rdp.projection[3][2], s_rdp.projection[3][3]);
+                }
+                return;
+            }
         }
 
         float sx0, sy0, sx1, sy1, sx2, sy2;
