@@ -345,12 +345,11 @@ static void bka_update_texture_impl(int textureId) {
     // the VI scans out directly from RDRAM. On Android, we must
     // explicitly copy the rendered frame to RDRAM for the plugin.
     // ===================================================================
-    {
-        int activeFb = getActiveFramebuffer();
-        size_t fbSize = (size_t)gFramebufferWidth * gFramebufferHeight * sizeof(uint16_t);
-        { static int s_cp = 0; if (s_cp++ < 8) { uint16_t* src_fb = gFramebuffers[activeFb]; int nz = 0; for (int i = 105 * 292; i < 115 * 292; i++) if (src_fb[i]) { nz++; if (nz > 20) break; } __android_log_print(ANDROID_LOG_ERROR, "BKA-UPD", "COPYCHECK #%d activeFb=%d src_fb=%p nz_first1000=%d", s_cp, activeFb, (void*)src_fb, nz); } }
-        memcpy(gN64_RDRAM + g_active_fb_offset, gFramebuffers[activeFb], fbSize);
-    }
+    // NOTE: no memcpy here.  The rasterizer now writes pixels directly
+    // into gN64_RDRAM + g_active_fb_offset.  A previous version copied
+    // from gFramebuffers[] into RDRAM every frame; since the rasterizer
+    // stopped writing to gFramebuffers, that memcpy was wiping the real
+    // pixels back to zero on every upload, causing flicker.
 
     pthread_mutex_lock(&g_inputMutex);
     gN64_ControllerData[0] = g_inputMirror;
