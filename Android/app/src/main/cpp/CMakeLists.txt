@@ -93,6 +93,7 @@ find_library(gles3-lib GLESv3)
 find_library(gles2-lib GLESv2)
 
 target_include_directories(bkawrapper PRIVATE
+    ${NDK_GLUE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/rt64_include
     ${CMAKE_CURRENT_SOURCE_DIR}/rt64/src
     ${CMAKE_CURRENT_SOURCE_DIR}/rt64/src/hle
@@ -100,7 +101,20 @@ target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/rt64/src/contrib
     ${CMAKE_CURRENT_SOURCE_DIR}/rt64/src/contrib/hlslpp/include
 )
-find_package(native_app_glue REQUIRED)
+# android_native_app_glue is shipped as sources, not as a CMake package.
+# Build it as a static library from the NDK tree.
+set(NDK_GLUE_DIR ${CMAKE_ANDROID_NDK}/sources/android/native_app_glue)
+if(NOT EXISTS "${NDK_GLUE_DIR}/android_native_app_glue.c")
+    set(NDK_GLUE_DIR $ENV{ANDROID_NDK_HOME}/sources/android/native_app_glue)
+endif()
+if(NOT EXISTS "${NDK_GLUE_DIR}/android_native_app_glue.c")
+    message(FATAL_ERROR "android_native_app_glue.c not found under ${NDK_GLUE_DIR}")
+endif()
+add_library(native_app_glue STATIC "${NDK_GLUE_DIR}/android_native_app_glue.c")
+target_include_directories(native_app_glue PUBLIC "${NDK_GLUE_DIR}")
+set_source_files_properties("${NDK_GLUE_DIR}/android_native_app_glue.c" PROPERTIES
+    COMPILE_FLAGS "-std=gnu11 -w -O2")
+
 target_link_libraries(bkawrapper ${log-lib} ${android-lib} ${egl-lib} ${gles3-lib} ${gles2-lib} native_app_glue atomic m dl)
 
 # linker_stubs.c must compile without N64 headers
