@@ -1903,6 +1903,27 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     uint8_t *cur = (uint8_t*)tp->t.data_ptr;
     uint8_t *cur_end = cur + tp->t.data_size;
 
+    // A real display list begins with a valid F3DEX opcode.  If neither
+    // byte order of the first word decodes to one, the game submitted a
+    // task on a corrupted buffer (typically because an earlier task wrote
+    // garbage into game memory).  Refuse the task rather than walking
+    // into arbitrary bytes and crashing the process.
+    if (tp->t.data_size >= 4) {
+        uint32_t w0 = *(const uint32_t*)cur;
+        uint32_t w0_be = __builtin_bswap32(w0);
+        uint8_t op_le = (uint8_t)(w0 >> 24);
+        uint8_t op_be = (uint8_t)(w0_be >> 24);
+        if (!bka_is_f3dex_opcode(op_le) && !bka_is_f3dex_opcode(op_be)) {
+            static int s_badtask = 0;
+            if (s_badtask++ < 20)
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "RSP: refusing task #%d — data_ptr does not start with a valid op "
+                    "(data=%p w0=0x%08X be=0x%08X)",
+                    s_rspCallCount, (void*)cur, w0, w0_be);
+            return;
+        }
+    }
+
     const size_t MAX_TOTAL_CMDS = 3000;   /* real RSP tasks are <2000 cmds */
     const size_t MAX_DL_CMDS = 5000;
     size_t total = 0;
