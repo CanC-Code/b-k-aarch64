@@ -18,7 +18,8 @@ static const bool BKA_GFX_VERBOSE = false;
 #define LOGV(...) do { if (BKA_GFX_VERBOSE) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__); } while (0)
 
 extern "C" {
-    extern uint16_t gFramebuffers[2][FB_WIDTH * FB_HEIGHT];
+    extern uint32_t g_active_fb_offset;
+extern uint16_t gFramebuffers[2][FB_WIDTH * FB_HEIGHT];
     int getActiveFramebuffer(void);
     uint8_t* gN64_RDRAM;
     extern "C" void* bka_lookup_addr_by_low32(uint32_t low32);
@@ -647,7 +648,7 @@ static void RasterizeTriangle(
     if (iy0 >= iy2) return;
 
     int activeFb = getActiveFramebuffer();
-    uint16_t* fb = gFramebuffers[activeFb];
+    uint16_t* fb = (uint16_t*)(gN64_RDRAM + g_active_fb_offset);
     static int s_pix_total = 0;
     static int s_call = 0;
     s_call++;
@@ -1643,7 +1644,7 @@ static void Cmd_FillRect(GfxCommand cmd) {
     
     uint16_t color = RGBA8_TO_RGB565(s_rdp.fillR, s_rdp.fillG, s_rdp.fillB);
     int activeFb = getActiveFramebuffer();
-    uint16_t* fb = gFramebuffers[activeFb];
+    uint16_t* fb = (uint16_t*)(gN64_RDRAM + g_active_fb_offset);
     for (int32_t y = uly; y < lry; y++)
         for (int32_t x = ulx; x < lrx; x++)
             fb[y * FB_WIDTH + x] = color;
@@ -1674,7 +1675,7 @@ static void Cmd_TexRect(GfxCommand cmd) {
     
     int32_t sBase = (tdesc.sl >> 5), tBase = (tdesc.tl >> 5);
     int activeFb = getActiveFramebuffer();
-    uint16_t* fb = gFramebuffers[activeFb];
+    uint16_t* fb = (uint16_t*)(gN64_RDRAM + g_active_fb_offset);
     uint8_t texel[4];
     
     for (int32_t dy = 0; dy < rectH; dy++) {
