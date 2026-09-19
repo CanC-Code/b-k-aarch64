@@ -1,6 +1,17 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(bkawrapper)
 
+# android_native_app_glue is shipped as sources, not as a CMake package.
+# Build it as a static library from the NDK tree.
+set(NDK_GLUE_DIR ${CMAKE_ANDROID_NDK}/sources/android/native_app_glue)
+if(NOT EXISTS "${NDK_GLUE_DIR}/android_native_app_glue.c")
+    set(NDK_GLUE_DIR $ENV{ANDROID_NDK_HOME}/sources/android/native_app_glue)
+endif()
+if(NOT EXISTS "${NDK_GLUE_DIR}/android_native_app_glue.c")
+    message(FATAL_ERROR "android_native_app_glue.c not found under ${NDK_GLUE_DIR}")
+endif()
+
+
 
 set(REPO_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../../../..)
 
@@ -101,15 +112,6 @@ target_include_directories(bkawrapper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/rt64/src/contrib
     ${CMAKE_CURRENT_SOURCE_DIR}/rt64/src/contrib/hlslpp/include
 )
-# android_native_app_glue is shipped as sources, not as a CMake package.
-# Build it as a static library from the NDK tree.
-set(NDK_GLUE_DIR ${CMAKE_ANDROID_NDK}/sources/android/native_app_glue)
-if(NOT EXISTS "${NDK_GLUE_DIR}/android_native_app_glue.c")
-    set(NDK_GLUE_DIR $ENV{ANDROID_NDK_HOME}/sources/android/native_app_glue)
-endif()
-if(NOT EXISTS "${NDK_GLUE_DIR}/android_native_app_glue.c")
-    message(FATAL_ERROR "android_native_app_glue.c not found under ${NDK_GLUE_DIR}")
-endif()
 add_library(native_app_glue STATIC "${NDK_GLUE_DIR}/android_native_app_glue.c")
 target_include_directories(native_app_glue PUBLIC "${NDK_GLUE_DIR}")
 set_source_files_properties("${NDK_GLUE_DIR}/android_native_app_glue.c" PROPERTIES
