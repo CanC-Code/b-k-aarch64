@@ -79,6 +79,34 @@ static void initGL() {
 }
 
 static bool initEGL(ANativeWindow* win) {
+    // Context already exists — recreate only the window surface.
+    if (g_rs.dpy != EGL_NO_DISPLAY && g_rs.ctx != EGL_NO_CONTEXT) {
+        EGLConfig c;
+        EGLint numCfg = 0;
+        const EGLint cfgAttr[] = {
+            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+            EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
+            EGL_RED_SIZE,5, EGL_GREEN_SIZE,6, EGL_BLUE_SIZE,5, EGL_ALPHA_SIZE,0,
+            EGL_DEPTH_SIZE,16, EGL_NONE };
+        eglChooseConfig(g_rs.dpy, cfgAttr, &c, 1, &numCfg);
+        if (numCfg > 0) {
+            g_rs.surf = eglCreateWindowSurface(g_rs.dpy, c, win, nullptr);
+            if (g_rs.surf != EGL_NO_SURFACE &&
+                eglMakeCurrent(g_rs.dpy, g_rs.surf, g_rs.surf, g_rs.ctx)) {
+                eglQuerySurface(g_rs.dpy, g_rs.surf, EGL_WIDTH,  &g_rs.w);
+                eglQuerySurface(g_rs.dpy, g_rs.surf, EGL_HEIGHT, &g_rs.h);
+                eglSwapInterval(g_rs.dpy, 1);
+                glViewport(0, 0, g_rs.w, g_rs.h);
+                g_rs.ready = true;
+                bka_surface_ready(g_rs.w, g_rs.h);
+                LOGI("EGL surface recreated %dx%d (context preserved)", g_rs.w, g_rs.h);
+                return true;
+            }
+        }
+        LOGI("EGL surface recreation failed; falling back to full reinit");
+        termEGL();
+    }
+
     g_rs.dpy = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     if (g_rs.dpy == EGL_NO_DISPLAY) return false;
     if (!eglInitialize(g_rs.dpy, nullptr, nullptr)) return false;
@@ -111,6 +139,22 @@ static bool initEGL(ANativeWindow* win) {
     return true;
 }
 
+// Destroy only the window surface; keep the EGL context alive.  The
+// Android 14 Motorola libgui UAF is triggered by window-handle churn
+// (window destroy + create); holding the context across pause/resume
+// minimises the number of lifetimes the framework's transaction
+// listener has to track.
+static void termSurfaceOnly() {
+    if (g_rs.dpy == EGL_NO_DISPLAY) return;
+    eglMakeCurrent(g_rs.dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, g_rs.ctx);
+    if (g_rs.surf != EGL_NO_SURFACE) {
+        eglDestroySurface(g_rs.dpy, g_rs.surf);
+        g_rs.surf = EGL_NO_SURFACE;
+    }
+    g_rs.ready = false;
+}
+
+// Full EGL teardown.  Only called when the process is exiting.
 static void termEGL() {
     if (g_rs.dpy == EGL_NO_DISPLAY) return;
     eglMakeCurrent(g_rs.dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
@@ -169,7 +213,7 @@ static void onAppCmd(android_app* app, int32_t cmd) {
                 }
             }
             break;
-        case APP_CMD_TERM_WINDOW: termEGL(); break;
+        case APP_CMD_TERM_WINDOW: termSurfaceOnly(); break;
         case APP_CMD_WINDOW_RESIZED:
             if (g_rs.ready && app->window) {
                 eglQuerySurface(g_rs.dpy, g_rs.surf, EGL_WIDTH, &g_rs.w);
