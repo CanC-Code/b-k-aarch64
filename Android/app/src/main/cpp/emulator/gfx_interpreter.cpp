@@ -644,7 +644,10 @@ static void RasterizeTriangle(
     if (y0 > y1) { std::swap(x0, x1); std::swap(y0, y1); std::swap(r0, r1); std::swap(g0, g1); std::swap(b0, b1); std::swap(a0, a1); }
 
     int iy0 = (int)ceilf(y0), iy1 = (int)ceilf(y1), iy2 = (int)ceilf(y2);
-    if (iy0 < 0) iy0 = 0; if (iy2 > FB_HEIGHT) iy2 = FB_HEIGHT;
+    if (iy0 < 0) iy0 = 0;
+    if (iy1 < 0) iy1 = 0;                       // bottom-half loop starts here; negative causes OOB write
+    if (iy2 > FB_HEIGHT) iy2 = FB_HEIGHT;
+    if (iy1 > FB_HEIGHT) iy1 = FB_HEIGHT;
     if (iy0 >= iy2) return;
 
     int activeFb = getActiveFramebuffer();
