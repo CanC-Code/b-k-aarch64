@@ -78,6 +78,7 @@ static void initGL() {
     glBufferData(GL_ARRAY_BUFFER, sizeof(T), T, GL_STATIC_DRAW);
 }
 
+static void termEGL();   // forward — defined below initEGL
 static bool initEGL(ANativeWindow* win) {
     // Context already exists — recreate only the window surface.
     if (g_rs.dpy != EGL_NO_DISPLAY && g_rs.ctx != EGL_NO_CONTEXT) {
