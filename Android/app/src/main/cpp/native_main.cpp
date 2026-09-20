@@ -104,7 +104,6 @@ static bool initEGL(ANativeWindow* win) {
     eglQuerySurface(g_rs.dpy, g_rs.surf, EGL_HEIGHT, &g_rs.h);
     LOGI("EGL up %dx%d", g_rs.w, g_rs.h);
 
-    extern "C" void bka_reset_texture_cache();
     bka_reset_texture_cache();
     initGL();
     glViewport(0, 0, g_rs.w, g_rs.h);
