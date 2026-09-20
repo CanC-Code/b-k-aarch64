@@ -8,14 +8,14 @@
 
 #define LOG_TAG "BKA_GFX"
 
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
+#define LOGI(...) LOGV(__VA_ARGS__)
+#define LOGW(...) LOGV(__VA_ARGS__)
 
 /* High-volume per-command traces.  These were essential for bootstrapping the
  * decoder but each RSP task fires ~1000 of them, throttling the RSP thread to
  * ~1 Hz on device.  Flip to true to re-enable for a focused debugging session. */
 static const bool BKA_GFX_VERBOSE = false;
-#define LOGV(...) do { if (BKA_GFX_VERBOSE) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__); } while (0)
+#define LOGV(...) do { if (BKA_GFX_VERBOSE) LOGV(__VA_ARGS__); } while (0)
 
 // Gated wrapper for the direct __android_log_print calls below.  The
 // compiler constant-folds BKA_GFX_VERBOSE (false) and the branch is
@@ -632,7 +632,7 @@ static void RasterizeTriangle(
         if (++s_raster_enter < 5 || s_raster_enter % 5000 == 1) {
             ANDROID_LOG_ERROR, "BKA_GFX",
                 "RasterizeTriangle #%d ENTER: (%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f)",
-                s_raster_enter, x0, y0, x1, y1, x2, y2));
+                s_raster_enter, x0, y0, x1, y1, x2, y2);
         }
     }
     if (!std::isfinite(x0) || !std::isfinite(y0) ||
@@ -645,7 +645,7 @@ static void RasterizeTriangle(
     if (s_triangleCount % 5000 == 1 || s_triangleCount < 5) {
         ANDROID_LOG_INFO, "BKA_GFX",
             "RasterizeTriangle #%d: (%.1f,%.1f) (%.1f,%.1f) (%.1f,%.1f)",
-            s_triangleCount, x0, y0, x1, y1, x2, y2));
+            s_triangleCount, x0, y0, x1, y1, x2, y2);
     }
     // Sort vertices by Y (y0 <= y1 <= y2)
     if (y0 > y1) { std::swap(x0, x1); std::swap(y0, y1); std::swap(r0, r1); std::swap(g0, g1); std::swap(b0, b1); std::swap(a0, a1); }
@@ -1108,7 +1108,7 @@ static void Cmd_Tri1(GfxCommand cmd) {
     if (++s_tri1_calls % 200 == 1 || s_tri1_calls < 5) {
         ANDROID_LOG_ERROR, "BKA_GFX",
             "Cmd_Tri1 CALLED #%d: w0=0x%08X w1=0x%08X dmem=%d",
-            s_tri1_calls, cmd.w0, cmd.w1, s_rdp.dmemVertexCount));
+            s_tri1_calls, cmd.w0, cmd.w1, s_rdp.dmemVertexCount);
     }
     // No vertices loaded yet; skip to avoid out-of-bounds and crash.
     if (s_rdp.dmemVertexCount == 0) return;
@@ -1159,7 +1159,7 @@ static void Cmd_Tri2(GfxCommand cmd) {
     if (++s_tri2_calls % 200 == 1 || s_tri2_calls < 5) {
         ANDROID_LOG_ERROR, "BKA_GFX",
             "Cmd_Tri2 CALLED #%d: w0=0x%08X w1=0x%08X dmem=%d",
-            s_tri2_calls, cmd.w0, cmd.w1, s_rdp.dmemVertexCount));
+            s_tri2_calls, cmd.w0, cmd.w1, s_rdp.dmemVertexCount);
     }
     if (s_rdp.dmemVertexCount == 0) return;
 
@@ -1224,7 +1224,7 @@ static void Cmd_Tri2(GfxCommand cmd) {
                 if (s_clipcount++ < 20) {
                     ANDROID_LOG_ERROR, "BKA_GFX",
                         "TRI2-CLIP w=(%.2f %.2f %.2f) nClip=%d -> raster",
-                        cv[0].w, cv[1].w, cv[2].w, nClip));
+                        cv[0].w, cv[1].w, cv[2].w, nClip);
                 }
 
                 if (nClip == 3) {
@@ -1896,7 +1896,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         ANDROID_LOG_ERROR, "BKA_GFX",
             "RSP_ProcessGfxTask CALL #%d: tp=%p type=%d data=%p size=%u dmemVertexCount=%d",
             s_rspCallCount, tp, tp ? tp->t.type : -1, tp ? tp->t.data_ptr : nullptr,
-            tp ? tp->t.data_size : 0, s_rdp.dmemVertexCount));
+            tp ? tp->t.data_size : 0, s_rdp.dmemVertexCount);
     }
 
     {
@@ -2530,7 +2530,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                         uint8_t* b = (uint8_t*)dl_ptr;
                         ANDROID_LOG_ERROR, "BKA_GFX",
                             "G_DL ENC-PROBE target=0x%08X bytes=%02X%02X%02X%02X chosen=%d parent=%d",
-                            raw_addr, b[0],b[1],b[2],b[3], cur_dl_enc, stack_enc[depth - 1]));
+                            raw_addr, b[0],b[1],b[2],b[3], cur_dl_enc, stack_enc[depth - 1]);
                     }
                 }
 
