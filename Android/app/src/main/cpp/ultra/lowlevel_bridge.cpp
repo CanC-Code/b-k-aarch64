@@ -398,16 +398,7 @@ extern "C" {
 
     static int g_tex_cache_w = 0;
 static int g_tex_cache_h = 0;
-
-// Called from native_main.cpp on every EGL context recreation.
-// Without this, s_allocW/s_allocH are stale after the surface is
-// recreated on resume, glTexImage2D is skipped, and the new texture
-// has no storage — glTexSubImage2D then silently fails and only the
-// magenta placeholder shows.
-extern "C" void bka_reset_texture_cache() {
-    g_tex_cache_w = 0;
-    g_tex_cache_h = 0;
-}
+static uint32_t g_tex_cache_id = 0;
 
 void VideoPlugin_OutputFrameTexture(uint32_t hostTextureId) {
     /* return; */ // Re-enabled for software rendering
@@ -509,6 +500,13 @@ void VideoPlugin_OutputFrameTexture(uint32_t hostTextureId) {
 /* Use cached allocation + glTexSubImage2D to avoid per-frame
                texture reallocations that trigger Android 14's libgui
                buffer-callback bug. */
+            // A new host texture ID (e.g. after resume recreates the
+            // EGL context) invalidates the cached allocation.
+            if (g_tex_cache_id != hostTextureId) {
+                g_tex_cache_w = 0;
+                g_tex_cache_h = 0;
+                g_tex_cache_id = hostTextureId;
+            }
             if (g_tex_cache_w != fbWidth || g_tex_cache_h != fbHeight) {
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fbWidth, fbHeight, 0,
                              GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
