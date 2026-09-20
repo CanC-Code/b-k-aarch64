@@ -76,3 +76,5 @@ tmp/*
 
 .venv*.bak*
 **/*.bak*
+*.log
+apk-download/
