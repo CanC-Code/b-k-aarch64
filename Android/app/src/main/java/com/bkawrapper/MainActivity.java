@@ -117,6 +117,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        maybeRetryGameLaunch();
         IntentFilter filter = new IntentFilter();
         filter.addAction(OtrService.ACTION_OTR_PROGRESS);
         filter.addAction(OtrService.ACTION_OTR_COMPLETE);
@@ -246,12 +247,6 @@ public class MainActivity extends AppCompatActivity {
     // RETRY_LIMIT times.  The intermittency is a Motorola/Android-14
     // SurfaceFlinger UAF that fires during early startup, so a clean
     // second or third launch usually succeeds.
-    @Override
-    protected void onResume() {
-        super.onResume();
-        maybeRetryGameLaunch();
-    }
-
     private void maybeRetryGameLaunch() {
         if (s_lastGameStart == 0) return;
         long elapsed = System.currentTimeMillis() - s_lastGameStart;
