@@ -719,6 +719,40 @@ static void RasterizeTriangle(
 // Returns the clip-space w for a vertex.  Used to reject triangles with
 // any vertex at or behind the near plane, which would otherwise divide by
 // w <= 0 and produce astronomically large screen coordinates.
+struct BkaClipVtx { float x, y, z, w; };
+
+// Full clip-space position (before the perspective divide).
+static void ComputeClip(const BKVertex* v, float* cx, float* cy, float* cz, float* cw) {
+    float x = (float)v->x, y = (float)v->y, z = (float)v->z;
+    float ox, oy, oz, ow;
+    Matrix_MultVec(s_rdp.modelview, x, y, z, 1.0f, &ox, &oy, &oz, &ow);
+    Matrix_MultVec(s_rdp.projection, ox, oy, oz, ow, cx, cy, cz, cw);
+}
+
+// Sutherland-Hodgman clip of a single triangle against w > eps.
+// Returns 0, 3, or 4 vertices (the visible polygon).
+static int BkaClipNear(const BkaClipVtx in[3], float eps, BkaClipVtx out[4]) {
+    int n = 0;
+    BkaClipVtx prev = in[2];
+    bool prevIn = prev.w > eps;
+    for (int i = 0; i < 3; i++) {
+        BkaClipVtx cur = in[i];
+        bool curIn = cur.w > eps;
+        if (curIn != prevIn) {
+            float t = (eps - prev.w) / (cur.w - prev.w);
+            out[n].x = prev.x + t * (cur.x - prev.x);
+            out[n].y = prev.y + t * (cur.y - prev.y);
+            out[n].z = prev.z + t * (cur.z - prev.z);
+            out[n].w = eps;
+            n++;
+        }
+        if (curIn) out[n++] = cur;
+        prev = cur;
+        prevIn = curIn;
+    }
+    return n;
+}
+
 static float ComputeClipW(const BKVertex* v) {
     float x = (float)v->x, y = (float)v->y, z = (float)v->z;
     float ox, oy, oz, ow;
