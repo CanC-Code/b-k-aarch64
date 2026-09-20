@@ -230,10 +230,38 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(this, "Extraction failed: " + message, Toast.LENGTH_LONG).show();
     }
 
+    private static final int  RETRY_LIMIT = 2;
+    private static long s_lastGameStart = 0;
+    private static int  s_retries = 0;
+
     private void bootGameEngine() {
+        s_lastGameStart = System.currentTimeMillis();
         Intent intent = new Intent(this, NativeGameActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
         startActivity(intent);
         finish();
+    }
+
+    // If NativeGameActivity dies within 6s of being started, retry up to
+    // RETRY_LIMIT times.  The intermittency is a Motorola/Android-14
+    // SurfaceFlinger UAF that fires during early startup, so a clean
+    // second or third launch usually succeeds.
+    @Override
+    protected void onResume() {
+        super.onResume();
+        maybeRetryGameLaunch();
+    }
+
+    private void maybeRetryGameLaunch() {
+        if (s_lastGameStart == 0) return;
+        long elapsed = System.currentTimeMillis() - s_lastGameStart;
+        if (elapsed > 6000) return;                 // prior launch had time to succeed
+        if (s_retries >= RETRY_LIMIT) {
+            Log.w(TAG, "Retry limit reached; not restarting");
+            return;
+        }
+        s_retries++;
+        Log.i(TAG, "Early return (" + elapsed + "ms), retry " + s_retries);
+        bootGameEngine();
     }
 }

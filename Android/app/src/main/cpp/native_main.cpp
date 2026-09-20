@@ -229,10 +229,28 @@ static void onAppCmd(android_app* app, int32_t cmd) {
 
 static int32_t onInput(android_app*, AInputEvent*) { return 0; }
 
+// Watchdog: if the render loop never produces frames (SurfFlinger UAF,
+// game-thread deadlock, etc.), exit cleanly so the user can relaunch
+// without the "app has stopped" dialog.
+static void* bka_startup_watchdog(void* arg) {
+    android_app* app = (android_app*)arg;
+    for (int i = 0; i < 24; i++) {      // up to 12s
+        usleep(500000);
+        if (g_rs.frames >= 20) return nullptr;   // healthy
+    }
+    LOGE("Watchdog: no frames in 12s — exiting for clean retry");
+    ANativeActivity_finish(app->activity);
+    return nullptr;
+}
+
 void android_main(android_app* app) {
     app->onAppCmd = onAppCmd;
     app->onInputEvent = onInput;
     LOGI("android_main enter");
+
+    pthread_t wd;
+    pthread_create(&wd, nullptr, bka_startup_watchdog, app);
+    pthread_detach(wd);
 
     for (;;) {
         int events = 0;
