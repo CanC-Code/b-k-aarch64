@@ -1181,24 +1181,52 @@ static void Cmd_Tri2(GfxCommand cmd) {
         BKVertex* vt1 = &s_rdp.dmem[v01];
         BKVertex* vt2 = &s_rdp.dmem[v02];
         {
-            float w0 = ComputeClipW(vt0);
-            float w1 = ComputeClipW(vt1);
-            float w2 = ComputeClipW(vt2);
-            if (w0 <= 0.01f || w1 <= 0.01f || w2 <= 0.01f) {
-                static int s_clipskip = 0;
-                if (s_clipskip++ < 20) {
+            BkaClipVtx cv[3], cclip[4];
+            ComputeClip(vt0, &cv[0].x, &cv[0].y, &cv[0].z, &cv[0].w);
+            ComputeClip(vt1, &cv[1].x, &cv[1].y, &cv[1].z, &cv[1].w);
+            ComputeClip(vt2, &cv[2].x, &cv[2].y, &cv[2].z, &cv[2].w);
+
+            const float EPSW = 0.01f;
+            bool allIn = cv[0].w > EPSW && cv[1].w > EPSW && cv[2].w > EPSW;
+            bool anyIn = cv[0].w > EPSW || cv[1].w > EPSW || cv[2].w > EPSW;
+
+            if (!anyIn) return;   // fully behind camera
+
+            if (!allIn) {
+                // Near-plane clip. Real N64 hardware emits the visible
+                // portion of a triangle that crosses w=0; skipping the
+                // whole triangle was throwing away ~60% of the geometry.
+                int nClip = BkaClipNear(cv, EPSW, cclip);
+                if (nClip < 3) return;
+
+                float cx[4], cy[4];
+                for (int i = 0; i < nClip; i++) {
+                    float iw = 1.0f / cclip[i].w;
+                    cx[i] = (cclip[i].x * iw + 1.0f) * 0.5f * (float)FB_WIDTH;
+                    cy[i] = (1.0f - cclip[i].y * iw) * 0.5f * (float)FB_HEIGHT;
+                }
+                BKVertex* csrc = (cv[0].w > EPSW) ? vt0 : ((cv[1].w > EPSW) ? vt1 : vt2);
+                uint8_t cr = csrc->r, cg = csrc->g, cb = csrc->b, ca = csrc->a;
+
+                static int s_clipcount = 0;
+                if (s_clipcount++ < 20) {
                     __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                        "TRI2-SKIP w=(%.3f %.3f %.3f) z=(%d %d %d) "
-                        "mv=(%.3f %.3f %.3f %.3f) proj=(%.3f %.3f %.3f %.3f)",
-                        w0, w1, w2,
-                        vt0->z, vt1->z, vt2->z,
-                        s_rdp.modelview[2][2], s_rdp.modelview[2][3],
-                        s_rdp.modelview[3][2], s_rdp.modelview[3][3],
-                        s_rdp.projection[2][2], s_rdp.projection[2][3],
-                        s_rdp.projection[3][2], s_rdp.projection[3][3]);
+                        "TRI2-CLIP w=(%.2f %.2f %.2f) nClip=%d -> raster",
+                        cv[0].w, cv[1].w, cv[2].w, nClip);
+                }
+
+                if (nClip == 3) {
+                    RasterizeTriangle(cx[0],cy[0], cx[1],cy[1], cx[2],cy[2],
+                        cr,cg,cb,ca, cr,cg,cb,ca, cr,cg,cb,ca);
+                } else {
+                    RasterizeTriangle(cx[0],cy[0], cx[1],cy[1], cx[2],cy[2],
+                        cr,cg,cb,ca, cr,cg,cb,ca, cr,cg,cb,ca);
+                    RasterizeTriangle(cx[0],cy[0], cx[2],cy[2], cx[3],cy[3],
+                        cr,cg,cb,ca, cr,cg,cb,ca, cr,cg,cb,ca);
                 }
                 return;
             }
+            // allIn: fall through to the existing TransformVertex path
         }
 
         float sx0, sy0, sx1, sy1, sx2, sy2;
