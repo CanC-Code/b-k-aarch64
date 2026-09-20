@@ -630,7 +630,7 @@ static void RasterizeTriangle(
     {
         static int s_raster_enter = 0;
         if (++s_raster_enter < 5 || s_raster_enter % 5000 == 1) {
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            ANDROID_LOG_ERROR, "BKA_GFX",
                 "RasterizeTriangle #%d ENTER: (%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f)",
                 s_raster_enter, x0, y0, x1, y1, x2, y2);
         }
@@ -643,7 +643,7 @@ static void RasterizeTriangle(
 
     s_triangleCount++;
     if (s_triangleCount % 5000 == 1 || s_triangleCount < 5) {
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_INFO, "BKA_GFX",
+        ANDROID_LOG_INFO, "BKA_GFX",
             "RasterizeTriangle #%d: (%.1f,%.1f) (%.1f,%.1f) (%.1f,%.1f)",
             s_triangleCount, x0, y0, x1, y1, x2, y2);
     }
@@ -693,7 +693,7 @@ static void RasterizeTriangle(
                 uint8_t r = (uint8_t)(((int)r0 + r1 + r2) / 3);
                 uint8_t g = (uint8_t)(((int)g0 + g1 + g2) / 3);
                 uint8_t b = (uint8_t)(((int)b0 + b1 + b2) / 3);
-            { static int s_px = 0; if (s_px++ < 5 || s_px % 10000 == 0) BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX", "PIXWRITE #%d y=%d x=%d", s_px, (int)y, (int)x); }
+            { static int s_px = 0; if (s_px++ < 5 || s_px % 10000 == 0) ANDROID_LOG_ERROR, "BKA_GFX", "PIXWRITE #%d y=%d x=%d", s_px, (int)y, (int)x); }
                 bka_guard_write(&fb[y * FB_WIDTH + x], 2, "Raster.fb");
                 fb[y * FB_WIDTH + x] = RGBA8_TO_RGB565(r, g, b);
             }
@@ -1106,7 +1106,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
 static void Cmd_Tri1(GfxCommand cmd) {
     static int s_tri1_calls = 0;
     if (++s_tri1_calls % 200 == 1 || s_tri1_calls < 5) {
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+        ANDROID_LOG_ERROR, "BKA_GFX",
             "Cmd_Tri1 CALLED #%d: w0=0x%08X w1=0x%08X dmem=%d",
             s_tri1_calls, cmd.w0, cmd.w1, s_rdp.dmemVertexCount);
     }
@@ -1157,7 +1157,7 @@ static void Cmd_Tri1(GfxCommand cmd) {
 static void Cmd_Tri2(GfxCommand cmd) {
     static int s_tri2_calls = 0;
     if (++s_tri2_calls % 200 == 1 || s_tri2_calls < 5) {
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+        ANDROID_LOG_ERROR, "BKA_GFX",
             "Cmd_Tri2 CALLED #%d: w0=0x%08X w1=0x%08X dmem=%d",
             s_tri2_calls, cmd.w0, cmd.w1, s_rdp.dmemVertexCount);
     }
@@ -1222,7 +1222,7 @@ static void Cmd_Tri2(GfxCommand cmd) {
 
                 static int s_clipcount = 0;
                 if (s_clipcount++ < 20) {
-                    BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                    ANDROID_LOG_ERROR, "BKA_GFX",
                         "TRI2-CLIP w=(%.2f %.2f %.2f) nClip=%d -> raster",
                         cv[0].w, cv[1].w, cv[2].w, nClip);
                 }
@@ -1893,7 +1893,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     s_mtx_log_frame = 0;
     s_mtx_dump_frame = 0;
     if (true) { // BKA_MOD: log every call
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+        ANDROID_LOG_ERROR, "BKA_GFX",
             "RSP_ProcessGfxTask CALL #%d: tp=%p type=%d data=%p size=%u dmemVertexCount=%d",
             s_rspCallCount, tp, tp ? tp->t.type : -1, tp ? tp->t.data_ptr : nullptr,
             tp ? tp->t.data_size : 0, s_rdp.dmemVertexCount);
@@ -2528,7 +2528,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     static int s_enc_probe = 0;
                     if (s_enc_probe++ < 40) {
                         uint8_t* b = (uint8_t*)dl_ptr;
-                        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                        ANDROID_LOG_ERROR, "BKA_GFX",
                             "G_DL ENC-PROBE target=0x%08X bytes=%02X%02X%02X%02X chosen=%d parent=%d",
                             raw_addr, b[0],b[1],b[2],b[3], cur_dl_enc, stack_enc[depth - 1]);
                     }
