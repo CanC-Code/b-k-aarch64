@@ -835,6 +835,9 @@ static void Cmd_SetEnvColor(GfxCommand cmd) {
 }
 
 static void Cmd_SetFillColor(GfxCommand cmd) {
+    { static int s_fc = 0; if (s_fc++ < 20)
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "SETFILL-ENTRY #%d w0=0x%08X w1=0x%08X", s_fc, cmd.w0, cmd.w1); }
     uint16_t c = cmd.w1 & 0xFFFF; // drawRectangle2D packs RGBA5551 into both halves
     s_rdp.fillR = ((c >> 11) & 0x1F) << 3;
     s_rdp.fillG = ((c >> 6) & 0x1F) << 3;
