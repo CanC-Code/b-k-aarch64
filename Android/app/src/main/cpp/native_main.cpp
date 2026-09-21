@@ -197,7 +197,11 @@ static void renderFrame() {
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     glDisableVertexAttribArray(g_rs.posLoc);
     glDisableVertexAttribArray(g_rs.texLoc);
-    eglSwapBuffers(g_rs.dpy, g_rs.surf);
+    // TEST: uncomment eglSwapBuffers to re-enable presentation.
+    // Commented to determine whether the SIGSEGV at 0x7b15010110 is
+    // caused by our render path or by the SurfaceFlinger transaction
+    // callback that runs on swap.
+    // eglSwapBuffers(g_rs.dpy, g_rs.surf);
 
     if (++g_rs.frames <= 3 || g_rs.frames % 120 == 0) LOGI("frame %d", g_rs.frames);
 }
