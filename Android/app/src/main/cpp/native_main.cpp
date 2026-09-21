@@ -180,7 +180,7 @@ static void renderFrame() {
 
     bka_update_texture((int)g_rs.tex);
 
-    glClearColor(0,0,0,1);
+    glClearColor(1,0,0,1);  // DEBUG: red clear
     glClear(GL_COLOR_BUFFER_BIT);
     glUseProgram(g_rs.prog);
     glActiveTexture(GL_TEXTURE0);
