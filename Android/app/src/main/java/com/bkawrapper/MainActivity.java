@@ -252,15 +252,21 @@ public class MainActivity extends AppCompatActivity {
         // process is killed by the SurfaceFlinger UAF.  When it fires,
         // MainActivity.onNewIntent checks whether the game reached
         // running state; if not, it relaunches.
-        AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
-        Intent retry = new Intent(this, MainActivity.class);
-        retry.setAction("com.bkawrapper.RETRY_LAUNCH");
-        retry.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        PendingIntent pi = PendingIntent.getActivity(
-                this, 0xC0DE, retry,
-                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,
-                System.currentTimeMillis() + 20_000L, pi);
+        try {
+            AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
+            Intent retry = new Intent(this, MainActivity.class);
+            retry.setAction("com.bkawrapper.RETRY_LAUNCH");
+            retry.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            PendingIntent pi = PendingIntent.getActivity(
+                    this, 0xC0DE, retry,
+                    PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+            // Inexact set() — no SCHEDULE_EXACT_ALARM permission needed.
+            // Fires within ~1-5s of target, which is fine for a 20s watchdog.
+            am.set(AlarmManager.RTC_WAKEUP,
+                    System.currentTimeMillis() + 20_000L, pi);
+        } catch (Throwable t) {
+            Log.w(TAG, "AlarmManager schedule failed: " + t);
+        }
     }
 
     @Override
