@@ -8,14 +8,14 @@
 
 #define LOG_TAG "BKA_GFX"
 
-#define LOGI(...) LOGV(__VA_ARGS__)
-#define LOGW(...) LOGV(__VA_ARGS__)
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
 
 /* High-volume per-command traces.  These were essential for bootstrapping the
  * decoder but each RSP task fires ~1000 of them, throttling the RSP thread to
  * ~1 Hz on device.  Flip to true to re-enable for a focused debugging session. */
 static const bool BKA_GFX_VERBOSE = false;
-#define LOGV(...) do { if (BKA_GFX_VERBOSE) LOGV(__VA_ARGS__); } while (0)
+#define LOGV(...) do { if (BKA_GFX_VERBOSE) LOGV( __VA_ARGS__); } while (0)
 
 // Gated wrapper for the direct __android_log_print calls below.  The
 // compiler constant-folds BKA_GFX_VERBOSE (false) and the branch is
