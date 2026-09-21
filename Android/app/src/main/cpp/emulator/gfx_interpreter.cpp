@@ -1095,6 +1095,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
 // =======================================================================
 
 static void Cmd_Tri1(GfxCommand cmd) {
+    g_bka_task_tri_count++;
     static int s_tri1_calls = 0;
     if (++s_tri1_calls % 200 == 1 || s_tri1_calls < 5) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -1146,6 +1147,7 @@ static void Cmd_Tri1(GfxCommand cmd) {
 // =======================================================================
 
 static void Cmd_Tri2(GfxCommand cmd) {
+    g_bka_task_tri_count++;
     static int s_tri2_calls = 0;
     if (++s_tri2_calls % 200 == 1 || s_tri2_calls < 5) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -1314,6 +1316,7 @@ static void Cmd_Tri2(GfxCommand cmd) {
 // w1 = flag
 // =======================================================================
 static void Cmd_Tri1_F3DEX2(GfxCommand cmd) {
+    g_bka_task_tri_count++;
     if (s_rdp.dmemVertexCount == 0) return;
 
     uint32_t v0 = (cmd.w0 >> 17) & 0x7F;
@@ -1350,6 +1353,7 @@ static void Cmd_Tri1_F3DEX2(GfxCommand cmd) {
 // w1 = [flag:8][v3:8][v4:8][v5:8]     (second triangle, flag ignored)
 // =======================================================================
 static void Cmd_Tri2_F3DEX2(GfxCommand cmd) {
+    g_bka_task_tri_count++;
     if (s_rdp.dmemVertexCount == 0) return;
 
     uint32_t v00 = (cmd.w0 >> 17) & 0x7F;
@@ -1841,6 +1845,7 @@ static int bka_probe_dl_encoding(uint8_t* ptr) {
 }
 
 static int s_rspCallCount = 0;
+static int g_bka_task_tri_count = 0;
 void RSP_ProcessGfxTask(OSTask* tp) {
     if (bka_canary_post != 0xBEEFCAFEBABE5678ull) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -1854,6 +1859,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         s_rdp.dmemVertexCount = DMEM_VERTEX_COUNT;
     }
     s_rspCallCount++;
+    g_bka_task_tri_count = 0;
 
     // Probe known RDRAM offsets where the DL thinks vertex data lives
     static int s_probe = 0;
@@ -2704,17 +2710,32 @@ default:
         }
 
         if (cmds_since_progress > 30 && total > 40) {
+            if (s_rspCallCount <= 30 || (s_rspCallCount % 50) == 0) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "TASK-SUMMARY #%d cmds=%zu tris=%d depth=%d end=NOPROG",
+                    s_rspCallCount, total, g_bka_task_tri_count, depth);
+            }
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "walker: 30 commands with no progress at cur=%p depth=%d total=%zu — bailing",
                 (void*)cur, depth, total);
             return;
         }
         if (unknown_opcode_run > 15) {
+            if (s_rspCallCount <= 30 || (s_rspCallCount % 50) == 0) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "TASK-SUMMARY #%d cmds=%zu tris=%d depth=%d end=DRIFT",
+                    s_rspCallCount, total, g_bka_task_tri_count, depth);
+            }
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "walker: %d consecutive unknown opcodes at cur=%p depth=%d — breaking (drifted past DL)",
                 unknown_opcode_run, cur, depth);
             break;
         }
+    }
+    if (s_rspCallCount <= 30 || (s_rspCallCount % 50) == 0) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "TASK-SUMMARY #%d cmds=%zu tris=%d end=COMPLETE",
+            s_rspCallCount, total, g_bka_task_tri_count);
     }
 }
 
