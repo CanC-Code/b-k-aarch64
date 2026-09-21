@@ -231,7 +231,7 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(this, "Extraction failed: " + message, Toast.LENGTH_LONG).show();
     }
 
-    private static final int  RETRY_LIMIT = 2;
+    private static final int  RETRY_LIMIT = 8;
     private static long s_lastGameStart = 0;
     private static int  s_retries = 0;
 
@@ -253,7 +253,7 @@ public class MainActivity extends AppCompatActivity {
     private void maybeRetryGameLaunch() {
         if (s_lastGameStart == 0) return;
         long elapsed = System.currentTimeMillis() - s_lastGameStart;
-        if (elapsed > 6000) return;                 // prior launch had time to succeed
+        if (elapsed > 8000) return;                 // prior launch had time to succeed
         if (s_retries >= RETRY_LIMIT) {
             Log.w(TAG, "Retry limit reached; not restarting");
             return;
