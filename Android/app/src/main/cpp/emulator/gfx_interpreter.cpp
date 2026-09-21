@@ -1207,10 +1207,20 @@ static void Cmd_Tri2(GfxCommand cmd) {
                 if (nClip < 3) return;
 
                 float cx[4], cy[4];
+                const float CLIP_COORD_LIMIT = (float)(FB_WIDTH * 4);
                 for (int i = 0; i < nClip; i++) {
                     float iw = 1.0f / cclip[i].w;
-                    cx[i] = (cclip[i].x * iw + 1.0f) * 0.5f * (float)FB_WIDTH;
-                    cy[i] = (1.0f - cclip[i].y * iw) * 0.5f * (float)FB_HEIGHT;
+                    float tx = (cclip[i].x * iw + 1.0f) * 0.5f * (float)FB_WIDTH;
+                    float ty = (1.0f - cclip[i].y * iw) * 0.5f * (float)FB_HEIGHT;
+                    // Clamping preserves topology (winding / side) but keeps
+                    // the scanline math from overflowing on near-plane
+                    // vertices where 1/w is ~100.
+                    if (tx < -CLIP_COORD_LIMIT) tx = -CLIP_COORD_LIMIT;
+                    if (tx >  CLIP_COORD_LIMIT) tx =  CLIP_COORD_LIMIT;
+                    if (ty < -CLIP_COORD_LIMIT) ty = -CLIP_COORD_LIMIT;
+                    if (ty >  CLIP_COORD_LIMIT) ty =  CLIP_COORD_LIMIT;
+                    cx[i] = tx;
+                    cy[i] = ty;
                 }
                 BKVertex* csrc = (cv[0].w > EPSW) ? vt0 : ((cv[1].w > EPSW) ? vt1 : vt2);
                 uint8_t cr = csrc->r, cg = csrc->g, cb = csrc->b, ca = csrc->a;
@@ -1976,7 +1986,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     uint8_t *cur = (uint8_t*)tp->t.data_ptr;
     uint8_t *cur_end = cur + tp->t.data_size;
 
-    const size_t MAX_TOTAL_CMDS = 3000;   /* real RSP tasks are <2000 cmds */
+    const size_t MAX_TOTAL_CMDS = 30000;   /* real RSP tasks are <2000 cmds */
     const size_t MAX_DL_CMDS = 5000;
     size_t total = 0;
     size_t dl_cmds = 0;
