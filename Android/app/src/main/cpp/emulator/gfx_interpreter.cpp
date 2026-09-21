@@ -1194,7 +1194,7 @@ static void Cmd_Tri2(GfxCommand cmd) {
             ComputeClip(vt1, &cv[1].x, &cv[1].y, &cv[1].z, &cv[1].w);
             ComputeClip(vt2, &cv[2].x, &cv[2].y, &cv[2].z, &cv[2].w);
 
-            const float EPSW = 0.01f;
+            const float EPSW = 1.0f;   // near-plane w in clip space (N64 near-plane in view is typically 50-200)
             bool allIn = cv[0].w > EPSW && cv[1].w > EPSW && cv[2].w > EPSW;
             bool anyIn = cv[0].w > EPSW || cv[1].w > EPSW || cv[2].w > EPSW;
 
