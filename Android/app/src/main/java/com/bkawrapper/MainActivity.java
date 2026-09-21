@@ -1,9 +1,12 @@
 // File: Android/app/src/main/java/com/bkawrapper/MainActivity.java
 package com.bkawrapper;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.IntentFilter;
 import android.content.res.AssetManager;
 import android.net.Uri;
@@ -242,8 +245,45 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
         // Do NOT finish() — MainActivity stays in the backstack so
         // onResume() fires when NativeGameActivity dies early, letting
-        // maybeRetryGameLaunch() reattempt.  The UAF is a startup race,
-        // so a second or third launch usually succeeds.
+        // maybeRetryGameLaunch() reattempt.
+
+        // External safety net: schedule an AlarmManager check 20s out.
+        // AlarmManager runs in the system process and fires even if our
+        // process is killed by the SurfaceFlinger UAF.  When it fires,
+        // MainActivity.onNewIntent checks whether the game reached
+        // running state; if not, it relaunches.
+        AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
+        Intent retry = new Intent(this, MainActivity.class);
+        retry.setAction("com.bkawrapper.RETRY_LAUNCH");
+        retry.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent pi = PendingIntent.getActivity(
+                this, 0xC0DE, retry,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,
+                System.currentTimeMillis() + 20_000L, pi);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if (intent != null && "com.bkawrapper.RETRY_LAUNCH".equals(intent.getAction())) {
+            // AlarmManager fired. Did the game make it?
+            long age = Long.MAX_VALUE;
+            try {
+                java.io.File f = new java.io.File(getFilesDir(), "last_frame.txt");
+                if (f.exists()) {
+                    String txt = new String(java.nio.file.Files.readAllBytes(f.toPath())).trim();
+                    long lastOk = Long.parseLong(txt);
+                    age = System.currentTimeMillis() - lastOk;
+                }
+            } catch (Exception ignored) {}
+            if (age > 10_000L) {    // no successful frame in last 10s — relaunch
+                Log.i(TAG, "AlarmManager watchdog fired (age=" + age + "ms) — relaunching");
+                bootGameEngine();
+            } else {
+                Log.i(TAG, "AlarmManager watchdog fired; game healthy (age=" + age + "ms)");
+            }
+        }
     }
 
     // If NativeGameActivity dies within 6s of being started, retry up to

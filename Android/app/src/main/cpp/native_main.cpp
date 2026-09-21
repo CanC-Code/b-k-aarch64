@@ -235,9 +235,13 @@ static int32_t onInput(android_app*, AInputEvent*) { return 0; }
 // without the "app has stopped" dialog.
 static void* bka_startup_watchdog(void* arg) {
     android_app* app = (android_app*)arg;
-    for (int i = 0; i < 24; i++) {      // up to 12s
+    for (int i = 0; i < 30; i++) {      // up to 15s
         usleep(500000);
-        if (g_rs.frames >= 20) return nullptr;   // healthy
+        // Not healthy merely because the loop ran — the game must have
+        // produced at least one frame with actual pixels.  Check the
+        // value that lowlevel_bridge.cpp updates on every upload.
+        extern volatile int g_bka_real_frame_count;
+        if (g_bka_real_frame_count > 0) return nullptr;
     }
     LOGE("Watchdog: no frames in 12s — exiting for clean retry");
     ANativeActivity_finish(app->activity);

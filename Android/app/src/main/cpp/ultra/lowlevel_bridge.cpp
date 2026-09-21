@@ -396,7 +396,9 @@ extern "C" {
         HLE_TriggerN64Event(14);
     }
 
-    static int g_tex_cache_w = 0;
+    volatile int g_bka_real_frame_count = 0;
+
+static int g_tex_cache_w = 0;
 static int g_tex_cache_h = 0;
 static uint32_t g_tex_cache_id = 0;
 
@@ -450,6 +452,19 @@ void VideoPlugin_OutputFrameTexture(uint32_t hostTextureId) {
                 for (int i = 0; i < fbWidth * fbHeight; i += 37) {
                     if (fbs[i] != 0) nonZero++;
                     if (fbs[i] != 0xFFFF) nonFFFF++;
+                }
+                if (nonZero > 0 && g_bka_real_frame_count == 0) {
+                    g_bka_real_frame_count = 1;
+                    // Also drop a heartbeat file that MainActivity's
+                    // AlarmManager check reads.
+                    FILE* hb = fopen("/data/user/0/com.bkawrapper/files/last_frame.txt", "w");
+                    if (hb) {
+                        struct timespec ts;
+                        clock_gettime(CLOCK_REALTIME, &ts);
+                        long long ms = (long long)ts.tv_sec * 1000LL + ts.tv_nsec / 1000000LL;
+                        fprintf(hb, "%lld\n", ms);
+                        fclose(hb);
+                    }
                 }
                 __android_log_print(ANDROID_LOG_ERROR, "BKA-FB",
                     "frame %d: nonZero=%d nonFFFF=%d first16=%04X %04X %04X %04X",
