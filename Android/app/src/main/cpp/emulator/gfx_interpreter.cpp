@@ -33,6 +33,7 @@ void* bka_lookup_addr_by_low32(uint32_t low32);
 }
 
 static RDPState s_rdp;
+static int g_bka_task_tri_count = 0;
 static int s_rsp_dump_sizes = [](){ LOGV("RDP-SIZE=%zu sizeof dmem=%zu offsetof(dmem)=%zu offsetof(dmemVertexCount)=%zu", sizeof(RDPState), sizeof(s_rdp.dmem), offsetof(RDPState, dmem), offsetof(RDPState, dmemVertexCount)); return 0; }();
 static uint64_t bka_canary_post = 0xBEEFCAFEBABE5678ull;
 static inline bool bka_in_rdram(void* p, size_t n) {
@@ -1845,7 +1846,6 @@ static int bka_probe_dl_encoding(uint8_t* ptr) {
 }
 
 static int s_rspCallCount = 0;
-static int g_bka_task_tri_count = 0;
 void RSP_ProcessGfxTask(OSTask* tp) {
     if (bka_canary_post != 0xBEEFCAFEBABE5678ull) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
