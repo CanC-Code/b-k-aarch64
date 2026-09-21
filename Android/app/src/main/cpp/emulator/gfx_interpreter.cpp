@@ -34,6 +34,7 @@ void* bka_lookup_addr_by_low32(uint32_t low32);
 
 static RDPState s_rdp;
 static int g_bka_task_tri_count = 0;
+static int g_bka_task_max_depth = 0;
 static int g_bka_task_pops = 0;
 static int s_rsp_dump_sizes = [](){ LOGV("RDP-SIZE=%zu sizeof dmem=%zu offsetof(dmem)=%zu offsetof(dmemVertexCount)=%zu", sizeof(RDPState), sizeof(s_rdp.dmem), offsetof(RDPState, dmem), offsetof(RDPState, dmemVertexCount)); return 0; }();
 static uint64_t bka_canary_post = 0xBEEFCAFEBABE5678ull;
@@ -1872,6 +1873,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     s_rspCallCount++;
     g_bka_task_tri_count = 0;
     g_bka_task_pops = 0;
+    g_bka_task_max_depth = 0;
 
     // Probe known RDRAM offsets where the DL thinks vertex data lives
     static int s_probe = 0;
@@ -1986,7 +1988,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     uint8_t *cur = (uint8_t*)tp->t.data_ptr;
     uint8_t *cur_end = cur + tp->t.data_size;
 
-    const size_t MAX_TOTAL_CMDS = 30000;   /* real RSP tasks are <2000 cmds */
+    const size_t MAX_TOTAL_CMDS = 3000;   /* real RSP tasks are <2000 cmds */
     const size_t MAX_DL_CMDS = 5000;
     size_t total = 0;
     size_t dl_cmds = 0;
@@ -2504,6 +2506,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 stack_dl_base[depth] = s_dl_base;
                 stack_enc[depth] = cur_dl_enc;
                 depth++;
+                if (depth > g_bka_task_max_depth) g_bka_task_max_depth = depth;
                 /* Inherit parent encoding — Banjo's sub-DLs are almost always
                  * same-encoding as their parent.  Resetting to 0 causes
                  * ambiguous-first-command DLs (e.g. a leading G_SETCOMBINE
