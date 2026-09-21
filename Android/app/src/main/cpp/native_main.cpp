@@ -203,7 +203,7 @@ static void renderFrame() {
     // ~1/5th of 30fps and stays below the UAF trigger threshold in
     // observed runs.
     static int64_t s_lastSwapNs = 0;
-    if (t - s_lastSwapNs >= 160000000LL) {   // 160ms ≈ 6 fps
+    if (t - s_lastSwapNs >= 100000000LL) {   // 100ms ≈ 10 fps
         s_lastSwapNs = t;
         eglSwapBuffers(g_rs.dpy, g_rs.surf);
     }
