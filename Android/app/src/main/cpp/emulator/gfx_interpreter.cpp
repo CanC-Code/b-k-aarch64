@@ -34,6 +34,7 @@ void* bka_lookup_addr_by_low32(uint32_t low32);
 
 static RDPState s_rdp;
 static int g_bka_task_tri_count = 0;
+static int g_bka_task_pops = 0;
 static int s_rsp_dump_sizes = [](){ LOGV("RDP-SIZE=%zu sizeof dmem=%zu offsetof(dmem)=%zu offsetof(dmemVertexCount)=%zu", sizeof(RDPState), sizeof(s_rdp.dmem), offsetof(RDPState, dmem), offsetof(RDPState, dmemVertexCount)); return 0; }();
 static uint64_t bka_canary_post = 0xBEEFCAFEBABE5678ull;
 static inline bool bka_in_rdram(void* p, size_t n) {
@@ -1860,6 +1861,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     }
     s_rspCallCount++;
     g_bka_task_tri_count = 0;
+    g_bka_task_pops = 0;
 
     // Probe known RDRAM offsets where the DL thinks vertex data lives
     static int s_probe = 0;
@@ -2715,15 +2717,16 @@ default:
             // as an implicit end-of-list: pop back to the parent and keep
             // walking.  Only bail when we are already at the top level —
             // that's true drift.
-            if (depth > 0) {
+            if (depth > 0 && g_bka_task_pops < 16) {
+                g_bka_task_pops++;
                 static int s_implicit_pop = 0;
                 if (s_implicit_pop++ < 20) {
                     __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                        "walker: implicit end-of-DL at depth=%d cur=%p — popping",
-                        depth, (void*)cur);
+                        "walker: implicit end-of-DL at depth=%d cur=%p — popping (pop %d)",
+                        depth, (void*)cur, g_bka_task_pops);
                 }
                 depth--;
-                cur = stack[depth].ptr;
+                cur = stack[depth].ptr + stack_stride[depth];  // skip the G_DL
                 cur_end = stack[depth].end;
                 current_stride = stack_stride[depth];
                 s_dl_base = stack_dl_base[depth];
@@ -2732,6 +2735,16 @@ default:
                 zero_run = 0;
                 cmds_since_progress = 0;
                 continue;
+            }
+            // Either at top level, or too many pops — treat as real drift.
+            if (depth > 0 && g_bka_task_pops >= 16) {
+                static int s_toomany = 0;
+                if (s_toomany++ < 10) {
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                        "walker: too many implicit pops (%d) at depth=%d — bailing",
+                        g_bka_task_pops, depth);
+                }
+                return;
             }
             if (s_rspCallCount <= 30 || (s_rspCallCount % 50) == 0) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
