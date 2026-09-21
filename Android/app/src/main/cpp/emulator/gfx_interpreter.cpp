@@ -1757,6 +1757,15 @@ static void Cmd_FillRect(GfxCommand cmd) {
     uint16_t color = RGBA8_TO_RGB565(s_rdp.fillR, s_rdp.fillG, s_rdp.fillB);
     int activeFb = getActiveFramebuffer();
     uint16_t* fb = (uint16_t*)(gN64_RDRAM + g_active_fb_offset);
+    {
+        static int s_dbg = 0;
+        if (s_dbg++ < 5 || (s_dbg % 100) == 0)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "FILLRECT-DBG ulx=%d uly=%d lrx=%d lry=%d "
+                "fillRGB=(%d,%d,%d) color=0x%04X fb=%p",
+                ulx, uly, lrx, lry,
+                s_rdp.fillR, s_rdp.fillG, s_rdp.fillB, color, (void*)fb);
+    }
     for (int32_t y = uly; y < lry; y++)
         for (int32_t x = ulx; x < lrx; x++)
             fb[y * FB_WIDTH + x] = color;
