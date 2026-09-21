@@ -50,6 +50,34 @@ uint32_t g_active_fb_offset = 0x400000;
 // The recompiled code should call bka_add_addr_mapping() through osVirtualToPhysical.
 #include <unordered_map>
 #include <android/log.h>
+
+// ---- /proc/self/maps cache (was: fopen+parse on every bka_is_* call) ----
+struct BkaMapsRegion { uintptr_t start; uintptr_t end; char perms[5]; };
+static BkaMapsRegion s_maps[1024];
+static int s_maps_count = 0;
+static pthread_mutex_t s_maps_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static void bka_refresh_maps() {
+    pthread_mutex_lock(&s_maps_mutex);
+    FILE* f = fopen("/proc/self/maps", "r");
+    if (!f) { pthread_mutex_unlock(&s_maps_mutex); return; }
+    s_maps_count = 0;
+    char line[512];
+    while (s_maps_count < 1024 && fgets(line, sizeof(line), f)) {
+        unsigned long lo = 0, hi = 0;
+        char perms[5] = {0,0,0,0,0};
+        if (sscanf(line, "%lx-%lx %4s", &lo, &hi, perms) == 3) {
+            s_maps[s_maps_count].start = (uintptr_t)lo;
+            s_maps[s_maps_count].end   = (uintptr_t)hi;
+            memcpy(s_maps[s_maps_count].perms, perms, 5);
+            s_maps_count++;
+        }
+    }
+    fclose(f);
+    pthread_mutex_unlock(&s_maps_mutex);
+}
+// -------------------------------------------------------------------------
+
 // Fixed-capacity static map — avoids heap churn that perturbs the game's allocator.
 // Slots are filled in insertion order; lookups scan until an empty slot.
 // If a key is overwritten, the old value is preserved in the "cold" array below.
@@ -234,9 +262,7 @@ static bool is_address_readable(void* ptr) {
     return false;
 }
 
-extern "C" int bka_is_mapped(void* ptr) {
-    return is_address_mapped(ptr) ? 1 : 0;
-}
+int bka_is_mapped(void* ptr) { return bka_is_readable(ptr); }
 
 
 extern "C" void bka_log_gdma_ra(void* ra, unsigned long long v) {
@@ -295,8 +321,22 @@ extern "C" void bka_log_seg1_emit(void* ra, unsigned long long a, unsigned int l
 }
 
 
-extern "C" int bka_is_readable(void* ptr) {
-    return is_address_readable(ptr) ? 1 : 0;
+int bka_is_readable(void* ptr) {
+    if (s_maps_count == 0) bka_refresh_maps();
+    uintptr_t a = (uintptr_t)ptr;
+    for (int i = 0; i < s_maps_count; i++) {
+        if (a >= s_maps[i].start && a < s_maps[i].end)
+            return s_maps[i].perms[0] == 'r';
+    }
+    static int s_retry = 0;
+    if (s_retry++ < 3) {
+        bka_refresh_maps();
+        for (int i = 0; i < s_maps_count; i++) {
+            if (a >= s_maps[i].start && a < s_maps[i].end)
+                return s_maps[i].perms[0] == 'r';
+        }
+    }
+    return 0;
 }
 }
 
