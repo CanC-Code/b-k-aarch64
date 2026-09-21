@@ -1740,7 +1740,10 @@ static void Cmd_Mtx(GfxCommand cmd) {
 // =======================================================================
 // G_FILLRECT - Solid color rectangle fill
 // =======================================================================
-static void Cmd_FillRect(GfxCommand cmd) {
+\1
+    { static int s_fr = 0; if (s_fr++ < 10 || (s_fr % 200) == 0)
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "FILLRECT-ENTRY #%d w0=0x%08X w1=0x%08X", s_fr, cmd.w0, cmd.w1); }
     int32_t ulx = (int32_t)((cmd.w1 >> 14) & 0x3FF);
     int32_t uly = (int32_t)((cmd.w1 >> 2) & 0x3FF);
     int32_t lrx = (int32_t)((cmd.w0 >> 14) & 0x3FF);
@@ -1762,7 +1765,10 @@ static void Cmd_FillRect(GfxCommand cmd) {
 // =======================================================================
 // G_TEXRECT - Textured rectangle
 // =======================================================================
-static void Cmd_TexRect(GfxCommand cmd) {
+\1
+    { static int s_tr = 0; if (s_tr++ < 10 || (s_tr % 200) == 0)
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "TEXRECT-ENTRY #%d w0=0x%08X w1=0x%08X", s_tr, cmd.w0, cmd.w1); }
     int32_t xh = (int32_t)((cmd.w0 >> 12) & 0xFFF);
     int32_t yh = (int32_t)(cmd.w0 & 0xFFF);
     int32_t xl = (int32_t)((cmd.w1 >> 12) & 0xFFF);
