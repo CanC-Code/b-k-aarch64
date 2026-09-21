@@ -2710,13 +2710,36 @@ default:
         }
 
         if (cmds_since_progress > 30 && total > 40) {
+            // Sub-DLs in Banjo's compiled output frequently omit G_ENDDL.
+            // When the walker stops making progress at depth > 0, treat it
+            // as an implicit end-of-list: pop back to the parent and keep
+            // walking.  Only bail when we are already at the top level —
+            // that's true drift.
+            if (depth > 0) {
+                static int s_implicit_pop = 0;
+                if (s_implicit_pop++ < 20) {
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                        "walker: implicit end-of-DL at depth=%d cur=%p — popping",
+                        depth, (void*)cur);
+                }
+                depth--;
+                cur = stack[depth].ptr;
+                cur_end = stack[depth].end;
+                current_stride = stack_stride[depth];
+                s_dl_base = stack_dl_base[depth];
+                cur_dl_enc = stack_enc[depth];
+                dl_cmds = 0;
+                zero_run = 0;
+                cmds_since_progress = 0;
+                continue;
+            }
             if (s_rspCallCount <= 30 || (s_rspCallCount % 50) == 0) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "TASK-SUMMARY #%d cmds=%zu tris=%d depth=%d end=NOPROG",
                     s_rspCallCount, total, g_bka_task_tri_count, depth);
             }
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                "walker: 30 commands with no progress at cur=%p depth=%d total=%zu — bailing",
+                "walker: 30 commands with no progress at cur=%p depth=%d total=%zu — bailing (top level)",
                 (void*)cur, depth, total);
             return;
         }
