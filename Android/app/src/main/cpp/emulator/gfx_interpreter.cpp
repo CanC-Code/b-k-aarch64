@@ -2142,9 +2142,10 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             /* CMDX disabled */;
         }
 
-        if (opcode == 0x01 || opcode == 0x04 || opcode == 0xB1 ||
-            opcode == 0xBF || opcode == 0xC0 || opcode == 0xC4 ||
-            opcode == 0xBC || opcode == 0xB6 || opcode == 0xB9) {
+        // Any recognized opcode counts as progress.  Only sequences of
+        // unrecognized bytes indicate drift; a DL that opens with 50
+        // setup commands (texture / combiner / tile) is completely normal.
+        if (bka_is_f3dex_opcode(opcode)) {
             cmds_since_progress = 0;
         } else {
             cmds_since_progress++;
@@ -2711,7 +2712,7 @@ default:
                 break;
         }
 
-        if (cmds_since_progress > 30 && total > 40) {
+        if (cmds_since_progress > 200 && total > 200) {
             // Sub-DLs in Banjo's compiled output frequently omit G_ENDDL.
             // When the walker stops making progress at depth > 0, treat it
             // as an implicit end-of-list: pop back to the parent and keep
