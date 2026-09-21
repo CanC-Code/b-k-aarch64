@@ -63,7 +63,7 @@ static BkaMapsRegion s_maps[1024];
 static int s_maps_count = 0;
 static pthread_mutex_t s_maps_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static void bka_refresh_maps() {
+void bka_refresh_maps() {
     pthread_mutex_lock(&s_maps_mutex);
     FILE* f = fopen("/proc/self/maps", "r");
     if (!f) { pthread_mutex_unlock(&s_maps_mutex); return; }
