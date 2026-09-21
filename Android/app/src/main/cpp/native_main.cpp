@@ -197,11 +197,16 @@ static void renderFrame() {
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     glDisableVertexAttribArray(g_rs.posLoc);
     glDisableVertexAttribArray(g_rs.texLoc);
-    // TEST: uncomment eglSwapBuffers to re-enable presentation.
-    // Commented to determine whether the SIGSEGV at 0x7b15010110 is
-    // caused by our render path or by the SurfaceFlinger transaction
-    // callback that runs on swap.
-    // eglSwapBuffers(g_rs.dpy, g_rs.surf);
+    // Present at a heavily throttled rate.  The Motorola/Android-14
+    // libgui UAF at 0x7b15010110 fires on buffer-transaction callbacks;
+    // reducing the swap rate to ~6 fps cuts the framework's churn to
+    // ~1/5th of 30fps and stays below the UAF trigger threshold in
+    // observed runs.
+    static int64_t s_lastSwapNs = 0;
+    if (t - s_lastSwapNs >= 160000000LL) {   // 160ms ≈ 6 fps
+        s_lastSwapNs = t;
+        eglSwapBuffers(g_rs.dpy, g_rs.surf);
+    }
 
     if (++g_rs.frames <= 3 || g_rs.frames % 120 == 0) LOGI("frame %d", g_rs.frames);
 }
