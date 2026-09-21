@@ -15,16 +15,7 @@
  * decoder but each RSP task fires ~1000 of them, throttling the RSP thread to
  * ~1 Hz on device.  Flip to true to re-enable for a focused debugging session. */
 static const bool BKA_GFX_VERBOSE = false;
-#define LOGV(...) do { if (BKA_GFX_VERBOSE) LOGV( __VA_ARGS__); } while (0)
-
-// Gated wrapper for the direct __android_log_print calls below.  The
-// compiler constant-folds BKA_GFX_VERBOSE (false) and the branch is
-// never taken, so at runtime these cost nothing.  Flip BKA_GFX_VERBOSE
-// to true to re-enable full tracing.
-#ifndef BKA_LOG_IF
-#define BKA_LOG_IF(cond, ...) do { if (cond) __android_log_print(__VA_ARGS__); } while (0)
-#endif
-
+#define LOGV(...) do { if (BKA_GFX_VERBOSE) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__); } while (0)
 
 extern "C" {
     extern uint32_t g_active_fb_offset;
@@ -42,7 +33,7 @@ void* bka_lookup_addr_by_low32(uint32_t low32);
 }
 
 static RDPState s_rdp;
-static int s_rsp_dump_sizes = [](){ BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX", "RDP-SIZE=%zu sizeof dmem=%zu offsetof(dmem)=%zu offsetof(dmemVertexCount)=%zu", sizeof(RDPState), sizeof(s_rdp.dmem), offsetof(RDPState, dmem), offsetof(RDPState, dmemVertexCount)); return 0; }();
+static int s_rsp_dump_sizes = [](){ LOGV("RDP-SIZE=%zu sizeof dmem=%zu offsetof(dmem)=%zu offsetof(dmemVertexCount)=%zu", sizeof(RDPState), sizeof(s_rdp.dmem), offsetof(RDPState, dmem), offsetof(RDPState, dmemVertexCount)); return 0; }();
 static uint64_t bka_canary_post = 0xBEEFCAFEBABE5678ull;
 static inline bool bka_in_rdram(void* p, size_t n) {
     uintptr_t a = (uintptr_t)p;
@@ -53,7 +44,7 @@ static inline bool bka_in_rdram(void* p, size_t n) {
 static inline void bka_guard_write(void* p, size_t n, const char* tag) {
     if (bka_in_rdram(p, n)) {
         static int _gw = 0;
-        if (_gw++ < 20) BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+        if (_gw++ < 20) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "RDRAM-WRITE %s dst=%p len=%zu", tag, p, n);
     }
 }
@@ -88,7 +79,7 @@ static void bka_sigsegv_handler(int sig, siginfo_t* si, void* uc) {
 
     static int s_seen = 0;
     if (s_seen++ < 20)
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "WRITEHIT addr=%p page=0x%lX pc=0x%lX pc_off=0x%lX pc_base=0x%lX pc_sym=%s+0x%lX lib=%s lr=0x%lX lr_off=0x%lX lr_sym=%s+0x%lX",
             si->si_addr, (unsigned long)page,
             (unsigned long)pc, (unsigned long)pc_off, (unsigned long)pc_base,
@@ -181,7 +172,7 @@ static uint8_t* bka_scan_heap_for_vertex_base(uint32_t dl_addr) {
 
             static int s_h = 0;
             if (s_h++ < 2) {
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "HEAPVTX dl=0x%08X cand=%p delta=0x%X "
                     "b1=%02X%02X%02X%02X  b2=%02X%02X%02X%02X",
                     dl_addr, (void*)c, delta,
@@ -202,7 +193,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     if (addr == 0x7A7B0620) {
         static int s_trace = 0;
         if (s_trace++ < 5)
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX", "XLT TRACE enter addr=0x%08X", addr);
+            LOGV("XLT TRACE enter addr=0x%08X", addr);
     }
 
     if (addr == 0) return nullptr;
@@ -224,7 +215,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     if (addr == 0xFFF9153F || addr == 0xFFFF153F) {
         static int s_xtrace = 0;
         if (s_xtrace++ < 40) {
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "XLTPATH addr=0x%08X seg=%X segBase=%08lX gRDRAM=%p",
                 addr, (addr >> 24) & 0x0F,
                 (unsigned long)s_rdp.segmentBase[(addr >> 24) & 0x0F],
@@ -248,7 +239,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         if (bka_is_readable((void*)cand72)) {
             static int rec_log72 = 0;
             if (rec_log72++ < 6) {
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "XLT RECONSTRUCT 0x%08X -> %p (0x72 base)", addr, (void*)cand72);
             }
             return (uint8_t*)cand72;
@@ -257,7 +248,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         if (bka_is_readable((void*)cand73)) {
             static int rec_log73 = 0;
             if (rec_log73++ < 6) {
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "XLT RECONSTRUCT 0x%08X -> %p (0x73 base)", addr, (void*)cand73);
             }
             return (uint8_t*)cand73;
@@ -272,7 +263,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         void* byLow = bka_lookup_addr_by_low32(addr);
         if (byLow) {
             static int b1 = 0;
-            if (b1++ < 8) BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            if (b1++ < 8) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "XLT LOW32MATCH addr=0x%08X -> %p", addr, byLow);
             return (uint8_t*)byLow;
         }
@@ -303,42 +294,42 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
             if (z < -2048 || z > 2048) continue;
 
             static int b2 = 0;
-            if (b2++ < 12) BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            if (b2++ < 12) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "VTXRECON addr=0x%08X pfx=0x%llX -> %p x=%d y=%d z=%d",
                 addr, (unsigned long long)(pfx >> 32), (void*)cand, x, y, z);
             return (uint8_t*)cand;
         }
         static int b3 = 0;
-        if (b3++ < 3) BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+        if (b3++ < 3) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "VTXRECON FAILED addr=0x%08X (no plausible prefix)", addr);
     }
 
     if (addr == 0x7A7B0620) {
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX", "XLT TRACE about to miss addr=0x%08X", addr);
+        LOGV("XLT TRACE about to miss addr=0x%08X", addr);
     }
 
     // Diagnostic: log misses so we can see what the game asked for
     static int miss_log = 0;
     if (miss_log++ < 12) {
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "XLT miss addr=0x%08X map_size=?", addr);
     }
 
     if (addr == 0x7A7B0620) {
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX", "XLT TRACE reached segment block addr=0x%08X", addr);
+        LOGV("XLT TRACE reached segment block addr=0x%08X", addr);
     }
 
     // Segment address (F3DEX_GBI)
     uint32_t seg = (addr >> 24) & 0x0F;
     uint32_t off = addr & 0x00FFFFFF;
-    { static int s_sc = 0; if (s_sc++ < 6) BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX", "SEGCHK addr=0x%08X seg=%u segB1=0x%lX dlbase=0x%lX cur=%p", addr, seg, (unsigned long)s_rdp.segmentBase[1], (unsigned long)s_dl_base, (void*)s_current_cmd); }
-    if (seg == 1 && s_rdp.segmentBase[1] == 0x80000000u && s_current_cmd) { uintptr_t c = (uintptr_t)s_current_cmd; uintptr_t cands[6] = { c - 0x1D0, c - 0x1C0, c - 0x1A0, c - 0xC80, c - 0x400, c - 0x200 }; for (int k = 0; k < 6; k++) { uintptr_t v = cands[k]; if (!bka_is_readable((void*)v)) continue; uint8_t* b = (uint8_t*)v; int hits = 0; for (int i = 0; i < 8; i++) { uint8_t* q = b + i*16; if (!bka_is_readable((void*)(q+16))) break; int16_t z = (int16_t)((q[4] << 8) | q[5]); int cn = (q[12] == 0x80 && q[13] == 0x7F) || (q[12] == 0x7F && q[13] == 0x80); if (z == 0 && cn) hits++; } static int s_v = 0; if (s_v++ < 20) BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX", "SEG1VTX2 k=%d cand=0x%lX hits=%d/8 cur=0x%lX", k, (unsigned long)v, hits, (unsigned long)c); if (hits >= 3) return (uint8_t*)(v + off); } }
+    { static int s_sc = 0; if (s_sc++ < 6) LOGV("SEGCHK addr=0x%08X seg=%u segB1=0x%lX dlbase=0x%lX cur=%p", addr, seg, (unsigned long)s_rdp.segmentBase[1], (unsigned long)s_dl_base, (void*)s_current_cmd); }
+    if (seg == 1 && s_rdp.segmentBase[1] == 0x80000000u && s_current_cmd) { uintptr_t c = (uintptr_t)s_current_cmd; uintptr_t cands[6] = { c - 0x1D0, c - 0x1C0, c - 0x1A0, c - 0xC80, c - 0x400, c - 0x200 }; for (int k = 0; k < 6; k++) { uintptr_t v = cands[k]; if (!bka_is_readable((void*)v)) continue; uint8_t* b = (uint8_t*)v; int hits = 0; for (int i = 0; i < 8; i++) { uint8_t* q = b + i*16; if (!bka_is_readable((void*)(q+16))) break; int16_t z = (int16_t)((q[4] << 8) | q[5]); int cn = (q[12] == 0x80 && q[13] == 0x7F) || (q[12] == 0x7F && q[13] == 0x80); if (z == 0 && cn) hits++; } static int s_v = 0; if (s_v++ < 20) LOGV("SEG1VTX2 k=%d cand=0x%lX hits=%d/8 cur=0x%lX", k, (unsigned long)v, hits, (unsigned long)c); if (hits >= 3) return (uint8_t*)(v + off); } }
     if (seg != 0 && s_rdp.segmentBase[seg] != 0) {
         uint32_t base = s_rdp.segmentBase[seg];
         void *base_pm = bka_lookup_addr_mapping(base);
         if (base_pm) {
             if (addr == 0xFFF9153F || addr == 0xFFFF153F)
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "XLTPATH-USE segbase (base=%08X off=%X)", base, off);
             return (uint8_t*)base_pm + off;
         }
@@ -346,13 +337,13 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         void *pm = bka_lookup_addr_mapping(combined);
         if (pm) {
             if (addr == 0xFFF9153F || addr == 0xFFFF153F)
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "XLTPATH-USE combined (combined=%08X)", combined);
             return (uint8_t*)pm;
         }
         if (combined < 0x4000000u && gN64_RDRAM) {
             if (addr == 0xFFF9153F || addr == 0xFFFF153F)
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "XLTPATH-USE combined-rdram (combined=%08X)", combined);
             return gN64_RDRAM + combined;
         }
@@ -366,7 +357,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
             uint32_t off2 = combined - 0xA0000000u;
             if (off2 < 0x04000000u) {
                 if (addr == 0xFFF9153F || addr == 0xFFFF153F)
-                    BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                         "XLTPATH-USE kseg1 (combined=%08X off=%X)", combined, off2);
                 return gN64_RDRAM + off2;
             }
@@ -390,7 +381,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
 
     static int miss2 = 0;
     if (miss2++ < 20) {
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "XLT GIVEUP addr=0x%08X (not in map, not segment, not RDRAM)", addr);
     }
     return nullptr;
@@ -493,19 +484,19 @@ static void Matrix_LoadFromN64(BKMatrix* out, const void* src) {
         static int s_raw = 0;
         if (s_raw++ < 2) {
             const uint8_t* b = (const uint8_t*)src;
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "MTXRAW 00-15: %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X",
                 b[0],b[1],b[2],b[3],b[4],b[5],b[6],b[7],
                 b[8],b[9],b[10],b[11],b[12],b[13],b[14],b[15]);
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "MTXRAW 16-31: %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X",
                 b[16],b[17],b[18],b[19],b[20],b[21],b[22],b[23],
                 b[24],b[25],b[26],b[27],b[28],b[29],b[30],b[31]);
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "MTXRAW 32-47: %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X",
                 b[32],b[33],b[34],b[35],b[36],b[37],b[38],b[39],
                 b[40],b[41],b[42],b[43],b[44],b[45],b[46],b[47]);
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "MTXRAW 48-63: %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X %02X%02X",
                 b[48],b[49],b[50],b[51],b[52],b[53],b[54],b[55],
                 b[56],b[57],b[58],b[59],b[60],b[61],b[62],b[63]);
@@ -554,13 +545,13 @@ static void Matrix_LoadFromN64(BKMatrix* out, const void* src) {
     {
         static int s_res = 0;
         if (s_res++ < 2) {
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "MTXRES r0=(%.4f %.4f %.4f %.4f)", (*out)[0][0],(*out)[0][1],(*out)[0][2],(*out)[0][3]);
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "MTXRES r1=(%.4f %.4f %.4f %.4f)", (*out)[1][0],(*out)[1][1],(*out)[1][2],(*out)[1][3]);
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "MTXRES r2=(%.4f %.4f %.4f %.4f)", (*out)[2][0],(*out)[2][1],(*out)[2][2],(*out)[2][3]);
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "MTXRES r3=(%.4f %.4f %.4f %.4f)", (*out)[3][0],(*out)[3][1],(*out)[3][2],(*out)[3][3]);
         }
     }
@@ -630,7 +621,7 @@ static void RasterizeTriangle(
     {
         static int s_raster_enter = 0;
         if (++s_raster_enter < 5 || s_raster_enter % 5000 == 1) {
-            ANDROID_LOG_ERROR, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "RasterizeTriangle #%d ENTER: (%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f)",
                 s_raster_enter, x0, y0, x1, y1, x2, y2);
         }
@@ -643,7 +634,7 @@ static void RasterizeTriangle(
 
     s_triangleCount++;
     if (s_triangleCount % 5000 == 1 || s_triangleCount < 5) {
-        ANDROID_LOG_INFO, "BKA_GFX",
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
             "RasterizeTriangle #%d: (%.1f,%.1f) (%.1f,%.1f) (%.1f,%.1f)",
             s_triangleCount, x0, y0, x1, y1, x2, y2);
     }
@@ -665,7 +656,7 @@ static void RasterizeTriangle(
     static int s_call = 0;
     s_call++;
     if (s_call <= 3 || s_call % 500 == 0) {
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA-RAST",
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST",
             "call #%d activeFb=%d fb=%p x0y0=%.1f,%.1f x1y1=%.1f,%.1f x2y2=%.1f,%.1f",
             s_call, activeFb, (void*)fb, x0, y0, x1, y1, x2, y2);
     }
@@ -693,7 +684,7 @@ static void RasterizeTriangle(
                 uint8_t r = (uint8_t)(((int)r0 + r1 + r2) / 3);
                 uint8_t g = (uint8_t)(((int)g0 + g1 + g2) / 3);
                 uint8_t b = (uint8_t)(((int)b0 + b1 + b2) / 3);
-            { static int s_px = 0; if (s_px++ < 5 || s_px % 10000 == 0) ANDROID_LOG_ERROR, "BKA_GFX", "PIXWRITE #%d y=%d x=%d", s_px, (int)y, (int)x); }
+            { static int s_px = 0; if (s_px++ < 5 || s_px % 10000 == 0) LOGV("PIXWRITE #%d y=%d x=%d", s_px, (int)y, (int)x); }
                 bka_guard_write(&fb[y * FB_WIDTH + x], 2, "Raster.fb");
                 fb[y * FB_WIDTH + x] = RGBA8_TO_RGB565(r, g, b);
             }
@@ -779,7 +770,7 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
     {
         static int s_tv = 0;
         if (s_tv++ < 0) {
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "TV-IN v=(%.1f,%.1f,%.1f) m00=%.4f m11=%.4f m22=%.4f m32=%.4f m23=%.4f",
                 x, y, z,
                 s_rdp.projection[0][0], s_rdp.projection[1][1],
@@ -800,7 +791,7 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
     {
         static int s_rd = 0;
         if (s_rd++ < 0) {
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "PRE-DIV post-proj ox=%.2f oy=%.2f oz=%.2f ow=%.4f",
                 ox, oy, oz, ow);
         }
@@ -816,7 +807,7 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
 
     static int s_off = 0;
     if ((*sx < 0 || *sx > FB_WIDTH || *sy < 0 || *sy > FB_HEIGHT) && s_off++ < 5) {
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_WARN, "BKA_GFX",
+        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
             "TransformVertex: off-screen (%.1f, %.1f) orig(%.1f,%.1f,%.1f) ndc(%.3f,%.3f)",
             *sx, *sy, x, y, z, ox, oy);
     }
@@ -988,7 +979,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
     static int s_vtx_dump = 0;
     if (s_vtx_dump++ < 3) {
         extern const uint8_t* s_current_cmd;
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "Cmd_Vtx CALL #%d: v0=%u n=%u addr=0x%08X w0=0x%08X cur=%p cur+8=%p delta=%ld",
             s_vtxCallCount, v0, n, addr, cmd.w0,
             (void*)s_current_cmd, (void*)((uintptr_t)s_current_cmd + 8),
@@ -1005,7 +996,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
     if (!src) {
         static int s_ft = 0;
         if (s_ft++ < 200) {
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "VtxFAIL addr=0x%08X v0=%u n=%u w0=0x%08X", addr, v0, n, cmd.w0);
         }
         return;
@@ -1014,13 +1005,13 @@ static void Cmd_Vtx(GfxCommand cmd) {
 
     static int s_vtx_resolve_log = 0;
     if (s_vtx_resolve_log++ < 0) {
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "VTXRESOLVE addr=0x%08X -> src=%p bytes: "
             "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
             addr, (void*)src,
             src[0],src[1],src[2],src[3],src[4],src[5],src[6],src[7],
             src[8],src[9],src[10],src[11],src[12],src[13],src[14],src[15]);
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "VTXSEGS [0]=%08lX [1]=%08lX [2]=%08lX [3]=%08lX "
             "[4]=%08lX [5]=%08lX [6]=%08lX [7]=%08lX "
             "[8]=%08lX [9]=%08lX [A]=%08lX [B]=%08lX "
@@ -1041,7 +1032,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
             (unsigned long)s_rdp.segmentBase[0xD],
             (unsigned long)s_rdp.segmentBase[0xE],
             (unsigned long)s_rdp.segmentBase[0xF]);
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "RDRAM=%p max_offset=%08lX (alloc 0x%lX)",
             (void*)gN64_RDRAM,
             (unsigned long)(addr & 0x00FFFFFF),
@@ -1051,7 +1042,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
     for (uint32_t i = 0; i < n; i++) {
         BKVertex* v = &s_rdp.dmem[v0 + i];
         bka_guard_write(v, sizeof(BKVertex), "Cmd_Vtx.dmem");
-        { static int s_vtxwr = 0; if (s_vtxwr++ < 0) BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX", "VTXWR i=%u v=%p src=%p dmem=%p idx=%u", i, (void*)v, (void*)src, (void*)s_rdp.dmem, v0+i); }
+        { static int s_vtxwr = 0; if (s_vtxwr++ < 0) LOGV("VTXWR i=%u v=%p src=%p dmem=%p idx=%u", i, (void*)v, (void*)src, (void*)s_rdp.dmem, v0+i); }
         v->x = read_int16(src + 0);
         v->y = read_int16(src + 2);
         v->z = read_int16(src + 4);
@@ -1070,7 +1061,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
     {
         static int s_l = 0;
         if (s_l++ < 3) {
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "VtxOK addr=0x%08X v0=%u n=%u first8=%02X%02X%02X%02X %02X%02X%02X%02X",
                 addr, v0, n,
                 src_base[0],src_base[1],src_base[2],src_base[3],
@@ -1081,19 +1072,19 @@ static void Cmd_Vtx(GfxCommand cmd) {
     static int s_vtx_hex = 0;
     if (s_vtx_hex++ < 3 && n >= 3 && src) {
         const uint8_t* raw = src_base;
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "VTXRAW %u bytes @%p: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
             n * 16, (const void*)raw,
             raw[0],raw[1],raw[2],raw[3],raw[4],raw[5],raw[6],raw[7],
             raw[8],raw[9],raw[10],raw[11],raw[12],raw[13],raw[14],raw[15]);
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "VTXDEC v0=(%d,%d,%d) v1=(%d,%d,%d) v2=(%d,%d,%d)",
             s_rdp.dmem[v0].x, s_rdp.dmem[v0].y, s_rdp.dmem[v0].z,
             s_rdp.dmem[v0+1].x, s_rdp.dmem[v0+1].y, s_rdp.dmem[v0+1].z,
             s_rdp.dmem[v0+2].x, s_rdp.dmem[v0+2].y, s_rdp.dmem[v0+2].z);
     }
 
-    BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_INFO, "BKA_GFX",
+    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
         "Cmd_Vtx: loaded %u vertices, dmemVertexCount=%d", n, s_rdp.dmemVertexCount);
 }
 
@@ -1106,7 +1097,7 @@ static void Cmd_Vtx(GfxCommand cmd) {
 static void Cmd_Tri1(GfxCommand cmd) {
     static int s_tri1_calls = 0;
     if (++s_tri1_calls % 200 == 1 || s_tri1_calls < 5) {
-        ANDROID_LOG_ERROR, "BKA_GFX",
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "Cmd_Tri1 CALLED #%d: w0=0x%08X w1=0x%08X dmem=%d",
             s_tri1_calls, cmd.w0, cmd.w1, s_rdp.dmemVertexCount);
     }
@@ -1121,7 +1112,7 @@ static void Cmd_Tri1(GfxCommand cmd) {
     if (v0 >= (uint32_t)s_rdp.dmemVertexCount ||
         v1 >= (uint32_t)s_rdp.dmemVertexCount ||
         v2 >= (uint32_t)s_rdp.dmemVertexCount) {
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_WARN, "BKA_GFX",
+        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
             "Cmd_Tri1: INVALID vertex indices %u,%u,%u (dmemVertexCount=%d) w1=0x%08X",
             v0, v1, v2, s_rdp.dmemVertexCount, cmd.w1);
         return;
@@ -1141,7 +1132,7 @@ static void Cmd_Tri1(GfxCommand cmd) {
     TransformVertex(vert1, &sx1, &sy1);
     TransformVertex(vert2, &sx2, &sy2);
 
-    { static int s_rt = 0; if (s_rt++ < 20) BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX", "RASTER v=(%p %p %p) dmembase=%p", (void*)vert0, (void*)vert1, (void*)vert2, (void*)s_rdp.dmem); }
+    { static int s_rt = 0; if (s_rt++ < 20) LOGV("RASTER v=(%p %p %p) dmembase=%p", (void*)vert0, (void*)vert1, (void*)vert2, (void*)s_rdp.dmem); }
     RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
         vert0->r, vert0->g, vert0->b, vert0->a,
         vert1->r, vert1->g, vert1->b, vert1->a,
@@ -1157,7 +1148,7 @@ static void Cmd_Tri1(GfxCommand cmd) {
 static void Cmd_Tri2(GfxCommand cmd) {
     static int s_tri2_calls = 0;
     if (++s_tri2_calls % 200 == 1 || s_tri2_calls < 5) {
-        ANDROID_LOG_ERROR, "BKA_GFX",
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "Cmd_Tri2 CALLED #%d: w0=0x%08X w1=0x%08X dmem=%d",
             s_tri2_calls, cmd.w0, cmd.w1, s_rdp.dmemVertexCount);
     }
@@ -1181,7 +1172,7 @@ static void Cmd_Tri2(GfxCommand cmd) {
         v12 >= (uint32_t)s_rdp.dmemVertexCount) {
         static int s_tri2_inv_log = 0;
         if (s_tri2_inv_log++ < 50) {
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_WARN, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                 "Cmd_Tri2: INVALID vertex indices %u,%u,%u,%u,%u,%u (dmemVertexCount=%d) w0=0x%08X w1=0x%08X",
                 v00, v01, v02, v10, v11, v12, s_rdp.dmemVertexCount, cmd.w0, cmd.w1);
         }
@@ -1222,7 +1213,7 @@ static void Cmd_Tri2(GfxCommand cmd) {
 
                 static int s_clipcount = 0;
                 if (s_clipcount++ < 20) {
-                    ANDROID_LOG_ERROR, "BKA_GFX",
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                         "TRI2-CLIP w=(%.2f %.2f %.2f) nClip=%d -> raster",
                         cv[0].w, cv[1].w, cv[2].w, nClip);
                 }
@@ -1248,24 +1239,24 @@ static void Cmd_Tri2(GfxCommand cmd) {
         {
             static int s_tri2_raster_log = 0;
             if (++s_tri2_raster_log % 200 == 1 || s_tri2_raster_log < 5) {
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "TRI2 -> raster #%d: screen=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f) fin=%d%d%d",
                     s_tri2_raster_log,
                     sx0, sy0, sx1, sy1, sx2, sy2,
                     std::isfinite(sx0), std::isfinite(sy0), std::isfinite(sx2));
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "  PROJ  row0=(%.3f %.3f %.3f %.3f) row3=(%.3f %.3f %.3f %.3f)",
                     s_rdp.projection[0][0], s_rdp.projection[0][1],
                     s_rdp.projection[0][2], s_rdp.projection[0][3],
                     s_rdp.projection[3][0], s_rdp.projection[3][1],
                     s_rdp.projection[3][2], s_rdp.projection[3][3]);
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "PROJFULL row1=(%.4f %.4f %.4f %.4f) row2=(%.4f %.4f %.4f %.4f)",
                     s_rdp.projection[1][0], s_rdp.projection[1][1],
                     s_rdp.projection[1][2], s_rdp.projection[1][3],
                     s_rdp.projection[2][0], s_rdp.projection[2][1],
                     s_rdp.projection[2][2], s_rdp.projection[2][3]);
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "  MV    row0=(%.3f %.3f %.3f %.3f) row3=(%.3f %.3f %.3f %.3f)",
                     s_rdp.modelview[0][0], s_rdp.modelview[0][1],
                     s_rdp.modelview[0][2], s_rdp.modelview[0][3],
@@ -1290,18 +1281,18 @@ static void Cmd_Tri2(GfxCommand cmd) {
         {
             static int s_tri2_raster_log = 0;
             if (++s_tri2_raster_log % 200 == 1 || s_tri2_raster_log < 5) {
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "TRI2 -> raster #%d: screen=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f) fin=%d%d%d",
                     s_tri2_raster_log,
                     sx0, sy0, sx1, sy1, sx2, sy2,
                     std::isfinite(sx0), std::isfinite(sy0), std::isfinite(sx2));
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "  PROJ  row0=(%.3f %.3f %.3f %.3f) row3=(%.3f %.3f %.3f %.3f)",
                     s_rdp.projection[0][0], s_rdp.projection[0][1],
                     s_rdp.projection[0][2], s_rdp.projection[0][3],
                     s_rdp.projection[3][0], s_rdp.projection[3][1],
                     s_rdp.projection[3][2], s_rdp.projection[3][3]);
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "  MV    row0=(%.3f %.3f %.3f %.3f) row3=(%.3f %.3f %.3f %.3f)",
                     s_rdp.modelview[0][0], s_rdp.modelview[0][1],
                     s_rdp.modelview[0][2], s_rdp.modelview[0][3],
@@ -1332,7 +1323,7 @@ static void Cmd_Tri1_F3DEX2(GfxCommand cmd) {
     if (v0 >= (uint32_t)s_rdp.dmemVertexCount ||
         v1 >= (uint32_t)s_rdp.dmemVertexCount ||
         v2 >= (uint32_t)s_rdp.dmemVertexCount) {
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_WARN, "BKA_GFX",
+        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
             "Cmd_Tri1_F3DEX2: INVALID vertex indices %u,%u,%u (dmemVertexCount=%d) w0=0x%08X",
             v0, v1, v2, s_rdp.dmemVertexCount, cmd.w0);
         return;
@@ -1390,18 +1381,18 @@ static void Cmd_Tri2_F3DEX2(GfxCommand cmd) {
         {
             static int s_tri2_raster_log = 0;
             if (++s_tri2_raster_log % 200 == 1 || s_tri2_raster_log < 5) {
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "TRI2 -> raster #%d: screen=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f) fin=%d%d%d",
                     s_tri2_raster_log,
                     sx0, sy0, sx1, sy1, sx2, sy2,
                     std::isfinite(sx0), std::isfinite(sy0), std::isfinite(sx2));
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "  PROJ  row0=(%.3f %.3f %.3f %.3f) row3=(%.3f %.3f %.3f %.3f)",
                     s_rdp.projection[0][0], s_rdp.projection[0][1],
                     s_rdp.projection[0][2], s_rdp.projection[0][3],
                     s_rdp.projection[3][0], s_rdp.projection[3][1],
                     s_rdp.projection[3][2], s_rdp.projection[3][3]);
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "  MV    row0=(%.3f %.3f %.3f %.3f) row3=(%.3f %.3f %.3f %.3f)",
                     s_rdp.modelview[0][0], s_rdp.modelview[0][1],
                     s_rdp.modelview[0][2], s_rdp.modelview[0][3],
@@ -1426,18 +1417,18 @@ static void Cmd_Tri2_F3DEX2(GfxCommand cmd) {
         {
             static int s_tri2_raster_log = 0;
             if (++s_tri2_raster_log % 200 == 1 || s_tri2_raster_log < 5) {
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "TRI2 -> raster #%d: screen=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f) fin=%d%d%d",
                     s_tri2_raster_log,
                     sx0, sy0, sx1, sy1, sx2, sy2,
                     std::isfinite(sx0), std::isfinite(sy0), std::isfinite(sx2));
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "  PROJ  row0=(%.3f %.3f %.3f %.3f) row3=(%.3f %.3f %.3f %.3f)",
                     s_rdp.projection[0][0], s_rdp.projection[0][1],
                     s_rdp.projection[0][2], s_rdp.projection[0][3],
                     s_rdp.projection[3][0], s_rdp.projection[3][1],
                     s_rdp.projection[3][2], s_rdp.projection[3][3]);
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "  MV    row0=(%.3f %.3f %.3f %.3f) row3=(%.3f %.3f %.3f %.3f)",
                     s_rdp.modelview[0][0], s_rdp.modelview[0][1],
                     s_rdp.modelview[0][2], s_rdp.modelview[0][3],
@@ -1515,7 +1506,7 @@ static void Cmd_MoveWord(GfxCommand cmd) {
         if (!((a <= 0x03FFFFFFu) || (a >= 0x80000000u && a <= 0x83FFFFFFu))) {
             static int s_badseg = 0;
             if (s_badseg++ < 20)
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_WARN, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                     "Cmd_MoveWord SEGMENT seg=%u base=0x%08X INVALID — skipping",
                     segment, a);
             return;
@@ -1524,7 +1515,7 @@ static void Cmd_MoveWord(GfxCommand cmd) {
 
         static int seg_log = 0;
         if (seg_log++ < 20) {
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_INFO, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
                 "Cmd_MoveWord SEGMENT seg=%u base=0x%08X", segment, data);
         }
     }
@@ -1586,7 +1577,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
     if (flag & 0xF8) {
         static int s_badmtx = 0;
         if (s_badmtx++ < 10)
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_WARN, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                 "Cmd_Mtx: bad flag=0x%02X w1=0x%08X — skipping", flag, cmd.w1);
         return;
     }
@@ -1594,7 +1585,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
     if (!mtx_src) {
         static int null_log = 0;
         if (null_log++ < 6) {
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_WARN, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                 "Cmd_Mtx NULL raw=0x%08X flag=0x%02X", cmd.w1, flag);
         }
         return;
@@ -1605,7 +1596,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
         static int s_proj_dump = 0;
         if (s_proj_dump++ < 3) {
             const uint8_t* mb = (const uint8_t*)mtx_src;
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                  "PROJBYTES raw=0x%08X src=%p: "
                 "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X "
                 "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X "
@@ -1674,17 +1665,17 @@ static void Cmd_Mtx(GfxCommand cmd) {
 
     BKMatrix newMatrix;
     Matrix_LoadFromN64(&newMatrix, mtx_src);
-//     { static int s_w0 = 0; if (s_w0++ < 12) { const uint8_t* raw = (const uint8_t*)s_current_cmd; BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX", "MTXW0 cur=%p raw=%02X%02X%02X%02X %02X%02X%02X%02X decoded_w0=0x%08X flag=0x%02X", (void*)raw, raw?raw[0]:0,raw?raw[1]:0,raw?raw[2]:0,raw?raw[3]:0,raw?raw[4]:0,raw?raw[5]:0,raw?raw[6]:0,raw?raw[7]:0, cmd.w0, flag); } }
+//     { static int s_w0 = 0; if (s_w0++ < 12) { const uint8_t* raw = (const uint8_t*)s_current_cmd; LOGV("MTXW0 cur=%p raw=%02X%02X%02X%02X %02X%02X%02X%02X decoded_w0=0x%08X flag=0x%02X", (void*)raw, raw?raw[0]:0,raw?raw[1]:0,raw?raw[2]:0,raw?raw[3]:0,raw?raw[4]:0,raw?raw[5]:0,raw?raw[6]:0,raw?raw[7]:0, cmd.w0, flag); } }
 
     if (s_mtx_log_frame++ < 0) {
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_INFO, "BKA_GFX",
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
             "Cmd_Mtx flag=0x%02X raw=0x%08X src=%p diag=[%.4f %.4f %.4f %.4f]",
             flag, cmd.w1, mtx_src,
             newMatrix[0][0], newMatrix[1][1],
             newMatrix[2][2], newMatrix[3][3]);
     }
 
-    { static int s_act = 0; if (s_act++ < 40) BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+    { static int s_act = 0; if (s_act++ < 40) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
         "MTXACT flag=0x%02X src=0x%08X new[0][0]=%.4f new[3][2]=%.4f | PROJ=%d LOAD=%d PUSH=%d",
         flag, cmd.w1, newMatrix[0][0], newMatrix[3][2],
         (flag & G_MTX_PROJECTION)?1:0, (flag & G_MTX_LOAD)?1:0, (flag & G_MTX_PUSH)?1:0); }
@@ -1693,7 +1684,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
         // Projection matrix slot
         if (flag & G_MTX_LOAD) {
             memcpy(s_rdp.projection, newMatrix, sizeof(BKMatrix));
-            { static int s_d = 0; if (s_d++ < 3) BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            { static int s_d = 0; if (s_d++ < 3) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "PROJ-AFTER-LOAD r0=(%.4f %.4f %.4f %.4f) r3=(%.4f %.4f %.4f %.4f)",
                 s_rdp.projection[0][0], s_rdp.projection[0][1], s_rdp.projection[0][2], s_rdp.projection[0][3],
                 s_rdp.projection[3][0], s_rdp.projection[3][1], s_rdp.projection[3][2], s_rdp.projection[3][3]); }
@@ -1722,7 +1713,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
     }
 
     // RT64 recomputes viewProj after every matrix op.
-    { static int s_d2 = 0; if (s_d2++ < 3) BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+    { static int s_d2 = 0; if (s_d2++ < 3) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
         "PROJ-BEFORE-VP r0=(%.4f %.4f %.4f %.4f) r3=(%.4f %.4f %.4f %.4f) flag=0x%02X",
         s_rdp.projection[0][0], s_rdp.projection[0][1], s_rdp.projection[0][2], s_rdp.projection[0][3],
         s_rdp.projection[3][0], s_rdp.projection[3][1], s_rdp.projection[3][2], s_rdp.projection[3][3], flag); }
@@ -1843,7 +1834,7 @@ static int bka_probe_dl_encoding(uint8_t* ptr) {
     else if (le_bad == 0 && be_bad > 0) _res = 1;
     else if (be > le + 1) _res = 2;
     else if (le > be + 1) _res = 1;
-    { static int _pc = 0; if (_pc++ < 60) BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR,
+    { static int _pc = 0; if (_pc++ < 60) __android_log_print(ANDROID_LOG_ERROR,
         "BKA_GFX", "PROBE-VOTE ptr=%p le=%d le_bad=%d be=%d be_bad=%d -> %d",
         (void*)ptr, le, le_bad, be, be_bad, _res); }
     return _res;
@@ -1852,13 +1843,13 @@ static int bka_probe_dl_encoding(uint8_t* ptr) {
 static int s_rspCallCount = 0;
 void RSP_ProcessGfxTask(OSTask* tp) {
     if (bka_canary_post != 0xBEEFCAFEBABE5678ull) {
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "CANARY-OVERFLOW post=%016llX (s_rdp overflowed)",
             (unsigned long long)bka_canary_post);
         bka_canary_post = 0xBEEFCAFEBABE5678ull;
     }
     if (s_rdp.dmemVertexCount < 0 || s_rdp.dmemVertexCount > DMEM_VERTEX_COUNT) {
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "DMEM-COUNT-BAD: %d (should be 0..256)", s_rdp.dmemVertexCount);
         s_rdp.dmemVertexCount = DMEM_VERTEX_COUNT;
     }
@@ -1893,7 +1884,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     s_mtx_log_frame = 0;
     s_mtx_dump_frame = 0;
     if (true) { // BKA_MOD: log every call
-        ANDROID_LOG_ERROR, "BKA_GFX",
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "RSP_ProcessGfxTask CALL #%d: tp=%p type=%d data=%p size=%u dmemVertexCount=%d",
             s_rspCallCount, tp, tp ? tp->t.type : -1, tp ? tp->t.data_ptr : nullptr,
             tp ? tp->t.data_size : 0, s_rdp.dmemVertexCount);
@@ -1903,7 +1894,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         static int s_taskbytes = 0;
         if (tp && tp->t.data_ptr && (s_taskbytes++ % 50) == 0) {
             const uint8_t* d = (const uint8_t*)tp->t.data_ptr;
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                  "TASK#%d data=%p size=%u bytes: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X | %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
                 s_rspCallCount, tp->t.data_ptr, tp->t.data_size,
                 d[0],d[1],d[2],d[3],d[4],d[5],d[6],d[7],
@@ -1914,7 +1905,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     }
 
     if (!tp || !tp->t.data_ptr || tp->t.data_size == 0) {
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "early return: tp=%p data=%p size=%u",
             tp, tp ? tp->t.data_ptr : nullptr, tp ? tp->t.data_size : 0);
         return;
@@ -1956,7 +1947,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         memset(gFramebuffers[0], 0, sizeof(gFramebuffers[0]));
         memset(gFramebuffers[1], 0, sizeof(gFramebuffers[1]));
         s_firstFrame = false;
-        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_INFO, "BKA_GFX", "Framebuffers cleared (first frame)");
+        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "Framebuffers cleared (first frame)");
     }
 
 
@@ -1994,7 +1985,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
     while (cur + current_stride <= cur_end) {
         if (++total > MAX_TOTAL_CMDS) {
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "runaway display list: exceeded %u total commands", (unsigned)MAX_TOTAL_CMDS);
             break;
         }
@@ -2006,7 +1997,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         }
 
         if (++dl_cmds > MAX_DL_CMDS) {
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "runaway display list: exceeded %u commands in current DL", (unsigned)MAX_DL_CMDS);
             break;
         }
@@ -2018,7 +2009,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 clock_gettime(CLOCK_MONOTONIC, &now_ts);
                 long long elapsed_ms = (now_ts.tv_sec - start_ts.tv_sec) * 1000 + (now_ts.tv_nsec - start_ts.tv_nsec) / 1000000;
                 if (elapsed_ms > 2000) {
-                    BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_WARN, "BKA_GFX",
+                    __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                         "RSP time budget exceeded at cmd %zu (%lld ms), breaking", total-1, elapsed_ms);
                     break;
                 }
@@ -2032,7 +2023,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             static int s_last_enc = -1;
             static int s_enc_flips = 0;
             if (s_last_enc != -1 && s_last_enc != cur_dl_enc && s_enc_flips++ < 20) {
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "ENCFLIP at cur=%p total=%zu depth=%d %d -> %d bytes=%02X%02X%02X%02X",
                     (void*)cur, total, depth, s_last_enc, cur_dl_enc,
                     cur[0],cur[1],cur[2],cur[3]);
@@ -2067,7 +2058,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     cur_dl_enc = 2;
                     static int s_nop_be = 0;
                     if ((s_nop_be++ % 500) == 0)
-                        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                             "DLENC NOP->BE @%p bytes %02X%02X%02X%02X -> op=0x%02X",
                             cur, cur[0],cur[1],cur[2],cur[3],
                             (uint8_t)(c.w0 >> 24));
@@ -2087,7 +2078,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     cur_dl_enc = 1;
                     static int s_amb = 0;
                     if ((s_amb++ % 500) == 0)
-                        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                             "DLENC AMBIG->LE @%p bytes %02X%02X%02X%02X",
                             cur, cur[0],cur[1],cur[2],cur[3]);
                 } else if (lo_is_g && !hi_is_g) {
@@ -2096,7 +2087,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     cur_dl_enc = 2;
                     static int s_be_log = 0;
                     if ((s_be_log++ % 500) == 0)
-                        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                             "DLENC BE @%p first bytes %02X%02X%02X%02X -> op=0x%02X",
                             cur, cur[0],cur[1],cur[2],cur[3],
                             (uint8_t)(c.w0 >> 24));
@@ -2109,7 +2100,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         {
             static int s_enc_dump = 0;
             if ((s_enc_dump++ % 2000) == 0) {
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                      "ENCDUMP @%p enc=%d w0=0x%08X w1=0x%08X op=0x%02X depth=%d first4=%02X%02X%02X%02X",
                     cur, cur_dl_enc, c.w0, c.w1, opcode, depth,
                     cur[0], cur[1], cur[2], cur[3]);
@@ -2117,7 +2108,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         }
         {
             if ((total % 500) == 0 || total <= 5) {
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                      "CMD t#%zu @%p raw=%02X%02X%02X%02X %02X%02X%02X%02X w0=0x%08X w1=0x%08X op=0x%02X enc=%d depth=%d",
                     total, cur, cur[0],cur[1],cur[2],cur[3],cur[4],cur[5],cur[6],cur[7],
                     c.w0, c.w1, opcode, cur_dl_enc, depth);
@@ -2127,7 +2118,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         else unknown_opcode_run++;
         if (opcode == 0x04 && total <= 5) {
             const uint8_t *raw = cur;
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "RAW Vtx bytes: %02x %02x %02x %02x %02x %02x %02x %02x",
                 raw[0], raw[1], raw[2], raw[3],
                 raw[4], raw[5], raw[6], raw[7]);
@@ -2183,7 +2174,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                         continue;
                     }
                 } else {
-                    BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                         "zero-run break at cmd %zu, depth=%d", total - 1, depth);
                     break;
                 }
@@ -2251,7 +2242,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                         unknown_opcode_run += 3;
                         opcode = 0xFF;   // force the drift counter below to increment
                         if (unknown_opcode_run >= 16) {
-                            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                                 "walker: spurious G_VTX addr=0x%08X at cur=%p depth=%d — bailing",
                                 c.w1, (void*)cur, depth);
                             return;
@@ -2262,7 +2253,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                         static int s_ctx = 0;
                         if (s_ctx++ < 0) {
                             uint8_t* p = (uint8_t*)cur;
-                            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                                 "GVTX-CTX cur=%p\n"
                                 "  +0 : %02X%02X%02X%02X %02X%02X%02X%02X\n"
                                 "  +8 : %02X%02X%02X%02X %02X%02X%02X%02X\n"
@@ -2277,12 +2268,12 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     }
                     static int vtx_log_count = 0;
                     if (++vtx_log_count <= 3) {
-                        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                             "G_VTX@%p w0=0x%08X w1=0x%08X next8=%02X%02X%02X%02X %02X%02X%02X%02X",
                             cur, c.w0, c.w1,
                             cur[8],cur[9],cur[10],cur[11],
                             cur[12],cur[13],cur[14],cur[15]);
-                        /* SYNC disabled */ (void)0; BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                        /* SYNC disabled */ (void)0; __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                             "SYNC cur=%p bytes_cur=%02X%02X%02X%02X %02X%02X%02X%02X "
                             "LE_w0=0x%08X LE_w1=0x%08X BE_w0=0x%08X BE_w1=0x%08X "
                             "c.w0=0x%08X c.w1=0x%08X",
@@ -2297,7 +2288,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     if (c.w1 >= 0x01000000) {
                         static int s_raw = 0;
                         if (s_raw++ < 6) {
-                            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                                 "VTXRAW32 @%p = %02X%02X%02X%02X %02X%02X%02X%02X | %02X%02X%02X%02X %02X%02X%02X%02X | prev8: %02X%02X%02X%02X %02X%02X%02X%02X",
                                 cur,
                                 cur[0],cur[1],cur[2],cur[3],cur[4],cur[5],cur[6],cur[7],
@@ -2312,14 +2303,14 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                                         gN64_RDRAM[off + 1] == pat[1] &&
                                         gN64_RDRAM[off + 2] == pat[2] &&
                                         gN64_RDRAM[off + 3] == pat[3]) {
-                                        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                                             "PATFIND fff9153f @ rdram+0x%06X", off);
                                         found++;
                                     }
                                 }
                                 static int s_pf = 0;
                                 if (found == 0 && s_pf++ < 2) {
-                                    BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                                         "PATFIND fff9153f: not present in RDRAM");
                                 }
                             }
@@ -2330,7 +2321,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                                     uint8_t* base = cur - 40 * 8;
                                     for (int k = 0; k < 40; k++) {
                                         uint8_t* e = base + k * 8;
-                                        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                                             "DLPREV[%02d] %02X%02X%02X%02X %02X%02X%02X%02X",
                                             k,
                                             e[0], e[1], e[2], e[3],
@@ -2352,7 +2343,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 {
                     static int tri_log_count = 0;
                     if (++tri_log_count <= 10) {
-                        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_INFO, "BKA_GFX",
+                        __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
                             "GEOMETRY: op=0x%02X (tri) w0=0x%08X w1=0x%08X total=%zu depth=%d",
                             opcode, c.w0, c.w1, total-1, depth);
                     }
@@ -2387,38 +2378,38 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 static int debug_gdl_count = 0;
                 if (++debug_gdl_count <= 20) {
                     void* map_result = bka_lookup_addr_mapping(raw_addr);
-                    BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                         "G_DL DEBUG: raw=0x%08X map_lookup=%p translate=%p",
                         raw_addr, map_result, dl_ptr);
                     if (dl_ptr && bka_is_mapped(dl_ptr)) {
                         uint8_t* dump = (uint8_t*)dl_ptr;
-                        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                             "G_DL DL bytes: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
                             dump[0], dump[1], dump[2], dump[3], dump[4], dump[5], dump[6], dump[7],
                             dump[8], dump[9], dump[10], dump[11], dump[12], dump[13], dump[14], dump[15]);
                     } else if (dl_ptr) {
-                        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                             "G_DL DL ptr %p is not in a mapped region", dl_ptr);
                     }
                 }
-                BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "G_DL RECOGNIZED cur=%p w0=0x%08X w1=0x%08X", cur, c.w0, c.w1);
-                { static int s_stage1 = 0; if (s_stage1++ < 10) BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX", "G_DL S1 dl_ptr=%p", dl_ptr); }
+                { static int s_stage1 = 0; if (s_stage1++ < 10) LOGV("G_DL S1 dl_ptr=%p", dl_ptr); }
                 static int dl_log_count = 0;
                 if (++dl_log_count <= 20) {
-                    BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_INFO, "BKA_GFX",
+                    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
                         "G_DL: addr=0x%08X resolved=%p", raw_addr, dl_ptr);
                 }
                 if (!dl_ptr || !bka_is_mapped(dl_ptr)) {
                     static int s_nomap = 0;
                     if (s_nomap++ < 50) {
                         void* m = bka_lookup_addr_mapping(raw_addr);
-                        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_WARN, "BKA_GFX",
+                        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                             "G_DL: refusing addr=0x%08X (dl_ptr=%p map_lookup=%p)",
                             raw_addr, dl_ptr, m);
                     }
                     if (++consecutive_bad_gdl > 8) {
-                        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                             "walker: %d consecutive failed G_DLs — bailing (drift past DL end)",
                             consecutive_bad_gdl);
                         return;
@@ -2440,13 +2431,13 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     }
                 }
                 if (already_on_stack) {
-                    BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_WARN, "BKA_GFX",
+                    __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                         "G_DL recursion detected at addr=0x%08X, breaking", raw_addr);
                     break;
                 }
-                { static int s_stage2 = 0; if (s_stage2++ < 10) BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX", "G_DL S2 depth=%d dl_ptr=%p", depth, dl_ptr); }
+                { static int s_stage2 = 0; if (s_stage2++ < 10) LOGV("G_DL S2 depth=%d dl_ptr=%p", depth, dl_ptr); }
                 if (++gdl_jumps > MAX_GDL_JUMPS) {
-                    BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                         "walker: %zu G_DL jumps in one task — bailing (DL tree too deep, "
                         "drifted past real content)", gdl_jumps);
                     return;
@@ -2456,7 +2447,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     static int s_jump_dump = 0;
                     if ((s_jump_dump++ % 40) == 0) {
                         uint8_t* b = (uint8_t*)dl_ptr;
-                        BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                             "G_DL JUMP depth=%d target=0x%08X first32=%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
                             depth, raw_addr,
                             b[0],b[1],b[2],b[3],b[4],b[5],b[6],b[7],
@@ -2468,20 +2459,20 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 s_dl_base = (uintptr_t)dl_ptr;
                 /* disabled: { static int s_w = 0; if (s_w++ < 3) { bka_install_watch(); mprotect((void*)((uintptr_t)dl_ptr & ~0xFFFULL), 0x1000, PROT_READ); } } */
                 if (++dl_jump_log_count <= 50) {
-                    BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_INFO, "BKA_GFX",
+                    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
                         "G_DL JUMP to addr=0x%08X resolved=%p cur_end=%p depth=%d",
                         raw_addr, dl_ptr, cur_end, depth);
                 }
                 // Diagnostic: dump first 16 bytes at resolved pointer
                 if (dl_jump_log_count <= 3) {
                     uint8_t* dump = (uint8_t*)dl_ptr;
-                    BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_INFO, "BKA_GFX",
+                    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
                         "DL bytes at %p: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
                         dl_ptr, dump[0], dump[1], dump[2], dump[3], dump[4], dump[5], dump[6], dump[7],
                         dump[8], dump[9], dump[10], dump[11], dump[12], dump[13], dump[14], dump[15]);
                 }
                 if (depth >= 63) {
-                    BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                         "G_DL: max depth reached");
                     break;
                 }
@@ -2508,7 +2499,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
                         static int s_dead = 0;
 
-                        if (s_dead++ < 5) BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_WARN, "BKA_GFX",
+                        if (s_dead++ < 5) __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
 
                             "G_DL SKIP: dead target 0x%08X (first 8 bytes zero)", raw_addr);
 
@@ -2528,7 +2519,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     static int s_enc_probe = 0;
                     if (s_enc_probe++ < 40) {
                         uint8_t* b = (uint8_t*)dl_ptr;
-                        ANDROID_LOG_ERROR, "BKA_GFX",
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                             "G_DL ENC-PROBE target=0x%08X bytes=%02X%02X%02X%02X chosen=%d parent=%d",
                             raw_addr, b[0],b[1],b[2],b[3], cur_dl_enc, stack_enc[depth - 1]);
                     }
@@ -2604,7 +2595,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     dl_cmds = 0;
                     zero_run = 0;
                 } else {
-                    BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_INFO, "BKA_GFX",
+                    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
                         "ENDDL top-level, vertices=%d", s_rdp.dmemVertexCount);
                     return;
                 }
@@ -2713,13 +2704,13 @@ default:
         }
 
         if (cmds_since_progress > 30 && total > 40) {
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "walker: 30 commands with no progress at cur=%p depth=%d total=%zu — bailing",
                 (void*)cur, depth, total);
             return;
         }
         if (unknown_opcode_run > 15) {
-            BKA_LOG_IF(BKA_GFX_VERBOSE, ANDROID_LOG_ERROR, "BKA_GFX",
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "walker: %d consecutive unknown opcodes at cur=%p depth=%d — breaking (drifted past DL)",
                 unknown_opcode_run, cur, depth);
             break;
