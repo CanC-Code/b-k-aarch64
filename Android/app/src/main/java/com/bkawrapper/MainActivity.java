@@ -240,7 +240,10 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = new Intent(this, NativeGameActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
         startActivity(intent);
-        finish();
+        // Do NOT finish() — MainActivity stays in the backstack so
+        // onResume() fires when NativeGameActivity dies early, letting
+        // maybeRetryGameLaunch() reattempt.  The UAF is a startup race,
+        // so a second or third launch usually succeeds.
     }
 
     // If NativeGameActivity dies within 6s of being started, retry up to
