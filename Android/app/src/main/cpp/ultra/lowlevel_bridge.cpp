@@ -51,6 +51,12 @@ uint32_t g_active_fb_offset = 0x400000;
 #include <unordered_map>
 #include <android/log.h>
 
+
+extern "C" int         bka_is_readable(void* ptr);
+extern "C" int         bka_is_mapped(void* ptr);
+extern "C" uintptr_t   bka_get_mapped_end(void* ptr);
+extern "C" void        bka_refresh_maps(void);
+
 // ---- /proc/self/maps cache (was: fopen+parse on every bka_is_* call) ----
 struct BkaMapsRegion { uintptr_t start; uintptr_t end; char perms[5]; };
 static BkaMapsRegion s_maps[1024];
@@ -262,7 +268,7 @@ static bool is_address_readable(void* ptr) {
     return false;
 }
 
-int bka_is_mapped(void* ptr) { return bka_is_readable(ptr); }
+extern "C" int bka_is_mapped(void* ptr) { return bka_is_readable(ptr); }
 
 
 extern "C" void bka_log_gdma_ra(void* ra, unsigned long long v) {
@@ -321,7 +327,7 @@ extern "C" void bka_log_seg1_emit(void* ra, unsigned long long a, unsigned int l
 }
 
 
-int bka_is_readable(void* ptr) {
+extern "C" int bka_is_readable(void* ptr) {
     if (s_maps_count == 0) bka_refresh_maps();
     uintptr_t a = (uintptr_t)ptr;
     for (int i = 0; i < s_maps_count; i++) {
