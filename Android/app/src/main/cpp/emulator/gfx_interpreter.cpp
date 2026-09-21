@@ -1749,7 +1749,7 @@ static void Cmd_FillRect(GfxCommand cmd) {
     int32_t lrx = (int32_t)((cmd.w0 >> 14) & 0x3FF);
     int32_t lry = (int32_t)((cmd.w0 >> 2) & 0x3FF);
     
-    ulx >>= 2; uly >>= 2; lrx >>= 2; lry >>= 2;
+    // Recompiled BK emits coordinates in pixels, not N64 .2 fixed point.
     ulx = std::max(0, ulx); uly = std::max(0, uly);
     lrx = std::min(lrx, FB_WIDTH); lry = std::min(lry, FB_HEIGHT);
     if (ulx >= lrx || uly >= lry) return;
@@ -1775,7 +1775,7 @@ static void Cmd_TexRect(GfxCommand cmd) {
     int32_t yl = (int32_t)(cmd.w1 & 0xFFF);
     int tile = (cmd.w1 >> 24) & 0x7;
     
-    xl >>= 2; yl >>= 2; xh >>= 2; yh >>= 2;
+    // Coordinates in pixels directly (no .2 fixed-point).
     if (xl < 0) xl = 0; if (yl < 0) yl = 0;
     if (xh > FB_WIDTH) xh = FB_WIDTH; if (yh > FB_HEIGHT) yh = FB_HEIGHT;
     if (xl >= xh || yl >= yh) return;
