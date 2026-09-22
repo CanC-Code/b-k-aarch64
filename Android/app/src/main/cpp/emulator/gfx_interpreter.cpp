@@ -1570,7 +1570,7 @@ static void Cmd_MoveWord(GfxCommand cmd) {
         // values (0x70..0x7F) crash the game when used as segment bases;
         // the only safe values are physical RDRAM and KSEG0.
         if ((a & 0xFF000000u) == 0xFF000000u) {
-        if (!((a <= 0x03FFFFFFu) || (a >= 0x80000000u && a <= 0x83FFFFFFu))) {
+        if ((a & 0xFF000000u) == 0xFF000000u) {
             static int s_badseg = 0;
             if (s_badseg++ < 20)
                 __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
@@ -1578,7 +1578,7 @@ static void Cmd_MoveWord(GfxCommand cmd) {
                     segment, a);
             return;
         s_rdp.segmentBase[segment] = (a >= 0x70000000u && a < 0x80000000u) ? ((bka_lookup_addr_mapping(a) != nullptr) ? (uintptr_t)bka_lookup_addr_mapping(a) : (uintptr_t)-1) : (uintptr_t)a;
-        s_rdp.segmentBase[segment] = (uintptr_t)a;
+        { void* _m = (a >= 0x70000000u && a < 0x80000000u) ? bka_lookup_addr_mapping(a) : nullptr; s_rdp.segmentBase[segment] = _m ? (uintptr_t)_m : (uintptr_t)a; }
 
         static int seg_log = 0;
         if (seg_log++ < 20) {
