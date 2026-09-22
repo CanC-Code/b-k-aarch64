@@ -1578,7 +1578,7 @@ static void Cmd_MoveWord(GfxCommand cmd) {
                     segment, a);
             return;
         }
-        uintptr_t _stored = (uintptr_t)a; if (a >= 0x60000000u && a < 0x80000000u) { void* _m = bka_lookup_addr_mapping(a); if (_m) { _stored = (uintptr_t)_m; } else { uint64_t _c79 = 0x7900000000ULL | (uint64_t)a; uint64_t _c7A = 0x7A00000000ULL | (uint64_t)a; if (bka_is_readable((void*)_c79)) _stored = (uintptr_t)_c79; else if (bka_is_readable((void*)_c7A)) _stored = (uintptr_t)_c7A; else _stored = (uintptr_t)-1; } } s_rdp.segmentBase[segment] = _stored;
+        s_rdp.segmentBase[segment] = (uintptr_t)a;
 
         static int seg_log = 0;
         if (seg_log++ < 20) {
