@@ -228,6 +228,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         }
     }
 
+    if (addr >= 0x60000000u && addr < 0x80000000u) { uint64_t c = 0x7900000000ULL | (uint64_t)addr; if (bka_is_readable((void*)c)) return (uint8_t*)c; c = 0x7A00000000ULL | (uint64_t)addr; if (bka_is_readable((void*)c)) return (uint8_t*)c; }
     // Try exact-match mapping table first.
     void* p = bka_lookup_addr_mapping(addr);
     if (p) return (uint8_t*)p;
@@ -1225,7 +1226,7 @@ static void Cmd_Tri2(GfxCommand cmd) {
             ComputeClip(vt1, &cv[1].x, &cv[1].y, &cv[1].z, &cv[1].w);
             ComputeClip(vt2, &cv[2].x, &cv[2].y, &cv[2].z, &cv[2].w);
 
-            const float EPSW = 1.0f;   // near-plane w in clip space (N64 near-plane in view is typically 50-200)
+            const float EPSW = 64.0f;   // near-plane w in clip space (N64 near-plane in view is typically 50-200)
             bool allIn = cv[0].w > EPSW && cv[1].w > EPSW && cv[2].w > EPSW;
             bool anyIn = cv[0].w > EPSW || cv[1].w > EPSW || cv[2].w > EPSW;
 
