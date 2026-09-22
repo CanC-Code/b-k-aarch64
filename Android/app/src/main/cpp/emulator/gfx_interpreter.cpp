@@ -34,6 +34,7 @@ void* bka_lookup_addr_by_low32(uint32_t low32);
 
 static RDPState s_rdp;
 static int g_bka_task_tri_count = 0;
+static int g_mtx_flag_hist[256] = {0};
 volatile uint32_t g_bka_frame_gen = 0;
 static int g_bka_task_max_depth = 0;
 static int g_bka_task_pops = 0;
@@ -1741,7 +1742,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
             newMatrix[2][2], newMatrix[3][3]);
     }
 
-    { static int s_act = 0; if (s_act++ < 40) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+    { static int s_act = 0; if (s_act++ < 5000) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
         "MTXACT flag=0x%02X src=0x%08X new[0][0]=%.4f new[3][2]=%.4f | PROJ=%d LOAD=%d PUSH=%d",
         flag, cmd.w1, newMatrix[0][0], newMatrix[3][2],
         (flag & G_MTX_PROJECTION)?1:0, (flag & G_MTX_LOAD)?1:0, (flag & G_MTX_PUSH)?1:0); }
@@ -2855,7 +2856,19 @@ default:
             "TASK-SUMMARY #%d cmds=%zu tris=%d end=COMPLETE",
             s_rspCallCount, total, g_bka_task_tri_count);
     }
-    g_bka_frame_gen++;   // signal the render thread that a full task finished
+    g_bka_frame_gen++;
+    {
+        static int s_hist = 0;
+        if (s_hist++ == 60) {   // dump once, after 60 tasks
+            char buf[512]; int n = 0;
+            n += snprintf(buf+n, sizeof(buf)-n, "MTXFLAGS:");
+            for (int i = 0; i < 16; i++) {
+                if (g_mtx_flag_hist[i])
+                    n += snprintf(buf+n, sizeof(buf)-n, " %02X=%d", i, g_mtx_flag_hist[i]);
+            }
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "%s", buf);
+        }
+    }
 }
 
 
