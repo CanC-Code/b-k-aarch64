@@ -239,8 +239,8 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // Flag/length fields (e.g. G_VTX's 0xFFFF153F) must not be treated
     // as truncated host addresses.
     // Skip addresses that live inside RDRAM (below 16 MB) and flag/\n    // length fields (above 0x7F000000). Only reconstruct in between.
-    if (addr >= 0x20000000ULL && addr < 0x22F00000ULL) {
-        uint64_t cand72 = 0x7200000000ULL | (uint64_t)addr;
+    if ((addr >= 0x20000000ULL && addr < 0x22F00000ULL) || (addr >= 0x70000000ULL && addr < 0x7F000000ULL)) {
+        uint64_t cand72 = (addr >= 0x70000000ULL ? 0x7900000000ULL : 0x7200000000ULL) | (uint64_t)addr;
         if (bka_is_readable((void*)cand72)) {
             static int rec_log72 = 0;
             if (rec_log72++ < 6) {
@@ -249,7 +249,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
             }
             return (uint8_t*)cand72;
         }
-        uint64_t cand73 = 0x7300000000ULL | (uint64_t)addr;
+        uint64_t cand73 = (addr >= 0x70000000ULL ? 0x7A00000000ULL : 0x7300000000ULL) | (uint64_t)addr;
         if (bka_is_readable((void*)cand73)) {
             static int rec_log73 = 0;
             if (rec_log73++ < 6) {
@@ -1569,16 +1569,16 @@ static void Cmd_MoveWord(GfxCommand cmd) {
         // Segment base must be a real N64 address.  Host-pointer low-32
         // values (0x70..0x7F) crash the game when used as segment bases;
         // the only safe values are physical RDRAM and KSEG0.
-        if ((a & 0xFF000000u) == 0xFF000000u) {
-        if ((a & 0xFF000000u) == 0xFF000000u) {
+        uint32_t a = data;
+        if (a == 0xFFFFFFFFu) {
             static int s_badseg = 0;
             if (s_badseg++ < 20)
                 __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
                     "Cmd_MoveWord SEGMENT seg=%u base=0x%08X INVALID — skipping",
                     segment, a);
             return;
-        s_rdp.segmentBase[segment] = (a >= 0x70000000u && a < 0x80000000u) ? ((bka_lookup_addr_mapping(a) != nullptr) ? (uintptr_t)bka_lookup_addr_mapping(a) : (uintptr_t)-1) : (uintptr_t)a;
-        { void* _m = (a >= 0x70000000u && a < 0x80000000u) ? bka_lookup_addr_mapping(a) : nullptr; s_rdp.segmentBase[segment] = _m ? (uintptr_t)_m : (uintptr_t)a; }
+        }
+        s_rdp.segmentBase[segment] = (uintptr_t)a;
 
         static int seg_log = 0;
         if (seg_log++ < 20) {
@@ -1637,7 +1637,6 @@ static void Matrix_Multiply(BKMatrix result, const BKMatrix a, const BKMatrix b)
 
 static void Cmd_Mtx(GfxCommand cmd) {
     uint32_t flag = (cmd.w0 >> 16) & 0xFF;
-    if (flag < 256) g_mtx_flag_hist[flag]++;
     // Real F3DEX2 G_MTX only uses bits 0-2 (PROJECTION=0x01, LOAD=0x02,
     // PUSH=0x04).  Any higher bits set means the command was misdecoded;
     // without this guard, spurious G_MTX writes with flag=0x0B overwrite
@@ -1733,50 +1732,6 @@ static void Cmd_Mtx(GfxCommand cmd) {
 
     BKMatrix newMatrix;
     Matrix_LoadFromN64(&newMatrix, mtx_src);
-    // Reject all-zero matrices: the game loads an uninitialised
-    // buffer during boot which would otherwise wipe the camera.
-    if (newMatrix[0][0] == 0.0f && newMatrix[1][1] == 0.0f &&
-        newMatrix[2][2] == 0.0f && newMatrix[3][3] == 0.0f &&
-        newMatrix[3][0] == 0.0f && newMatrix[3][1] == 0.0f &&
-        newMatrix[3][2] == 0.0f) {
-        static int s_zero = 0;
-        if (s_zero++ < 10)
-            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                "MTX: zero matrix at src=%p flag=0x%02X — skipped",
-                mtx_src, flag);
-        return;
-    }
-    {
-        static int s_raw = 0;
-        if (s_raw++ < 3) {
-            const uint8_t* b = (const uint8_t*)mtx_src;
-            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                "MTXRAW64 flag=0x%02X src=%p bytes: "
-                "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X "
-                "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X "
-                "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X "
-                "%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
-                flag, mtx_src,
-                b[0],b[1],b[2],b[3],b[4],b[5],b[6],b[7],
-                b[8],b[9],b[10],b[11],b[12],b[13],b[14],b[15],
-                b[16],b[17],b[18],b[19],b[20],b[21],b[22],b[23],
-                b[24],b[25],b[26],b[27],b[28],b[29],b[30],b[31],
-                b[32],b[33],b[34],b[35],b[36],b[37],b[38],b[39],
-                b[40],b[41],b[42],b[43],b[44],b[45],b[46],b[47],
-                b[48],b[49],b[50],b[51],b[52],b[53],b[54],b[55],
-                b[56],b[57],b[58],b[59],b[60],b[61],b[62],b[63]);
-        }
-    }
-    if ((flag & 0x01) == 0) {   // modelview loads only (not projection)
-        static int s_mv = 0;
-        if (s_mv++ < 12)
-            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                "MV-LOAD flag=0x%02X src=%p diag=(%.3f %.3f %.3f %.3f) "
-                "row3=(%.3f %.3f %.3f)",
-                flag, mtx_src,
-                newMatrix[0][0], newMatrix[1][1], newMatrix[2][2], newMatrix[3][3],
-                newMatrix[3][0], newMatrix[3][1], newMatrix[3][2]);
-    }
 //     { static int s_w0 = 0; if (s_w0++ < 12) { const uint8_t* raw = (const uint8_t*)s_current_cmd; LOGV("MTXW0 cur=%p raw=%02X%02X%02X%02X %02X%02X%02X%02X decoded_w0=0x%08X flag=0x%02X", (void*)raw, raw?raw[0]:0,raw?raw[1]:0,raw?raw[2]:0,raw?raw[3]:0,raw?raw[4]:0,raw?raw[5]:0,raw?raw[6]:0,raw?raw[7]:0, cmd.w0, flag); } }
 
     if (s_mtx_log_frame++ < 0) {
@@ -2904,7 +2859,7 @@ default:
     g_bka_frame_gen++;
     {
         static int s_hist = 0;
-        if ((s_hist++ % 20) == 0) {   // dump once, after 60 tasks
+        if (s_hist++ == 60) {   // dump once, after 60 tasks
             char buf[512]; int n = 0;
             n += snprintf(buf+n, sizeof(buf)-n, "MTXFLAGS:");
             for (int i = 0; i < 16; i++) {
