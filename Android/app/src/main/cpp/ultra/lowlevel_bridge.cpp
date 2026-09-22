@@ -465,10 +465,16 @@ void VideoPlugin_OutputFrameTexture(uint32_t hostTextureId) {
         // Only upload when the RSP thread has completed a task since the
         // last upload.  Prevents sampling mid-task and catching the
         // frame between the fill and the triangles.
-        static uint32_t s_last_gen = 0;
+        static uint32_t s_last_gen = 0xFFFFFFFFu;
+        static int64_t  s_last_upload_ns = 0;
+        struct timespec _now; clock_gettime(CLOCK_MONOTONIC, &_now);
+        int64_t _now_ns = (int64_t)_now.tv_sec * 1000000000LL + _now.tv_nsec;
         uint32_t gen = g_bka_frame_gen;
-        if (gen == s_last_gen) return;
+        bool gen_changed = (gen != s_last_gen);
+        bool stale = (_now_ns - s_last_upload_ns) > 500000000LL;  // 500ms
+        if (!gen_changed && !stale) return;
         s_last_gen = gen;
+        s_last_upload_ns = _now_ns;
 
         uint32_t fbPhysAddr = g_active_fb_offset;
         if (fbPhysAddr == 0) return;

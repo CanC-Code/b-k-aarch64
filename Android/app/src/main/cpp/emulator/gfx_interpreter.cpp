@@ -2804,6 +2804,7 @@ default:
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "walker: 30 commands with no progress at cur=%p depth=%d total=%zu — bailing (top level)",
                 (void*)cur, depth, total);
+            g_bka_frame_gen++;
             return;
         }
         if (unknown_opcode_run > 15) {
