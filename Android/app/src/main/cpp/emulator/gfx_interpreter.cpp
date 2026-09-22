@@ -229,6 +229,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     }
 
     if (addr >= 0x60000000u && addr < 0x80000000u) { uint64_t c = 0x7900000000ULL | (uint64_t)addr; if (bka_is_readable((void*)c)) return (uint8_t*)c; c = 0x7A00000000ULL | (uint64_t)addr; if (bka_is_readable((void*)c)) return (uint8_t*)c; }
+    void* _base_p = bka_lookup_addr_mapping((uint32_t)(s_rdp.segmentBase[(addr >> 24) & 0x0F] & 0xFFFFFFFFu)); if (_base_p) { uint32_t _seg_off = addr & 0x00FFFFFFu; uint8_t* _cand = (uint8_t*)_base_p + _seg_off; if (bka_is_readable(_cand)) return _cand; }
     // Try exact-match mapping table first.
     void* p = bka_lookup_addr_mapping(addr);
     if (p) return (uint8_t*)p;
