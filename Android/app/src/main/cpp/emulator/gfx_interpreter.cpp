@@ -1216,7 +1216,7 @@ static void Cmd_Tri2(GfxCommand cmd) {
                 if (nClip < 3) return;
 
                 float cx[4], cy[4];
-                const float CLIP_COORD_LIMIT = (float)(FB_WIDTH * 4);
+                const float CLIP_COORD_LIMIT = (float)(FB_WIDTH * 2);
                 for (int i = 0; i < nClip; i++) {
                     float iw = 1.0f / cclip[i].w;
                     float tx = (cclip[i].x * iw + 1.0f) * 0.5f * (float)FB_WIDTH;
@@ -1246,6 +1246,13 @@ static void Cmd_Tri2(GfxCommand cmd) {
                         "TRI2-DRAW n=%d color=(%d,%d,%d,%d) xy=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f)",
                         nClip, cr,cg,cb,ca,
                         cx[0],cy[0], cx[1],cy[1], cx[2],cy[2]); }
+                {
+                    float minx = std::min({cx[0],cx[1],cx[2],cx[3]});
+                    float maxx = std::max({cx[0],cx[1],cx[2],cx[3]});
+                    float miny = std::min({cy[0],cy[1],cy[2],cy[3]});
+                    float maxy = std::max({cy[0],cy[1],cy[2],cy[3]});
+                    if (maxx < 0 || minx >= FB_WIDTH || maxy < 0 || miny >= FB_HEIGHT) return;
+                }
                 if (nClip == 3) {
                     RasterizeTriangle(cx[0],cy[0], cx[1],cy[1], cx[2],cy[2],
                         cr,cg,cb,ca, cr,cg,cb,ca, cr,cg,cb,ca);
