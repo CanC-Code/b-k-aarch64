@@ -251,13 +251,20 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
                     uintptr_t phys = base + off;
                     if (bka_is_readable((void*)phys)) return (uint8_t*)phys;
                 }
-                if (base < 0x00800000u && gN64_RDRAM) {
+                if (base < 0x04000000u && gN64_RDRAM) {
                     uint32_t phys = (uint32_t)base + off;
-                    if (phys < 0x800000u) return gN64_RDRAM + phys;
+                    if (phys < 0x04000000u) return gN64_RDRAM + phys;
                 }
-                if (base >= 0x80000000u && base < 0x80800000u && gN64_RDRAM) {
-                    uint32_t phys = (uint32_t)base + off;
-                    if (phys < 0x800000u) return gN64_RDRAM + phys;
+                if (base >= 0x80000000u && base < 0x84000000u && gN64_RDRAM) {
+                    uint32_t phys = (uint32_t)(base - 0x80000000u) + off;
+                    if (phys < 0x04000000u) return gN64_RDRAM + phys;
+                }
+                if (base >= 0x60000000u && base < 0x80000000u) {
+                    uintptr_t phys = base + off;
+                    uint64_t c79 = 0x7900000000ULL | (uint64_t)phys;
+                    if (bka_is_readable((void*)c79)) return (uint8_t*)c79;
+                    uint64_t c7A = 0x7A00000000ULL | (uint64_t)phys;
+                    if (bka_is_readable((void*)c7A)) return (uint8_t*)c7A;
                 }
                 void* mapped = bka_lookup_addr_mapping((uint32_t)(base + off));
                 if (mapped) return (uint8_t*)mapped;
