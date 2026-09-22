@@ -1637,6 +1637,7 @@ static void Matrix_Multiply(BKMatrix result, const BKMatrix a, const BKMatrix b)
 
 static void Cmd_Mtx(GfxCommand cmd) {
     uint32_t flag = (cmd.w0 >> 16) & 0xFF;
+    if (flag < 256) g_mtx_flag_hist[flag]++;
     // Real F3DEX2 G_MTX only uses bits 0-2 (PROJECTION=0x01, LOAD=0x02,
     // PUSH=0x04).  Any higher bits set means the command was misdecoded;
     // without this guard, spurious G_MTX writes with flag=0x0B overwrite
@@ -2859,7 +2860,7 @@ default:
     g_bka_frame_gen++;
     {
         static int s_hist = 0;
-        if (s_hist++ == 60) {   // dump once, after 60 tasks
+        if ((s_hist++ % 20) == 0) {   // dump once, after 60 tasks
             char buf[512]; int n = 0;
             n += snprintf(buf+n, sizeof(buf)-n, "MTXFLAGS:");
             for (int i = 0; i < 16; i++) {
