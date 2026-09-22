@@ -240,7 +240,31 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
     // Flag/length fields (e.g. G_VTX's 0xFFFF153F) must not be treated
     // as truncated host addresses.
     // Skip addresses that live inside RDRAM (below 16 MB) and flag/\n    // length fields (above 0x7F000000). Only reconstruct in between.
-    if ((addr >= 0x20000000ULL && addr < 0x22F00000ULL) || (addr >= 0x70000000ULL && addr < 0x7F000000ULL)) {
+    // Segment-relative translation.
+    {
+        uint32_t seg = (addr >> 24) & 0x0F;
+        if (seg >= 1 && seg <= 15) {
+            uintptr_t base = s_rdp.segmentBase[seg];
+            if (base != 0 && base != (uintptr_t)-1) {
+                uint32_t off = addr & 0x00FFFFFFu;
+                if (base >= 0x70000000u && base < 0x80000000u) {
+                    uintptr_t phys = base + off;
+                    if (bka_is_readable((void*)phys)) return (uint8_t*)phys;
+                }
+                if (base < 0x00800000u && gN64_RDRAM) {
+                    uint32_t phys = (uint32_t)base + off;
+                    if (phys < 0x800000u) return gN64_RDRAM + phys;
+                }
+                if (base >= 0x80000000u && base < 0x80800000u && gN64_RDRAM) {
+                    uint32_t phys = (uint32_t)base + off;
+                    if (phys < 0x800000u) return gN64_RDRAM + phys;
+                }
+                void* mapped = bka_lookup_addr_mapping((uint32_t)(base + off));
+                if (mapped) return (uint8_t*)mapped;
+            }
+        }
+    }
+        if ((addr >= 0x20000000ULL && addr < 0x22F00000ULL) || (addr >= 0x70000000ULL && addr < 0x7F000000ULL)) {
         uint64_t cand72 = (addr >= 0x70000000ULL ? 0x7900000000ULL : 0x7200000000ULL) | (uint64_t)addr;
         if (bka_is_readable((void*)cand72)) {
             static int rec_log72 = 0;
