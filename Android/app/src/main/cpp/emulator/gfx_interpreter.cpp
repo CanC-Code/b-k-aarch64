@@ -622,6 +622,11 @@ static void RasterizeTriangle(
     uint8_t r1, uint8_t g1, uint8_t b1, uint8_t a1,
     uint8_t r2, uint8_t g2, uint8_t b2, uint8_t a2)
 {
+    { static int s_rt = 0; if (s_rt++ < 5 || s_rt % 500 == 0)
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST",
+            "RAST-ENTER #%d xy=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f)",
+            s_rt, x0, y0, x1, y1, x2, y2); }
+
     {
         static int s_raster_enter = 0;
         if (++s_raster_enter < 5 || s_raster_enter % 5000 == 1) {
@@ -1318,6 +1323,11 @@ static void Cmd_Tri2(GfxCommand cmd) {
                     s_rdp.modelview[3][2], s_rdp.modelview[3][3]);
             }
         }
+        { static int s_nc = 0; if (s_nc++ < 20)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST",
+                "TRI2-ALLIN color=(%d,%d,%d) screen=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f)",
+                vt0->r, vt0->g, vt0->b,
+                sx0, sy0, sx1, sy1, sx2, sy2); }
         RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
             vt0->r, vt0->g, vt0->b, vt0->a,
             vt1->r, vt1->g, vt1->b, vt1->a,
