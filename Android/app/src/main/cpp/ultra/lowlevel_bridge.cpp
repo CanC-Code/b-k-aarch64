@@ -511,10 +511,10 @@ void VideoPlugin_OutputFrameTexture(uint32_t hostTextureId) {
             // Diagnostic: sample the framebuffer once every 120 calls.
             static int s_sample = 0;
             s_sample++;
-            if (s_sample <= 5 || s_sample % 1 == 0) {
+            if (s_sample <= 5 || s_sample % 60 == 0) {
                 uint16_t* fbs = (uint16_t*)fbBase;
                 int nonZero = 0, nonFFFF = 0;
-                for (int i = 0; i < fbWidth * fbHeight; i += 37) {
+                for (int i = 0; i < fbWidth * fbHeight; i++) {   // full scan
                     if (fbs[i] != 0) nonZero++;
                     if (fbs[i] != 0xFFFF) nonFFFF++;
                 }
