@@ -810,9 +810,15 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
                 ox, oy, oz, ow,
                 px, py, pz, pw);
     }
-    // Perspective divide
-    if (fabsf(ow) > 0.0001f) {
-        ox /= ow; oy /= ow;
+    // Perspective divide — MUST use clip.w (pw), not view.w (ow).
+    // Forgetting this leaves coordinates in clip space (which for a
+    // vertex 500 units away is ~500x too large), and every triangle
+    // gets clamped to the clip box edge.
+    {
+        float inv = (fabsf(pw) > 0.0001f) ? (1.0f / pw) : 0.0f;
+        ox = px * inv;
+        oy = py * inv;
+        oz = pz * inv;
     }
 
     // Viewport transform: NDC [-1,1] → screen [0,FB_WIDTH/HEIGHT]
