@@ -480,6 +480,9 @@ void VideoPlugin_OutputFrameTexture(uint32_t hostTextureId) {
         if (fbPhysAddr == 0) return;
 
         uint8_t* fbBase = gN64_RDRAM + fbPhysAddr;
+        { static int s_rd = 0; if (s_rd++ < 3)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-READ",
+                "FILL-READ  rdr=%p ofs=0x%X fb=%p", (void*)gN64_RDRAM, fbPhysAddr, (void*)fbBase); }
         if (fbBase < gN64_RDRAM || fbBase >= gN64_RDRAM + BKA_RDRAM_ALLOC_SIZE) return;
 
         s32 fbWidth  = gFramebufferWidth;

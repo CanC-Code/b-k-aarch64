@@ -1778,6 +1778,9 @@ static void Cmd_FillRect(GfxCommand cmd) {
     uint16_t color = RGBA8_TO_RGB565(s_rdp.fillR, s_rdp.fillG, s_rdp.fillB);
     int activeFb = getActiveFramebuffer();
     uint16_t* fb = (uint16_t*)(gN64_RDRAM + g_active_fb_offset);
+    { static int s_wr = 0; if (s_wr++ < 3)
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-WRITE",
+            "FILL-WRITE rdr=%p ofs=0x%X fb=%p", (void*)gN64_RDRAM, g_active_fb_offset, (void*)fb); }
     {
         static int s_dbg = 0;
         if (s_dbg++ < 5 || (s_dbg % 100) == 0)

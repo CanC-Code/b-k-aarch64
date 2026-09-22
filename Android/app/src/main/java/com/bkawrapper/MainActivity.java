@@ -234,7 +234,7 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(this, "Extraction failed: " + message, Toast.LENGTH_LONG).show();
     }
 
-    private static final int  RETRY_LIMIT = 8;
+    private static final int  RETRY_LIMIT = 0;   // disabled for diagnostic
     private static long s_lastGameStart = 0;
     private static int  s_retries = 0;
 

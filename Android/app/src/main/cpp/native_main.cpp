@@ -180,7 +180,7 @@ static void renderFrame() {
 
     bka_update_texture((int)g_rs.tex);
 
-    glClearColor(1,0,0,1);  // DEBUG: red clear
+    glClearColor(0,0,0,1);
     glClear(GL_COLOR_BUFFER_BIT);
     glUseProgram(g_rs.prog);
     glActiveTexture(GL_TEXTURE0);
@@ -262,9 +262,8 @@ void android_main(android_app* app) {
     app->onInputEvent = onInput;
     LOGI("android_main enter");
 
-    pthread_t wd;
-    pthread_create(&wd, nullptr, bka_startup_watchdog, app);
-    pthread_detach(wd);
+    // Watchdog disabled for diagnostic run
+    (void)bka_startup_watchdog;
 
     for (;;) {
         int events = 0;
