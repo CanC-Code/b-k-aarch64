@@ -1217,7 +1217,7 @@ static void Cmd_Tri2(GfxCommand cmd) {
                 if (nClip < 3) return;
 
                 float cx[4], cy[4];
-                const float CLIP_COORD_LIMIT = (float)(FB_WIDTH * 2);
+                const float CLIP_COORD_LIMIT = (float)(FB_WIDTH * 4);
                 for (int i = 0; i < nClip; i++) {
                     float iw = 1.0f / cclip[i].w;
                     float tx = (cclip[i].x * iw + 1.0f) * 0.5f * (float)FB_WIDTH;
@@ -1248,11 +1248,13 @@ static void Cmd_Tri2(GfxCommand cmd) {
                         nClip, cr,cg,cb,ca,
                         cx[0],cy[0], cx[1],cy[1], cx[2],cy[2]); }
                 {
-                    float minx = std::min({cx[0],cx[1],cx[2],cx[3]});
-                    float maxx = std::max({cx[0],cx[1],cx[2],cx[3]});
-                    float miny = std::min({cy[0],cy[1],cy[2],cy[3]});
-                    float maxy = std::max({cy[0],cy[1],cy[2],cy[3]});
-                    if (maxx < 0 || minx >= FB_WIDTH || maxy < 0 || miny >= FB_HEIGHT) return;
+                    static int s_bbox = 0;
+                    if (s_bbox++ < 20)
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                            "BBOX n=%d x=(%.1f..%.1f) y=(%.1f..%.1f)",
+                            nClip,
+                            std::min({cx[0],cx[1],cx[2],cx[3]}), std::max({cx[0],cx[1],cx[2],cx[3]}),
+                            std::min({cy[0],cy[1],cy[2],cy[3]}), std::max({cy[0],cy[1],cy[2],cy[3]}));
                 }
                 if (nClip == 3) {
                     RasterizeTriangle(cx[0],cy[0], cx[1],cy[1], cx[2],cy[2],
