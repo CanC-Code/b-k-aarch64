@@ -34,6 +34,7 @@ void* bka_lookup_addr_by_low32(uint32_t low32);
 
 static RDPState s_rdp;
 static int g_bka_task_tri_count = 0;
+volatile uint32_t g_bka_frame_gen = 0;
 static int g_bka_task_max_depth = 0;
 static int g_bka_task_pops = 0;
 static int s_rsp_dump_sizes = [](){ LOGV("RDP-SIZE=%zu sizeof dmem=%zu offsetof(dmem)=%zu offsetof(dmemVertexCount)=%zu", sizeof(RDPState), sizeof(s_rdp.dmem), offsetof(RDPState, dmem), offsetof(RDPState, dmemVertexCount)); return 0; }();
@@ -2822,6 +2823,7 @@ default:
             "TASK-SUMMARY #%d cmds=%zu tris=%d end=COMPLETE",
             s_rspCallCount, total, g_bka_task_tri_count);
     }
+    g_bka_frame_gen++;   // signal the render thread that a full task finished
 }
 
 

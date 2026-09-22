@@ -444,6 +444,8 @@ extern "C" {
 
     volatile int g_bka_real_frame_count = 0;
 
+extern volatile uint32_t g_bka_frame_gen;
+
 static int g_tex_cache_w = 0;
 static int g_tex_cache_h = 0;
 static uint32_t g_tex_cache_id = 0;
@@ -459,6 +461,14 @@ void VideoPlugin_OutputFrameTexture(uint32_t hostTextureId) {
         }
 
         if (!gN64_RDRAM || hostTextureId == 0) return;
+
+        // Only upload when the RSP thread has completed a task since the
+        // last upload.  Prevents sampling mid-task and catching the
+        // frame between the fill and the triangles.
+        static uint32_t s_last_gen = 0;
+        uint32_t gen = g_bka_frame_gen;
+        if (gen == s_last_gen) return;
+        s_last_gen = gen;
 
         uint32_t fbPhysAddr = g_active_fb_offset;
         if (fbPhysAddr == 0) return;
