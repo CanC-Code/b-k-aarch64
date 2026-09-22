@@ -1140,6 +1140,11 @@ static void Cmd_Tri1(GfxCommand cmd) {
     TransformVertex(vert2, &sx2, &sy2);
 
     { static int s_rt = 0; if (s_rt++ < 20) LOGV("RASTER v=(%p %p %p) dmembase=%p", (void*)vert0, (void*)vert1, (void*)vert2, (void*)s_rdp.dmem); }
+    { static int s_t1 = 0; if (s_t1++ < 20)
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "TRI1-DRAW color=(%d,%d,%d,%d) xy=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f)",
+            vert0->r,vert0->g,vert0->b,vert0->a,
+            sx0,sy0, sx1,sy1, sx2,sy2); }
     RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
         vert0->r, vert0->g, vert0->b, vert0->a,
         vert1->r, vert1->g, vert1->b, vert1->a,
@@ -1236,6 +1241,11 @@ static void Cmd_Tri2(GfxCommand cmd) {
                         cv[0].w, cv[1].w, cv[2].w, nClip);
                 }
 
+                { static int s_cr = 0; if (s_cr++ < 20)
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                        "TRI2-DRAW n=%d color=(%d,%d,%d,%d) xy=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f)",
+                        nClip, cr,cg,cb,ca,
+                        cx[0],cy[0], cx[1],cy[1], cx[2],cy[2]); }
                 if (nClip == 3) {
                     RasterizeTriangle(cx[0],cy[0], cx[1],cy[1], cx[2],cy[2],
                         cr,cg,cb,ca, cr,cg,cb,ca, cr,cg,cb,ca);
