@@ -80,6 +80,25 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         // Automation: if auto_rom.z64 exists in files dir, load it directly
         File autoRom = new File(getFilesDir(), "auto_rom.z64");
+
+        // If extraction already finished (sentinel + valid rom_base.bin),
+        // skip it entirely and boot the engine directly.  This prevents
+        // the 15-second re-extraction on every launch that causes
+        // "Activity top resumed state loss timeout" from the OS.
+        if (hasExtractionCompleted()) {
+            Log.i(TAG, "Extraction sentinel and base ROM verified — skipping ROM selection");
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                getSplashScreen().setOnExitAnimationListener(splash -> {
+                    Log.i(TAG, "Splash exited; starting GL engine");
+                    splash.remove();
+                    bootGameEngine();
+                });
+            } else {
+                bootGameEngine();
+            }
+            return;
+        }
+
         if (autoRom.exists()) {
             Log.i(TAG, "Auto-load ROM detected: " + autoRom.getAbsolutePath());
             // Run OTR extraction first - creates rom_base.bin required by engine
@@ -87,7 +106,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        if (hasExtractionCompleted()) {
+        if (false) {   // original hasExtractionCompleted branch — dead now
             Log.i(TAG, "Extraction sentinel and base ROM verified — skipping ROM selection");
             // Wait for the splash screen to fully exit before creating the GL
             // surface. On Android 12+ / Motorola libgui, the splash surface
