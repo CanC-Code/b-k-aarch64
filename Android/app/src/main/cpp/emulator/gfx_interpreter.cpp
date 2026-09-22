@@ -800,6 +800,16 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
                 ox, oy, oz, ow);
         }
     }
+    {
+        static int s_dv = 0;
+        if (s_dv++ < 20)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-VERT",
+                "V world=(%.0f,%.0f,%.0f) view=(%.1f,%.1f,%.1f) w=%.1f "
+                "clip=(%.1f,%.1f,%.1f,%.1f)",
+                (float)v->x, (float)v->y, (float)v->z,
+                ox, oy, oz, ow,
+                px, py, pz, pw);
+    }
     // Perspective divide
     if (fabsf(ow) > 0.0001f) {
         ox /= ow; oy /= ow;
