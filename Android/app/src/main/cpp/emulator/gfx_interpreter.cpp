@@ -1569,7 +1569,7 @@ static void Cmd_MoveWord(GfxCommand cmd) {
         // Segment base must be a real N64 address.  Host-pointer low-32
         // values (0x70..0x7F) crash the game when used as segment bases;
         // the only safe values are physical RDRAM and KSEG0.
-        uint32_t a = data;
+        if ((a & 0xFF000000u) == 0xFF000000u) {
         if (!((a <= 0x03FFFFFFu) || (a >= 0x80000000u && a <= 0x83FFFFFFu))) {
             static int s_badseg = 0;
             if (s_badseg++ < 20)
@@ -1577,7 +1577,7 @@ static void Cmd_MoveWord(GfxCommand cmd) {
                     "Cmd_MoveWord SEGMENT seg=%u base=0x%08X INVALID — skipping",
                     segment, a);
             return;
-        }
+        s_rdp.segmentBase[segment] = (a >= 0x70000000u && a < 0x80000000u) ? ((bka_lookup_addr_mapping(a) != nullptr) ? (uintptr_t)bka_lookup_addr_mapping(a) : (uintptr_t)-1) : (uintptr_t)a;
         s_rdp.segmentBase[segment] = (uintptr_t)a;
 
         static int seg_log = 0;
