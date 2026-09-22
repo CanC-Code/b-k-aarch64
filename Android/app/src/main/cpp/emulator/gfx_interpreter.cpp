@@ -1733,6 +1733,19 @@ static void Cmd_Mtx(GfxCommand cmd) {
 
     BKMatrix newMatrix;
     Matrix_LoadFromN64(&newMatrix, mtx_src);
+    // Reject all-zero matrices: the game loads an uninitialised
+    // buffer during boot which would otherwise wipe the camera.
+    if (newMatrix[0][0] == 0.0f && newMatrix[1][1] == 0.0f &&
+        newMatrix[2][2] == 0.0f && newMatrix[3][3] == 0.0f &&
+        newMatrix[3][0] == 0.0f && newMatrix[3][1] == 0.0f &&
+        newMatrix[3][2] == 0.0f) {
+        static int s_zero = 0;
+        if (s_zero++ < 10)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "MTX: zero matrix at src=%p flag=0x%02X — skipped",
+                mtx_src, flag);
+        return;
+    }
     {
         static int s_raw = 0;
         if (s_raw++ < 3) {
