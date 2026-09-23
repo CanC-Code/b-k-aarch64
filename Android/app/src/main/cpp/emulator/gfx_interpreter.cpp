@@ -1028,10 +1028,20 @@ static void Cmd_SetTileSize(GfxCommand cmd) {
 }
 
 static void Cmd_SetTImg(GfxCommand cmd) {
-    s_rdp.texFmt  = (cmd.w0 >> 21) & 0x7;
-    s_rdp.texSize = (cmd.w0 >> 19) & 0x3;
-    s_rdp.texWidth = (cmd.w0 >> 9) & 0x3FF;
-    s_rdp.texAddr = RDP_TranslateAddr(cmd.w1);
+    // F3DEX_GBI (non-2) gDPSetTextureImage layout is: w1 = raw RDRAM address, w0 = [FD:8][fmt:3][size:2][width:10][pad:9].
+    // Log the raw words before the translate so we can see byte order.
+    uint8_t* resolved = RDP_TranslateAddr(cmd.w1);
+    { static int s_st = 0; if (s_st++ < 20)
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-SETIMG",
+            "SETIMG #%d w0=%08X w1=%08X rawBE=%08X/%08X fmt=%u size=%u width=%u resolved=%p",
+            s_st, cmd.w0, cmd.w1,
+            __builtin_bswap32(cmd.w0), __builtin_bswap32(cmd.w1),
+            (cmd.w0 >> 21) & 0x7, (cmd.w0 >> 19) & 0x3, (cmd.w0 >> 9) & 0x3FF,
+            (void*)resolved); }
+    s_rdp.texFmt   = (cmd.w0 >> 21) & 0x7;
+    s_rdp.texSize  = (cmd.w0 >> 19) & 0x3;
+    s_rdp.texWidth = (cmd.w0 >>  9) & 0x3FF;
+    s_rdp.texAddr  = resolved;
 }
 
 static void Cmd_LoadTile(GfxCommand cmd) {
