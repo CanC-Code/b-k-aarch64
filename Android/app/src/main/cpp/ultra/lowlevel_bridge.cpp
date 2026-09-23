@@ -513,11 +513,26 @@ void VideoPlugin_OutputFrameTexture(uint32_t hostTextureId) {
             s_sample++;
             if (s_sample <= 5 || s_sample % 60 == 0) {
                 uint16_t* fbs = (uint16_t*)fbBase;
+                /* SENTINEL-DIAG */
+                {
+                    uint16_t* s_ptr = (uint16_t*)(gN64_RDRAM + g_active_fb_offset);
+                    uint16_t* b_ptr = (uint16_t*)fbBase;
+                    s_ptr[0] = 0xBEEF;
+                    uint16_t chk_s = s_ptr[0];
+                    uint16_t chk_b = b_ptr[0];
+                    __android_log_print(ANDROID_LOG_INFO, "BKA-SENT",
+                        "WROTE 0xBEEF s_ptr=%p b_ptr=%p same=%d gN64_RDRAM=%p off=0x%X chk_s=%04X chk_b=%04X",
+                        (void*)s_ptr, (void*)b_ptr, (int)(s_ptr==b_ptr),
+                        (void*)gN64_RDRAM, g_active_fb_offset, chk_s, chk_b);
+                }
                 int nonZero = 0, nonFFFF = 0;
                 for (int i = 0; i < fbWidth * fbHeight; i++) {   // full scan
                     if (fbs[i] != 0) nonZero++;
                     if (fbs[i] != 0xFFFF) nonFFFF++;
                 }
+                __android_log_print(ANDROID_LOG_INFO, "BKA-SENT",
+                    "AFTER-SCAN fbs[0]=%04X fbs[1]=%04X fbs[fbW]=%04X",
+                    fbs[0], fbs[1], fbs[fbWidth]);
                 if (nonZero > 0 && g_bka_real_frame_count == 0) {
                     g_bka_real_frame_count = 1;
                     // Also drop a heartbeat file that MainActivity's

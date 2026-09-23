@@ -730,7 +730,7 @@ static void RasterizeTriangle(
                 uint8_t b = (uint8_t)(((int)b0 + b1 + b2) / 3);
             { static int s_px = 0; if (s_px++ < 30) __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST", "PIXWRITE #%d y=%d x=%d rgb=(%d,%d,%d) rgb565=0x%04X", s_px, (int)y, (int)x, r, g, b, RGBA8_TO_RGB565(r,g,b)); }
                 bka_guard_write(&fb[y * FB_WIDTH + x], 2, "Raster.fb");
-                fb[y * FB_WIDTH + x] = RGBA8_TO_RGB565(r, g, b);
+                *(volatile uint16_t *)fb[y * FB_WIDTH + x] = fb[y * FB_WIDTH + x] = RGBA8_TO_RGB565(r, g, b);
             }
         }
     }
@@ -753,7 +753,7 @@ static void RasterizeTriangle(
                 uint8_t r = (uint8_t)(((int)r0 + r1 + r2) / 3);
                 uint8_t g = (uint8_t)(((int)g0 + g1 + g2) / 3);
                 uint8_t b = (uint8_t)(((int)b0 + b1 + b2) / 3);
-                fb[y * FB_WIDTH + x] = RGBA8_TO_RGB565(r, g, b);
+                *(volatile uint16_t *)fb[y * FB_WIDTH + x] = fb[y * FB_WIDTH + x] = RGBA8_TO_RGB565(r, g, b);
             }
         }
     }
@@ -1858,7 +1858,7 @@ static void Cmd_FillRect(GfxCommand cmd) {
     }
     for (int32_t y = uly; y < lry; y++)
         for (int32_t x = ulx; x < lrx; x++)
-            fb[y * FB_WIDTH + x] = color;
+            *(volatile uint16_t *)fb[y * FB_WIDTH + x] = fb[y * FB_WIDTH + x] = color;
 }
 
 // =======================================================================
