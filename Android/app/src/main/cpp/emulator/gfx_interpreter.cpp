@@ -201,6 +201,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
             LOGV("XLT TRACE enter addr=0x%08X", addr);
     }
 
+    { static int s_xtrace2 = 0; uint32_t __s = (addr >> 24) & 0x0F;      if (__s >= 1 && __s <= 15 && s_xtrace2++ < 100) {        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",          "XT2 addr=0x%08X seg=%u base=0x%lX",          addr, __s, (unsigned long)s_rdp.segmentBase[__s]); } }
     if (addr == 0) return nullptr;
 
     // Known-bad DL address?  Try scanning the heap for the real buffer.
