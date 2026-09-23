@@ -705,6 +705,7 @@ static void RasterizeTriangle(
     }
 
     float dy10 = y1 - y0, dy21 = y2 - y1, dy20 = y2 - y0;
+    { static int s_geom = 0; if (s_geom++ < 20) __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST", "TRI-GEOM iy0=%d iy1=%d iy2=%d dy10=%.2f dy21=%.2f dy20=%.2f", iy0, iy1, iy2, dy10, dy21, dy20); }
     float dx10 = x1 - x0, dx21 = x2 - x1, dx20 = x2 - x0;
     if (dy10 <= 0.0f && dy20 <= 0.0f) return;
 
