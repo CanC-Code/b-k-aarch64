@@ -249,7 +249,7 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
             if (base != 0 && base != (uintptr_t)-1) {
                 uint32_t off = addr & 0x00FFFFFFu;
                 // Case A: heap low-32 (0x60..0x7F): map lookup on base, add off.
-                if (base >= 0x60000000u && base < 0x80000000u) {
+                if (base < 0x80000000u) {
                     void* mapped = bka_lookup_addr_mapping((uint32_t)base);
                     if (mapped) {
                         uint8_t* cand = (uint8_t*)mapped + off;
