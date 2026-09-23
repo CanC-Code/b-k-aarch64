@@ -1057,6 +1057,18 @@ static void Cmd_SetTileSize(GfxCommand cmd) {
 
 static void Cmd_SetTImg(GfxCommand cmd) {
     uint8_t* resolved = RDP_TranslateAddr(cmd.w1);
+    // Drift guard (2026-09-23): real gDPSetTextureImage has fmt <= 5
+    // and a resolvable image address. Reject anything else — the
+    // walker is landing on non-command bytes and previously clobbered
+    // s_rdp.texAddr with null, blocking LoadTile from ever running.
+    { uint32_t _fmt = (cmd.w0 >> 21) & 0x7;
+      if (_fmt > 5 || resolved == nullptr) {
+          static int s_sr = 0; if (s_sr++ < 15)
+              __android_log_print(ANDROID_LOG_ERROR, "BKA-SETIMG",
+                  "SKIP drift w0=%08X w1=%08X fmt=%u resolved=%p",
+                  cmd.w0, cmd.w1, _fmt, (void*)resolved);
+          return;
+      } }
     uint32_t fmt = (cmd.w0 >> 21) & 0x7;
     uint32_t siz = (cmd.w0 >> 19) & 0x3;
     uint32_t wd  = (cmd.w0 & 0xFFF) + 1;   // F3DEX: width-1 in bits [11:0]
