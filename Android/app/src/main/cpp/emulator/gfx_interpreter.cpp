@@ -2014,6 +2014,13 @@ static int bka_probe_dl_encoding(uint8_t* ptr) {
 
 static int s_rspCallCount = 0;
 void RSP_ProcessGfxTask(OSTask* tp) {
+    { static int s_ent = 0; if (s_ent++ < 30) {
+        uint8_t* dp = tp ? (uint8_t*)tp->t.data_ptr : nullptr;
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-DL",
+            "ENTER #%d task=%p data_ptr=%p first8=%02X%02X%02X%02X %02X%02X%02X%02X",
+            s_ent, (void*)tp, (void*)dp,
+            dp?dp[0]:0,dp?dp[1]:0,dp?dp[2]:0,dp?dp[3]:0,
+            dp?dp[4]:0,dp?dp[5]:0,dp?dp[6]:0,dp?dp[7]:0); } }
     if (bka_canary_post != 0xBEEFCAFEBABE5678ull) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "CANARY-OVERFLOW post=%016llX (s_rdp overflowed)",
@@ -2275,7 +2282,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 static uint32_t s_opcount[256] = {0};
                 static uint32_t s_op_total = 0;
                 s_opcount[opcode]++;
-                if ((++s_op_total % 5000) == 0) {
+                if ((++s_op_total % 500) == 0) {
                     char obuf[768]; int on = 0;
                     for (int k = 0; k < 256; k++)
                         if (s_opcount[k]) on += snprintf(obuf + on, sizeof(obuf) - on, "%02X:%u ", k, s_opcount[k]);
