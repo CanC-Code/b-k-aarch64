@@ -968,12 +968,22 @@ static void Cmd_SetCombine(GfxCommand cmd) {
 }
 
 static void Cmd_Texture(GfxCommand cmd) {
-    uint32_t enable = (cmd.w0 >> 16) & 0xFF, tile = (cmd.w0 >> 8) & 0xFF;
+    uint8_t op = (uint8_t)(cmd.w0 >> 24);
+    uint32_t enable, tile;
+    if (op == 0xBB) {
+        // F3DEX (non-2): on=w1[7:0], tile=w1[15:8], level=w1[23:16]
+        enable =  cmd.w1        & 0xFF;
+        tile   = (cmd.w1 >>  8) & 0xFF;
+    } else {
+        // F3DEX2 (0xD7): on=w0[16], tile=w0[8]
+        enable = (cmd.w0 >> 16) & 0xFF;
+        tile   = (cmd.w0 >>  8) & 0xFF;
+    }
     s_rdp.textureEnabled = (enable != 0);
     if (tile < 8) s_rdp.activeTile = tile;
-    { static int s_ct = 0; if (s_ct++ < 20)
+    { static int s_ct = 0; if (s_ct++ < 40)
         __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST",
-            "CMDTEX #%d enable=%u tile=%u", s_ct, enable, tile); }
+            "CMDTEX #%d op=%02X enable=%u tile=%u w0=%08X w1=%08X", s_ct, op, enable, tile, cmd.w0, cmd.w1); }
 }
 
 static void Cmd_SetTile(GfxCommand cmd) {
@@ -2392,7 +2402,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xF0:
             case 0x02:
             case 0xDA:            case 0xBE:
-            case 0xBB:
             case 0xBA:
             case 0xB9:
             case 0xB7:
@@ -2415,6 +2424,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xE3: Cmd_SetOtherModeH(c); break;
             case 0xFC: Cmd_SetCombine(c); break;
             case 0xD7: Cmd_Texture(c); break;
+            case 0xBB: Cmd_Texture(c); break;   // F3DEX (non-2) G_TEXTURE
             case 0xF5: Cmd_SetTile(c); break;
             case 0xF2: Cmd_SetTileSize(c); break;
             case 0xFD: Cmd_SetTImg(c); break;
