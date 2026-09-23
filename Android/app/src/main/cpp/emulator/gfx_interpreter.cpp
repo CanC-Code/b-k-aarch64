@@ -2013,6 +2013,9 @@ static int bka_probe_dl_encoding(uint8_t* ptr) {
 }
 
 static int s_rspCallCount = 0;
+static uint32_t s_opcount[256] = {0};
+static uint32_t s_op_total = 0;
+
 void RSP_ProcessGfxTask(OSTask* tp) {
     { static int s_ent = 0; if (s_ent++ < 30) {
         uint8_t* dp = tp ? (uint8_t*)tp->t.data_ptr : nullptr;
@@ -2279,11 +2282,9 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             }
         }
         uint8_t opcode = GFX_OPCODE(c);
-                static uint32_t s_opcount[256] = {0};
-                static uint32_t s_op_total = 0;
                 s_opcount[opcode]++;
                 if ((++s_op_total % 500) == 0) {
-                    char obuf[768]; int on = 0;
+                    char obuf[2048]; int on = 0;
                     for (int k = 0; k < 256; k++)
                         if (s_opcount[k]) on += snprintf(obuf + on, sizeof(obuf) - on, "%02X:%u ", k, s_opcount[k]);
                     __android_log_print(ANDROID_LOG_ERROR, "BKA-OPC", "seen=%u %s", s_op_total, obuf);
@@ -2973,7 +2974,7 @@ default:
         }
     }
     { static int s_ptask = 0; if (++s_ptask <= 30) {
-        char obuf[768]; int on = 0;
+        char obuf[2048]; int on = 0;
         for (int k = 0; k < 256; k++)
             if (s_opcount[k]) on += snprintf(obuf + on, sizeof(obuf) - on, "%02X:%u ", k, s_opcount[k]);
         __android_log_print(ANDROID_LOG_ERROR, "BKA-OPC", "task#%d %s", s_ptask, obuf);
