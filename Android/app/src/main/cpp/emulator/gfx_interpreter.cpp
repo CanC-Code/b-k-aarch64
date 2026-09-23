@@ -892,11 +892,11 @@ static void Cmd_SetFillColor(GfxCommand cmd) {
     { static int s_fc = 0; if (s_fc++ < 20)
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "SETFILL-ENTRY #%d w0=0x%08X w1=0x%08X", s_fc, cmd.w0, cmd.w1); }
-    uint16_t c = cmd.w1 & 0xFFFF; // drawRectangle2D packs RGBA5551 into both halves
-    s_rdp.fillR = ((c >> 11) & 0x1F) << 3;
-    s_rdp.fillG = ((c >> 6) & 0x1F) << 3;
-    s_rdp.fillB = ((c >> 1) & 0x1F) << 3;
-    s_rdp.fillA = (c & 1) ? 255 : 0;
+    uint32_t c = cmd.w0 & 0x00FFFFFF;  // F3DEX2: RRGGBB in low 24 bits of w0
+    s_rdp.fillR = (c >> 16) & 0xFF;
+    s_rdp.fillG = (c >>  8) & 0xFF;
+    s_rdp.fillB =  c        & 0xFF;
+    s_rdp.fillA = 255;
 }
 
 static void Cmd_SetOtherModeL(GfxCommand cmd) {
