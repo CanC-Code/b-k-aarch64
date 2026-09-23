@@ -768,6 +768,7 @@ static void RasterizeTriangle(
                     float bw2 = 1.0f - bw0 - bw1;
                     int32_t uu = (int32_t)(bw0*(float)s0 + bw1*(float)s1 + bw2*(float)s2);
                     int32_t vv = (int32_t)(bw0*(float)t0 + bw1*(float)t1 + bw2*(float)t2);
+                    uint32_t uuc = (uu < 0) ? 0u : (uint32_t)uu;
                     uint32_t vvc = (vv < 0) ? 0u : (uint32_t)vv;
                     { static int s_uv = 0; if (s_uv++ < 30)
                         __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST",
