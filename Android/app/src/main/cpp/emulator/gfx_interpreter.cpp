@@ -1106,7 +1106,26 @@ static void Cmd_LoadTile(GfxCommand cmd) {
     uint32_t texSize = texWidth * texHeight * bpp;
     uint32_t lineWords = (texWidth * bpp + 7) / 8;
     
+    { static int s_lt = 0; if (s_lt++ < 20)
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-LOAD",
+            "LOADTILE #%d tile=%u sl=%u tl=%u sh=%u th=%u bpp=%u texAddr=%p texWidth=%u texSize=%u",
+            s_lt, tile, sl, tl, sh, th, bpp, (void*)s_rdp.texAddr, s_rdp.texWidth, texSize); }
     if (s_rdp.texAddr && texSize <= 4096) {
+        { static int s_lt2 = 0; if (s_lt2++ < 20) {
+            uint32_t tmemBase = t.tmemAddr * 8;
+            uint32_t srcLineStride = s_rdp.texWidth * bpp;
+            uint32_t srcOff0 = tl * srcLineStride + sl * bpp;
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-LOAD",
+                "LOADTILE-2 #%d tmemBase=%u lineWords=%u srcLineStride=%u srcOff0=%u src[0..7]=%02X%02X%02X%02X%02X%02X%02X%02X",
+                s_lt2, tmemBase, lineWords, srcLineStride, srcOff0,
+                s_rdp.texAddr ? s_rdp.texAddr[srcOff0+0] : 0,
+                s_rdp.texAddr ? s_rdp.texAddr[srcOff0+1] : 0,
+                s_rdp.texAddr ? s_rdp.texAddr[srcOff0+2] : 0,
+                s_rdp.texAddr ? s_rdp.texAddr[srcOff0+3] : 0,
+                s_rdp.texAddr ? s_rdp.texAddr[srcOff0+4] : 0,
+                s_rdp.texAddr ? s_rdp.texAddr[srcOff0+5] : 0,
+                s_rdp.texAddr ? s_rdp.texAddr[srcOff0+6] : 0,
+                s_rdp.texAddr ? s_rdp.texAddr[srcOff0+7] : 0); } }
         uint32_t tmemBase = t.tmemAddr * 8;
         uint32_t srcLineStride = s_rdp.texWidth * bpp;
         for (uint32_t row = 0; row < texHeight; row++) {
