@@ -1028,19 +1028,27 @@ static void Cmd_SetTileSize(GfxCommand cmd) {
 }
 
 static void Cmd_SetTImg(GfxCommand cmd) {
-    // F3DEX_GBI (non-2) gDPSetTextureImage layout is: w1 = raw RDRAM address, w0 = [FD:8][fmt:3][size:2][width:10][pad:9].
-    // Log the raw words before the translate so we can see byte order.
     uint8_t* resolved = RDP_TranslateAddr(cmd.w1);
-    { static int s_st = 0; if (s_st++ < 20)
+    uint32_t fmt = (cmd.w0 >> 21) & 0x7;
+    uint32_t siz = (cmd.w0 >> 19) & 0x3;
+    uint32_t wd  = (cmd.w0 & 0xFFF) + 1;   // F3DEX: width-1 in bits [11:0]
+    if (fmt > 5 && g_bka_dl_cur) {
+        const uint8_t* p = g_bka_dl_cur;
+        static int s_dft = 0; if (s_dft++ < 8)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-SETIMG",
+                "DRIFT ctx[-16..15]: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+                p[-16],p[-15],p[-14],p[-13],p[-12],p[-11],p[-10],p[-9],
+                p[-8],p[-7],p[-6],p[-5],p[-4],p[-3],p[-2],p[-1],
+                p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],
+                p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15]);
+    }
+    { static int s_st = 0; if (s_st++ < 25)
         __android_log_print(ANDROID_LOG_ERROR, "BKA-SETIMG",
-            "SETIMG #%d w0=%08X w1=%08X rawBE=%08X/%08X fmt=%u size=%u width=%u resolved=%p",
-            s_st, cmd.w0, cmd.w1,
-            __builtin_bswap32(cmd.w0), __builtin_bswap32(cmd.w1),
-            (cmd.w0 >> 21) & 0x7, (cmd.w0 >> 19) & 0x3, (cmd.w0 >> 9) & 0x3FF,
-            (void*)resolved); }
-    s_rdp.texFmt   = (cmd.w0 >> 21) & 0x7;
-    s_rdp.texSize  = (cmd.w0 >> 19) & 0x3;
-    s_rdp.texWidth = (cmd.w0 >>  9) & 0x3FF;
+            "SETIMG #%d fmt=%u siz=%u wd=%u image=%08X resolved=%p",
+            s_st, fmt, siz, wd, cmd.w1, (void*)resolved); }
+    s_rdp.texFmt   = fmt;
+    s_rdp.texSize  = siz;
+    s_rdp.texWidth = wd;
     s_rdp.texAddr  = resolved;
 }
 
@@ -2048,6 +2056,8 @@ static int s_rspCallCount = 0;
 static uint32_t s_opcount[256] = {0};
 static uint32_t s_op_total = 0;
 
+uint8_t* g_bka_dl_cur = nullptr;
+
 void RSP_ProcessGfxTask(OSTask* tp) {
     { static int s_ent = 0; if (s_ent++ < 30) {
         uint8_t* dp = tp ? (uint8_t*)tp->t.data_ptr : nullptr;
@@ -2313,6 +2323,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 }
             }
         }
+                extern uint8_t* g_bka_dl_cur;
+                g_bka_dl_cur = cur;
         uint8_t opcode = GFX_OPCODE(c);
                 s_opcount[opcode]++;
                 if ((++s_op_total % 500) == 0) {
