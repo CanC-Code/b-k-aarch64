@@ -756,6 +756,18 @@ static void RasterizeTriangle(
                 if (s_rdp.textureEnabled) {
                     uint8_t tex[4] = {255,255,255,255};
                     RDP_FetchTexel(s_rdp.activeTile, 0, 0, tex);
+                    { static int s_txdbg = 0; if (s_txdbg++ < 3) {
+                        auto& td = s_rdp.tiles[s_rdp.activeTile];
+                        uint32_t tb = td.tmemAddr * 8;
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST",
+                            "TEXDBG fmt=%u size=%u line=%u tmemAddr=0x%X sh=%u th=%u "
+                            "tmem[%u..%u]=%02X%02X%02X%02X%02X%02X%02X%02X "
+                            "texAddr=%p texWidth=%u texFmt=%u texSize=%u",
+                            td.format, td.size, td.line, td.tmemAddr, td.sh, td.th,
+                            tb, tb+7,
+                            s_rdp.tmem[tb+0],s_rdp.tmem[tb+1],s_rdp.tmem[tb+2],s_rdp.tmem[tb+3],
+                            s_rdp.tmem[tb+4],s_rdp.tmem[tb+5],s_rdp.tmem[tb+6],s_rdp.tmem[tb+7],
+                            (void*)s_rdp.texAddr, s_rdp.texWidth, s_rdp.texFmt, s_rdp.texSize); } }
                     { static int s_tx = 0; if (s_tx++ < 20)
                         __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST",
                             "TEXFETCH #%d tile=%d texel=%02X%02X%02X%02X vtxin=(%d,%d,%d)",
