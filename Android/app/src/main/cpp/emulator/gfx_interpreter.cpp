@@ -768,7 +768,10 @@ static void RasterizeTriangle(
                     float bw2 = 1.0f - bw0 - bw1;
                     int32_t uu = (int32_t)(bw0*(float)s0 + bw1*(float)s1 + bw2*(float)s2);
                     int32_t vv = (int32_t)(bw0*(float)t0 + bw1*(float)t1 + bw2*(float)t2);
-                    uint32_t uuc = (uu < 0) ? 0u : (uint32_t)uu;
+                    { static int s_uv = 0; if (s_uv++ < 30)
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST",
+                            "UVTRACE #%d s=(%d,%d,%d) t=(%d,%d,%d) bw=(%.3f,%.3f,%.3f) uu=%d vv=%d",
+                            s_uv, s0, s1, s2, t0, t1, t2, bw0, bw1, bw2, uu, vv); }
                     uint32_t vvc = (vv < 0) ? 0u : (uint32_t)vv;
                     RDP_FetchTexel(s_rdp.activeTile, uuc, vvc, tex);
                     { static int s_txdbg = 0; if (s_txdbg++ < 3) {
@@ -783,7 +786,7 @@ static void RasterizeTriangle(
                             s_rdp.tmem[tb+0],s_rdp.tmem[tb+1],s_rdp.tmem[tb+2],s_rdp.tmem[tb+3],
                             s_rdp.tmem[tb+4],s_rdp.tmem[tb+5],s_rdp.tmem[tb+6],s_rdp.tmem[tb+7],
                             (void*)s_rdp.texAddr, s_rdp.texWidth, s_rdp.texFmt, s_rdp.texSize); } }
-                    { static int s_tx = 0; if (s_tx++ < 20)
+                    { static int s_tx = 0; if (s_tx++ < 300)
                         __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST",
                             "TEXFETCH #%d tile=%d texel=%02X%02X%02X%02X vtxin=(%d,%d,%d)",
                             s_tx, s_rdp.activeTile, tex[0], tex[1], tex[2], tex[3], r, g, b); }
@@ -828,7 +831,7 @@ static void RasterizeTriangle(
                     uint32_t uuc = (uu < 0) ? 0u : (uint32_t)uu;
                     uint32_t vvc = (vv < 0) ? 0u : (uint32_t)vv;
                     RDP_FetchTexel(s_rdp.activeTile, uuc, vvc, tex);
-                    { static int s_tx = 0; if (s_tx++ < 20)
+                    { static int s_tx = 0; if (s_tx++ < 300)
                         __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST",
                             "TEXFETCH #%d tile=%d texel=%02X%02X%02X%02X vtxin=(%d,%d,%d)",
                             s_tx, s_rdp.activeTile, tex[0], tex[1], tex[2], tex[3], r, g, b); }
