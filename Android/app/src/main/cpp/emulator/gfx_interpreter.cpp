@@ -971,9 +971,9 @@ static void Cmd_Texture(GfxCommand cmd) {
     uint8_t op = (uint8_t)(cmd.w0 >> 24);
     uint32_t enable, tile;
     if (op == 0xBB) {
-        // F3DEX (non-2): on=w1[7:0], tile=w1[15:8], level=w1[23:16]
-        enable =  cmd.w1        & 0xFF;
-        tile   = (cmd.w1 >>  8) & 0xFF;
+        // F3DEX (non-2): w0=[BB:8][bowtie:8][level:3][tile:3][on:8]
+        enable =  cmd.w0        & 0xFF;
+        tile   = (cmd.w0 >>  8) & 0x7;
     } else {
         // F3DEX2 (0xD7): on=w0[16], tile=w0[8]
         enable = (cmd.w0 >> 16) & 0xFF;
