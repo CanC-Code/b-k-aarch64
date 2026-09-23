@@ -458,6 +458,20 @@ static void RDP_InitState() {
     static int saved_dmemVertexCount = 0;
     memcpy(saved_dmem, s_rdp.dmem, sizeof(saved_dmem));
     saved_dmemVertexCount = s_rdp.dmemVertexCount;
+    // Preserve texture state across task boundary (2026-09-23).
+    static uint8_t  saved_tmem[4096];
+    static uint8_t  saved_tiles[sizeof(s_rdp.tiles)];
+    static uint8_t* saved_texAddr = nullptr;
+    static uint32_t saved_texWidth = 0, saved_texFmt = 0, saved_texSize = 0;
+    static int      saved_activeTile = 0, saved_textureEnabled = 0;
+    memcpy(saved_tmem, s_rdp.tmem, sizeof(saved_tmem));
+    memcpy(saved_tiles, &s_rdp.tiles, sizeof(saved_tiles));
+    saved_texAddr = s_rdp.texAddr;
+    saved_texWidth = s_rdp.texWidth;
+    saved_texFmt = s_rdp.texFmt;
+    saved_texSize = s_rdp.texSize;
+    saved_activeTile = s_rdp.activeTile;
+    saved_textureEnabled = s_rdp.textureEnabled;
 
     // Clear all state except vertices.
     memset(&s_rdp, 0, sizeof(s_rdp));
@@ -477,6 +491,15 @@ static void RDP_InitState() {
     // Restore vertices and count.
     memcpy(s_rdp.dmem, saved_dmem, sizeof(saved_dmem));
     s_rdp.dmemVertexCount = saved_dmemVertexCount;
+    // Restore texture state (2026-09-23).
+    memcpy(s_rdp.tmem, saved_tmem, sizeof(saved_tmem));
+    memcpy(&s_rdp.tiles, saved_tiles, sizeof(saved_tiles));
+    s_rdp.texAddr = saved_texAddr;
+    s_rdp.texWidth = saved_texWidth;
+    s_rdp.texFmt = saved_texFmt;
+    s_rdp.texSize = saved_texSize;
+    s_rdp.activeTile = saved_activeTile;
+    s_rdp.textureEnabled = saved_textureEnabled;
 
     s_rdp.primR = s_rdp.primG = s_rdp.primB = s_rdp.primA = 255;
     s_rdp.envR = s_rdp.envG = s_rdp.envB = s_rdp.envA = 255;
@@ -484,8 +507,8 @@ static void RDP_InitState() {
     s_rdp.fillR = s_rdp.fillG = s_rdp.fillB = 255; s_rdp.fillA = 255;
     __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "INIT-FILL-SET (%d,%d,%d)", s_rdp.fillR, s_rdp.fillG, s_rdp.fillB);
     s_rdp.fogR = s_rdp.fogG = s_rdp.fogB = 255; s_rdp.fogA = 255;
-    s_rdp.activeTile = 0;
-    s_rdp.textureEnabled = false;
+    // s_rdp.activeTile preserved above — do NOT reset
+    // s_rdp.textureEnabled preserved above — do NOT reset
     s_rdp.matrixMode = 0;
 
     // Initialize matrices to identity
@@ -2249,6 +2272,15 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             }
         }
         uint8_t opcode = GFX_OPCODE(c);
+                static uint32_t s_opcount[256] = {0};
+                static uint32_t s_op_total = 0;
+                s_opcount[opcode]++;
+                if ((++s_op_total % 5000) == 0) {
+                    char obuf[768]; int on = 0;
+                    for (int k = 0; k < 256; k++)
+                        if (s_opcount[k]) on += snprintf(obuf + on, sizeof(obuf) - on, "%02X:%u ", k, s_opcount[k]);
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA-OPC", "seen=%u %s", s_op_total, obuf);
+                }
         {
             static int s_enc_dump = 0;
             if ((s_enc_dump++ % 2000) == 0) {
