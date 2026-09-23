@@ -649,10 +649,11 @@ static void RasterizeTriangle(
     uint8_t r1, uint8_t g1, uint8_t b1, uint8_t a1,
     uint8_t r2, uint8_t g2, uint8_t b2, uint8_t a2)
 {
-    { static int s_rt = 0; if (s_rt++ < 5 || s_rt % 500 == 0)
+    { static int s_rt = 0; if (s_rt++ < 30 || s_rt % 100 == 0)
         __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST",
-            "RAST-ENTER #%d xy=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f)",
-            s_rt, x0, y0, x1, y1, x2, y2); }
+            "RAST-ENTER #%d s1=%08lX s3=%08lX xy=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f)",
+            s_rt, (unsigned long)s_rdp.segmentBase[1], (unsigned long)s_rdp.segmentBase[3],
+            x0, y0, x1, y1, x2, y2); }
 
     {
         static int s_raster_enter = 0;
