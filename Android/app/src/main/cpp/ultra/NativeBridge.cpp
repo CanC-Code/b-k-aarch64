@@ -349,7 +349,16 @@ static void bka_update_texture_impl(int textureId) {
         int activeFb = getActiveFramebuffer();
         size_t fbSize = (size_t)gFramebufferWidth * gFramebufferHeight * sizeof(uint16_t);
         { static int s_cp = 0; if (s_cp++ < 8) { uint16_t* src_fb = gFramebuffers[activeFb]; int nz = 0; for (int i = 105 * 292; i < 115 * 292; i++) if (src_fb[i]) { nz++; if (nz > 20) break; } __android_log_print(ANDROID_LOG_ERROR, "BKA-UPD", "COPYCHECK #%d activeFb=%d src_fb=%p nz_first1000=%d", s_cp, activeFb, (void*)src_fb, nz); } }
-        memcpy(gN64_RDRAM + g_active_fb_offset, gFramebuffers[activeFb], fbSize);
+        // DIAG(D) 2026-09-22: memcpy disabled. gFramebuffers[activeFb] is never
+        // written by any render path; this memcpy was zeroing the freshly-
+        // rasterized pixels at gN64_RDRAM + g_active_fb_offset. The rasterizer
+        // (gfx_interpreter.cpp:697) writes directly to that address, so no
+        // host→RDRAM copy is required. Re-enable only if render moves to host.
+        { static int s_skip = 0; if (s_skip++ < 3)
+          __android_log_print(ANDROID_LOG_ERROR, "BKA-UPD",
+            "MEMCPY-DISABLED activeFb=%d dst=%p fbSize=%zu",
+            activeFb, (void*)(gN64_RDRAM + g_active_fb_offset), fbSize); }
+        // memcpy(gN64_RDRAM + g_active_fb_offset, gFramebuffers[activeFb], fbSize);
     }
 
     pthread_mutex_lock(&g_inputMutex);
