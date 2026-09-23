@@ -653,7 +653,8 @@ static void RasterizeTriangle(
     float x0, float y0, float x1, float y1, float x2, float y2,
     uint8_t r0, uint8_t g0, uint8_t b0, uint8_t a0,
     uint8_t r1, uint8_t g1, uint8_t b1, uint8_t a1,
-    uint8_t r2, uint8_t g2, uint8_t b2, uint8_t a2)
+    uint8_t r2, uint8_t g2, uint8_t b2, uint8_t a2,
+    int16_t s0 = 0, int16_t t0 = 0, int16_t s1 = 0, int16_t t1 = 0, int16_t s2 = 0, int16_t t2 = 0)
 {
     { static int s_rt = 0; if (s_rt++ < 30 || s_rt % 100 == 0)
         __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST",
@@ -682,9 +683,9 @@ static void RasterizeTriangle(
             s_triangleCount, x0, y0, x1, y1, x2, y2);
     }
     // Sort vertices by Y (y0 <= y1 <= y2)
-    if (y0 > y1) { std::swap(x0, x1); std::swap(y0, y1); std::swap(r0, r1); std::swap(g0, g1); std::swap(b0, b1); std::swap(a0, a1); }
-    if (y1 > y2) { std::swap(x1, x2); std::swap(y1, y2); std::swap(r1, r2); std::swap(g1, g2); std::swap(b1, b2); std::swap(a1, a2); }
-    if (y0 > y1) { std::swap(x0, x1); std::swap(y0, y1); std::swap(r0, r1); std::swap(g0, g1); std::swap(b0, b1); std::swap(a0, a1); }
+    if (y0 > y1) { std::swap(x0, x1); std::swap(y0, y1); std::swap(r0, r1); std::swap(g0, g1); std::swap(b0, b1); std::swap(a0, a1); std::swap(s0, s1); std::swap(t0, t1); }
+    if (y1 > y2) { std::swap(x1, x2); std::swap(y1, y2); std::swap(r1, r2); std::swap(g1, g2); std::swap(b1, b2); std::swap(a1, a2); std::swap(s1, s2); std::swap(t1, t2); }
+    if (y0 > y1) { std::swap(x0, x1); std::swap(y0, y1); std::swap(r0, r1); std::swap(g0, g1); std::swap(b0, b1); std::swap(a0, a1); std::swap(s0, s1); std::swap(t0, t1); }
 
     int iy0 = (int)ceilf(y0), iy1 = (int)ceilf(y1), iy2 = (int)ceilf(y2);
     if (iy0 < 0) iy0 = 0;
@@ -728,6 +729,13 @@ static void RasterizeTriangle(
                 uint8_t r = (uint8_t)(((int)r0 + r1 + r2) / 3);
                 uint8_t g = (uint8_t)(((int)g0 + g1 + g2) / 3);
                 uint8_t b = (uint8_t)(((int)b0 + b1 + b2) / 3);
+                if (s_rdp.textureEnabled) {
+                    uint8_t tex[4] = {255,255,255,255};
+                    RDP_FetchTexel(s_rdp.activeTile, 0, 0, tex);
+                    r = (uint8_t)(((int)r * tex[0]) / 255);
+                    g = (uint8_t)(((int)g * tex[1]) / 255);
+                    b = (uint8_t)(((int)b * tex[2]) / 255);
+                }
             { static int s_px = 0; if (s_px++ < 30) __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST", "PIXWRITE #%d y=%d x=%d rgb=(%d,%d,%d) rgb565=0x%04X", s_px, (int)y, (int)x, r, g, b, RGBA8_TO_RGB565(r,g,b)); }
                 bka_guard_write(&fb[y * FB_WIDTH + x], 2, "Raster.fb");
                 *(volatile uint16_t *)&fb[y * FB_WIDTH + x] = RGBA8_TO_RGB565(r, g, b);
@@ -753,6 +761,13 @@ static void RasterizeTriangle(
                 uint8_t r = (uint8_t)(((int)r0 + r1 + r2) / 3);
                 uint8_t g = (uint8_t)(((int)g0 + g1 + g2) / 3);
                 uint8_t b = (uint8_t)(((int)b0 + b1 + b2) / 3);
+                if (s_rdp.textureEnabled) {
+                    uint8_t tex[4] = {255,255,255,255};
+                    RDP_FetchTexel(s_rdp.activeTile, 0, 0, tex);
+                    r = (uint8_t)(((int)r * tex[0]) / 255);
+                    g = (uint8_t)(((int)g * tex[1]) / 255);
+                    b = (uint8_t)(((int)b * tex[2]) / 255);
+                }
                 *(volatile uint16_t *)&fb[y * FB_WIDTH + x] = RGBA8_TO_RGB565(r, g, b);
             }
         }
