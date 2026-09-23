@@ -1056,7 +1056,20 @@ static void Cmd_SetTileSize(GfxCommand cmd) {
 }
 
 static void Cmd_SetTImg(GfxCommand cmd) {
+    // SETIMG address: some DLs emit pre-resolved physical addresses, some
+    // emit segment-relative. Direct translate handles the first; if it
+    // returns null, combine with the segment base and retry.
     uint8_t* resolved = RDP_TranslateAddr(cmd.w1);
+    if (!resolved) {
+        uint8_t  seg = (cmd.w1 >> 24) & 0x0F;
+        uint32_t off = cmd.w1 & 0x00FFFFFF;
+        uint32_t combined = (uint32_t)(s_rdp.segmentBase[seg] + off);
+        resolved = RDP_TranslateAddr(combined);
+        static int s_fb = 0; if (s_fb++ < 10)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-SETIMG",
+                "FALLBACK seg=%X off=%06X combined=%08X -> %p",
+                seg, off, combined, (void*)resolved);
+    }
     { uint8_t seg = (cmd.w1 >> 24) & 0x0F;
       uint32_t off = cmd.w1 & 0x00FFFFFF;
       uintptr_t segBase = s_rdp.segmentBase[seg];
