@@ -744,11 +744,11 @@ static void RasterizeTriangle(
     if (dy10 > 0.0f) {
         for (int y = iy0; y < iy1 && y < FB_HEIGHT; y++) {
             float fy = (float)y + 0.5f;
-            float t0 = (fy - y0) / dy20;
-            float t1 = (fy - y0) / dy10;
+            float st0 = (fy - y0) / dy20;
+            float st1 = (fy - y0) / dy10;
             
-            float lx = x0 + t0 * dx20;
-            float rx = x0 + t1 * dx10;
+            float lx = x0 + st0 * dx20;
+            float rx = x0 + st1 * dx10;
             if (lx > rx) std::swap(lx, rx);
             
             int ilx = (int)ceilf(lx), irx = (int)ceilf(rx);
@@ -806,11 +806,11 @@ static void RasterizeTriangle(
     if (dy21 > 0.0f) {
         for (int y = iy1; y < iy2 && y < FB_HEIGHT; y++) {
             float fy = (float)y + 0.5f;
-            float t0 = (fy - y0) / dy20;
-            float t1 = (fy - y1) / dy21;
+            float st0 = (fy - y0) / dy20;
+            float st1 = (fy - y1) / dy21;
             
-            float lx = x0 + t0 * dx20;
-            float rx = x1 + t1 * dx21;
+            float lx = x0 + st0 * dx20;
+            float rx = x1 + st1 * dx21;
             if (lx > rx) std::swap(lx, rx);
             
             int ilx = (int)ceilf(lx), irx = (int)ceilf(rx);
