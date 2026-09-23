@@ -461,6 +461,7 @@ static void RDP_InitState() {
 
     // Clear all state except vertices.
     memset(&s_rdp, 0, sizeof(s_rdp));
+    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "INIT-MEMSET-RAN");
 
     // Re-seed segment bases — the memset above wipes them.
     // These match the defaults set by the RDPStateDefaultSegments constructor.
@@ -481,6 +482,7 @@ static void RDP_InitState() {
     s_rdp.envR = s_rdp.envG = s_rdp.envB = s_rdp.envA = 255;
     s_rdp.blendR = s_rdp.blendG = s_rdp.blendB = 255; s_rdp.blendA = 255;
     s_rdp.fillR = s_rdp.fillG = s_rdp.fillB = 255; s_rdp.fillA = 255;
+    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "INIT-FILL-SET (%d,%d,%d)", s_rdp.fillR, s_rdp.fillG, s_rdp.fillB);
     s_rdp.fogR = s_rdp.fogG = s_rdp.fogB = 255; s_rdp.fogA = 255;
     s_rdp.activeTile = 0;
     s_rdp.textureEnabled = false;
@@ -897,6 +899,8 @@ static void Cmd_SetFillColor(GfxCommand cmd) {
     s_rdp.fillG = (c >>  8) & 0xFF;
     s_rdp.fillB =  c        & 0xFF;
     s_rdp.fillA = 255;
+    { static int s_pf = 0; if (s_pf++ < 20)
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "SETFILL-POST #%d fillRGB=(%d,%d,%d)", s_pf, s_rdp.fillR, s_rdp.fillG, s_rdp.fillB); }
 }
 
 static void Cmd_SetOtherModeL(GfxCommand cmd) {
@@ -1835,6 +1839,7 @@ static void Cmd_FillRect(GfxCommand cmd) {
     lrx = std::min(lrx, FB_WIDTH); lry = std::min(lry, FB_HEIGHT);
     if (ulx >= lrx || uly >= lry) return;
     
+    { static int s_fr = 0; if (s_fr++ < 30) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "FILLPRE fillRGB=(%d,%d,%d)", s_rdp.fillR, s_rdp.fillG, s_rdp.fillB); }
     uint16_t color = RGBA8_TO_RGB565(s_rdp.fillR, s_rdp.fillG, s_rdp.fillB);
     int activeFb = getActiveFramebuffer();
     uint16_t* fb = (uint16_t*)(gN64_RDRAM + g_active_fb_offset);
