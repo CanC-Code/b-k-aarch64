@@ -658,8 +658,9 @@ static void RasterizeTriangle(
 {
     { static int s_rt = 0; if (s_rt++ < 30 || s_rt % 100 == 0)
         __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST",
-            "RAST-ENTER #%d s1=%08lX s3=%08lX xy=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f)",
+            "RAST-ENTER #%d s1=%08lX s3=%08lX texEn=%d tile=%d xy=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f)",
             s_rt, (unsigned long)s_rdp.segmentBase[1], (unsigned long)s_rdp.segmentBase[3],
+            (int)s_rdp.textureEnabled, (int)s_rdp.activeTile,
             x0, y0, x1, y1, x2, y2); }
 
     {
