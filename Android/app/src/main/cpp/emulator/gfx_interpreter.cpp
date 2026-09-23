@@ -713,6 +713,10 @@ static void RasterizeTriangle(
     if (y1 > y2) { std::swap(x1, x2); std::swap(y1, y2); std::swap(r1, r2); std::swap(g1, g2); std::swap(b1, b2); std::swap(a1, a2); std::swap(s1, s2); std::swap(t1, t2); }
     if (y0 > y1) { std::swap(x0, x1); std::swap(y0, y1); std::swap(r0, r1); std::swap(g0, g1); std::swap(b0, b1); std::swap(a0, a1); std::swap(s0, s1); std::swap(t0, t1); }
 
+    // Barycentric UV denominator (2026-09-23): constant for the triangle.
+    float t_area = (x1-x0)*(y2-y0) - (x2-x0)*(y1-y0);
+    float t_invArea = (t_area != 0.0f) ? (1.0f/t_area) : 0.0f;
+
     int iy0 = (int)ceilf(y0), iy1 = (int)ceilf(y1), iy2 = (int)ceilf(y2);
     if (iy0 < 0) iy0 = 0;
     if (iy1 < 0) iy1 = 0;                       // bottom-half loop starts here; negative causes OOB write
@@ -757,7 +761,16 @@ static void RasterizeTriangle(
                 uint8_t b = (uint8_t)(((int)b0 + b1 + b2) / 3);
                 if (s_rdp.textureEnabled) {
                     uint8_t tex[4] = {255,255,255,255};
-                    RDP_FetchTexel(s_rdp.activeTile, 0, 0, tex);
+                    float fx = (float)x + 0.5f;
+                    float fy = (float)y + 0.5f;
+                    float bw0 = ((x1-fx)*(y2-fy) - (x2-fx)*(y1-fy)) * t_invArea;
+                    float bw1 = ((x2-fx)*(y0-fy) - (x0-fx)*(y2-fy)) * t_invArea;
+                    float bw2 = 1.0f - bw0 - bw1;
+                    int32_t uu = (int32_t)(bw0*(float)s0 + bw1*(float)s1 + bw2*(float)s2);
+                    int32_t vv = (int32_t)(bw0*(float)t0 + bw1*(float)t1 + bw2*(float)t2);
+                    uint32_t uuc = (uu < 0) ? 0u : (uint32_t)uu;
+                    uint32_t vvc = (vv < 0) ? 0u : (uint32_t)vv;
+                    RDP_FetchTexel(s_rdp.activeTile, uuc, vvc, tex);
                     { static int s_txdbg = 0; if (s_txdbg++ < 3) {
                         auto& td = s_rdp.tiles[s_rdp.activeTile];
                         uint32_t tb = td.tmemAddr * 8;
@@ -805,7 +818,16 @@ static void RasterizeTriangle(
                 uint8_t b = (uint8_t)(((int)b0 + b1 + b2) / 3);
                 if (s_rdp.textureEnabled) {
                     uint8_t tex[4] = {255,255,255,255};
-                    RDP_FetchTexel(s_rdp.activeTile, 0, 0, tex);
+                    float fx = (float)x + 0.5f;
+                    float fy = (float)y + 0.5f;
+                    float bw0 = ((x1-fx)*(y2-fy) - (x2-fx)*(y1-fy)) * t_invArea;
+                    float bw1 = ((x2-fx)*(y0-fy) - (x0-fx)*(y2-fy)) * t_invArea;
+                    float bw2 = 1.0f - bw0 - bw1;
+                    int32_t uu = (int32_t)(bw0*(float)s0 + bw1*(float)s1 + bw2*(float)s2);
+                    int32_t vv = (int32_t)(bw0*(float)t0 + bw1*(float)t1 + bw2*(float)t2);
+                    uint32_t uuc = (uu < 0) ? 0u : (uint32_t)uu;
+                    uint32_t vvc = (vv < 0) ? 0u : (uint32_t)vv;
+                    RDP_FetchTexel(s_rdp.activeTile, uuc, vvc, tex);
                     { static int s_tx = 0; if (s_tx++ < 20)
                         __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST",
                             "TEXFETCH #%d tile=%d texel=%02X%02X%02X%02X vtxin=(%d,%d,%d)",
@@ -1299,7 +1321,8 @@ static void Cmd_Tri1(GfxCommand cmd) {
     RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
         vert0->r, vert0->g, vert0->b, vert0->a,
         vert1->r, vert1->g, vert1->b, vert1->a,
-        vert2->r, vert2->g, vert2->b, vert2->a);
+        vert2->r, vert2->g, vert2->b, vert2->a,
+        vert0->s, vert0->t, vert1->s, vert1->t, vert2->s, vert2->t);
 }
 
 // =======================================================================
@@ -1460,7 +1483,8 @@ static void Cmd_Tri2(GfxCommand cmd) {
         RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
             vt0->r, vt0->g, vt0->b, vt0->a,
             vt1->r, vt1->g, vt1->b, vt1->a,
-            vt2->r, vt2->g, vt2->b, vt2->a);
+            vt2->r, vt2->g, vt2->b, vt2->a,
+        vt0->s, vt0->t, vt1->s, vt1->t, vt2->s, vt2->t);
     }
 
     {
@@ -1496,7 +1520,8 @@ static void Cmd_Tri2(GfxCommand cmd) {
         RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
             vt0->r, vt0->g, vt0->b, vt0->a,
             vt1->r, vt1->g, vt1->b, vt1->a,
-            vt2->r, vt2->g, vt2->b, vt2->a);
+            vt2->r, vt2->g, vt2->b, vt2->a,
+        vt0->s, vt0->t, vt1->s, vt1->t, vt2->s, vt2->t);
     }
 }
 
@@ -1535,7 +1560,8 @@ static void Cmd_Tri1_F3DEX2(GfxCommand cmd) {
     RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
         vert0->r, vert0->g, vert0->b, vert0->a,
         vert1->r, vert1->g, vert1->b, vert1->a,
-        vert2->r, vert2->g, vert2->b, vert2->a);
+        vert2->r, vert2->g, vert2->b, vert2->a,
+        vert0->s, vert0->t, vert1->s, vert1->t, vert2->s, vert2->t);
 }
 
 // =======================================================================
@@ -1598,7 +1624,8 @@ static void Cmd_Tri2_F3DEX2(GfxCommand cmd) {
         RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
             vt0->r, vt0->g, vt0->b, vt0->a,
             vt1->r, vt1->g, vt1->b, vt1->a,
-            vt2->r, vt2->g, vt2->b, vt2->a);
+            vt2->r, vt2->g, vt2->b, vt2->a,
+        vt0->s, vt0->t, vt1->s, vt1->t, vt2->s, vt2->t);
     }
 
     {
@@ -1634,7 +1661,8 @@ static void Cmd_Tri2_F3DEX2(GfxCommand cmd) {
         RasterizeTriangle(sx0, sy0, sx1, sy1, sx2, sy2,
             vt0->r, vt0->g, vt0->b, vt0->a,
             vt1->r, vt1->g, vt1->b, vt1->a,
-            vt2->r, vt2->g, vt2->b, vt2->a);
+            vt2->r, vt2->g, vt2->b, vt2->a,
+        vt0->s, vt0->t, vt1->s, vt1->t, vt2->s, vt2->t);
     }
 }
 
