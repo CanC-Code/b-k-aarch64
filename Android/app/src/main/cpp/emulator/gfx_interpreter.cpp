@@ -2286,7 +2286,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     size_t stack_stride[64];
     uintptr_t stack_dl_base[64];
     int stack_enc[64];          /* per-frame: 0=unknown, 1=LE, 2=BE */
-    int cur_dl_enc = 0;         /* current DL encoding */
+    int cur_dl_enc = 2;         /* Fix E1: B-K recomp emits BE DLs */
     uintptr_t visited_dl_addrs[256];
     int visited_dl_count = 0;
     uint8_t *cur = (uint8_t*)tp->t.data_ptr;
@@ -2399,7 +2399,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                      * stores u32 as LE), and rely on the NOP-detection rule
                      * above to catch BE-formatted DLs (they always start
                      * with a byte[0] opcode and byte[3]=0x00). */
-                    cur_dl_enc = 1;
+                    cur_dl_enc = 2;   /* Fix E2: was 1, B-K DLs are BE */
                     static int s_amb = 0;
                     if ((s_amb++ % 500) == 0)
                         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -2848,7 +2848,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     } else if (parent_enc != 0) {
                         cur_dl_enc = parent_enc;
                     } else {
-                        cur_dl_enc = 1;
+                        cur_dl_enc = 2;   /* Fix E3: was 1, default BE */
                     }
                     static int s_enc_probe = 0;
                     if (s_enc_probe++ < 40) {
@@ -3033,8 +3033,8 @@ case 0xDC:
             case 0xEB: // G_SETTIMG - set texture image
                 break;
 default:
-                // Fix B: unknown opcode = drift, count it
-                unknown_opcode_run += 4;
+                // Fix E4: +2 (2438 adds 1 -> 3 per unknown)
+                unknown_opcode_run += 2;
                 break;
         }
 
