@@ -2972,6 +2972,14 @@ default:
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "%s", buf);
         }
     }
+    { static int s_ptask = 0; if (++s_ptask <= 30) {
+        char obuf[768]; int on = 0;
+        for (int k = 0; k < 256; k++)
+            if (s_opcount[k]) on += snprintf(obuf + on, sizeof(obuf) - on, "%02X:%u ", k, s_opcount[k]);
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-OPC", "task#%d %s", s_ptask, obuf);
+        memset(s_opcount, 0, sizeof(s_opcount));
+        s_op_total = 0;
+    } }
 }
 
 
