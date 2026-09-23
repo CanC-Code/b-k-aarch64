@@ -3093,6 +3093,30 @@ default:
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "walker: %d consecutive unknown opcodes at cur=%p depth=%d — breaking (drifted past DL)",
                 unknown_opcode_run, cur, depth);
+            /* Once-only drift entry dump: 64 bytes before and after cur,
+             * plus 64 bytes at the DL base for orientation. */
+            {
+                static int s_drift_dump = 0;
+                if (s_drift_dump++ < 1) {
+                    const uint8_t* p = (const uint8_t*)cur;
+                    char hb[3*128 + 8]; int n = 0;
+                    for (int k = -64; k < 64; k++) {
+                        if (k == 0) n += snprintf(hb+n, sizeof(hb)-n, " |");
+                        n += snprintf(hb+n, sizeof(hb)-n, " %02X", p[k]);
+                    }
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA-DRIFT",
+                        "DRIFTENTRY cur=%p depth=%d dlBase=%p bytes%s",
+                        (void*)cur, depth, (void*)s_dl_base, hb);
+                    if (s_dl_base) {
+                        const uint8_t* b = (const uint8_t*)s_dl_base;
+                        char hb2[3*64 + 4]; int n2 = 0;
+                        for (int k = 0; k < 64; k++)
+                            n2 += snprintf(hb2+n2, sizeof(hb2)-n2, " %02X", b[k]);
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA-DRIFT",
+                            "DRIFTBASE base=%p bytes%s", (void*)b, hb2);
+                    }
+                }
+            }
             break;
         }
     }
