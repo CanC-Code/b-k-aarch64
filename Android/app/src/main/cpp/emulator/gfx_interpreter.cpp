@@ -248,20 +248,24 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
             uintptr_t base = s_rdp.segmentBase[seg];
             if (base != 0 && base != (uintptr_t)-1) {
                 uint32_t off = addr & 0x00FFFFFFu;
-                if (base >= 0x70000000u && base < 0x80000000u) {
-                    uintptr_t phys = base + off;
-                    if (bka_is_readable((void*)phys)) return (uint8_t*)phys;
+                // Case A: heap low-32 (0x60..0x7F): map lookup on base, add off.
+                if (base >= 0x60000000u && base < 0x80000000u) {
+                    void* mapped = bka_lookup_addr_mapping((uint32_t)base);
+                    if (mapped) {
+                        uint8_t* cand = (uint8_t*)mapped + off;
+                        if (bka_is_readable(cand)) return cand;
+                    }
                 }
-                if (base < 0x00800000u && gN64_RDRAM) {
+                // Case B: physical RDRAM (0x00..0x03FFFFFF).
+                if (base < 0x04000000u && gN64_RDRAM) {
                     uint32_t phys = (uint32_t)base + off;
-                    if (phys < 0x800000u) return gN64_RDRAM + phys;
+                    if (phys < 0x04000000u) return gN64_RDRAM + phys;
                 }
-                if (base >= 0x80000000u && base < 0x80800000u && gN64_RDRAM) {
-                    uint32_t phys = (uint32_t)base + off;
-                    if (phys < 0x800000u) return gN64_RDRAM + phys;
+                // Case C: KSEG0 (0x80..0x83FFFFFF).
+                if (base >= 0x80000000u && base < 0x84000000u && gN64_RDRAM) {
+                    uint32_t phys = (uint32_t)(base - 0x80000000u) + off;
+                    if (phys < 0x04000000u) return gN64_RDRAM + phys;
                 }
-                void* mapped = bka_lookup_addr_mapping((uint32_t)(base + off));
-                if (mapped) return (uint8_t*)mapped;
             }
         }
     }
