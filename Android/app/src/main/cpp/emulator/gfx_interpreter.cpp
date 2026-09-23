@@ -2213,6 +2213,19 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             s_rspCallCount, tp, tp ? tp->t.type : -1, tp ? tp->t.data_ptr : nullptr,
             tp ? tp->t.data_size : 0, s_rdp.dmemVertexCount);
     }
+    {
+        static int s_topdump = 0;
+        if (s_topdump++ < 20 && tp && tp->t.data_ptr) {
+            const uint8_t* d = (const uint8_t*)tp->t.data_ptr;
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-PROBE",
+                "TOPDL ptr=%p bytes: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X | %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+                tp->t.data_ptr,
+                d[0],d[1],d[2],d[3],d[4],d[5],d[6],d[7],
+                d[8],d[9],d[10],d[11],d[12],d[13],d[14],d[15],
+                d[16],d[17],d[18],d[19],d[20],d[21],d[22],d[23],
+                d[24],d[25],d[26],d[27],d[28],d[29],d[30],d[31]);
+        }
+    }
 
     {
         static int s_taskbytes = 0;
@@ -2286,7 +2299,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     size_t stack_stride[64];
     uintptr_t stack_dl_base[64];
     int stack_enc[64];          /* per-frame: 0=unknown, 1=LE, 2=BE */
-    int cur_dl_enc = 2;         /* Fix E1: B-K recomp emits BE DLs */
+    int cur_dl_enc = 0;         /* revert E1: unknown, will be probed */
     uintptr_t visited_dl_addrs[256];
     int visited_dl_count = 0;
     uint8_t *cur = (uint8_t*)tp->t.data_ptr;
@@ -2399,7 +2412,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                      * stores u32 as LE), and rely on the NOP-detection rule
                      * above to catch BE-formatted DLs (they always start
                      * with a byte[0] opcode and byte[3]=0x00). */
-                    cur_dl_enc = 2;   /* Fix E2: was 1, B-K DLs are BE */
+                    cur_dl_enc = 1;
                     static int s_amb = 0;
                     if ((s_amb++ % 500) == 0)
                         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -2848,7 +2861,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     } else if (parent_enc != 0) {
                         cur_dl_enc = parent_enc;
                     } else {
-                        cur_dl_enc = 2;   /* Fix E3: was 1, default BE */
+                        cur_dl_enc = 1;
                     }
                     static int s_enc_probe = 0;
                     if (s_enc_probe++ < 40) {
@@ -2856,6 +2869,18 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                             "G_DL ENC-PROBE target=0x%08X bytes=%02X%02X%02X%02X chosen=%d parent=%d",
                             raw_addr, b[0],b[1],b[2],b[3], cur_dl_enc, stack_enc[depth - 1]);
+                    }
+                    {
+                        static int s_probe_detail = 0;
+                        if (s_probe_detail++ < 60) {
+                            uint8_t* b = (uint8_t*)dl_ptr;
+                            char hb[3*32 + 4]; int n = 0;
+                            for (int k = 0; k < 32; k++)
+                                n += snprintf(hb+n, sizeof(hb)-n, " %02X", b[k]);
+                            __android_log_print(ANDROID_LOG_ERROR, "BKA-PROBE",
+                                "GDL target=0x%08X probed=%d parent=%d chosen=%d bytes%s",
+                                raw_addr, probed, parent_enc, cur_dl_enc, hb);
+                        }
                     }
                 }
 
