@@ -32,6 +32,8 @@ void* bka_lookup_addr_by_low32(uint32_t low32);
     void* bka_find_registered_in_range(uintptr_t lo, uintptr_t hi);
 }
 
+static uint8_t* g_bka_dl_cur = nullptr;   // walker sets before dispatch; Cmd_* helpers read for context
+
 static RDPState s_rdp;
 static int g_bka_task_tri_count = 0;
 static int g_mtx_flag_hist[256] = {0};
@@ -2056,7 +2058,6 @@ static int s_rspCallCount = 0;
 static uint32_t s_opcount[256] = {0};
 static uint32_t s_op_total = 0;
 
-uint8_t* g_bka_dl_cur = nullptr;
 
 void RSP_ProcessGfxTask(OSTask* tp) {
     { static int s_ent = 0; if (s_ent++ < 30) {
@@ -2323,7 +2324,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 }
             }
         }
-                extern uint8_t* g_bka_dl_cur;
                 g_bka_dl_cur = cur;
         uint8_t opcode = GFX_OPCODE(c);
                 s_opcount[opcode]++;
