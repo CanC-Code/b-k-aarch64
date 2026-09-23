@@ -1057,6 +1057,15 @@ static void Cmd_SetTileSize(GfxCommand cmd) {
 
 static void Cmd_SetTImg(GfxCommand cmd) {
     uint8_t* resolved = RDP_TranslateAddr(cmd.w1);
+    { uint8_t seg = (cmd.w1 >> 24) & 0x0F;
+      uint32_t off = cmd.w1 & 0x00FFFFFF;
+      uintptr_t segBase = s_rdp.segmentBase[seg];
+      uint32_t combined = (uint32_t)(segBase + off);
+      uint8_t* viaSeg = RDP_TranslateAddr(combined);
+      static int s_sg = 0; if (s_sg++ < 20)
+          __android_log_print(ANDROID_LOG_ERROR, "BKA-SETIMG",
+              "SEGCHECK w1=%08X seg=%X off=%06X segBase=%08lX combined=%08X directRes=%p viaSegRes=%p",
+              cmd.w1, seg, off, (unsigned long)segBase, combined, (void*)resolved, (void*)viaSeg); }
     // Drift guard (2026-09-23): real gDPSetTextureImage has fmt <= 5
     // and a resolvable image address. Reject anything else — the
     // walker is landing on non-command bytes and previously clobbered
