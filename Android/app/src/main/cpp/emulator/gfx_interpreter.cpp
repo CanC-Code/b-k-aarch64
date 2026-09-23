@@ -107,11 +107,22 @@ static uintptr_t s_dl_base = 0;
 /* F3DEX opcodes that we recognize.  Used to distinguish LE-encoded runtime
  * commands from BE-encoded ROM-copied geometry commands. */
 static inline bool bka_is_f3dex_opcode(uint8_t op) {
-    if (op <= 0x07) return true;
-    if (op >= 0x08 && op <= 0x1F) return true;
-    if (op >= 0x30 && op <= 0x3F) return true;
+    /* Fix C: strict whitelist anchored on
+     *   lib/ultralib/include/PR/gbi.h  F3DEX 1.0 block (lines 100-120)
+     *   lib/ultralib/include/PR/gbi.h  F3DEX2 immediate block (lines 137-152)
+     *
+     * Real ranges:
+     *   0x00-0x08  SPNOOP..LINE3D
+     *   0xB0-0xC0  F3DEX2 immediate + G_NOOP
+     *   0xD3-0xDF  F3DEX 1.0 imm (SPECIAL_3..G_ENDDL)
+     *   0xE0-0xFF  RDP commands
+     *
+     * Everything else is drift.  BKA-OPC census showed 0x20s, 0x40s,
+     * 0x80s, 0x90s firing in bulk -- none valid in either ucode. */
+    if (op <= 0x08) return true;
     if (op >= 0xB0 && op <= 0xC0) return true;
-    if (op >= 0xE0 && op <= 0xFF) return true;
+    if (op >= 0xD3 && op <= 0xDF) return true;
+    if (op >= 0xE0) return true;
     return false;
 }
 
@@ -3022,7 +3033,8 @@ case 0xDC:
             case 0xEB: // G_SETTIMG - set texture image
                 break;
 default:
-                // Quietly skip unknown opcodes to continue processing
+                // Fix B: unknown opcode = drift, count it
+                unknown_opcode_run += 4;
                 break;
         }
 
@@ -3041,7 +3053,7 @@ default:
                         depth, (void*)cur, g_bka_task_pops);
                 }
                 depth--;
-                cur = stack[depth].ptr + stack_stride[depth];  // skip the G_DL
+                cur = stack[depth].ptr;  // Fix A: was + stack_stride, skipped a command
                 cur_end = stack[depth].end;
                 current_stride = stack_stride[depth];
                 s_dl_base = stack_dl_base[depth];
@@ -3072,7 +3084,7 @@ default:
             g_bka_frame_gen++;
             return;
         }
-        if (unknown_opcode_run > 15) {
+        if (unknown_opcode_run >= 8) {
             if (s_rspCallCount <= 30 || (s_rspCallCount % 50) == 0) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "TASK-SUMMARY #%d cmds=%zu tris=%d depth=%d end=DRIFT",
