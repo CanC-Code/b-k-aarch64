@@ -768,11 +768,11 @@ static void RasterizeTriangle(
                     float bw2 = 1.0f - bw0 - bw1;
                     int32_t uu = (int32_t)(bw0*(float)s0 + bw1*(float)s1 + bw2*(float)s2);
                     int32_t vv = (int32_t)(bw0*(float)t0 + bw1*(float)t1 + bw2*(float)t2);
+                    uint32_t vvc = (vv < 0) ? 0u : (uint32_t)vv;
                     { static int s_uv = 0; if (s_uv++ < 30)
                         __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST",
                             "UVTRACE #%d s=(%d,%d,%d) t=(%d,%d,%d) bw=(%.3f,%.3f,%.3f) uu=%d vv=%d",
                             s_uv, s0, s1, s2, t0, t1, t2, bw0, bw1, bw2, uu, vv); }
-                    uint32_t vvc = (vv < 0) ? 0u : (uint32_t)vv;
                     RDP_FetchTexel(s_rdp.activeTile, uuc, vvc, tex);
                     { static int s_txdbg = 0; if (s_txdbg++ < 3) {
                         auto& td = s_rdp.tiles[s_rdp.activeTile];
