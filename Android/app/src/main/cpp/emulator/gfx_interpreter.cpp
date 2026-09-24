@@ -2344,6 +2344,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     uintptr_t stack_dl_base[64];
     int stack_enc[64];          /* per-frame: 0=unknown, 1=LE, 2=BE */
     int cur_dl_enc = 0;         /* revert E1: unknown, will be probed */
+    bool s_seen_gdl_at_depth0 = false;   /* Fix Q: wrapper detection */
     uintptr_t visited_dl_addrs[256];
     int visited_dl_count = 0;
     uint8_t *cur = (uint8_t*)tp->t.data_ptr;
@@ -2521,6 +2522,17 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         }
         g_bka_dl_cur = cur;
         uint8_t opcode = GFX_OPCODE(c);
+        /* Fix Q: at depth 0, once we've processed at least one G_DL, a
+         * non-command means we've walked past the wrapper into trailing
+         * text/data.  Terminate cleanly; do NOT drift-bail. */
+        if (depth == 0 && s_seen_gdl_at_depth0 && !bka_is_f3dex_opcode(opcode)) {
+            static int s_qterm = 0;
+            if (s_qterm++ < 20)
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "walker: wrapper-end at cur=%p op=0x%02X w0=%08X w1=%08X -- terminating cleanly",
+                    (void*)cur, opcode, c.w0, c.w1);
+            break;
+        }
                 s_opcount[opcode]++;
                 if ((++s_op_total % 500) == 0) {
                     char obuf[2048]; int on = 0;
@@ -2897,6 +2909,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                             b[24],b[25],b[26],b[27],b[28],b[29],b[30],b[31]);
                     }
                 }
+                if (depth == 0) s_seen_gdl_at_depth0 = true;   /* Fix Q */
                 s_dl_base = (uintptr_t)dl_ptr;
                 /* disabled: { static int s_w = 0; if (s_w++ < 3) { bka_install_watch(); mprotect((void*)((uintptr_t)dl_ptr & ~0xFFFULL), 0x1000, PROT_READ); } } */
                 if (++dl_jump_log_count <= 50) {
