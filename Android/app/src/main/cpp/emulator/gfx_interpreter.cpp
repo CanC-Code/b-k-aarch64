@@ -1180,44 +1180,39 @@ static void Cmd_LoadTLUT(GfxCommand cmd) {
 }
 
 static void Cmd_LoadBlock(GfxCommand cmd) {
-    {
-        static int s_lb = 0;
-        if (s_lb++ < 40) {
-            uint32_t sl = (cmd.w0 >> 12) & 0xFFF;
-            uint32_t tl = cmd.w0 & 0xFFF;
-            uint32_t sh = (cmd.w1 >> 12) & 0xFFF;
-            uint32_t th = cmd.w1 & 0xFFF;
-            const uint8_t* src = (const uint8_t*)(s_rdp.texAddr);
-            __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADBLK",
-                "LOADBLK #%d tile=%u sl=%u tl=%u sh=%u th=%u texAddr=%p texFmt=%u texSize=%u texWidth=%u src[0..7]=%02X%02X%02X%02X %02X%02X%02X%02X",
-                s_lb, s_rdp.activeTile, sl, tl, sh, th,
-                (void*)s_rdp.texAddr, s_rdp.texFmt, s_rdp.texSize, s_rdp.texWidth,
-                src?src[0]:0, src?src[1]:0, src?src[2]:0, src?src[3]:0,
-                src?src[4]:0, src?src[5]:0, src?src[6]:0, src?src[7]:0);
-        }
-    }
-    uint32_t tile = (cmd.w0 >> 24) & 0x7;
+    /* Fix T: F3DEX LoadBlock.  Tile field is bits 16-23 of w0, NOT low 3.
+     * Contiguous transfer; sh encodes 16-bit word count - 1. */
+    uint32_t tile = (cmd.w0 >> 16) & 0x7;
     if (tile >= 8) return;
     auto& t = s_rdp.tiles[tile];
     uint32_t sl = (cmd.w0 >> 12) & 0xFFF, tl = cmd.w0 & 0xFFF;
     uint32_t sh = (cmd.w1 >> 12) & 0xFFF, th = cmd.w1 & 0xFFF;
     t.sl = sl; t.tl = tl; t.sh = sh; t.th = th;
-    
-    uint32_t bpp = RDP_BPP(t.size);
-    if (bpp == 0) bpp = 1;
-    uint32_t texWidth = (sh >> 2) + 1, texHeight = (th >> 2) + 1;
-    uint32_t texSize = texWidth * texHeight * bpp;
-    uint32_t lineWords = (texWidth * bpp + 7) / 8;
-    
-    if (s_rdp.texAddr && texSize <= 4096) {
-        uint32_t tmemBase = t.tmemAddr * 8;
-        for (uint32_t row = 0; row < texHeight; row++) {
-            uint32_t srcOffset = row * lineWords * 8;
-            uint32_t dstOffset = tmemBase + row * lineWords * 8;
-            if (dstOffset + lineWords * 8 <= 4096)
-                memcpy(s_rdp.tmem + dstOffset, s_rdp.texAddr + srcOffset, lineWords * 8);
+
+    uint32_t texSizeBytes = (sh + 1) * 2;
+    uint32_t tmemBase = t.tmemAddr * 8;
+    t.line = (texSizeBytes + 7) / 8;
+
+    if (s_rdp.texAddr && texSizeBytes > 0 &&
+        texSizeBytes <= 4096 && tmemBase + texSizeBytes <= 4096) {
+        memcpy(s_rdp.tmem + tmemBase, s_rdp.texAddr, texSizeBytes);
+        static int s_lbcopy = 0;
+        if (s_lbcopy++ < 20) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADBLK",
+                "COPY tile=%u tmemBase=%u bytes=%u src0..7=%02X%02X%02X%02X %02X%02X%02X%02X tmem0..7=%02X%02X%02X%02X %02X%02X%02X%02X",
+                tile, tmemBase, texSizeBytes,
+                s_rdp.texAddr[0],s_rdp.texAddr[1],s_rdp.texAddr[2],s_rdp.texAddr[3],
+                s_rdp.texAddr[4],s_rdp.texAddr[5],s_rdp.texAddr[6],s_rdp.texAddr[7],
+                s_rdp.tmem[tmemBase+0],s_rdp.tmem[tmemBase+1],s_rdp.tmem[tmemBase+2],s_rdp.tmem[tmemBase+3],
+                s_rdp.tmem[tmemBase+4],s_rdp.tmem[tmemBase+5],s_rdp.tmem[tmemBase+6],s_rdp.tmem[tmemBase+7]);
         }
-        t.line = lineWords;
+    } else {
+        static int s_lbskip = 0;
+        if (s_lbskip++ < 20) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADBLK",
+                "SKIP tile=%u texAddr=%p bytes=%u tmemBase=%u",
+                tile, (void*)s_rdp.texAddr, texSizeBytes, tmemBase);
+        }
     }
 }
 
