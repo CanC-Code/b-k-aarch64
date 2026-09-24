@@ -2194,6 +2194,22 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             "DMEM-COUNT-BAD: %d (should be 0..256)", s_rdp.dmemVertexCount);
         s_rdp.dmemVertexCount = DMEM_VERTEX_COUNT;
     }
+    /* Diagnostic: dump FULL top-level task buffer to logcat, once. */
+    {
+        static int s_fulldump = 0;
+        if (s_fulldump++ < 1 && tp && tp->t.data_ptr && tp->t.data_size > 0) {
+            const uint8_t* d = (const uint8_t*)tp->t.data_ptr;
+            uint32_t sz = tp->t.data_size;
+            if (sz > 4096) sz = 4096;
+            for (uint32_t off = 0; off < sz; off += 16) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-FULLTASK",
+                    "+%04X: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+                    off,
+                    d[off],  d[off+1],d[off+2],d[off+3],d[off+4],d[off+5],d[off+6],d[off+7],
+                    d[off+8],d[off+9],d[off+10],d[off+11],d[off+12],d[off+13],d[off+14],d[off+15]);
+            }
+        }
+    }
     /* Diagnostic: dump first 128 bytes of the top-level DL, decoded
      * BOTH ways, so we can finally pin the wrapper format. */
     {
