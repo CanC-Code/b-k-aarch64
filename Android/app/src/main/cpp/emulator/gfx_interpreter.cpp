@@ -107,22 +107,18 @@ static uintptr_t s_dl_base = 0;
 /* F3DEX opcodes that we recognize.  Used to distinguish LE-encoded runtime
  * commands from BE-encoded ROM-copied geometry commands. */
 static inline bool bka_is_f3dex_opcode(uint8_t op) {
-    /* Fix C: strict whitelist anchored on
-     *   lib/ultralib/include/PR/gbi.h  F3DEX 1.0 block (lines 100-120)
-     *   lib/ultralib/include/PR/gbi.h  F3DEX2 immediate block (lines 137-152)
-     *
-     * Real ranges:
-     *   0x00-0x08  SPNOOP..LINE3D
-     *   0xB0-0xC0  F3DEX2 immediate + G_NOOP
-     *   0xD3-0xDF  F3DEX 1.0 imm (SPECIAL_3..G_ENDDL)
-     *   0xE0-0xFF  RDP commands
-     *
-     * Everything else is drift.  BKA-OPC census showed 0x20s, 0x40s,
-     * 0x80s, 0x90s firing in bulk -- none valid in either ucode. */
-    if (op <= 0x08) return true;
-    if (op >= 0xB0 && op <= 0xC0) return true;
-    if (op >= 0xD3 && op <= 0xDF) return true;
-    if (op >= 0xE0) return true;
+    /* Fix F: strict F3DEX2 (B-K's ucode) whitelist from ultralib gbi.h.
+     * Reserved opcodes 0x02, 0x05, 0x07, 0x08 are NOT valid -- they
+     * appear in drift data (vertex/tables) and were resetting the drift
+     * counter every other command. */
+    if (op == 0x00) return true;   /* G_SPNOOP */
+    if (op == 0x01) return true;   /* G_MTX */
+    if (op == 0x03) return true;   /* G_MOVEMEM */
+    if (op == 0x04) return true;   /* G_VTX */
+    if (op == 0x06) return true;   /* G_DL */
+    if (op == 0x09) return true;   /* G_SPRITE2D_BASE (rare) */
+    if (op >= 0xAF && op <= 0xBF) return true; /* F3DEX2 immediate block */
+    if (op >= 0xE0) return true;   /* RDP commands */
     return false;
 }
 
@@ -2534,6 +2530,12 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         // as the boundary, so no early stop is needed.
 
                 switch (opcode) {
+            case 0xAF: // G_LOAD_UCODE - not needed for software RDP
+            case 0xB2: // G_MODIFYVTX - accepted, not implemented
+            case 0xB3: // G_RDPHALF_2
+            case 0xB4: // G_RDPHALF_1
+            case 0xB5: // G_LINE3D
+            case 0xBD: // G_POPMTX - accepted, not implemented
             case 0x00:
             case 0xC0:
             case 0xE8:
@@ -2557,7 +2559,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0x90: // Unknown
             case 0x88: // Unknown
             case 0x70: // Unknown
-            case 0x08: // Unknown
                 break;
 
             case 0xF7: Cmd_SetFillColor(c); break;
