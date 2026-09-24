@@ -2472,9 +2472,11 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         }
 
         // Banjo-Kazooie recomp emits 16-byte entries:
-        //   8 bytes = F3DEX command
-        //   8 bytes = payload (either zero padding or a 64-bit host pointer)
-        current_stride = 8;
+        //   8 bytes = F3DEX2 command (w0 at +0, w1 at +4)
+        //   8 bytes = payload (zero padding OR a 64-bit host pointer)
+        // Fix I: was 8, which read padding halves as NOP commands and
+        // occasionally as garbage pointers, poisoning the drift counter.
+        current_stride = 16;
 
         if (total <= 100) {
             if (log_after_jump) jump_log_count++;
@@ -2939,11 +2941,10 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                         "G_ENDDL after pop: depth=%d cur=%p cur_end=%p",
                         depth, cur, cur_end);
                 } else {
-                    /* TEMP TEST: continue past top-level ENDDL to see
-                     * what follows. Revert once we know. */
-                    LOGV("G_ENDDL top-level, vertices=%d (continuing for test)",
+                    /* Top-level ENDDL — this RSP task's DL is finished. */
+                    LOGV("G_ENDDL top-level, vertices=%d",
                          s_rdp.dmemVertexCount);
-                    /* fall through */
+                    return;
                 }
                 break;
 
