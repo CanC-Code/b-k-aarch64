@@ -2151,6 +2151,20 @@ static uint32_t s_opcount[256] = {0};
 static uint32_t s_op_total = 0;
 
 
+/* Fix L: robust stride detector.  Samples 3 consecutive 16-byte slots;
+ * if ALL three have zero bytes 8-15, it's a padded (16-byte) DL.
+ * Otherwise unpadded (8-byte).  The prior single-slot check false-
+ * positived when two adjacent commands both had w1 == 0. */
+static inline int bka_detect_stride(const uint8_t* p) {
+    int zero_count = 0;
+    for (int k = 0; k < 3; k++) {
+        uint32_t a = *(const uint32_t*)(p + k*16 + 8);
+        uint32_t b = *(const uint32_t*)(p + k*16 + 12);
+        if (a == 0 && b == 0) zero_count++;
+    }
+    return (zero_count == 3) ? 16 : 8;
+}
+
 void RSP_ProcessGfxTask(OSTask* tp) {
     { static int s_ent = 0; if (s_ent++ < 30) {
         uint8_t* dp = tp ? (uint8_t*)tp->t.data_ptr : nullptr;
@@ -2439,7 +2453,25 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 }
             }
         }
-                g_bka_dl_cur = cur;
+                /* Fix L: for stride-16 DLs, bytes 8-15 MUST be zero.  If they're
+         * not, we've walked out of the command section into data.  Count
+         * as drift without executing. */
+        if (current_stride == 16 && cur + 16 <= cur_end) {
+            uint32_t pad0 = *(const uint32_t*)(cur + 8);
+            uint32_t pad1 = *(const uint32_t*)(cur + 12);
+            if (pad0 != 0 || pad1 != 0) {
+                unknown_opcode_run += 3;
+                if (unknown_opcode_run >= 8) {
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                        "walker: padding violation at cur=%p depth=%d w0=%08X pad=%08X%08X -- drifting",
+                        (void*)cur, depth, c.w0, pad0, pad1);
+                    return;
+                }
+                cur += current_stride;
+                continue;
+            }
+        }
+        g_bka_dl_cur = cur;
         uint8_t opcode = GFX_OPCODE(c);
                 s_opcount[opcode]++;
                 if ((++s_op_total % 500) == 0) {
@@ -2475,11 +2507,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 raw[4], raw[5], raw[6], raw[7]);
         }
 
-        // Fix K: top-level is always 16-byte padded (verified by byte dump).
-        // Fix J's attempt to auto-detect top-level ran every loop iteration
-        // and clobbered G_DL's per-sub-DL stride.  Per-DL stride is now
-        // detected ONLY at G_DL entry.
-        current_stride = 16;
+        // Fix L: top-level stride via multi-slot detector (once, not per loop)
+        current_stride = (size_t)bka_detect_stride(cur);
 
         if (total <= 100) {
             if (log_after_jump) jump_log_count++;
@@ -2918,25 +2947,19 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 }
 
                 cur = (uint8_t*)dl_ptr;
-                /* Fix J: per-DL stride detection.  B-K's recomp emits TWO
-                 * layouts:
-                 *   - Top-level tasks: 16-byte entries (cmd 8B + 8B zero pad)
-                 *   - Sub-DLs:         8-byte entries (cmd only, no padding)
-                 * Detect by checking if bytes 8-15 of the entry are all zero.
-                 * Zero => padded => stride 16.  Non-zero => unpadded => stride 8. */
+                /* Fix L: per-sub-DL stride detection via multi-slot sampler. */
                 {
-                    uint32_t w2 = *(const uint32_t*)((const uint8_t*)dl_ptr + 8);
-                    uint32_t w3 = *(const uint32_t*)((const uint8_t*)dl_ptr + 12);
-                    if (w2 == 0 && w3 == 0) {
-                        current_stride = 16;
-                    } else {
-                        current_stride = 8;
-                    }
+                    const uint8_t* _p = (const uint8_t*)dl_ptr;
+                    current_stride = (size_t)bka_detect_stride(_p);
                     static int s_jlog = 0;
                     if (s_jlog++ < 40) {
                         __android_log_print(ANDROID_LOG_ERROR, "BKA-STRIDE",
-                            "GDL target=0x%08X w2=%08X w3=%08X -> stride=%zu",
-                            raw_addr, w2, w3, current_stride);
+                            "GDL target=0x%08X b8_15=[%08X %08X] b24_31=[%08X %08X] b40_47=[%08X %08X] -> stride=%zu",
+                            raw_addr,
+                            *(const uint32_t*)(_p+8),  *(const uint32_t*)(_p+12),
+                            *(const uint32_t*)(_p+24), *(const uint32_t*)(_p+28),
+                            *(const uint32_t*)(_p+40), *(const uint32_t*)(_p+44),
+                            current_stride);
                     }
                 }
                 // Use a safe upper bound based on MAX_DL_CMDS to avoid
