@@ -2503,6 +2503,15 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         }
         g_bka_dl_cur = cur;
         uint8_t opcode = GFX_OPCODE(c);
+        /* Fix P1: depth-0 strictness.  Top-level DLs are never padded
+         * with data.  A non-command at depth 0 means we've walked past
+         * the wrapper DL into whatever the task buffer holds next. */
+        if (depth == 0 && total > 0 && !bka_is_f3dex_opcode(opcode)) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "walker: depth-0 non-command cur=%p op=0x%02X w0=%08X w1=%08X -- terminating",
+                (void*)cur, opcode, c.w0, c.w1);
+            break;
+        }
                 s_opcount[opcode]++;
                 if ((++s_op_total % 500) == 0) {
                     char obuf[2048]; int on = 0;
@@ -2997,7 +3006,18 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                  * that happen to sit behind a G_DL word in the recomp buffer. */
                 {
                     int score = bka_looks_like_dl((const uint8_t*)dl_ptr, (int)current_stride);
-                    if (score < 6) {
+                    {
+                        static int s_scorelog = 0;
+                        if (s_scorelog++ < 60) {
+                            const uint8_t* _p = (const uint8_t*)dl_ptr;
+                            __android_log_print(ANDROID_LOG_ERROR, "BKA-STRIDE",
+                                "GDL caller=%p target=0x%08X stride=%zu score=%d/8 first16=%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+                                (void*)cur, raw_addr, current_stride, score,
+                                _p[0],_p[1],_p[2],_p[3],_p[4],_p[5],_p[6],_p[7],
+                                _p[8],_p[9],_p[10],_p[11],_p[12],_p[13],_p[14],_p[15]);
+                        }
+                    }
+                    if (score < 7) {
                         static int s_refuse = 0;
                         if (s_refuse++ < 30) {
                             const uint8_t* _p = (const uint8_t*)dl_ptr;
