@@ -107,18 +107,16 @@ static uintptr_t s_dl_base = 0;
 /* F3DEX opcodes that we recognize.  Used to distinguish LE-encoded runtime
  * commands from BE-encoded ROM-copied geometry commands. */
 static inline bool bka_is_f3dex_opcode(uint8_t op) {
-    /* Fix F: strict F3DEX2 (B-K's ucode) whitelist from ultralib gbi.h.
-     * Reserved opcodes 0x02, 0x05, 0x07, 0x08 are NOT valid -- they
-     * appear in drift data (vertex/tables) and were resetting the drift
-     * counter every other command. */
-    if (op == 0x00) return true;   /* G_SPNOOP */
-    if (op == 0x01) return true;   /* G_MTX */
-    if (op == 0x03) return true;   /* G_MOVEMEM */
-    if (op == 0x04) return true;   /* G_VTX */
-    if (op == 0x06) return true;   /* G_DL */
-    if (op == 0x09) return true;   /* G_SPRITE2D_BASE (rare) */
-    if (op >= 0xAF && op <= 0xBF) return true; /* F3DEX2 immediate block */
-    if (op >= 0xE0) return true;   /* RDP commands */
+    /* Fix N: F3DEX2-only whitelist.  B-K uses F3DEX2; F3DEX 1.0 opcodes
+     * 0x02, 0x05, 0x07, 0x08, 0xE0-0xE3 are drift tokens in this data.
+     *
+     * DMA: 0x00 SPNOOP, 0x01 MTX, 0x03 MOVEMEM, 0x04 VTX, 0x06 DL
+     * Imm: 0xAF-0xBF (LOAD_UCODE..TRI1)
+     * RDP: 0xE4-0xFF (TEXRECT..SETCIMG) */
+    if (op == 0x00 || op == 0x01 || op == 0x03 ||
+        op == 0x04 || op == 0x06) return true;
+    if (op >= 0xAF && op <= 0xBF) return true;
+    if (op >= 0xE4) return true;
     return false;
 }
 
@@ -2477,6 +2475,26 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                         "walker: padding violation at cur=%p depth=%d w0=%08X pad=%08X%08X -- drifting",
                         (void*)cur, depth, c.w0, pad0, pad1);
+                    return;
+                }
+                cur += current_stride;
+                continue;
+            }
+        }
+        /* Fix O: RGBA fill-pattern detector.  Bytes 4-7 of a real command
+         * are a w1 pointer/param.  If they are a repeating byte pattern
+         * (0x787878xx, 0x464646xx, 0x3C3C3Cxx), we are reading texture
+         * data as commands.  Count as drift without dispatching. */
+        {
+            uint8_t b4 = (c.w1 >> 24) & 0xFF;
+            uint8_t b5 = (c.w1 >> 16) & 0xFF;
+            uint8_t b6 = (c.w1 >>  8) & 0xFF;
+            if (b4 == b5 && b5 == b6 && b4 != 0 && b4 != 0xFF) {
+                unknown_opcode_run += 3;
+                if (unknown_opcode_run >= 8) {
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                        "walker: fill-pattern at cur=%p depth=%d w0=%08X w1=%08X -- drifting",
+                        (void*)cur, depth, c.w0, c.w1);
                     return;
                 }
                 cur += current_stride;
