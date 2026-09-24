@@ -2155,6 +2155,18 @@ static uint32_t s_op_total = 0;
  * if ALL three have zero bytes 8-15, it's a padded (16-byte) DL.
  * Otherwise unpadded (8-byte).  The prior single-slot check false-
  * positived when two adjacent commands both had w1 == 0. */
+/* Fix M: does the target actually look like a DL, or is it data?
+ * Sample 8 slots, count how many have a whitelisted opcode byte at
+ * position [0] (BE) or [3] (LE).  Real DLs score 7-8; data tables 3-4. */
+static int bka_looks_like_dl(const uint8_t* p, int stride) {
+    int valid = 0;
+    for (int k = 0; k < 8; k++) {
+        const uint8_t* s = p + (size_t)k * stride;
+        if (bka_is_f3dex_opcode(s[0]) || bka_is_f3dex_opcode(s[3])) valid++;
+    }
+    return valid;
+}
+
 static inline int bka_detect_stride(const uint8_t* p) {
     int zero_count = 0;
     for (int k = 0; k < 3; k++) {
@@ -2960,6 +2972,30 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                             *(const uint32_t*)(_p+24), *(const uint32_t*)(_p+28),
                             *(const uint32_t*)(_p+40), *(const uint32_t*)(_p+44),
                             current_stride);
+                    }
+                }
+                /* Fix M: refuse targets that don't score as a DL.  Prevents
+                 * the walker from entering vertex/palette/pointer tables
+                 * that happen to sit behind a G_DL word in the recomp buffer. */
+                {
+                    int score = bka_looks_like_dl((const uint8_t*)dl_ptr, (int)current_stride);
+                    if (score < 6) {
+                        static int s_refuse = 0;
+                        if (s_refuse++ < 30) {
+                            const uint8_t* _p = (const uint8_t*)dl_ptr;
+                            __android_log_print(ANDROID_LOG_ERROR, "BKA-STRIDE",
+                                "GDL target=0x%08X REFUSED as data (score=%d/8) first16=%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+                                raw_addr, score,
+                                _p[0],_p[1],_p[2],_p[3],_p[4],_p[5],_p[6],_p[7],
+                                _p[8],_p[9],_p[10],_p[11],_p[12],_p[13],_p[14],_p[15]);
+                        }
+                        if (++consecutive_bad_gdl > 8) {
+                            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                                "walker: %d consecutive refused G_DLs -- bailing",
+                                consecutive_bad_gdl);
+                            return;
+                        }
+                        break;
                     }
                 }
                 // Use a safe upper bound based on MAX_DL_CMDS to avoid
