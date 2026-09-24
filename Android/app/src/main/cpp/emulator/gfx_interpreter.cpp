@@ -2531,9 +2531,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
                 switch (opcode) {
             case 0xAF: // G_LOAD_UCODE - not needed for software RDP
-            case 0xB2: // G_MODIFYVTX - accepted, not implemented
             case 0xB3: // G_RDPHALF_2
-            case 0xB4: // G_RDPHALF_1
             case 0xB5: // G_LINE3D
             case 0xBD: // G_POPMTX - accepted, not implemented
             case 0x00:
