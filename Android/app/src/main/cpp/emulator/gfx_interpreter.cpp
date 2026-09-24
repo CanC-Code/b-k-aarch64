@@ -2538,17 +2538,33 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         }
         g_bka_dl_cur = cur;
         uint8_t opcode = GFX_OPCODE(c);
-        /* Fix Q: at depth 0, once we've processed at least one G_DL, a
-         * non-command means we've walked past the wrapper into trailing
-         * text/data.  Terminate cleanly; do NOT drift-bail. */
-        if (depth == 0 && s_seen_gdl_at_depth0 && !bka_is_f3dex_opcode(opcode)) {
-            static int s_qterm = 0;
-            if (s_qterm++ < 20)
+        /* Fix R: after popping out of a G_DL, verify the parent has a
+         * valid command next.  If not, the parent DL has ended -- the
+         * walker did not return to a real command sequence.  Unwind or
+         * terminate cleanly, do NOT drift into the metadata tail. */
+        if (s_just_popped && !bka_is_f3dex_opcode(opcode)) {
+            static int s_rterm = 0;
+            if (s_rterm++ < 30)
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                    "walker: wrapper-end at cur=%p op=0x%02X w0=%08X w1=%08X -- terminating cleanly",
-                    (void*)cur, opcode, c.w0, c.w1);
+                    "walker: post-pop non-command at cur=%p depth=%d op=0x%02X -- unwinding",
+                    (void*)cur, depth, opcode);
+            if (depth > 0) {
+                depth--;
+                cur = stack[depth].ptr;
+                cur_end = stack[depth].end;
+                current_stride = stack_stride[depth];
+                s_dl_base = stack_dl_base[depth];
+                cur_dl_enc = stack_enc[depth];
+                dl_cmds = 0;
+                zero_run = 0;
+                s_just_popped = false;
+                continue;
+            }
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "walker: top-level wrapper ended cleanly at cur=%p", (void*)cur);
             break;
         }
+        s_just_popped = false;
                 s_opcount[opcode]++;
                 if ((++s_op_total % 500) == 0) {
                     char obuf[2048]; int on = 0;
