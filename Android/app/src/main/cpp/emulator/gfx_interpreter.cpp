@@ -2194,6 +2194,24 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             "DMEM-COUNT-BAD: %d (should be 0..256)", s_rdp.dmemVertexCount);
         s_rdp.dmemVertexCount = DMEM_VERTEX_COUNT;
     }
+    /* Diagnostic: dump first 128 bytes of the top-level DL, decoded
+     * BOTH ways, so we can finally pin the wrapper format. */
+    {
+        static int s_tl_dump = 0;
+        if (s_tl_dump++ < 3 && tp && tp->t.data_ptr) {
+            const uint8_t* d = (const uint8_t*)tp->t.data_ptr;
+            for (int row = 0; row < 16; row++) {
+                const uint8_t* r = d + row * 8;
+                uint32_t le = (uint32_t)(r[0] | (r[1]<<8) | (r[2]<<16) | (r[3]<<24));
+                uint32_t be = (uint32_t)((r[0]<<24) | (r[1]<<16) | (r[2]<<8) | r[3]);
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-TLD",
+                    "t#%d +%03X: %02X%02X%02X%02X %02X%02X%02X%02X  LE_op=%02X BE_op=%02X",
+                    s_rspCallCount, row * 8,
+                    r[0],r[1],r[2],r[3],r[4],r[5],r[6],r[7],
+                    (uint8_t)(le >> 24), (uint8_t)(be >> 24));
+            }
+        }
+    }
     s_rspCallCount++;
     g_bka_task_tri_count = 0;
     g_bka_task_pops = 0;
@@ -2503,15 +2521,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         }
         g_bka_dl_cur = cur;
         uint8_t opcode = GFX_OPCODE(c);
-        /* Fix P1: depth-0 strictness.  Top-level DLs are never padded
-         * with data.  A non-command at depth 0 means we've walked past
-         * the wrapper DL into whatever the task buffer holds next. */
-        if (depth == 0 && total > 0 && !bka_is_f3dex_opcode(opcode)) {
-            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                "walker: depth-0 non-command cur=%p op=0x%02X w0=%08X w1=%08X -- terminating",
-                (void*)cur, opcode, c.w0, c.w1);
-            break;
-        }
                 s_opcount[opcode]++;
                 if ((++s_op_total % 500) == 0) {
                     char obuf[2048]; int on = 0;
