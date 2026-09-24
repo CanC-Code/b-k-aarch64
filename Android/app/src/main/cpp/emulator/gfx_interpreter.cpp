@@ -2361,6 +2361,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     int stack_enc[64];          /* per-frame: 0=unknown, 1=LE, 2=BE */
     int cur_dl_enc = 0;         /* revert E1: unknown, will be probed */
     bool s_seen_gdl_at_depth0 = false;   /* Fix Q: wrapper detection */
+    bool s_just_popped = false;          /* Fix R: set by G_ENDDL pop, cleared on dispatch */
     uintptr_t visited_dl_addrs[256];
     int visited_dl_count = 0;
     uint8_t *cur = (uint8_t*)tp->t.data_ptr;
