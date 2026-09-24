@@ -2322,6 +2322,10 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     bool log_after_jump = false;
     int jump_log_count = 0;
 
+    /* Ring buffer of last accepted commands for drift diagnosis. */
+    struct { uint8_t* ptr; uint32_t w0, w1; uint8_t op; int enc; } s_lastcmds[8];
+    int s_lastcmd_idx = 0;
+    memset(s_lastcmds, 0, sizeof(s_lastcmds));
     while (cur + current_stride <= cur_end) {
         if (++total > MAX_TOTAL_CMDS) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -2491,6 +2495,12 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         } else {
             cmds_since_progress++;
         }
+        s_lastcmds[s_lastcmd_idx & 7].ptr = cur;
+        s_lastcmds[s_lastcmd_idx & 7].w0 = c.w0;
+        s_lastcmds[s_lastcmd_idx & 7].w1 = c.w1;
+        s_lastcmds[s_lastcmd_idx & 7].op = opcode;
+        s_lastcmds[s_lastcmd_idx & 7].enc = cur_dl_enc;
+        s_lastcmd_idx++;
         cur += current_stride;
 
         if (c.w0 != 0 || c.w1 != 0) zero_run = 0;
@@ -3121,33 +3131,36 @@ default:
                     s_rspCallCount, total, g_bka_task_tri_count, depth);
             }
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                "walker: %d consecutive unknown opcodes at cur=%p depth=%d — breaking (drifted past DL)",
+                "walker: %d consecutive unknown opcodes at cur=%p depth=%d — returning",
                 unknown_opcode_run, cur, depth);
-            /* Once-only drift entry dump: 64 bytes before and after cur,
-             * plus 64 bytes at the DL base for orientation. */
+            /* Once-only drift diagnosis: dump last 8 accepted commands
+             * (ptr, w0, w1, op, enc) plus 32 raw bytes at each. */
             {
                 static int s_drift_dump = 0;
-                if (s_drift_dump++ < 1) {
+                if (s_drift_dump++ < 2) {
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA-DRIFT",
+                        "DRIFT-SUMMARY cur=%p depth=%d dlBase=%p stride=%zu",
+                        (void*)cur, depth, (void*)s_dl_base, current_stride);
+                    for (int k = 7; k >= 0; k--) {
+                        int i = (s_lastcmd_idx - 1 - k) & 7;
+                        if (!s_lastcmds[i].ptr) continue;
+                        const uint8_t* p = s_lastcmds[i].ptr;
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA-DRIFT",
+                            "LAST[-%d] ptr=%p op=0x%02X enc=%d w0=%08X w1=%08X next8=%02X%02X%02X%02X %02X%02X%02X%02X",
+                            k, (void*)p, s_lastcmds[i].op, s_lastcmds[i].enc,
+                            s_lastcmds[i].w0, s_lastcmds[i].w1,
+                            p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7]);
+                    }
+                    /* Also dump the raw 128 bytes ending at cur */
                     const uint8_t* p = (const uint8_t*)cur;
                     char hb[3*128 + 8]; int n = 0;
-                    for (int k = -64; k < 64; k++) {
-                        if (k == 0) n += snprintf(hb+n, sizeof(hb)-n, " |");
+                    for (int k = -128; k < 0; k++)
                         n += snprintf(hb+n, sizeof(hb)-n, " %02X", p[k]);
-                    }
                     __android_log_print(ANDROID_LOG_ERROR, "BKA-DRIFT",
-                        "DRIFTENTRY cur=%p depth=%d dlBase=%p bytes%s",
-                        (void*)cur, depth, (void*)s_dl_base, hb);
-                    if (s_dl_base) {
-                        const uint8_t* b = (const uint8_t*)s_dl_base;
-                        char hb2[3*64 + 4]; int n2 = 0;
-                        for (int k = 0; k < 64; k++)
-                            n2 += snprintf(hb2+n2, sizeof(hb2)-n2, " %02X", b[k]);
-                        __android_log_print(ANDROID_LOG_ERROR, "BKA-DRIFT",
-                            "DRIFTBASE base=%p bytes%s", (void*)b, hb2);
-                    }
+                        "RAW128BACK ending@%p bytes%s", (void*)cur, hb);
                 }
             }
-            break;
+            return;
         }
     }
     if (s_rspCallCount <= 30 || (s_rspCallCount % 50) == 0) {
