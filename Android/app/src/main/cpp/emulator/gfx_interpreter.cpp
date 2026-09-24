@@ -1180,6 +1180,22 @@ static void Cmd_LoadTLUT(GfxCommand cmd) {
 }
 
 static void Cmd_LoadBlock(GfxCommand cmd) {
+    {
+        static int s_lb = 0;
+        if (s_lb++ < 40) {
+            uint32_t sl = (cmd.w0 >> 12) & 0xFFF;
+            uint32_t tl = cmd.w0 & 0xFFF;
+            uint32_t sh = (cmd.w1 >> 12) & 0xFFF;
+            uint32_t th = cmd.w1 & 0xFFF;
+            const uint8_t* src = (const uint8_t*)(s_rdp.texAddr);
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADBLK",
+                "LOADBLK #%d tile=%u sl=%u tl=%u sh=%u th=%u texAddr=%p texFmt=%u texSize=%u texWidth=%u src[0..7]=%02X%02X%02X%02X %02X%02X%02X%02X",
+                s_lb, s_rdp.activeTile, sl, tl, sh, th,
+                (void*)s_rdp.texAddr, s_rdp.texFmt, s_rdp.texSize, s_rdp.texWidth,
+                src?src[0]:0, src?src[1]:0, src?src[2]:0, src?src[3]:0,
+                src?src[4]:0, src?src[5]:0, src?src[6]:0, src?src[7]:0);
+        }
+    }
     uint32_t tile = (cmd.w0 >> 24) & 0x7;
     if (tile >= 8) return;
     auto& t = s_rdp.tiles[tile];
