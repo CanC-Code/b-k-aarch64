@@ -2475,12 +2475,19 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 raw[4], raw[5], raw[6], raw[7]);
         }
 
-        // Banjo-Kazooie recomp emits 16-byte entries:
-        //   8 bytes = F3DEX2 command (w0 at +0, w1 at +4)
-        //   8 bytes = payload (zero padding OR a 64-bit host pointer)
-        // Fix I: was 8, which read padding halves as NOP commands and
-        // occasionally as garbage pointers, poisoning the drift counter.
-        current_stride = 16;
+        // Fix J: auto-detect top-level stride too.  16-byte entry with
+        // zero pad => stride 16.  Otherwise 8.
+        {
+            uint32_t w2 = *(const uint32_t*)(cur + 8);
+            uint32_t w3 = *(const uint32_t*)(cur + 12);
+            current_stride = (w2 == 0 && w3 == 0) ? 16 : 8;
+            static int s_tlog = 0;
+            if (s_tlog++ < 40) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-STRIDE",
+                    "TOPDL ptr=%p w2=%08X w3=%08X -> stride=%zu",
+                    (void*)cur, w2, w3, current_stride);
+            }
+        }
 
         if (total <= 100) {
             if (log_after_jump) jump_log_count++;
@@ -2917,6 +2924,27 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 }
 
                 cur = (uint8_t*)dl_ptr;
+                /* Fix J: per-DL stride detection.  B-K's recomp emits TWO
+                 * layouts:
+                 *   - Top-level tasks: 16-byte entries (cmd 8B + 8B zero pad)
+                 *   - Sub-DLs:         8-byte entries (cmd only, no padding)
+                 * Detect by checking if bytes 8-15 of the entry are all zero.
+                 * Zero => padded => stride 16.  Non-zero => unpadded => stride 8. */
+                {
+                    uint32_t w2 = *(const uint32_t*)((const uint8_t*)dl_ptr + 8);
+                    uint32_t w3 = *(const uint32_t*)((const uint8_t*)dl_ptr + 12);
+                    if (w2 == 0 && w3 == 0) {
+                        current_stride = 16;
+                    } else {
+                        current_stride = 8;
+                    }
+                    static int s_jlog = 0;
+                    if (s_jlog++ < 40) {
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA-STRIDE",
+                            "GDL target=0x%08X w2=%08X w3=%08X -> stride=%zu",
+                            raw_addr, w2, w3, current_stride);
+                    }
+                }
                 // Use a safe upper bound based on MAX_DL_CMDS to avoid
                 // running off into non-DL data if this nested list lacks ENDDL.
                 // Set cur_end to the actual mapped region end, not a huge upper bound.
