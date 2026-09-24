@@ -2323,7 +2323,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     int jump_log_count = 0;
 
     /* Ring buffer of last accepted commands for drift diagnosis. */
-    struct { uint8_t* ptr; uint32_t w0, w1; uint8_t op; int enc; } s_lastcmds[8];
+    struct { uint8_t* ptr; uint32_t w0, w1; uint8_t op; int enc; size_t stride; int depth; } s_lastcmds[32];
     int s_lastcmd_idx = 0;
     memset(s_lastcmds, 0, sizeof(s_lastcmds));
     while (cur + current_stride <= cur_end) {
@@ -2475,19 +2475,11 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 raw[4], raw[5], raw[6], raw[7]);
         }
 
-        // Fix J: auto-detect top-level stride too.  16-byte entry with
-        // zero pad => stride 16.  Otherwise 8.
-        {
-            uint32_t w2 = *(const uint32_t*)(cur + 8);
-            uint32_t w3 = *(const uint32_t*)(cur + 12);
-            current_stride = (w2 == 0 && w3 == 0) ? 16 : 8;
-            static int s_tlog = 0;
-            if (s_tlog++ < 40) {
-                __android_log_print(ANDROID_LOG_ERROR, "BKA-STRIDE",
-                    "TOPDL ptr=%p w2=%08X w3=%08X -> stride=%zu",
-                    (void*)cur, w2, w3, current_stride);
-            }
-        }
+        // Fix K: top-level is always 16-byte padded (verified by byte dump).
+        // Fix J's attempt to auto-detect top-level ran every loop iteration
+        // and clobbered G_DL's per-sub-DL stride.  Per-DL stride is now
+        // detected ONLY at G_DL entry.
+        current_stride = 16;
 
         if (total <= 100) {
             if (log_after_jump) jump_log_count++;
@@ -2502,11 +2494,13 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         } else {
             cmds_since_progress++;
         }
-        s_lastcmds[s_lastcmd_idx & 7].ptr = cur;
-        s_lastcmds[s_lastcmd_idx & 7].w0 = c.w0;
-        s_lastcmds[s_lastcmd_idx & 7].w1 = c.w1;
-        s_lastcmds[s_lastcmd_idx & 7].op = opcode;
-        s_lastcmds[s_lastcmd_idx & 7].enc = cur_dl_enc;
+        s_lastcmds[s_lastcmd_idx & 31].ptr = cur;
+        s_lastcmds[s_lastcmd_idx & 31].w0 = c.w0;
+        s_lastcmds[s_lastcmd_idx & 31].w1 = c.w1;
+        s_lastcmds[s_lastcmd_idx & 31].op = opcode;
+        s_lastcmds[s_lastcmd_idx & 31].enc = cur_dl_enc;
+        s_lastcmds[s_lastcmd_idx & 31].stride = current_stride;
+        s_lastcmds[s_lastcmd_idx & 31].depth = depth;
         s_lastcmd_idx++;
         cur += current_stride;
 
@@ -3165,17 +3159,18 @@ default:
              * (ptr, w0, w1, op, enc) plus 32 raw bytes at each. */
             {
                 static int s_drift_dump = 0;
-                if (s_drift_dump++ < 2) {
+                if (s_drift_dump++ < 4) {
                     __android_log_print(ANDROID_LOG_ERROR, "BKA-DRIFT",
                         "DRIFT-SUMMARY cur=%p depth=%d dlBase=%p stride=%zu",
                         (void*)cur, depth, (void*)s_dl_base, current_stride);
-                    for (int k = 7; k >= 0; k--) {
-                        int i = (s_lastcmd_idx - 1 - k) & 7;
+                    for (int k = 31; k >= 0; k--) {
+                        int i = (s_lastcmd_idx - 1 - k) & 31;
                         if (!s_lastcmds[i].ptr) continue;
                         const uint8_t* p = s_lastcmds[i].ptr;
                         __android_log_print(ANDROID_LOG_ERROR, "BKA-DRIFT",
-                            "LAST[-%d] ptr=%p op=0x%02X enc=%d w0=%08X w1=%08X next8=%02X%02X%02X%02X %02X%02X%02X%02X",
-                            k, (void*)p, s_lastcmds[i].op, s_lastcmds[i].enc,
+                            "LAST[-%d] ptr=%p depth=%d stride=%zu op=0x%02X enc=%d w0=%08X w1=%08X next8=%02X%02X%02X%02X %02X%02X%02X%02X",
+                            k, (void*)p, s_lastcmds[i].depth, s_lastcmds[i].stride,
+                            s_lastcmds[i].op, s_lastcmds[i].enc,
                             s_lastcmds[i].w0, s_lastcmds[i].w1,
                             p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7]);
                     }
