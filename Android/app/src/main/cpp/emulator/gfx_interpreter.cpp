@@ -2225,15 +2225,21 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
     {
         static int s_taskbytes = 0;
-        if (tp && tp->t.data_ptr && (s_taskbytes++ % 50) == 0) {
+        if (tp && tp->t.data_ptr && s_taskbytes < 2) {
+            s_taskbytes++;
             const uint8_t* d = (const uint8_t*)tp->t.data_ptr;
-            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                 "TASK#%d data=%p size=%u bytes: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X | %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
-                s_rspCallCount, tp->t.data_ptr, tp->t.data_size,
-                d[0],d[1],d[2],d[3],d[4],d[5],d[6],d[7],
-                d[8],d[9],d[10],d[11],d[12],d[13],d[14],d[15],
-                d[16],d[17],d[18],d[19],d[20],d[21],d[22],d[23],
-                d[24],d[25],d[26],d[27],d[28],d[29],d[30],d[31]);
+            for (int row = 0; row < 32; row++) {
+                const uint8_t* r = d + row * 8;
+                unsigned le = (unsigned)(r[0] | (r[1]<<8) | (r[2]<<16) | (r[3]<<24));
+                unsigned be = (unsigned)((r[0]<<24) | (r[1]<<16) | (r[2]<<8) | r[3]);
+                unsigned le2 = (unsigned)(r[4] | (r[5]<<8) | (r[6]<<16) | (r[7]<<24));
+                unsigned be2 = (unsigned)((r[4]<<24) | (r[5]<<16) | (r[6]<<8) | r[7]);
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-FULLDL",
+                    "t#%d +%03X: %02X%02X%02X%02X %02X%02X%02X%02X  w0_LE=%08X w0_BE=%08X  w1_LE=%08X w1_BE=%08X",
+                    s_rspCallCount, row * 8,
+                    r[0],r[1],r[2],r[3],r[4],r[5],r[6],r[7],
+                    le, be, le2, be2);
+            }
         }
     }
 
@@ -2933,12 +2939,11 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                         "G_ENDDL after pop: depth=%d cur=%p cur_end=%p",
                         depth, cur, cur_end);
                 } else {
-                    /* Top-level ENDDL — this RSP task's DL is finished.
-                     * Previously this just broke the switch, letting the
-                     * walker drift past the DL into unmapped memory. */
-                    LOGV("G_ENDDL top-level, vertices=%d",
+                    /* TEMP TEST: continue past top-level ENDDL to see
+                     * what follows. Revert once we know. */
+                    LOGV("G_ENDDL top-level, vertices=%d (continuing for test)",
                          s_rdp.dmemVertexCount);
-                    return;
+                    /* fall through */
                 }
                 break;
 
