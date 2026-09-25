@@ -336,7 +336,7 @@ int levelSpecificFlags_validateCRC2(void) { return 1; }
 int dummy_func_80320248(void) { return 1; }
 int func_80320240(void) { return 1; }
 int map_getLevel(int a) { (void)a; return 0; }
-int level_get(void) { return 0; }
+/* int level_get(void) { return 0; }  -- removed 2026-09-25; real def in src/core2/code_9A740.c */
 void func_80321854(void) {}
 void func_8030AFD8(int a) { (void)a; }
 
