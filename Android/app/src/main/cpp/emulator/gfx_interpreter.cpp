@@ -2240,6 +2240,11 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         }
     }
     s_rspCallCount++;
+    /* Fix U: increment frame gen at task ENTRY, not exit.  The exit
+     * increments are after possible early returns (drift, G_ENDDL,
+     * post-pop unwind) so gen stayed at 0 and the video upload gate
+     * skipped every frame except its 500ms stale fallback. */
+    g_bka_frame_gen++;
     g_bka_task_tri_count = 0;
     g_bka_task_pops = 0;
     g_bka_task_max_depth = 0;
