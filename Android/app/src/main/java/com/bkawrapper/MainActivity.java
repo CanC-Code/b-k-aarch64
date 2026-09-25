@@ -271,27 +271,35 @@ public class MainActivity extends AppCompatActivity {
         // process is killed by the SurfaceFlinger UAF.  When it fires,
         // MainActivity.onNewIntent checks whether the game reached
         // running state; if not, it relaunches.
-        try {
-            AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
-            Intent retry = new Intent(this, MainActivity.class);
-            retry.setAction("com.bkawrapper.RETRY_LAUNCH");
-            retry.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            PendingIntent pi = PendingIntent.getActivity(
-                    this, 0xC0DE, retry,
-                    PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-            // Inexact set() — no SCHEDULE_EXACT_ALARM permission needed.
-            // Fires within ~1-5s of target, which is fine for a 20s watchdog.
-            am.set(AlarmManager.RTC_WAKEUP,
-                    System.currentTimeMillis() + 20_000L, pi);
-        } catch (Throwable t) {
-            Log.w(TAG, "AlarmManager schedule failed: " + t);
+        // DISABLED 2026-09-24: the 20s AlarmManager watchdog was firing on
+        // every boot and tearing down NativeGameActivity's surface.  Nothing
+        // writes last_frame.txt, so onNewIntent saw age=MAX and re-launched,
+        // which paused the running NativeActivity and killed its window.
+        // Net effect: the process stayed alive but the GL surface was
+        // destroyed 13-20s after boot and never recreated.
+        // Re-enable only after a real heartbeat is written on each rendered
+        // frame -- otherwise this watchdog is a guaranteed kill switch.
+        if (false) {
+            try {
+                AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
+                Intent retry = new Intent(this, MainActivity.class);
+                retry.setAction("com.bkawrapper.RETRY_LAUNCH");
+                retry.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                PendingIntent pi = PendingIntent.getActivity(
+                        this, 0xC0DE, retry,
+                        PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+                am.set(AlarmManager.RTC_WAKEUP,
+                        System.currentTimeMillis() + 20_000L, pi);
+            } catch (Throwable t) {
+                Log.w(TAG, "AlarmManager schedule failed: " + t);
+            }
         }
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-        if (intent != null && "com.bkawrapper.RETRY_LAUNCH".equals(intent.getAction())) {
+        if (false && intent != null && "com.bkawrapper.RETRY_LAUNCH".equals(intent.getAction())) {
             // AlarmManager fired. Did the game make it?
             long age = Long.MAX_VALUE;
             try {
