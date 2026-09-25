@@ -20,6 +20,9 @@ struct {
 void func_803216D0(enum map_e map){
     s32 prev_lvl = D_80383300.level;
     D_80383300.level = map_getLevel(map);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-LVL",
+        "SET &D_80383300=%p level=%d map=%d map_getLevel=%d",
+        (void*)&D_80383300, (int)D_80383300.level, (int)map, (int)map_getLevel(map));
     overlayManager_load(leveloverlay_getOverlayFromLevel(D_80383300.level));
     D_80383300.unk0 = 0;
     if(func_802E4A8C()){
