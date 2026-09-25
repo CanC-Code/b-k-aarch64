@@ -198,6 +198,18 @@ void mainLoop(void){
             spawnQueue_func_802C3A18();
             __android_log_print(ANDROID_LOG_ERROR, "BKA-LOOP", "before func_802E4424\n");
             if(func_802E4424()) {
+                {
+                    static int s_snap = 0;
+                    if (s_snap++ % 30 == 0) {
+                        extern u32 D_8027A130;
+                        extern s32 level_get(void);
+                        extern s32 func_802E4A08(void);
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA-STATE",
+                            "frame=%d D_8027A130=%u gameMode=%d level=%d E4A08=%d",
+                            s_snap, (unsigned)D_8027A130, getGameMode(),
+                            (int)level_get(), (int)func_802E4A08());
+                    }
+                }
                 /* Fix DD diagnostic: snapshot state every 30 frames */
                 {
                     static int s_snap = 0;
