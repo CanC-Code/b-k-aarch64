@@ -543,11 +543,15 @@ void VideoPlugin_OutputFrameTexture(uint32_t hostTextureId) {
                         (void*)s_ptr, (void*)b_ptr, (int)(s_ptr==b_ptr),
                         (void*)gN64_RDRAM, g_active_fb_offset, chk_s, chk_b);
                 }
-                int nonZero = 0, nonFFFF = 0;
+                int nonZero = 0, nonFFFF = 0, firstNZ = -1;
                 for (int i = 0; i < fbWidth * fbHeight; i++) {   // full scan
-                    if (fbs[i] != 0) nonZero++;
+                    if (fbs[i] != 0) { nonZero++; if (firstNZ < 0) firstNZ = i; }
                     if (fbs[i] != 0xFFFF) nonFFFF++;
                 }
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-FB",
+                    "SCAN fb=%p rdr=%p ofs=0x%X w=%d h=%d firstNZ=%d nz=%d",
+                    (void*)fbBase, (void*)gN64_RDRAM, g_active_fb_offset,
+                    fbWidth, fbHeight, firstNZ, nonZero);
                 __android_log_print(ANDROID_LOG_INFO, "BKA-SENT",
                     "AFTER-SCAN fbs[0]=%04X fbs[1]=%04X fbs[fbW]=%04X",
                     fbs[0], fbs[1], fbs[fbWidth]);

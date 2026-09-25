@@ -800,7 +800,7 @@ static void RasterizeTriangle(
                     g = (uint8_t)(((int)g * tex[1]) / 255);
                     b = (uint8_t)(((int)b * tex[2]) / 255);
                 }
-            { static int s_px = 0; if (s_px++ < 500) __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST", "PIXWRITE #%d y=%d x=%d rgb=(%d,%d,%d) rgb565=0x%04X", s_px, (int)y, (int)x, r, g, b, RGBA8_TO_RGB565(r,g,b)); }
+            { static int s_px = 0; if (s_px++ < 500) __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST", "PIXWRITE #%d y=%d x=%d rgb=(%d,%d,%d) rgb565=0x%04X fb=%p rdr=%p ofs=0x%X idx=%d", s_px, (int)y, (int)x, r, g, b, RGBA8_TO_RGB565(r,g,b), (void*)&fb[y*FB_WIDTH+x], (void*)gN64_RDRAM, g_active_fb_offset, (int)(y*FB_WIDTH+x)); }
                 bka_guard_write(&fb[y * FB_WIDTH + x], 2, "Raster.fb");
                 *(volatile uint16_t *)&fb[y * FB_WIDTH + x] = RGBA8_TO_RGB565(r, g, b);
             }
