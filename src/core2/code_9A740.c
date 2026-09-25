@@ -84,6 +84,9 @@ void func_80321854(void){
 }
 
 enum level_e level_get(void){
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-LVL",
+        "GET &D_80383300=%p level=%d",
+        (void*)&D_80383300, (int)D_80383300.level);
     return D_80383300.level;
 }
 
