@@ -2019,9 +2019,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
 // =======================================================================
 // G_FILLRECT - Solid color rectangle fill
 // =======================================================================
-static bool g_bka_fill_disabled = false;  /* Fix AA 2026-09-24: re-enabled after diagnostic */
 static void Cmd_FillRect(GfxCommand cmd) {
-    if (g_bka_fill_disabled) return;
     {
         static int s_fr = 0;
         if (s_fr++ < 40) {
@@ -2048,6 +2046,23 @@ static void Cmd_FillRect(GfxCommand cmd) {
     ulx = std::max(0, ulx); uly = std::max(0, uly);
     lrx = std::min(lrx, FB_WIDTH); lry = std::min(lry, FB_HEIGHT);
     if (ulx >= lrx || uly >= lry) return;
+
+    /* Fix BB: skip full-screen clears that appear AFTER geometry in the
+     * same task.  B-K's recomp emits the frame's clear at the end of the
+     * DL rather than the start, so we were wiping the frame we'd just
+     * drawn.  Clear-before-geometry still works (frame init). */
+    {
+        bool fullscreen = (ulx <= 0 && uly <= 0 && lrx >= FB_WIDTH && lry >= FB_HEIGHT);
+        extern int g_bka_task_tri_count;
+        if (fullscreen && g_bka_task_tri_count > 0) {
+            static int s_bb_skip = 0;
+            if (s_bb_skip++ < 20)
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST",
+                    "FILL-SKIP full-screen clear after %d tris this task",
+                    g_bka_task_tri_count);
+            return;
+        }
+    }
     
     { static int s_fr = 0; if (s_fr++ < 100) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "FILLPRE fillRGB=(%d,%d,%d) ulx=%d uly=%d lrx=%d lry=%d w0=%08X w1=%08X", s_rdp.fillR, s_rdp.fillG, s_rdp.fillB, (int)ulx, (int)uly, (int)lrx, (int)lry, cmd.w0, cmd.w1); }
     uint16_t color = RGBA8_TO_RGB565(s_rdp.fillR, s_rdp.fillG, s_rdp.fillB);
