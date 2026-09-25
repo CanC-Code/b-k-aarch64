@@ -2020,6 +2020,20 @@ static void Cmd_Mtx(GfxCommand cmd) {
 // G_FILLRECT - Solid color rectangle fill
 // =======================================================================
 static void Cmd_FillRect(GfxCommand cmd) {
+    {
+        static int s_fr = 0;
+        if (s_fr++ < 40) {
+            uint32_t x0 = (cmd.w0 >> 12) & 0xFFF;
+            uint32_t y0 = cmd.w0 & 0xFFF;
+            uint32_t x1 = (cmd.w1 >> 12) & 0xFFF;
+            uint32_t y1 = cmd.w1 & 0xFFF;
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-FILLRECT",
+                "FILLRECT x0=%u y0=%u x1=%u y1=%u w=%u h=%u",
+                x0, y0, x1, y1,
+                (x1 > x0) ? (x1 - x0 + 1) : 0,
+                (y1 > y0) ? (y1 - y0 + 1) : 0);
+        }
+    }
     { static int s_fr = 0; if (s_fr++ < 10 || (s_fr % 200) == 0)
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "FILLRECT-ENTRY #%d w0=0x%08X w1=0x%08X", s_fr, cmd.w0, cmd.w1); }
