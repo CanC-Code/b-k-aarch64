@@ -2535,24 +2535,11 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 }
             }
         }
-                /* Fix L: for stride-16 DLs, bytes 8-15 MUST be zero.  If they're
-         * not, we've walked out of the command section into data.  Count
-         * as drift without executing. */
-        if (current_stride == 16 && cur + 16 <= cur_end) {
-            uint32_t pad0 = *(const uint32_t*)(cur + 8);
-            uint32_t pad1 = *(const uint32_t*)(cur + 12);
-            if (pad0 != 0 || pad1 != 0) {
-                unknown_opcode_run += 3;
-                if (unknown_opcode_run >= 8) {
-                    __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                        "walker: padding violation at cur=%p depth=%d w0=%08X pad=%08X%08X -- drifting",
-                        (void*)cur, depth, c.w0, pad0, pad1);
-                    return;
-                }
-                cur += current_stride;
-                continue;
-            }
-        }
+                /* Fix X: removed Fix L's padding sanity check.  B-K's recomp
+         * layout is 8 bytes command + 8 bytes payload (host pointer /
+         * metadata), NOT 8 bytes command + 8 bytes zero padding.  The
+         * check was bailing on every valid command, dropping the walker
+         * down to 1-3 commands per task. */
         /* Fix O: RGBA fill-pattern detector.  Bytes 4-7 of a real command
          * are a w1 pointer/param.  If they are a repeating byte pattern
          * (0x787878xx, 0x464646xx, 0x3C3C3Cxx), we are reading texture
