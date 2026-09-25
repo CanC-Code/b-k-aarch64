@@ -36,6 +36,7 @@ static uint8_t* g_bka_dl_cur = nullptr;   // walker sets before dispatch; Cmd_* 
 
 static RDPState s_rdp;
 static int g_bka_task_tri_count = 0;
+int g_bka_last_tri2_count = 0;   /* Fix DD: total TRI2 calls, monotonic */
 static int g_mtx_flag_hist[256] = {0};
 volatile uint32_t g_bka_frame_gen = 0;
 static int g_bka_task_max_depth = 0;
@@ -1406,6 +1407,7 @@ static void Cmd_Tri1(GfxCommand cmd) {
 
 static void Cmd_Tri2(GfxCommand cmd) {
     g_bka_task_tri_count++;
+    { extern int g_bka_last_tri2_count; g_bka_last_tri2_count++; }
     static int s_tri2_calls = 0;
     if (++s_tri2_calls % 200 == 1 || s_tri2_calls < 5) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",

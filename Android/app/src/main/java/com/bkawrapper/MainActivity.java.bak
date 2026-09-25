@@ -1,9 +1,12 @@
 // File: Android/app/src/main/java/com/bkawrapper/MainActivity.java
 package com.bkawrapper;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.IntentFilter;
 import android.content.res.AssetManager;
 import android.net.Uri;
@@ -21,6 +24,7 @@ import androidx.core.content.ContextCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import android.opengl.GLSurfaceView;
+import android.widget.FrameLayout;
 
 import java.io.File;
 import javax.microedition.khronos.egl.EGLConfig;
@@ -74,10 +78,50 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Automation: if auto_rom.z64 exists in files dir, load it directly
+        File autoRom = new File(getFilesDir(), "auto_rom.z64");
 
+        // If extraction already finished (sentinel + valid rom_base.bin),
+        // skip it entirely and boot the engine directly.  This prevents
+        // the 15-second re-extraction on every launch that causes
+        // "Activity top resumed state loss timeout" from the OS.
         if (hasExtractionCompleted()) {
             Log.i(TAG, "Extraction sentinel and base ROM verified — skipping ROM selection");
-            bootGameEngine();
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                getSplashScreen().setOnExitAnimationListener(splash -> {
+                    Log.i(TAG, "Splash exited; starting GL engine");
+                    splash.remove();
+                    bootGameEngine();
+                });
+            } else {
+                bootGameEngine();
+            }
+            return;
+        }
+
+        if (autoRom.exists()) {
+            Log.i(TAG, "Auto-load ROM detected: " + autoRom.getAbsolutePath());
+            // Run OTR extraction first - creates rom_base.bin required by engine
+            startExtraction(Uri.fromFile(autoRom));
+            return;
+        }
+
+        if (false) {   // original hasExtractionCompleted branch — dead now
+            Log.i(TAG, "Extraction sentinel and base ROM verified — skipping ROM selection");
+            // Wait for the splash screen to fully exit before creating the GL
+            // surface. On Android 12+ / Motorola libgui, the splash surface
+            // teardown races with GLSurfaceView creation and can leave a
+            // stale TransactionCompletedListener in the framework, causing
+            // a UAF on the app's binder thread.
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                getSplashScreen().setOnExitAnimationListener(splash -> {
+                    Log.i(TAG, "Splash exited; starting GL engine");
+                    splash.remove();
+                    bootGameEngine();
+                });
+            } else {
+                bootGameEngine();
+            }
         } else {
             setContentView(R.layout.activity_main);
             neutralizeXmlGLSurfaceView((ViewGroup) findViewById(android.R.id.content));
@@ -95,6 +139,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        maybeRetryGameLaunch();
         IntentFilter filter = new IntentFilter();
         filter.addAction(OtrService.ACTION_OTR_PROGRESS);
         filter.addAction(OtrService.ACTION_OTR_COMPLETE);
@@ -170,15 +215,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startExtraction(Uri romUri) {
-        if (menuOverlay != null) menuOverlay.setVisibility(View.GONE);
-        if (otrContainer != null) otrContainer.setVisibility(View.VISIBLE);
-
+        // Don't block main thread - just start the service
         Intent serviceIntent = new Intent(this, OtrService.class);
         serviceIntent.putExtra("uri",    romUri.toString());
         serviceIntent.putExtra("outDir", getFilesDir().getAbsolutePath());
 
         // Upgraded to startForegroundService for Target SDK 34 compliance
         ContextCompat.startForegroundService(this, serviceIntent);
+        
+        // Keep UI responsive while extraction runs
+        new Thread(() -> {
+            try { Thread.sleep(500); } catch (InterruptedException e) {}
+        }).start();
     }
 
     private void updateUI(int percent, String fileName) {
@@ -205,39 +253,78 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(this, "Extraction failed: " + message, Toast.LENGTH_LONG).show();
     }
 
+    private static final int  RETRY_LIMIT = 0;   // disabled for diagnostic
+    private static long s_lastGameStart = 0;
+    private static int  s_retries = 0;
+
     private void bootGameEngine() {
-        final String assetDir    = getFilesDir().getAbsolutePath();
-        final AssetManager mgr   = getAssets();
+        s_lastGameStart = System.currentTimeMillis();
+        Intent intent = new Intent(this, NativeGameActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
+        startActivity(intent);
+        // Do NOT finish() — MainActivity stays in the backstack so
+        // onResume() fires when NativeGameActivity dies early, letting
+        // maybeRetryGameLaunch() reattempt.
 
-        glSurfaceView = new GLSurfaceView(this);
-        glSurfaceView.setEGLContextClientVersion(3);
-        glSurfaceView.setEGLConfigChooser(8, 8, 8, 8, 24, 8);
-        glSurfaceView.setPreserveEGLContextOnPause(true);
+        // External safety net: schedule an AlarmManager check 20s out.
+        // AlarmManager runs in the system process and fires even if our
+        // process is killed by the SurfaceFlinger UAF.  When it fires,
+        // MainActivity.onNewIntent checks whether the game reached
+        // running state; if not, it relaunches.
+        try {
+            AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
+            Intent retry = new Intent(this, MainActivity.class);
+            retry.setAction("com.bkawrapper.RETRY_LAUNCH");
+            retry.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            PendingIntent pi = PendingIntent.getActivity(
+                    this, 0xC0DE, retry,
+                    PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+            // Inexact set() — no SCHEDULE_EXACT_ALARM permission needed.
+            // Fires within ~1-5s of target, which is fine for a 20s watchdog.
+            am.set(AlarmManager.RTC_WAKEUP,
+                    System.currentTimeMillis() + 20_000L, pi);
+        } catch (Throwable t) {
+            Log.w(TAG, "AlarmManager schedule failed: " + t);
+        }
+    }
 
-        glSurfaceView.setRenderer(new GLRenderer(this, assetDir, mgr));
-        glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
-
-        // FIXED: Bridge the Android Surface to native code so the engine can
-        // initialize EGL and unblock the vblank synchronization loop.
-        // Without this callback, g_nativeWindow stays null and the engine
-        // thread hangs forever in BKA_FrameSyncHook waiting for g_windowCond.
-        glSurfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
-            @Override
-            public void surfaceCreated(SurfaceHolder holder) {
-                NativeBridge.setSurface(holder.getSurface());
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if (intent != null && "com.bkawrapper.RETRY_LAUNCH".equals(intent.getAction())) {
+            // AlarmManager fired. Did the game make it?
+            long age = Long.MAX_VALUE;
+            try {
+                java.io.File f = new java.io.File(getFilesDir(), "last_frame.txt");
+                if (f.exists()) {
+                    String txt = new String(java.nio.file.Files.readAllBytes(f.toPath())).trim();
+                    long lastOk = Long.parseLong(txt);
+                    age = System.currentTimeMillis() - lastOk;
+                }
+            } catch (Exception ignored) {}
+            if (age > 10_000L) {    // no successful frame in last 10s — relaunch
+                Log.i(TAG, "AlarmManager watchdog fired (age=" + age + "ms) — relaunching");
+                bootGameEngine();
+            } else {
+                Log.i(TAG, "AlarmManager watchdog fired; game healthy (age=" + age + "ms)");
             }
+        }
+    }
 
-            @Override
-            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-                // Dimensions are forwarded by GLRenderer.onSurfaceChanged → NativeBridge.surfaceReady
-            }
-
-            @Override
-            public void surfaceDestroyed(SurfaceHolder holder) {
-                NativeBridge.setSurface(null);
-            }
-        });
-
-        setContentView(glSurfaceView);
+    // If NativeGameActivity dies within 6s of being started, retry up to
+    // RETRY_LIMIT times.  The intermittency is a Motorola/Android-14
+    // SurfaceFlinger UAF that fires during early startup, so a clean
+    // second or third launch usually succeeds.
+    private void maybeRetryGameLaunch() {
+        if (s_lastGameStart == 0) return;
+        long elapsed = System.currentTimeMillis() - s_lastGameStart;
+        if (elapsed > 8000) return;                 // prior launch had time to succeed
+        if (s_retries >= RETRY_LIMIT) {
+            Log.w(TAG, "Retry limit reached; not restarting");
+            return;
+        }
+        s_retries++;
+        Log.i(TAG, "Early return (" + elapsed + "ms), retry " + s_retries);
+        bootGameEngine();
     }
 }
