@@ -2177,13 +2177,33 @@ static int bka_looks_like_dl(const uint8_t* p, int stride) {
 }
 
 static inline int bka_detect_stride(const uint8_t* p) {
-    int zero_count = 0;
-    for (int k = 0; k < 3; k++) {
-        uint32_t a = *(const uint32_t*)(p + k*16 + 8);
-        uint32_t b = *(const uint32_t*)(p + k*16 + 12);
-        if (a == 0 && b == 0) zero_count++;
+    /* Fix W: sample 8 slots at each candidate stride, count how many
+     * contain a valid F3DEX2 opcode in either encoding.  Pick the
+     * stride with more hits.  The prior zero-padding heuristic fails
+     * on B-K's top-level DLs: bytes 8-15 of each 16-byte entry hold a
+     * non-zero pointer + type field, not zero padding.  That made the
+     * detector return 8 for the top level, so half the "commands"
+     * walked were metadata words like 005BE460 -> op=0x60 (garbage). */
+    int valid8 = 0, valid16 = 0;
+    for (int k = 0; k < 8; k++) {
+        uint32_t w = *(const uint32_t*)(p + k*8);
+        uint8_t le_op = (uint8_t)(w >> 24);
+        uint8_t be_op = (uint8_t)(w & 0xFF);
+        if (bka_is_f3dex_opcode(le_op) || bka_is_f3dex_opcode(be_op)) valid8++;
     }
-    return (zero_count == 3) ? 16 : 8;
+    for (int k = 0; k < 8; k++) {
+        uint32_t w = *(const uint32_t*)(p + k*16);
+        uint8_t le_op = (uint8_t)(w >> 24);
+        uint8_t be_op = (uint8_t)(w & 0xFF);
+        if (bka_is_f3dex_opcode(le_op) || bka_is_f3dex_opcode(be_op)) valid16++;
+    }
+    static int s_wlog = 0;
+    if (s_wlog++ < 20) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-STRIDE",
+            "DETECT ptr=%p valid8=%d/8 valid16=%d/8 -> stride=%d",
+            (void*)p, valid8, valid16, (valid16 >= valid8) ? 16 : 8);
+    }
+    return (valid16 >= valid8) ? 16 : 8;
 }
 
 void RSP_ProcessGfxTask(OSTask* tp) {
