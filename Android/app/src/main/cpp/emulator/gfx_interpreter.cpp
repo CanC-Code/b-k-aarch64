@@ -2047,7 +2047,7 @@ static void Cmd_FillRect(GfxCommand cmd) {
     lrx = std::min(lrx, FB_WIDTH); lry = std::min(lry, FB_HEIGHT);
     if (ulx >= lrx || uly >= lry) return;
     
-    { static int s_fr = 0; if (s_fr++ < 100) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "FILLPRE fillRGB=(%d,%d,%d) ulx=%d uly=%d lrx=%d lry=%d w0=%08X w1=%08X fb=%p", s_rdp.fillR, s_rdp.fillG, s_rdp.fillB, (int)ulx, (int)uly, (int)lrx, (int)lry, cmd.w0, cmd.w1, (void*)fb); }
+    { static int s_fr = 0; if (s_fr++ < 100) __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX", "FILLPRE fillRGB=(%d,%d,%d) ulx=%d uly=%d lrx=%d lry=%d w0=%08X w1=%08X", s_rdp.fillR, s_rdp.fillG, s_rdp.fillB, (int)ulx, (int)uly, (int)lrx, (int)lry, cmd.w0, cmd.w1); }
     uint16_t color = RGBA8_TO_RGB565(s_rdp.fillR, s_rdp.fillG, s_rdp.fillB);
     int activeFb = getActiveFramebuffer();
     uint16_t* fb = (uint16_t*)(gN64_RDRAM + g_active_fb_offset);
