@@ -2638,7 +2638,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         }
 
         // Fix L: top-level stride via multi-slot detector (once, not per loop)
-        current_stride = (size_t)bka_detect_stride(cur);
+        current_stride = 16;   /* Fix Y1: top-level is always 8+8 */
 
         if (total <= 100) {
             if (log_after_jump) jump_log_count++;
@@ -3081,7 +3081,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 /* Fix L: per-sub-DL stride detection via multi-slot sampler. */
                 {
                     const uint8_t* _p = (const uint8_t*)dl_ptr;
-                    current_stride = (size_t)bka_detect_stride(_p);
+                    current_stride = 8;   /* Fix Y2: sub-DL is 8-byte packed, no payload */
                     static int s_jlog = 0;
                     if (s_jlog++ < 40) {
                         __android_log_print(ANDROID_LOG_ERROR, "BKA-STRIDE",
