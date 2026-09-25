@@ -2053,7 +2053,9 @@ static void Cmd_FillRect(GfxCommand cmd) {
      * drawn.  Clear-before-geometry still works (frame init). */
     {
         bool fullscreen = (ulx <= 0 && uly <= 0 && lrx >= FB_WIDTH && lry >= FB_HEIGHT);
-        extern int g_bka_task_tri_count;
+        /* Fix BB: reference the file-scope static directly.  The previous
+         * patch shadowed it with an `extern` that bound to zero at link
+         * time, so the check never fired and never skipped anything. */
         if (fullscreen && g_bka_task_tri_count > 0) {
             static int s_bb_skip = 0;
             if (s_bb_skip++ < 20)
