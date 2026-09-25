@@ -2019,7 +2019,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
 // =======================================================================
 // G_FILLRECT - Solid color rectangle fill
 // =======================================================================
-static bool g_bka_fill_disabled = true;   /* DIAG 2026-09-24: set false to re-enable */
+static bool g_bka_fill_disabled = false;  /* Fix AA 2026-09-24: re-enabled after diagnostic */
 static void Cmd_FillRect(GfxCommand cmd) {
     if (g_bka_fill_disabled) return;
     {
