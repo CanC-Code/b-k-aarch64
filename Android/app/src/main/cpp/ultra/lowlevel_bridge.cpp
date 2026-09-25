@@ -453,11 +453,13 @@ static uint32_t g_tex_cache_id = 0;
 void VideoPlugin_OutputFrameTexture(uint32_t hostTextureId) {
     /* return; */ // Re-enabled for software rendering
         static int diagCount = 0;
-        if (++diagCount <= 5) {
+        int diag_n = ++diagCount;
+        if (diag_n <= 40 || diag_n % 200 == 0) {
             __android_log_print(ANDROID_LOG_INFO, LOG_TAG,
-                "VideoPlugin: call=%d texId=%u rdr=%p fb_ofs=%08X w=%d h=%d",
-                diagCount, hostTextureId, gN64_RDRAM,
-                g_active_fb_offset, gFramebufferWidth, gFramebufferHeight);
+                "VideoPlugin: call=%d texId=%u rdr=%p fb_ofs=%08X w=%d h=%d gen=%u real_frame=%d",
+                diag_n, hostTextureId, gN64_RDRAM,
+                g_active_fb_offset, gFramebufferWidth, gFramebufferHeight,
+                (unsigned)g_bka_frame_gen, g_bka_real_frame_count);
         }
 
         if (!gN64_RDRAM || hostTextureId == 0) return;
@@ -472,6 +474,13 @@ void VideoPlugin_OutputFrameTexture(uint32_t hostTextureId) {
         uint32_t gen = g_bka_frame_gen;
         bool gen_changed = (gen != s_last_gen);
         bool stale = (_now_ns - s_last_upload_ns) > 500000000LL;  // 500ms
+        if (diag_n <= 40 || diag_n % 200 == 0) {
+            __android_log_print(ANDROID_LOG_INFO, LOG_TAG,
+                "VideoPlugin GATE: call=%d gen=%u last_gen=%u changed=%d stale=%d (->%s)",
+                diag_n, (unsigned)gen, (unsigned)s_last_gen,
+                (int)gen_changed, (int)stale,
+                (gen_changed || stale) ? "upload" : "SKIP");
+        }
         if (!gen_changed && !stale) return;
         s_last_gen = gen;
         s_last_upload_ns = _now_ns;

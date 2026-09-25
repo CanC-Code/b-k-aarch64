@@ -66,8 +66,18 @@ static void initGL() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    uint32_t magenta[16]; for (int i=0;i<16;i++) magenta[i]=0xFFFF00FF;
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 4, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, magenta);
+    // DIAG 2026-09-24: bright red placeholder -- if the screen turns red
+    // the quad + swap path is working and the failure is in the framebuffer
+    // upload.  If it stays green-sliver, the quad is off-screen or the
+    // surface is wrong.  Restore to magenta once diagnosed.
+    uint8_t placeholder_rgba[4*4*4];
+    for (int i = 0; i < 64; i += 4) {
+        placeholder_rgba[i+0] = 0xFF;  // R
+        placeholder_rgba[i+1] = 0x00;  // G
+        placeholder_rgba[i+2] = 0x00;  // B
+        placeholder_rgba[i+3] = 0xFF;  // A
+    }
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 4, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, placeholder_rgba);
 
     static const float V[8] = { -1,-1,  1,-1, -1,1,  1,1 };
     static const float T[8] = {  0, 1,  1, 1,  0,0,  1,0 };
@@ -179,6 +189,13 @@ static void renderFrame() {
     g_rs.lastNs = t;
 
     bka_update_texture((int)g_rs.tex);
+
+    { static int64_t s_lastLogNs = 0;
+      if (t - s_lastLogNs >= 1000000000LL) {
+          s_lastLogNs = t;
+          LOGI("renderFrame: ready=%d dims=%dx%d tex=%u frames=%d",
+               (int)g_rs.ready, g_rs.w, g_rs.h, g_rs.tex, g_rs.frames);
+      } }
 
     glClearColor(0,0,0,1);
     glClear(GL_COLOR_BUFFER_BIT);
