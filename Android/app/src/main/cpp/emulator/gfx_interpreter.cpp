@@ -2606,7 +2606,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 s_opcount[opcode]++;
                 if ((++s_op_total % 500) == 0) {
                     char obuf[2048]; int on = 0;
-                    for (int k = 0; k < 256; k++)
+                    for (int k = 0; k < 256 && on < (int)sizeof(obuf) - 16; k++)
                         if (s_opcount[k]) on += snprintf(obuf + on, sizeof(obuf) - on, "%02X:%u ", k, s_opcount[k]);
                     __android_log_print(ANDROID_LOG_ERROR, "BKA-OPC", "seen=%u %s", s_op_total, obuf);
                 }

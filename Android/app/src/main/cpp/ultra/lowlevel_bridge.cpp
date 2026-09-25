@@ -524,8 +524,8 @@ void VideoPlugin_OutputFrameTexture(uint32_t hostTextureId) {
             {
                 /* Dump first 32 pixels of framebuffer as hex, direct from RDRAM */
                 uint16_t* fb = (uint16_t*)fbBase;
-                char hb[3*32 + 4]; int n = 0;
-                for (int k = 0; k < 32; k++)
+                char hb[256]; int n = 0;
+                for (int k = 0; k < 32 && n < (int)sizeof(hb) - 8; k++)
                     n += snprintf(hb + n, sizeof(hb) - n, " %04X", fb[k]);
                 __android_log_print(ANDROID_LOG_ERROR, "BKA-FB",
                     "PIXELS[0..31] fbBase=%p%s", (void*)fbBase, hb);
