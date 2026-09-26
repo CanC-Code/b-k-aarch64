@@ -70,7 +70,8 @@ s32 endOffset;
 u8 D_80383D18[8];
 
 /* .code */
-void savedata_update_crc(s32 buffer, s32 size){
+void savedata_update_crc(void *buffer_void, s32 size){
+    u8 *buffer = (u8 *)buffer_void;
     u32 sp20[2];
     u32 sum;
     glcrc_calc_checksum(buffer, buffer + size - 4, sp20);
