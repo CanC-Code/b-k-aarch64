@@ -616,6 +616,6 @@ void BKA_ClaimEngineLock(void) { s_n64_gil.lock(); }
 // -------------------------------------------------------------------------
 // mainLoop stub REMOVED — real implementation in src/core1/code_0.c
 void core1_loadOTR(uint8_t* data, size_t size) {}
-int  func_80258A4C(void)                    { return 0; }
+//DISABLED_DUP: int  func_80258A4C(void)                    { return 0; }
 void func_8025A123(void)                    {}
 void initInterruptTables(void)              {}
