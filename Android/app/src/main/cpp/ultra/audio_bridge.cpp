@@ -9,41 +9,25 @@ extern "C" {
    Music
 ========================= */
 
-//DISABLED_DUP: void coMusicPlayer_playMusic(int id) {
-    LOGW("playMusic stub: %d", id);
-}
-
-// FIXED: Replaced '...' with 'void' for strict C compatibility inside extern "C"
-//DISABLED_DUP: void comusic_8025AB44(void) {
-    LOGW("comusic_8025AB44 stub");
-}
+// coMusicPlayer_playMusic, comusic_8025AB44, func_8025A9D4, etc.
+// Real defs in src/core2/. Stubs disabled to eliminate duplicate symbols.
 
 /* =========================
    Audio Engine
 ========================= */
 
-//DISABLED_DUP: void n_alSynAddPlayer(void) {
-    LOGW("n_alSynAddPlayer stub");
-}
+// n_alSynAddPlayer, n_alSynStartVoice, n_alSynStopVoice
+// Real defs in src/core1/ultra/audio/. Stubs disabled.
 
 void n_alSynRemovePlayer(void) {
     LOGW("n_alSynRemovePlayer stub");
 }
 
-//DISABLED_DUP: void n_alSynStartVoice(void) {}
-//DISABLED_DUP: void n_alSynStopVoice(void) {}
-
 /* =========================
    SFX
 ========================= */
 
-// FIXED: Commented out sfx_play to resolve the "duplicate symbol" linker error.
-// The game already provides the full definition for this in src/core2/code_85800.c.
-/*
-void sfx_play(void) {
-    LOGW("sfx_play stub");
-}
-*/
+// sfx_play: real def in src/core2/code_85800.c
 
 void func_8025F4F0(void) {
     LOGW("audio func_8025F4F0 stub");

@@ -23,22 +23,12 @@ void ml_vec3f_clear(float* v) {
     v[0] = v[1] = v[2] = 0.0f;
 }
 
-//DISABLED_DUP: void ml_vec3f_add(float* out, const float* a, const float* b) {
-    out[0] = a[0] + b[0];
-    out[1] = a[1] + b[1];
-    out[2] = a[2] + b[2];
-}
+// ml_vec3f_add, ml_vec3f_scale: real defs in src/core1/ml.c. Stubs disabled.
 
 void ml_vec3f_sub(float* out, const float* a, const float* b) {
     out[0] = a[0] - b[0];
     out[1] = a[1] - b[1];
     out[2] = a[2] - b[2];
-}
-
-//DISABLED_DUP: void ml_vec3f_scale(float* v, float s) {
-    v[0] *= s;
-    v[1] *= s;
-    v[2] *= s;
 }
 
 float ml_vec3f_length(const float* v) {
@@ -70,16 +60,10 @@ int ml_isNonzero_vec3f(const float* v) {
 void ml_vec3f_yaw_rotate_copy(float* dst, const float* src, float yaw) {
     float c = cosf(yaw);
     float s = sinf(yaw);
-
     dst[0] = src[0] * c - src[2] * s;
     dst[1] = src[1];
     dst[2] = src[0] * s + src[2] * c;
 }
-
-/* =========================
-   Matrix
-========================= */
-
 
 /* =========================
    Math Helpers
@@ -89,4 +73,4 @@ float gu_sqrtf(float x) {
     return sqrtf(x);
 }
 
-}
+} // extern "C"
