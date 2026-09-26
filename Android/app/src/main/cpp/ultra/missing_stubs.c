@@ -440,9 +440,9 @@ void func_80255888(void) {}
 //DISABLED_DUP: void sns_find_and_parse_payload(void) {}
 //DISABLED_DUP: void sns_write_payload_over_heap(void) {}
 //DISABLED_DUP: void sns_init_base_payloads(void) {}
-void snspayload_append_key_to_outgoing_payload(void *payload, s32 key) {}
-void snspayload_rewind_outgoing(void) {}
-void snspayload_finalise_outgoing_payload(void *payload) {}
+//DISABLED_DUP: void snspayload_append_key_to_outgoing_payload(void *payload, s32 key) {}
+//DISABLED_DUP: void snspayload_rewind_outgoing(void) {}
+//DISABLED_DUP: void snspayload_finalise_outgoing_payload(void *payload) {}
 
 extern void ResourceMgr_HandleDma(void* dramAddr, u32 devAddr, u32 size);
 void piMgr_read(void *vaddr, s32 devaddr, s32 size) {
