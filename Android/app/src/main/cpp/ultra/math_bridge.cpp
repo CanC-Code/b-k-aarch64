@@ -3,6 +3,10 @@
 
 extern "C" {
 
+/* Real defs in src/core1/ml.c (stubs removed to fix duplicate symbols) */
+extern void ml_vec3f_add(float* dst, const float* a, const float* b);
+extern void ml_vec3f_scale(float* v, float s);
+
 /* =========================
    Basic Vec3f Operations
 ========================= */
@@ -22,8 +26,6 @@ void ml_vec3f_set(float* v, float x, float y, float z) {
 void ml_vec3f_clear(float* v) {
     v[0] = v[1] = v[2] = 0.0f;
 }
-
-// ml_vec3f_add, ml_vec3f_scale: real defs in src/core1/ml.c. Stubs disabled.
 
 void ml_vec3f_sub(float* out, const float* a, const float* b) {
     out[0] = a[0] - b[0];
