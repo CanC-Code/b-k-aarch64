@@ -286,14 +286,17 @@ void print_applyTextureToBoldFontLetter(BKSpriteTextureBlock *alphaMask, BKSprit
 FontLetter *print_getLettersFromFont(BKSprite *alphaMask, BKSprite *textureSprite){
     BKSpriteFrame * font = sprite_getFramePtr(alphaMask, 0);
     BKSpriteTextureBlock *chunkPtr;
-    FontLetter * letters = malloc((font->chunkCnt + 1)*sizeof(FontLetter));
+    /* ARM64 port: sprite asset data is big-endian on disk */
+    s16 font_chunkCnt = (s16)__builtin_bswap16((u16)font->chunkCnt);
+    s16 font_type     = (s16)__builtin_bswap16((u16)alphaMask->type);
+    FontLetter * letters = malloc((font_chunkCnt + 1)*sizeof(FontLetter));
     u8* palDataPtr;
     u8* chunkDataPtr;
     s32 chunkSize;
     s32 i;
     
 
-    switch(alphaMask->type){
+    switch(font_type){
         case SPRITE_TYPE_CI8:
             {//L802F4CA8 
                 chunkPtr = (BKSpriteTextureBlock *) (font + 1);
@@ -304,7 +307,7 @@ FontLetter *print_getLettersFromFont(BKSprite *alphaMask, BKSprite *textureSprit
                 palDataPtr = chunkDataPtr;
                 chunkPtr = (BKSpriteTextureBlock *) (palDataPtr + 2*0x100);
                 
-                for(i= 0; i < font->chunkCnt; i++){
+                for(i= 0; i < font_chunkCnt; i++){
                     
                     chunkDataPtr = (u8*)(chunkPtr + 1);
                     while((uintptr_t)chunkDataPtr % 8)
@@ -312,7 +315,7 @@ FontLetter *print_getLettersFromFont(BKSprite *alphaMask, BKSprite *textureSprit
 
                     letters[i].sprite = chunkPtr;
                     letters[i].palette = palDataPtr;
-                    chunkSize = chunkPtr->w*chunkPtr->h;
+                    chunkSize = (s16)__builtin_bswap16((u16)chunkPtr->w) * (s16)__builtin_bswap16((u16)chunkPtr->h);
                     chunkPtr = (BKSpriteTextureBlock *)(chunkDataPtr + chunkSize);
                 }
             }
@@ -320,10 +323,10 @@ FontLetter *print_getLettersFromFont(BKSprite *alphaMask, BKSprite *textureSprit
         case SPRITE_TYPE_RGBA32://L802F4D80
             {
                 chunkPtr = (BKSpriteTextureBlock *)(font + 1);
-                for( i = 0; i < font->chunkCnt; i++){
+                for( i = 0; i < font_chunkCnt; i++){
                     print_applyTextureToBoldFontLetter(chunkPtr, (BKSpriteTextureBlock *)(sprite_getFramePtr(textureSprite, 0) + 1));
                     letters[i].sprite = chunkPtr;
-                    chunkSize = chunkPtr->w*chunkPtr->h;
+                    chunkSize = (s16)__builtin_bswap16((u16)chunkPtr->w) * (s16)__builtin_bswap16((u16)chunkPtr->h);
                     chunkDataPtr = (u8*)(chunkPtr + 1);
                     while((uintptr_t)chunkDataPtr % 8)
                         chunkDataPtr++;
@@ -334,10 +337,10 @@ FontLetter *print_getLettersFromFont(BKSprite *alphaMask, BKSprite *textureSprit
         case SPRITE_TYPE_I4://L802F4E24
             {
                 chunkPtr = (BKSpriteTextureBlock *) (font + 1);
-                for( i = 0; i < font->chunkCnt; i++){
+                for( i = 0; i < font_chunkCnt; i++){
                     letters[i].sprite = chunkPtr;
                     chunkDataPtr = (u8*)(chunkPtr + 1);
-                    chunkSize = chunkPtr->w*chunkPtr->h;
+                    chunkSize = (s16)__builtin_bswap16((u16)chunkPtr->w) * (s16)__builtin_bswap16((u16)chunkPtr->h);
                     while((uintptr_t)chunkDataPtr % 8)
                         chunkDataPtr++;
                     chunkPtr = (BKSpriteTextureBlock *) (chunkDataPtr + chunkSize/2);
@@ -347,10 +350,10 @@ FontLetter *print_getLettersFromFont(BKSprite *alphaMask, BKSprite *textureSprit
         default://L802F4EC0
             {
                 chunkPtr = (BKSpriteTextureBlock *)(font + 1);
-                for( i = 0; i < font->chunkCnt; i++){
+                for( i = 0; i < font_chunkCnt; i++){
                     chunkDataPtr = (u8*)(chunkPtr + 1);
                     letters[i].sprite = chunkPtr;
-                    chunkSize = chunkPtr->w*chunkPtr->h;
+                    chunkSize = (s16)__builtin_bswap16((u16)chunkPtr->w) * (s16)__builtin_bswap16((u16)chunkPtr->h);
                     while((uintptr_t)chunkDataPtr % 8)
                         chunkDataPtr++;
                     chunkPtr = (BKSpriteTextureBlock *)(chunkDataPtr + chunkSize);

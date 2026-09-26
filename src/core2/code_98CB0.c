@@ -13,7 +13,8 @@ void player_walkToPosition(f32 *, f32,  void(*)(ActorMarker *), ActorMarker *);
 struct unkfunc_80304ED0 *func_80304ED0(void*, f32 *);
 void func_8031CD44(s32, s32, f32, f32, s32);
 
-#define OBSCURE(ptr) (((((intptr_t)(ptr) ^ 0x746DF219) & 0xFF) + ((((intptr_t)(ptr) >> 0x18) & 0xFF) << 0x18) + ((((intptr_t)(ptr) >> 8) & 0xFFFF) << 8)) ^ 0x19)
+/* ARM64 port: original OBSCURE compressed 64-bit ptrs into 32 bits. */
+#define OBSCURE(ptr) (ptr)
 
 
 /* .data */
@@ -196,23 +197,14 @@ void func_803202D0(void) {
 }
 
 s32 func_80320320(void) {
-    uintptr_t addr = (uintptr_t) &gVolatileFlags.unk8[0];
+    /* ARM64 port: original scrambler truncated addr via s32. Just sum the bytes. */
+    u8 *addr = (u8 *)&gVolatileFlags.unk8[0];
     s32 checksum = 0x281E421C;
     s32 len = 25;
-    s32 scrambled;
     u32 i;
 
-    // Scrambles the address of D_803831D8
-    scrambled = (addr >> 8) & 0xFF0000;
-    scrambled += (addr & 0xFF) << 8;
-    scrambled = addr ^ scrambled;
-    // Unscrambles the address of D_803831D8
-    addr  = (scrambled & 0xFF000000) >> 8;
-    addr += (scrambled << 8) & 0xFF00;
-    addr ^= scrambled;
-
     for (i = 0; i < len; i++) {
-        checksum += (1 + i) * ((u8*)addr)[i];
+        checksum += (1 + i) * addr[i];
     }
 
     return checksum;
