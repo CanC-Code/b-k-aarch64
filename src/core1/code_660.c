@@ -69,15 +69,15 @@ static int _rarezip_inflate(u8 * src, u8 * dst, struct huft_s * arg2);
 
 /* .code */
 //DISABLED_DUP: u32 rarezip_get_uncompressed_size(u8 *arg0) {
-    // N64 is big-endian, ARM64 is little-endian - need byteswap
-    s32 size;
-    memcpy(&size, arg0 + 2, 4);
-    return __builtin_bswap32(size);
-}
+//DISABLED_DUP:     // N64 is big-endian, ARM64 is little-endian - need byteswap
+//DISABLED_DUP:     s32 size;
+//DISABLED_DUP:     memcpy(&size, arg0 + 2, 4);
+//DISABLED_DUP:     return __builtin_bswap32(size);
+//DISABLED_DUP: }
  
 //DISABLED_DUP: void rarezip_init(void){
-    D_8027BF00 = &gGlobalHuffTable;
-}
+//DISABLED_DUP:     D_8027BF00 = &gGlobalHuffTable;
+//DISABLED_DUP: }
 
 void rarezip_inflate(u8 *src, u8 *dst){
     _rarezip_inflate(src, dst, D_8027BF00);
