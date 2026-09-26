@@ -23,7 +23,7 @@ void ml_vec3f_clear(float* v) {
     v[0] = v[1] = v[2] = 0.0f;
 }
 
-void ml_vec3f_add(float* out, const float* a, const float* b) {
+//DISABLED_DUP: void ml_vec3f_add(float* out, const float* a, const float* b) {
     out[0] = a[0] + b[0];
     out[1] = a[1] + b[1];
     out[2] = a[2] + b[2];
@@ -35,7 +35,7 @@ void ml_vec3f_sub(float* out, const float* a, const float* b) {
     out[2] = a[2] - b[2];
 }
 
-void ml_vec3f_scale(float* v, float s) {
+//DISABLED_DUP: void ml_vec3f_scale(float* v, float s) {
     v[0] *= s;
     v[1] *= s;
     v[2] *= s;
