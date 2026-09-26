@@ -3,6 +3,10 @@
 #include "functions.h"
 #include "variables.h"
 
+/* BKA Android port: host RDRAM base (set by InitN64Registers).
+ * N64 address 0x80000000 == offset 0 of this host buffer. */
+extern unsigned char* gN64_RDRAM;
+
 /* .data*/
 /**
  * An index used to track the position in the outgoing payload
@@ -61,7 +65,7 @@ struct SnsPayload *snspayload_find_payload_in_ram(void)
 {
     struct SnsPayload *payload;
 
-    for (payload = (struct SnsPayload *)0x80000000; payload < (struct SnsPayload *)0x80400080; payload++)
+    for (payload = (struct SnsPayload *)(gN64_RDRAM); payload < (struct SnsPayload *)(gN64_RDRAM + 0x400080); payload++)
         if (payload->magic == SNS_HEADER_MAGIC && snspayload_validate(payload))
             return payload;
 

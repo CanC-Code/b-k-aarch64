@@ -4,6 +4,9 @@
 #include "variables.h"
 #include "save.h"
 
+/* BKA Android port: host RDRAM base (set by InitN64Registers). */
+extern unsigned char* gN64_RDRAM;
+
 bool snsToRestoreItems = FALSE;
 struct SnsPayload *snsBasePayloadPtr1 = NULL;
 struct SnsPayload *snsBasePayloadPtr2 = NULL;
@@ -133,8 +136,8 @@ void sns_find_and_parse_payload(void)
 
 void sns_init_base_payloads(void)
 {
-    snsBasePayloadPtr3 = snspayload_init_new_payload((struct SnsPayload *)0x803FFF00);
-    snsBasePayloadPtr4 = snspayload_init_new_payload((struct SnsPayload *)0x803A5C00);
+    snsBasePayloadPtr3 = snspayload_init_new_payload((struct SnsPayload *)(gN64_RDRAM + (0x803FFF00u - 0x80000000u)));
+    snsBasePayloadPtr4 = snspayload_init_new_payload((struct SnsPayload *)(gN64_RDRAM + (0x803A5C00u - 0x80000000u)));
     snsBasePayloadPtr1 = snspayload_init_new_payload((struct SnsPayload *)func_8025484C(0x100));
     snsBasePayloadPtr2 = snspayload_init_new_payload((struct SnsPayload *)func_80254898(0x100));
 }
