@@ -351,8 +351,8 @@ extern "C" {
     void HLE_TriggerN64Event(int event_id);
 
     // gFramebufferWidth/Height - actual definitions (292x216)
-    int32_t gFramebufferWidth = FB_WIDTH;
-    int32_t gFramebufferHeight = FB_HEIGHT;
+    extern int32_t gFramebufferWidth;
+    extern int32_t gFramebufferHeight;
 
     void InitN64Registers(const char* assetDir) {
         if (gN64_RDRAM != nullptr && gN64_Reg_Base != nullptr &&

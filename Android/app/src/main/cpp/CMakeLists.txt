@@ -54,7 +54,7 @@ if(NOT EXCLUDE_GAME_SRC)
             list(APPEND GAME_SOURCES ${F})
         endif()
     endforeach()
-    list(REMOVE_ITEM GAME_SOURCES "${REPO_ROOT}/src/core1/inflate.c")
+    list(REMOVE_ITEM GAME_SOURCES "${REPO_ROOT}/src/core1/inflate.c" "${REPO_ROOT}/src/core1/code_660.c")
 endif()
 
 
