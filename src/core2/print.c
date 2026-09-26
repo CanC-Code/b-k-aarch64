@@ -243,14 +243,17 @@ void print_setBoldFontTexturePixel(BKSpriteTextureBlock *texture, u32 *font, s32
     s32 b5;
     s32 a8;
     s32 i8;
-    x = MIN(MAX(0, x), texture->w - 1);
-    y = MIN(MAX(0, y), texture->h - 1);
+    s16 tex_w = (s16)__builtin_bswap16((u16)texture->w);
+    s16 tex_h = (s16)__builtin_bswap16((u16)texture->h);
+    x = MIN(MAX(0, x), tex_w - 1);
+    y = MIN(MAX(0, y), tex_h - 1);
     
-    pixel = ((u16*)(texture + 1)) + x + y * texture->w;
+    pixel = ((u16*)(texture + 1)) + x + y * tex_w;
 
-    r5 = ((*pixel >> 11) & 0x1F);
-    g5 = ((*pixel >> 6) & 0x1F);
-    b5 = ((*pixel >> 1) & 0x1F);
+    u16 pixv = __builtin_bswap16(*pixel);
+    r5 = ((pixv >> 11) & 0x1F);
+    g5 = ((pixv >> 6) & 0x1F);
+    b5 = ((pixv >> 1) & 0x1F);
     
     a8 = (*font >> 0) & 0xff;
     i8 = (*font >> 8) & 0xff;
@@ -271,11 +274,15 @@ void print_applyTextureToBoldFontLetter(BKSpriteTextureBlock *alphaMask, BKSprit
     s32 y;
 
     pxl = (u32*)(alphaMask + 1);
-    x_min = (texture->w - alphaMask->w) >> 1;
-    y_min = (texture->h - alphaMask->h) >> 1;
+    s16 tex_w = (s16)__builtin_bswap16((u16)texture->w);
+    s16 tex_h = (s16)__builtin_bswap16((u16)texture->h);
+    s16 am_w  = (s16)__builtin_bswap16((u16)alphaMask->w);
+    s16 am_h  = (s16)__builtin_bswap16((u16)alphaMask->h);
+    x_min = (tex_w - am_w) >> 1;
+    y_min = (tex_h - am_h) >> 1;
     
-    for(y = y_min; y < alphaMask->h + y_min; y++){
-        for(x = x_min; x < alphaMask->w + x_min; x++){
+    for(y = y_min; y < am_h + y_min; y++){
+        for(x = x_min; x < am_w + x_min; x++){
             print_setBoldFontTexturePixel(texture, pxl, x, y);
             pxl++;
         }
