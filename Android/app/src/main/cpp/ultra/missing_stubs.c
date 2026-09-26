@@ -362,10 +362,10 @@ struct huft_s { unsigned char e, b; unsigned short n; };
 struct huft_s gGlobalHuffTable[4096];
 
 // Inflate globals
-u32 inflate_crc1, inflate_crc2;
-u8 *inflate_inbuf, *inflate_slide;
-void *inflate_huft;
-u32 inflate_wp, inflate_inptr;
+//DISABLED_DUP: u32 inflate_crc1, inflate_crc2;
+//DISABLED_DUP: u8 *inflate_inbuf, *inflate_slide;
+//DISABLED_DUP: void *inflate_huft;
+//DISABLED_DUP: u32 inflate_wp, inflate_inptr;
 
 // N64 globals
 // Real N64 heap buffer - game code accesses as EmptyHeapBlock array

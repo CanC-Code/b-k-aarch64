@@ -68,14 +68,14 @@ u32 D_8027BF34; //hufts
 static int _rarezip_inflate(u8 * src, u8 * dst, struct huft_s * arg2);
 
 /* .code */
-u32 rarezip_get_uncompressed_size(u8 *arg0) {
+//DISABLED_DUP: u32 rarezip_get_uncompressed_size(u8 *arg0) {
     // N64 is big-endian, ARM64 is little-endian - need byteswap
     s32 size;
     memcpy(&size, arg0 + 2, 4);
     return __builtin_bswap32(size);
 }
  
-void rarezip_init(void){
+//DISABLED_DUP: void rarezip_init(void){
     D_8027BF00 = &gGlobalHuffTable;
 }
 
