@@ -83,7 +83,7 @@ int _savedata_verify(SaveData *savedata, s32 size){
     u32 *crc_ptr;
     u32 expect_crc; //sp20
 
-    crc_ptr = (u32*)((s32)savedata + size) - 1;
+    crc_ptr = (u32*)((uintptr_t)savedata + size) - 1;
     expect_crc = *crc_ptr;
     glcrc_calc_checksum(savedata, crc_ptr, result);
     *crc_ptr = expect_crc;
