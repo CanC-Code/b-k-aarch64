@@ -26,7 +26,7 @@ set(CPP_BRIDGE_SOURCES
     emulator/resource_mgr.cpp
     emulator/gfx_interpreter.cpp
     native_main.cpp
-    tools/rare_decompression.cpp ultra/HardwareRegs.cpp
+    tools/rare_decompression.cpp
     ultra/linker_stubs.c
 )
 

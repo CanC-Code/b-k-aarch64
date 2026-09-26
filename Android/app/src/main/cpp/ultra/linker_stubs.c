@@ -59,26 +59,26 @@ uintptr_t bka_get_mapped_end(void* ptr) {
     return 0;
 }
 
-int bka_is_mapped(void* ptr) {
-    uintptr_t addr = (uintptr_t)ptr;
-    FILE* f = fopen("/proc/self/maps", "r");
-    if (!f) return 0;
-    char line[256];
-    int result = 0;
-    while (fgets(line, sizeof(line), f)) {
-        uintptr_t start, end;
-        char perms[5] = {0};
-        if (sscanf(line, "%lx-%lx %4s", &start, &end, perms) == 3) {
-            // Only accept regions that are readable.
-            if (addr >= start && addr < end) {
-                if (perms[0] == 'r') result = 1;
-                break;
-            }
-        }
-    }
-    fclose(f);
-    return result;
-}
+//DISABLED_DUP: int bka_is_mapped(void* ptr) {
+//DISABLED_DUP:     uintptr_t addr = (uintptr_t)ptr;
+//DISABLED_DUP:     FILE* f = fopen("/proc/self/maps", "r");
+//DISABLED_DUP:     if (!f) return 0;
+//DISABLED_DUP:     char line[256];
+//DISABLED_DUP:     int result = 0;
+//DISABLED_DUP:     while (fgets(line, sizeof(line), f)) {
+//DISABLED_DUP:         uintptr_t start, end;
+//DISABLED_DUP:         char perms[5] = {0};
+//DISABLED_DUP:         if (sscanf(line, "%lx-%lx %4s", &start, &end, perms) == 3) {
+//DISABLED_DUP:             // Only accept regions that are readable.
+//DISABLED_DUP:             if (addr >= start && addr < end) {
+//DISABLED_DUP:                 if (perms[0] == 'r') result = 1;
+//DISABLED_DUP:                 break;
+//DISABLED_DUP:             }
+//DISABLED_DUP:         }
+//DISABLED_DUP:     }
+//DISABLED_DUP:     fclose(f);
+//DISABLED_DUP:     return result;
+//DISABLED_DUP: }
 
 void* bka_lookup_addr_mapping_cside_impl(uint32_t key) {
     for (int i = 0; i < s_bka_addr_count; i++) {

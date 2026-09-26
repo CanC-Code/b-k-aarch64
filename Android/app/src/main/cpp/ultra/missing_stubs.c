@@ -156,57 +156,57 @@ void* g_diag_mesh_ptr = NULL;
 int g_diag_thread5_loop = 0;
 // Audio/SFX stubs
 // -----------------------------------------------------------------------
-void gcsfx_playWithPitch(int a, float b, int c, float d)  { (void)a; (void)b; (void)c; (void)d; }
-void func_8030E878(void)                                   {}
-int  sfx_playFadeShorthand(void)                           { return 0; }
-void gcsfx_playAtSampleRate(int a, int b, int c)           { (void)a; (void)b; (void)c; }
-void func_8030E624(int a, float b, int c)                  { (void)a; (void)b; (void)c; }
-void gcsfx_play(int a, float b, int c)                     { (void)a; (void)b; (void)c; }
-void sfxSource_triggerCallbackByIndex(int a)               { (void)a; }
-void func_8030E760(void)                                   {}
-void func_8030DD90(int a, int b)                           { (void)a; (void)b; }
-void sfxsource_playSfxAtVolume(int a, float b)             { (void)a; (void)b; }
-void sfxsource_setSfxId(int a, int b)                      { (void)a; (void)b; }
-void sfxSource_setunk43_7ByIndex(int a, int b)              { (void)a; (void)b; }
-void sfxsource_setSampleRate(int a, int b)                 { (void)a; (void)b; }
-void sfxSource_func_8030E2C4(int a)                        { (void)a; }
-void sfxsource_freeSfxsourceByIndex(int a)                 { (void)a; }
-int  sfxsource_createSfxsourceAndReturnIndex(void)         { return 0; }
-void func_8030E9FC(void)                                   {}
-void func_8030EA54(void)                                   {}
-void func_8030E730(void)                                   {}
-void func_8030DBFC(void)                                   {}
-void sfxsource_set_fade_distances(int a, float b, float c) { (void)a; (void)b; (void)c; }
-void sfxsource_set_position(int a, int b)                  { (void)a; (void)b; }
-void func_8030E6D4(void)                                   {}
-void func_8030ED2C(void)                                   {}
-void func_8030DB04(void)                                   {}
-void func_8030E200(int a)                                  { (void)a; }
-void func_8030E0FC(void)                                   {}
-void func_8030E3FC(int a)                                  { (void)a; }
-void func_8030E58C(void)                                   {}
-void sfxsource_playHighPriority(int a)                     { (void)a; }
-void func_8030E988(void)                                   {}
-void func_8030ED70(void)                                   {}
-void sfxSource_setCallbackByIndex(int a, int b)            { (void)a; (void)b; }
-void func_8030E5F4(void)                                   {}
-void func_8030EB88(void)                                   {}
-void func_8030EAAC(void)                                   {}
-void func_8030E560(void)                                   {}
-void func_8030E4E4(void)                                   {}
-void func_8030EBC8(void)                                   {}
-void func_8030E04C(void)                                   {}
-void func_8030EB00(void)                                   {}
-void func_8030EC20(void)                                   {}
-void func_8030E9C4(void)                                   {}
-void func_8030DFF0(void)                                   {}
-void func_8030DFB4(void)                                   {}
-void func_8030ED0C(void)                                   {}
-void func_8030EDAC(void)                                   {}
-int  sfxSource_getSampleRate(int a)                         { (void)a; return 0; }
-void func_8030DE44(void)                                   {}
-void func_8030E704(void)                                   {}
-void func_8030DCCC(void)                                   {}
+//DISABLED_DUP: void gcsfx_playWithPitch(int a, float b, int c, float d)  { (void)a; (void)b; (void)c; (void)d; }
+//DISABLED_DUP: void func_8030E878(void)                                   {}
+//DISABLED_DUP: int  sfx_playFadeShorthand(void)                           { return 0; }
+//DISABLED_DUP: void gcsfx_playAtSampleRate(int a, int b, int c)           { (void)a; (void)b; (void)c; }
+//DISABLED_DUP: void func_8030E624(int a, float b, int c)                  { (void)a; (void)b; (void)c; }
+//DISABLED_DUP: void gcsfx_play(int a, float b, int c)                     { (void)a; (void)b; (void)c; }
+//DISABLED_DUP: void sfxSource_triggerCallbackByIndex(int a)               { (void)a; }
+//DISABLED_DUP: void func_8030E760(void)                                   {}
+//DISABLED_DUP: void func_8030DD90(int a, int b)                           { (void)a; (void)b; }
+//DISABLED_DUP: void sfxsource_playSfxAtVolume(int a, float b)             { (void)a; (void)b; }
+//DISABLED_DUP: void sfxsource_setSfxId(int a, int b)                      { (void)a; (void)b; }
+//DISABLED_DUP: void sfxSource_setunk43_7ByIndex(int a, int b)              { (void)a; (void)b; }
+//DISABLED_DUP: void sfxsource_setSampleRate(int a, int b)                 { (void)a; (void)b; }
+//DISABLED_DUP: void sfxSource_func_8030E2C4(int a)                        { (void)a; }
+//DISABLED_DUP: void sfxsource_freeSfxsourceByIndex(int a)                 { (void)a; }
+//DISABLED_DUP: int  sfxsource_createSfxsourceAndReturnIndex(void)         { return 0; }
+//DISABLED_DUP: void func_8030E9FC(void)                                   {}
+//DISABLED_DUP: void func_8030EA54(void)                                   {}
+//DISABLED_DUP: void func_8030E730(void)                                   {}
+//DISABLED_DUP: void func_8030DBFC(void)                                   {}
+//DISABLED_DUP: void sfxsource_set_fade_distances(int a, float b, float c) { (void)a; (void)b; (void)c; }
+//DISABLED_DUP: void sfxsource_set_position(int a, int b)                  { (void)a; (void)b; }
+//DISABLED_DUP: void func_8030E6D4(void)                                   {}
+//DISABLED_DUP: void func_8030ED2C(void)                                   {}
+//DISABLED_DUP: void func_8030DB04(void)                                   {}
+//DISABLED_DUP: void func_8030E200(int a)                                  { (void)a; }
+//DISABLED_DUP: void func_8030E0FC(void)                                   {}
+//DISABLED_DUP: void func_8030E3FC(int a)                                  { (void)a; }
+//DISABLED_DUP: void func_8030E58C(void)                                   {}
+//DISABLED_DUP: void sfxsource_playHighPriority(int a)                     { (void)a; }
+//DISABLED_DUP: void func_8030E988(void)                                   {}
+//DISABLED_DUP: void func_8030ED70(void)                                   {}
+//DISABLED_DUP: void sfxSource_setCallbackByIndex(int a, int b)            { (void)a; (void)b; }
+//DISABLED_DUP: void func_8030E5F4(void)                                   {}
+//DISABLED_DUP: void func_8030EB88(void)                                   {}
+//DISABLED_DUP: void func_8030EAAC(void)                                   {}
+//DISABLED_DUP: void func_8030E560(void)                                   {}
+//DISABLED_DUP: void func_8030E4E4(void)                                   {}
+//DISABLED_DUP: void func_8030EBC8(void)                                   {}
+//DISABLED_DUP: void func_8030E04C(void)                                   {}
+//DISABLED_DUP: void func_8030EB00(void)                                   {}
+//DISABLED_DUP: void func_8030EC20(void)                                   {}
+//DISABLED_DUP: void func_8030E9C4(void)                                   {}
+//DISABLED_DUP: void func_8030DFF0(void)                                   {}
+//DISABLED_DUP: void func_8030DFB4(void)                                   {}
+//DISABLED_DUP: void func_8030ED0C(void)                                   {}
+//DISABLED_DUP: void func_8030EDAC(void)                                   {}
+//DISABLED_DUP: int  sfxSource_getSampleRate(int a)                         { (void)a; return 0; }
+//DISABLED_DUP: void func_8030DE44(void)                                   {}
+//DISABLED_DUP: void func_8030E704(void)                                   {}
+//DISABLED_DUP: void func_8030DCCC(void)                                   {}
 
 // -----------------------------------------------------------------------
 // Music / print / graphics stubs
@@ -214,10 +214,10 @@ void func_8030DCCC(void)                                   {}
 void coMusicPlayer_init(void)  {}
 void coMusicPlayer_free(void)  {}
 void coMusicPlayer_update(void) {}
-void itemPrint_init(void)  {}
+//DISABLED_DUP: void itemPrint_init(void)  {}
 void itemPrint_update(void) {}
-void itemPrint_free(void) {}
-void itemPrint_draw(void *a, void *b, void *c) { (void)a; (void)b; (void)c; }
+//DISABLED_DUP: void itemPrint_free(void) {}
+//DISABLED_DUP: void itemPrint_draw(void *a, void *b, void *c) { (void)a; (void)b; (void)c; }
 void itemPrint_defrag(void) {}
 void func_80253208(void *a, int b, int c, int d, int e, void *f) { (void)a; (void)b; (void)c; (void)d; (void)e; (void)f; }
 void zBuffer_set(void *a)                           { (void)a; }
@@ -295,11 +295,11 @@ int player_isDead(void) { return 0; }
 //DISABLED_DUP: void mapSavestate_save(int a) { (void)a; }
 int gsworld_get_map(void) { return 0; }
 void sns_save_and_update_global_data(void) {}
-void func_8030D86C(void) {}
+//DISABLED_DUP: void func_8030D86C(void) {}
 //DISABLED_DUP: void func_80322764(void) {}
 //DISABLED_DUP: void timedFuncQueue_init(void) {}
 void func_802F9CD8(void) {}
-void func_8031B62C(void) {}
+//DISABLED_DUP: void func_8031B62C(void) {}
 void defragManager_init(void) {}
 void animCache_init(void) {}
 //DISABLED_DUP: void rand_reset(void) {}
@@ -313,8 +313,8 @@ void func_802E3854(void) {}
 void func_802E3800(void) {}
 //DISABLED_DUP: void func_8033DC10(void) {}
 //DISABLED_DUP: void func_80324C58(void) {}
-void picturebox_init(void) {}
-void picturebox_free(void) {}
+//DISABLED_DUP: void picturebox_init(void) {}
+//DISABLED_DUP: void picturebox_free(void) {}
 void func_802FA508(void) {}
 void func_802E49E0(void) {}
 int func_802E4A08(void) { return 0; }
