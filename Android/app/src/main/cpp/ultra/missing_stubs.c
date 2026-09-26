@@ -19,7 +19,7 @@
 // Forward declarations for print/font stubs
 //DISABLED_DUP: void print_init(void) {}
 //DISABLED_DUP: void* print_getLettersFromFont(void* arg0, void* arg1) { return calloc(1, 256); }
-void func_802E5F38(void) {}
+//DISABLED_DUP: void func_802E5F38(void) {}
 void func_802E5F10(void);
 
 // gsworld state getters/setters forward declarations
@@ -211,19 +211,19 @@ int g_diag_thread5_loop = 0;
 // -----------------------------------------------------------------------
 // Music / print / graphics stubs
 // -----------------------------------------------------------------------
-void coMusicPlayer_init(void)  {}
-void coMusicPlayer_free(void)  {}
-void coMusicPlayer_update(void) {}
+//DISABLED_DUP: void coMusicPlayer_init(void)  {}
+//DISABLED_DUP: void coMusicPlayer_free(void)  {}
+//DISABLED_DUP: void coMusicPlayer_update(void) {}
 //DISABLED_DUP: void itemPrint_init(void)  {}
-void itemPrint_update(void) {}
+//DISABLED_DUP: void itemPrint_update(void) {}
 //DISABLED_DUP: void itemPrint_free(void) {}
 //DISABLED_DUP: void itemPrint_draw(void *a, void *b, void *c) { (void)a; (void)b; (void)c; }
 void itemPrint_defrag(void) {}
 void func_80253208(void *a, int b, int c, int d, int e, void *f) { (void)a; (void)b; (void)c; (void)d; (void)e; (void)f; }
 void zBuffer_set(void *a)                           { (void)a; }
 void func_802476EC(void *a)                         { (void)a; }
-void func_802E67AC(void) {}
-void func_802E67C4(void) {}
+//DISABLED_DUP: void func_802E67AC(void) {}
+//DISABLED_DUP: void func_802E67C4(void) {}
 void func_802E53EC4(void *a, void *b) { (void)a; (void)b; }
 //DISABLED_DUP: void printbuffer_draw(void *a, void *b, void *c) { (void)a; (void)b; (void)c; }
 //DISABLED_DUP: void printbuffer_defrag(void) {}
@@ -231,20 +231,20 @@ void depthbuffer_enable(int a) { (void)a; }
 //DISABLED_DUP: void modelRender_init(void) {}
 //DISABLED_DUP: void modelRender_free(void) {}
 //DISABLED_DUP: void modelRender_defrag(void) {}
-void viewport_reset(void) {}
-void viewport_setNearAndFar(float a, float b) { (void)a; (void)b; }
-void viewport_setPosition_f3(float a, float b, float c) { (void)a; (void)b; (void)c; }
-void viewport_setRotation_f3(float a, float b, float c) { (void)a; (void)b; (void)c; }
-void viewport_moveAlongZAxis(float a) { (void)a; }
-void viewport_update(void) {}
-void viewport_debug(void) {}
-void viewport_pushFramebufferExtendsToVpStack(void) {}
+//DISABLED_DUP: void viewport_reset(void) {}
+//DISABLED_DUP: void viewport_setNearAndFar(float a, float b) { (void)a; (void)b; }
+//DISABLED_DUP: void viewport_setPosition_f3(float a, float b, float c) { (void)a; (void)b; (void)c; }
+//DISABLED_DUP: void viewport_setRotation_f3(float a, float b, float c) { (void)a; (void)b; (void)c; }
+//DISABLED_DUP: void viewport_moveAlongZAxis(float a) { (void)a; }
+//DISABLED_DUP: void viewport_update(void) {}
+//DISABLED_DUP: void viewport_debug(void) {}
+//DISABLED_DUP: void viewport_pushFramebufferExtendsToVpStack(void) {}
 //DISABLED_DUP: void func_8033B5FC(void) {}
 //DISABLED_DUP: void func_8033B61C(void) {}
 //DISABLED_DUP: void func_8033B268(void) {}
 void mapSavestate_defrag_all(void) {}
 void gctransition_defrag(void) {}
-void comusic_defrag(void) {}
+//DISABLED_DUP: void comusic_defrag(void) {}
 void func_80350E00(void) {}
 
 // NOTE: The following functions are NO LONGER STUBBED — their real
@@ -256,9 +256,9 @@ void func_80350E00(void) {}
 // -----------------------------------------------------------------------
 // Misc game stubs
 // -----------------------------------------------------------------------
-void func_8025A9D4(int a, int b) { (void)a; (void)b; }
-void func_8025A7DC(int a) { (void)a; }
-void func_8025A23C(int a) { (void)a; }
+//DISABLED_DUP: void func_8025A9D4(int a, int b) { (void)a; (void)b; }
+//DISABLED_DUP: void func_8025A7DC(int a) { (void)a; }
+//DISABLED_DUP: void func_8025A23C(int a) { (void)a; }
 void func_8024E698(int a) { (void)a; }
 void func_8024F150(void) {}
 void func_8024F764(int a) { (void)a; }
@@ -266,8 +266,8 @@ void func_8024F7C4(int a) { (void)a; }
 void func_8024FB8C(void) {}
 int func_803226E8(int a) { (void)a; return 0; }
 //DISABLED_DUP: int func_80322914(void) { return 0; }
-void func_8025A430(int a, int b, int c) { (void)a; (void)b; (void)c; }
-void func_8025A2B0(void) {}
+//DISABLED_DUP: void func_8025A430(int a, int b, int c) { (void)a; (void)b; (void)c; }
+//DISABLED_DUP: void func_8025A2B0(void) {}
 int controller_getStartButton(int a) { (void)a; return 0; }
 void func_80334E1C(int a, int b) { (void)a; (void)b; }
 //DISABLED_DUP: void func_80323140(int a, int b) { (void)a; (void)b; }
@@ -288,9 +288,9 @@ void gctransition_8030BD4C(void) {}
 void gctransition_8030BE60(void) {}
 void gctransition_update(void) {}
 void gctransition_draw(void *a, void *b, void *c) { (void)a; (void)b; (void)c; }
-int func_8028F070(void) { return 1; }
-int func_8028EC04(void) { return 0; }
-int player_isDead(void) { return 0; }
+//DISABLED_DUP: int func_8028F070(void) { return 1; }
+//DISABLED_DUP: int func_8028EC04(void) { return 0; }
+//DISABLED_DUP: int player_isDead(void) { return 0; }
 //DISABLED_DUP: void mapSavestate_apply(int a) { (void)a; }
 //DISABLED_DUP: void mapSavestate_save(int a) { (void)a; }
 int gsworld_get_map(void) { return 0; }
@@ -298,10 +298,10 @@ void sns_save_and_update_global_data(void) {}
 //DISABLED_DUP: void func_8030D86C(void) {}
 //DISABLED_DUP: void func_80322764(void) {}
 //DISABLED_DUP: void timedFuncQueue_init(void) {}
-void func_802F9CD8(void) {}
+//DISABLED_DUP: void func_802F9CD8(void) {}
 //DISABLED_DUP: void func_8031B62C(void) {}
 void defragManager_init(void) {}
-void animCache_init(void) {}
+//DISABLED_DUP: void animCache_init(void) {}
 //DISABLED_DUP: void rand_reset(void) {}
 void scissorBox_setDefault(void) {}
 void func_80253FE8(void) {}
@@ -309,15 +309,15 @@ void func_80253FE8(void) {}
 //DISABLED_DUP: void func_8033DC04(void) {}
 //DISABLED_DUP: void clearScoreStates(void) {}
 //DISABLED_DUP: void savedata_init(void) {}
-void func_802E3854(void) {}
-void func_802E3800(void) {}
+//DISABLED_DUP: void func_802E3854(void) {}
+//DISABLED_DUP: void func_802E3800(void) {}
 //DISABLED_DUP: void func_8033DC10(void) {}
 //DISABLED_DUP: void func_80324C58(void) {}
 //DISABLED_DUP: void picturebox_init(void) {}
 //DISABLED_DUP: void picturebox_free(void) {}
-void func_802FA508(void) {}
-void func_802E49E0(void) {}
-int func_802E4A08(void) { return 0; }
+//DISABLED_DUP: void func_802FA508(void) {}
+//DISABLED_DUP: void func_802E49E0(void) {}
+//DISABLED_DUP: int func_802E4A08(void) { return 0; }
 //DISABLED_DUP: int func_8032056C(void) { return 1; }
 //DISABLED_DUP: int func_8032190C(void) { return 0; }
 //DISABLED_DUP: int levelSpecificFlags_validateCRC1(void) { return 1; }
@@ -484,8 +484,8 @@ void ml_vec3f_horizontal_distance_zero_likely(void) {}
 void ml_vec3f_distance(void) {}
 void mlAbsF(void) {}
 void ml_map_f(void) {}
-void controller_getJoystick(void) {}
-void controller_copyFaceButtons(void) {}
+//DISABLED_DUP: void controller_getJoystick(void) {}
+//DISABLED_DUP: void controller_copyFaceButtons(void) {}
 
 // Additional stubs for excluded files
 void gctransition_reset(void) {}
@@ -505,7 +505,7 @@ void ml_vec3f_normalize_copy(void *a, void *b) {}
 void viMgr_func_8024BFAC(void) {}
 void *audioManager_getFrameMesgQueue(void) { return NULL; }
 void baMotor_80250FC0(void) {}
-void pfsManager_getStartReadData(void) {}
+//DISABLED_DUP: void pfsManager_getStartReadData(void) {}
 void viMgr_registerSignalMesg(void *a, void *b) {}
 int ml_vec3w_inside_box_w(void *a, void *b, void *c) { return 0; }
 void func_8024F35C(void) {}
@@ -518,18 +518,18 @@ void baMotor_80250E94(void) {}
 void baMotor_80250D94(void) {}
 void viMgr_clearFramebuffers(void) {}
 void viMgr_init(void) {}
-void pfsManager_init(void) {}
+//DISABLED_DUP: void pfsManager_init(void) {}
 void baMotor_init(void) {}
 void audioManager_init(void) {}
 void ml_init(void) {}
 
 // Remaining stubs from baMotor, controller, and misc
 void baMotor_80250E6C(void) {}
-void controller_copySideButtons(void) {}
-void func_8024E6E0(void) {}
+//DISABLED_DUP: void controller_copySideButtons(void) {}
+//DISABLED_DUP: void func_8024E6E0(void) {}
 void func_80257F18(void) {}
 void func_80257A44(void) {}
-void ml_sub_delta_time(void) {}
+//DISABLED_DUP: void ml_sub_delta_time(void) {}
 
 // Final remaining stubs
 int getOtherFramebuffer(void) { return 1; }
@@ -539,13 +539,13 @@ void gctransition_8030BD88(void) {}
 void viMgr_func_8024C1B4(void) {}
 void viMgr_func_8024BF94(void) {}
 void viMgr_func_8024C1DC(void) {}
-void func_8024F180(void) {}
+//DISABLED_DUP: void func_8024F180(void) {}
 void viMgr_func_8024BD94(void) {}
-void func_8024F224(void) {}
-void pfsManager_getFirstControllerFaceButtonState(void) {}
-void func_8024E640(void) {}
+//DISABLED_DUP: void func_8024F224(void) {}
+//DISABLED_DUP: void pfsManager_getFirstControllerFaceButtonState(void) {}
+//DISABLED_DUP: void func_8024E640(void) {}
 void func_8024E5E8(void) {}
 int gctransition_active = 0;
-int pfsManager_contErr = 0;
+//DISABLED_DUP: int pfsManager_contErr = 0;
 void func_80254008(void) {}
 //int func_802E4424(void) { return 1; }
