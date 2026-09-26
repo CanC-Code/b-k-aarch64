@@ -21,7 +21,7 @@ extern "C" {
     extern uint32_t g_active_fb_offset;
 extern uint16_t gFramebuffers[2][FB_WIDTH * FB_HEIGHT];
     int getActiveFramebuffer(void);
-    uint8_t* gN64_RDRAM;
+    extern uint8_t* gN64_RDRAM;
     extern "C" void* bka_lookup_addr_by_low32(uint32_t low32);
 void* bka_lookup_addr_mapping(uint32_t key);
 void* bka_lookup_addr_by_low32(uint32_t low32);
