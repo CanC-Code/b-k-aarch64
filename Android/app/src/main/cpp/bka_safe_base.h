@@ -128,11 +128,11 @@ static inline uint32_t BKA_Reverse_Addr(uintptr_t addr)
 extern "C" {
 #endif
 
-void __original___osInitialize_common(void) {
+static inline void __original___osInitialize_common(void) {
     // Stubbed: Prevents N64 hardware crash
 }
 
-void __original___osViInit(void) {
+static inline void __original___osViInit(void) {
     // Stubbed: Prevents VI crash
 }
 

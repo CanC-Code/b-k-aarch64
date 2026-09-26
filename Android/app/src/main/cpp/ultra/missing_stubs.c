@@ -17,8 +17,8 @@
 //   the real implementations above when --allow-multiple-definition is set.
 
 // Forward declarations for print/font stubs
-void print_init(void) {}
-void* print_getLettersFromFont(void* arg0, void* arg1) { return calloc(1, 256); }
+//DISABLED_DUP: void print_init(void) {}
+//DISABLED_DUP: void* print_getLettersFromFont(void* arg0, void* arg1) { return calloc(1, 256); }
 void func_802E5F38(void) {}
 void func_802E5F10(void);
 
@@ -26,9 +26,9 @@ void func_802E5F10(void);
 
 
 
-int gsworld_getEnableUpdate(void);
+//DISABLED_DUP: int gsworld_getEnableUpdate(void);
 
-int gsworld_getEnableDraw(void);
+//DISABLED_DUP: int gsworld_getEnableDraw(void);
 
 #include <string.h>
 #include <stdint.h>
@@ -67,8 +67,8 @@ void     osMapTLBRdb(void)             {}
 uint32_t __osProbeTLB(void* a)         { (void)a; return 0; }
 #define PI_STATUS_DMA_BUSY  0x01
 uint32_t osPiGetStatus(void)           { return 0; }
-void osViSetSpecialFeatures(u32 func)                { (void)func; }
-void osViSwapBuffer(void *vaddr)                     { (void)vaddr; }
+//DISABLED_DUP: void osViSetSpecialFeatures(u32 func)                { (void)func; }
+//DISABLED_DUP: void osViSwapBuffer(void *vaddr)                     { (void)vaddr; }
 // s32 inflate(void) { return 0; } -- using real inflate.c
 
 // -----------------------------------------------------------------------
@@ -140,7 +140,7 @@ DEFINE_OVERLAY_VRAM(cutscenes, 0x80386DD0, 0x8038F3D0)
 DEFINE_OVERLAY_VRAM(lair,      0x80386DD0, 0x80395E50)
 DEFINE_OVERLAY_VRAM(fight,     0x80386DD0, 0x80393390)
 
-u32 core1_VRAM     = 0x8023DA20;
+//DISABLED_DUP: u32 core1_VRAM     = 0x8023DA20;
 u32 core1_VRAM_END = 0x80286F90;
 int g_diag_assetId = 0;
 void* g_diag_cfile = NULL;
@@ -149,10 +149,10 @@ int g_diag_csize = 0;
 // -----------------------------------------------------------------------
 int g_diag_null_task = 0;
 // removed duplicate func_802F2AEC — use real implementation from code_6B030.c
-void particleEmitter_setModel(void* a, int b) {}
+//DISABLED_DUP: void particleEmitter_setModel(void* a, int b) {}
 int g_diag_mesh_count = 0;
 void* g_diag_mesh_ptr = NULL;
-void playerModel_set(void) {}
+//DISABLED_DUP: void playerModel_set(void) {}
 int g_diag_thread5_loop = 0;
 // Audio/SFX stubs
 // -----------------------------------------------------------------------
@@ -225,12 +225,12 @@ void func_802476EC(void *a)                         { (void)a; }
 void func_802E67AC(void) {}
 void func_802E67C4(void) {}
 void func_802E53EC4(void *a, void *b) { (void)a; (void)b; }
-void printbuffer_draw(void *a, void *b, void *c) { (void)a; (void)b; (void)c; }
-void printbuffer_defrag(void) {}
+//DISABLED_DUP: void printbuffer_draw(void *a, void *b, void *c) { (void)a; (void)b; (void)c; }
+//DISABLED_DUP: void printbuffer_defrag(void) {}
 void depthbuffer_enable(int a) { (void)a; }
-void modelRender_init(void) {}
-void modelRender_free(void) {}
-void modelRender_defrag(void) {}
+//DISABLED_DUP: void modelRender_init(void) {}
+//DISABLED_DUP: void modelRender_free(void) {}
+//DISABLED_DUP: void modelRender_defrag(void) {}
 void viewport_reset(void) {}
 void viewport_setNearAndFar(float a, float b) { (void)a; (void)b; }
 void viewport_setPosition_f3(float a, float b, float c) { (void)a; (void)b; (void)c; }
@@ -239,9 +239,9 @@ void viewport_moveAlongZAxis(float a) { (void)a; }
 void viewport_update(void) {}
 void viewport_debug(void) {}
 void viewport_pushFramebufferExtendsToVpStack(void) {}
-void func_8033B5FC(void) {}
-void func_8033B61C(void) {}
-void func_8033B268(void) {}
+//DISABLED_DUP: void func_8033B5FC(void) {}
+//DISABLED_DUP: void func_8033B61C(void) {}
+//DISABLED_DUP: void func_8033B268(void) {}
 void mapSavestate_defrag_all(void) {}
 void gctransition_defrag(void) {}
 void comusic_defrag(void) {}
@@ -265,22 +265,22 @@ void func_8024F764(int a) { (void)a; }
 void func_8024F7C4(int a) { (void)a; }
 void func_8024FB8C(void) {}
 int func_803226E8(int a) { (void)a; return 0; }
-int func_80322914(void) { return 0; }
+//DISABLED_DUP: int func_80322914(void) { return 0; }
 void func_8025A430(int a, int b, int c) { (void)a; (void)b; (void)c; }
 void func_8025A2B0(void) {}
 int controller_getStartButton(int a) { (void)a; return 0; }
 void func_80334E1C(int a, int b) { (void)a; (void)b; }
-void func_80323140(int a, int b) { (void)a; (void)b; }
-void func_8032278C(void) {}
-int func_8034BDA4(int a, int b) { (void)a; (void)b; return 0; }
-void func_80346CA8(void) {}
+//DISABLED_DUP: void func_80323140(int a, int b) { (void)a; (void)b; }
+//DISABLED_DUP: void func_8032278C(void) {}
+//DISABLED_DUP: int func_8034BDA4(int a, int b) { (void)a; (void)b; return 0; }
+//DISABLED_DUP: void func_80346CA8(void) {}
 void func_8030C1A0(void) {}
 void func_8030C204(void) {}
-void gcpausemenu_init(void) {}
-void gcpausemenu_free(void) {}
-int gcpausemenu_80314B00(void) { return 1; }
-int gcPauseMenu_update(void) { return 0; }
-int cutscenetrigger_update(void) { return 0; }
+//DISABLED_DUP: void gcpausemenu_init(void) {}
+//DISABLED_DUP: void gcpausemenu_free(void) {}
+//DISABLED_DUP: int gcpausemenu_80314B00(void) { return 1; }
+//DISABLED_DUP: int gcPauseMenu_update(void) { return 0; }
+//DISABLED_DUP: int cutscenetrigger_update(void) { return 0; }
 int gctransition_8030BDC0(void) { return 0; }
 int gctransition_done(void) { return 1; }
 void gctransition_8030BEA4(int a) { (void)a; }
@@ -291,54 +291,54 @@ void gctransition_draw(void *a, void *b, void *c) { (void)a; (void)b; (void)c; }
 int func_8028F070(void) { return 1; }
 int func_8028EC04(void) { return 0; }
 int player_isDead(void) { return 0; }
-void mapSavestate_apply(int a) { (void)a; }
-void mapSavestate_save(int a) { (void)a; }
+//DISABLED_DUP: void mapSavestate_apply(int a) { (void)a; }
+//DISABLED_DUP: void mapSavestate_save(int a) { (void)a; }
 int gsworld_get_map(void) { return 0; }
 void sns_save_and_update_global_data(void) {}
 void func_8030D86C(void) {}
-void func_80322764(void) {}
-void timedFuncQueue_init(void) {}
+//DISABLED_DUP: void func_80322764(void) {}
+//DISABLED_DUP: void timedFuncQueue_init(void) {}
 void func_802F9CD8(void) {}
 void func_8031B62C(void) {}
 void defragManager_init(void) {}
 void animCache_init(void) {}
-void rand_reset(void) {}
+//DISABLED_DUP: void rand_reset(void) {}
 void scissorBox_setDefault(void) {}
 void func_80253FE8(void) {}
-void time_reset(void) {}
-void func_8033DC04(void) {}
-void clearScoreStates(void) {}
-void savedata_init(void) {}
+//DISABLED_DUP: void time_reset(void) {}
+//DISABLED_DUP: void func_8033DC04(void) {}
+//DISABLED_DUP: void clearScoreStates(void) {}
+//DISABLED_DUP: void savedata_init(void) {}
 void func_802E3854(void) {}
 void func_802E3800(void) {}
-void func_8033DC10(void) {}
-void func_80324C58(void) {}
+//DISABLED_DUP: void func_8033DC10(void) {}
+//DISABLED_DUP: void func_80324C58(void) {}
 void picturebox_init(void) {}
 void picturebox_free(void) {}
 void func_802FA508(void) {}
 void func_802E49E0(void) {}
 int func_802E4A08(void) { return 0; }
-int func_8032056C(void) { return 1; }
-int func_8032190C(void) { return 0; }
-int levelSpecificFlags_validateCRC1(void) { return 1; }
+//DISABLED_DUP: int func_8032056C(void) { return 1; }
+//DISABLED_DUP: int func_8032190C(void) { return 0; }
+//DISABLED_DUP: int levelSpecificFlags_validateCRC1(void) { return 1; }
 // removed duplicate func_8030A078
-u32 func_80320250(void) { return 0; }
-void func_803202D0(void) {}
-s32 func_80320320(void) { return 0; }
-void func_803203A0(void) {}
-int levelSpecificFlags_get(s32 a) { return 0; }
-void _levelSpecificFlags_updateCRC1(void) {}
-void _levelSpecificFlags_updateCRC2(void) {}
-void levelSpecificFlags_clear(void) {}
-void levelSpecificFlags_set(s32 a, s32 b) {}
-void levelSpecificFlags_setN(s32 a, s32 b, s32 c) {}
-int levelSpecificFlags_validateCRC2(void) { return 1; }
-int dummy_func_80320248(void) { return 1; }
+//DISABLED_DUP: u32 func_80320250(void) { return 0; }
+//DISABLED_DUP: void func_803202D0(void) {}
+//DISABLED_DUP: s32 func_80320320(void) { return 0; }
+//DISABLED_DUP: void func_803203A0(void) {}
+//DISABLED_DUP: int levelSpecificFlags_get(s32 a) { return 0; }
+//DISABLED_DUP: void _levelSpecificFlags_updateCRC1(void) {}
+//DISABLED_DUP: void _levelSpecificFlags_updateCRC2(void) {}
+//DISABLED_DUP: void levelSpecificFlags_clear(void) {}
+//DISABLED_DUP: void levelSpecificFlags_set(s32 a, s32 b) {}
+//DISABLED_DUP: void levelSpecificFlags_setN(s32 a, s32 b, s32 c) {}
+//DISABLED_DUP: int levelSpecificFlags_validateCRC2(void) { return 1; }
+//DISABLED_DUP: int dummy_func_80320248(void) { return 1; }
 int func_80320240(void) { return 1; }
 /* int map_getLevel(int a) { (void)a; return 0; }  -- removed 2026-09-25; real def in src/core2/gc/section.c */
 /* int level_get(void) { return 0; }  -- removed 2026-09-25; real def in src/core2/code_9A740.c */
-void func_80321854(void) {}
-void func_8030AFD8(int a) { (void)a; }
+//DISABLED_DUP: void func_80321854(void) {}
+//DISABLED_DUP: void func_8030AFD8(int a) { (void)a; }
 
 
 // =======================================================================
@@ -347,8 +347,8 @@ void func_8030AFD8(int a) { (void)a; }
 static int sEnableUpdate = 1;
 static int sEnableDraw = 1;
 
-int gsworld_getEnableUpdate(void)       { return sEnableUpdate; }
-int gsworld_getEnableDraw(void)         { return sEnableDraw; }
+//DISABLED_DUP: int gsworld_getEnableUpdate(void)       { return sEnableUpdate; }
+//DISABLED_DUP: int gsworld_getEnableDraw(void)         { return sEnableDraw; }
 
 // =======================================================================
 // Stubs for symbols from excluded inflate.c and N64 hardware functions
