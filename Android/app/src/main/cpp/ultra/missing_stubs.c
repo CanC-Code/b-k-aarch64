@@ -509,7 +509,7 @@ void baMotor_80250FC0(void) {}
 void viMgr_registerSignalMesg(void *a, void *b) {}
 //DISABLED_DUP: int ml_vec3w_inside_box_w(void *a, void *b, void *c) { return 0; }
 //DISABLED_DUP: void func_8024F35C(void) {}
-void *pfsManager_getFrameReplyQ(void) { return NULL; }
+//DISABLED_DUP: void *pfsManager_getFrameReplyQ(void) { return NULL; }
 //DISABLED_DUP: float ml_sin_deg(float a) { return 0.0f; }
 //DISABLED_DUP: float ml_cos_deg(float a) { return 0.0f; }
 
@@ -533,7 +533,7 @@ void baMotor_80250E6C(void) {}
 
 // Final remaining stubs
 int getOtherFramebuffer(void) { return 1; }
-void func_8024F3F4(void) {}
+//DISABLED_DUP: void func_8024F3F4(void) {}
 //DISABLED_DUP: void func_8024E420(void) {}
 void gctransition_8030BD88(void) {}
 void viMgr_func_8024C1B4(void) {}
