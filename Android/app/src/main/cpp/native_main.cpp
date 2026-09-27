@@ -227,7 +227,7 @@ static void renderFrame() {
     static int64_t s_lastSwapNs = 0;
     if (t - s_lastSwapNs >= 100000000LL) {   // 100ms ≈ 10 fps
         s_lastSwapNs = t;
-        eglSwapBuffers(g_rs.dpy, g_rs.surf);
+        /* eglSwapBuffers disabled — Motorola UAF at 0x7b15010110 */
     }
 
     if (++g_rs.frames <= 3 || g_rs.frames % 120 == 0) LOGI("frame %d", g_rs.frames);
