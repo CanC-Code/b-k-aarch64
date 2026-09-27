@@ -76,7 +76,6 @@ void func_802F9CD8(void){
     int i;
     struct4Es *iPtr;
     D_803810A0 = (vector(struct4Es) *) vector_new(sizeof(struct4Es), 0x10);
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-SFX", "func_802F9CD8: created D_803810A0=%p size=%d", D_803810A0, (int)sizeof(struct4Es));
     for(i = 0; i< 0x10; i++){
         iPtr = vector_pushBackNew(&D_803810A0);
         iPtr->unk0 = 0;
@@ -256,7 +255,6 @@ void func_802FA0F8(void){
 }
 
 void func_802FA4E0(void){
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-SFX", "func_802FA4E0: enter D_803810A0=%p", D_803810A0);
     D_803810A0 = vector_defrag(D_803810A0);
 }
 

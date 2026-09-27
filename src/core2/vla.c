@@ -94,16 +94,4 @@ void vector_assign(VLA *this, s32 indx, void* value){
     memcpy((void*)((intptr_t)this->begin + indx * this->elem_size), value, this->elem_size);
 }
 
-VLA * vector_defrag(VLA *this){
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-VLA", "vector_defrag: this=%p", this);
-   s32 oldSize;
-   s32 oldMemSize;
-
-   oldSize = (intptr_t)this->end - (intptr_t)this->begin;
-   oldMemSize = (intptr_t)this->mem_end - (intptr_t)this->begin;
-   this = (VLA *)defrag(this);
-   this->begin = &this->data;
-   this->end = (void *)((intptr_t)this->begin + oldSize);
-   this->mem_end = (void *)((intptr_t)this->begin + oldMemSize);
-   return this;
 }
