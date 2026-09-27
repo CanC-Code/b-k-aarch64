@@ -48,7 +48,7 @@ s32 _levelSpecificFlags_calcCRC2(void) {
     var_v1 = 0x03F2F59A;
     var_v0 = 8;
     scrambled_ptr = (u8 *)&D_80383320.unk8;
-                  + (((((s32) &D_80383320.unk8 & 0xFFFF) ^ 0xA832) << 0xD) / 0x2000)) 
+    for(var_a2 = 0; var_a2 < var_v0; var_a2++){
         var_v1 += (var_a2 + 7) * scrambled_ptr[var_a2];
     };
     return var_v1;
