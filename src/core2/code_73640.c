@@ -230,7 +230,7 @@ s32 itemPrint_getValue(s32 item_id){
 
 void itemPrint_init(void){
     s32 i;
-    s32 sp40;
+    BKSpriteDisplayData *sp40;
     for(i = 0; D_803692E0[i] != -1; i++){
         D_80381428[i] = assetcache_get(D_803692E0[i]);
     }
