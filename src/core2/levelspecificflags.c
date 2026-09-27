@@ -47,7 +47,7 @@ s32 _levelSpecificFlags_calcCRC2(void) {
 
     var_v1 = 0x03F2F59A;
     var_v0 = 8;
-    scrambled_ptr = ((((((((s32) &D_80383320.unk8 >> 0x10) & 0xFFFF) ^ 0x195D) * 0x2F) / 0x2F) << 0x10) 
+    scrambled_ptr = (u8 *)&D_80383320.unk8;
                   + (((((s32) &D_80383320.unk8 & 0xFFFF) ^ 0xA832) << 0xD) / 0x2000)) 
                   ^ 0x195DA832;
     for(var_a2 = 0; var_a2 < var_v0; var_a2++){
@@ -57,7 +57,7 @@ s32 _levelSpecificFlags_calcCRC2(void) {
 }
 
 void _levelSpecificFlags_updateCRC2(void) {
-    *(u32 *)(((((s32) (((((s32) &D_80383320.unk4 >> 0x10) & 0xFFFF) ^ 0x195D) * 0x2F) / 0x2F) << 0x10) + ((s32) ((((s32) &D_80383320.unk4 & 0xFFFF) ^ 0xA832) << 0xD) / 0x2000)) ^ 0x195DA832) = _levelSpecificFlags_calcCRC2();
+    *(u32 *)&D_80383320.unk4 = _levelSpecificFlags_calcCRC2();
 }
 
 s32 levelSpecificFlags_get(s32 i){
