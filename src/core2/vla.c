@@ -94,4 +94,6 @@ void vector_assign(VLA *this, s32 indx, void* value){
     memcpy((void*)((intptr_t)this->begin + indx * this->elem_size), value, this->elem_size);
 }
 
+VLA * vector_defrag(VLA *this){
+    return this;
 }
