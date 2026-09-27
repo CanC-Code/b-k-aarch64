@@ -412,6 +412,7 @@ void print_setBoldFontTexture(s32 textureId){
         }
     }//L802F510C
     print_sFontSpriteAssets[FONT_SPRITE_ASSETS_4_BOLD_FONT_TEXTURE] = assetcache_get(textureId);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-FONT", "about to free FONTS_1_BOLD_NUMBERS=%p", (void*)print_sFonts[FONTS_1_BOLD_NUMBERS]);
     free(print_sFonts[FONTS_1_BOLD_NUMBERS]);
     print_sFonts[FONTS_1_BOLD_NUMBERS] = print_getLettersFromFont(print_sFontSpriteAssets[FONT_SPRITE_ASSETS_1_BOLD_FONT_NUMBERS_ALPHAMASK], print_sFontSpriteAssets[FONT_SPRITE_ASSETS_4_BOLD_FONT_TEXTURE]);
     if(print_sFontSpriteAssets[FONT_SPRITE_ASSETS_3_BOLD_FONT_LETTERS_ALPHAMASK]){
@@ -429,6 +430,7 @@ void print_resetBoldFontTexture(void){
 }
 
 void print_init(void){
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-FONT", "print_init ENTER");
     s32 i, j;
     s32 length;
     int found;
@@ -452,6 +454,7 @@ void print_init(void){
     print_sFontSpriteAssets[FONT_SPRITE_ASSETS_4_BOLD_FONT_TEXTURE] = assetcache_get(print_getCurrentMapBoldFontTexture());
     print_sFonts[FONTS_0_DIALOG] =  print_getLettersFromFont(print_sFontSpriteAssets[FONT_SPRITE_ASSETS_0_DIALOG_FONT_ALPHAMASK], print_sFontSpriteAssets[FONT_SPRITE_ASSETS_4_BOLD_FONT_TEXTURE]);
     print_sFonts[FONTS_1_BOLD_NUMBERS] =  print_getLettersFromFont(print_sFontSpriteAssets[FONT_SPRITE_ASSETS_1_BOLD_FONT_NUMBERS_ALPHAMASK], print_sFontSpriteAssets[FONT_SPRITE_ASSETS_4_BOLD_FONT_TEXTURE]);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-FONT", "print_init set FONTS_1_BOLD_NUMBERS=%p", (void*)print_sFonts[FONTS_1_BOLD_NUMBERS]);
     print_sPrintBuffer = malloc(PRINT_BUFFER_COUNT * sizeof(PrintBuffer));
     print_clearPrintBufferStrings();
 
