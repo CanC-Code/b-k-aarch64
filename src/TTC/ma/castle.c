@@ -298,15 +298,15 @@ static void __maCastle_updateTimeDeltaSumForFloorTiles()
         floor_tile->timeDeltaSum += time_delta;
         if (floor_tile->state == 1)
         {
-            model_transformMesh(sMapState.model1, floor_tile->meshId, __maCastle_meshCallbackFloorTileState_1, (s32)floor_tile);
+            model_transformMesh(sMapState.model1, floor_tile->meshId, __maCastle_meshCallbackFloorTileState_1, (void *)(intptr_t)floor_tile);
         }
         else if (floor_tile->state == 3)
         {
-            model_transformMesh(sMapState.model1, floor_tile->meshId, __maCastle_meshCallbackFloorTileState_3, (s32)floor_tile);
+            model_transformMesh(sMapState.model1, floor_tile->meshId, __maCastle_meshCallbackFloorTileState_3, (void *)(intptr_t)floor_tile);
         }
         else if (floor_tile->state == 5)
         {
-            model_transformMesh(sMapState.model1, floor_tile->meshId, __maCastle_meshCallbackFloorTileState_5, (s32)floor_tile);
+            model_transformMesh(sMapState.model1, floor_tile->meshId, __maCastle_meshCallbackFloorTileState_5, (void *)(intptr_t)floor_tile);
         }
     }
 }

@@ -120,7 +120,7 @@ Actor *chRBBWhistle_draw(ActorMarker *marker, Gfx** gdl, Mtx** mptr, Vtx **arg3)
     actor_rotation[0] = actor->pitch;
     actor_rotation[1] = actor->yaw;
     actor_rotation[2] = actor->roll;
-    modelRender_setPreDrawCallback((GenFunction_1)actor_predrawMethod, (s32)actor);
+    modelRender_setPreDrawCallback((GenFunction_1)actor_predrawMethod, (void *)(intptr_t)actor);
     modelRender_setRefPoints(func_80329934());
     modelRender_draw(gdl, mptr, actor->position, actor_rotation, actor->scale, NULL, marker_loadModelBin(marker));
     vec3fArray_get_vec3f(func_80329934(), 5, local->particlePosition);

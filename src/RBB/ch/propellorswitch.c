@@ -83,7 +83,7 @@ Actor *chPropellorSwitch_draw(ActorMarker *marker, Gfx **gdl, Mtx **mptr, Vtx **
         return actor;
     }
 
-    modelRender_setPreDrawCallback((GenFunction_1)actor_predrawMethod, (s32)actor);
+    modelRender_setPreDrawCallback((GenFunction_1)actor_predrawMethod, (void *)(intptr_t)actor);
     if(local->unk4){
         modelRender_draw(gdl, mptr, actor->position, NULL, 1.0f, NULL, local->unk4);
     }
