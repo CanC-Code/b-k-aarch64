@@ -1,4 +1,3 @@
-#include <EGL/egl.h>
 #include <dlfcn.h>
 #include "n64_os_types_cpp.h"
 // File: Android/app/src/main/cpp/ultra/lowlevel_bridge.cpp
@@ -464,7 +463,6 @@ void VideoPlugin_OutputFrameTexture(uint32_t hostTextureId) {
         }
 
         if (!gN64_RDRAM || hostTextureId == 0) return;
-    }
 
         // Only upload when the RSP thread has completed a task since the
         // last upload.  Prevents sampling mid-task and catching the
