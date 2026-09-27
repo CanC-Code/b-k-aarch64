@@ -110,6 +110,7 @@ static bool initEGL(ANativeWindow* win) {
                 eglSwapInterval(g_rs.dpy, 1);
                 glViewport(0, 0, g_rs.w, g_rs.h);
                 g_rs.ready = true;
+                bka_egl_ctx = g_rs.ctx;
                 bka_surface_ready(g_rs.w, g_rs.h);
                 LOGI("EGL surface recreated %dx%d (context preserved)", g_rs.w, g_rs.h);
                 return true;
@@ -147,6 +148,7 @@ static bool initEGL(ANativeWindow* win) {
     initGL();
     glViewport(0, 0, g_rs.w, g_rs.h);
     g_rs.ready = true;
+    bka_egl_ctx = g_rs.ctx;
     bka_surface_ready(g_rs.w, g_rs.h);
     return true;
 }
@@ -184,6 +186,11 @@ static int64_t nowNs() {
 
 static void renderFrame() {
     if (!g_rs.ready) return;
+    // Guard against stale EGL context.  After Android 14's libgui
+    // transaction churn, g_rs.ready can be true while the current
+    // context is invalid.  glClear on a dead surface faults inside
+    // the Adreno driver's memset.
+    if (eglGetCurrentContext() != g_rs.ctx) return;
     int64_t t = nowNs();
     if (g_rs.lastNs && t - g_rs.lastNs < 33000000LL) return;
     g_rs.lastNs = t;
