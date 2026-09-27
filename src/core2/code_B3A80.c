@@ -385,6 +385,7 @@ bool asset_isCompressed(enum asset_e arg0){ //asset_compressed?
 BKSprite *codeB3A80_getSprite(enum asset_e sprite_id, BKSpriteDisplayData **arg1){
     BKSprite *s0;
     s0 = assetcache_get(sprite_id);
+    if (s0 == NULL) { *arg1 = NULL; return NULL; }
     if(D_80383CD4[assetCacheCurrentIndex] == NULL){
         codeAEDA0_setSpriteDrawMode(-1);
         func_80338308(sprite_getUnk8(s0), sprite_getUnkA(s0));
@@ -437,7 +438,7 @@ void *assetcache_get(enum asset_e assetId) {
         }
         __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "assetcache_get: uncomp_size=%d", uncomp_size);
 
-        if (func_8025498C((u32)comp_size + uncomp_size) && !sp28) {
+        if (func_8025498C((u32)comp_size + uncomp_size) && !sp28 && uncomp_size > 0) {
             sp33 = 1;
             uncompressed_file = malloc((u32)comp_size + uncomp_size + 64);
             compressed_file = (void *)((u8*)uncompressed_file + uncomp_size);

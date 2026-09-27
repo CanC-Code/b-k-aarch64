@@ -1,3 +1,4 @@
+#include <android/log.h>
 #include <ultra64.h>
 #include "functions.h"
 #include "variables.h"
@@ -236,6 +237,7 @@ void itemPrint_init(void){
     }
     for(i = 0; D_803692EC[i] != -1; i++){
         D_80381450[i] = codeB3A80_getSprite(D_803692EC[i], &sp40);
+        if (D_80381450[i] == NULL) { __android_log_print(ANDROID_LOG_ERROR, "BKA-FONT", "itemPrint_init: NULL sprite for assetId=%d", D_803692EC[i]); }
     }
 }
 
