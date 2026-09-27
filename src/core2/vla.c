@@ -1,3 +1,4 @@
+#include <android/log.h>
 #include <ultra64.h>
 #include "functions.h"
 #include "core2/vla.h"
@@ -94,6 +95,7 @@ void vector_assign(VLA *this, s32 indx, void* value){
 }
 
 VLA * vector_defrag(VLA *this){
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-VLA", "vector_defrag: this=%p", this);
    s32 oldSize;
    s32 oldMemSize;
 
