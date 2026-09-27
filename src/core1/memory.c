@@ -765,7 +765,7 @@ bool func_80255920(void *arg0) {
 }
 
 HeapHeader * func_80255978(void *ptr){
-    return ((HeapHeader* )((s32)ptr - sizeof(HeapHeader)))->prev;
+    return ((HeapHeader*)((intptr_t)ptr - sizeof(HeapHeader)))->prev;
 }
 
 void func_80255980(void *arg0, int arg1){
