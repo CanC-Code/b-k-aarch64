@@ -331,6 +331,12 @@ void spriteRender_drawWithSegment(Gfx **gfx, Vtx **vtx, BKSprite *sprite, u32 fr
         s16 sw_h = (s16)__builtin_bswap16((u16)var_t2->h);
         s16 sw_x = (s16)__builtin_bswap16((u16)var_t2->x);
         s16 sw_y = (s16)__builtin_bswap16((u16)var_t2->y);
+        if (sw_w <= 0 || sw_w > 512 || sw_h <= 0 || sw_h > 512) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "DWS chunk %d bad header w=%d h=%d var_t2=%p breaking",
+                sp1BC, sw_w, sw_h, (void*)var_t2);
+            break;
+        }
         temp_ra = sw_h;
         {
             static int s_diag = 0;

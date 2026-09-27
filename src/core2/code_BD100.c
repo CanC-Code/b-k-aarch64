@@ -230,11 +230,13 @@ BKSpriteDisplayData * func_80344A1C(BKSprite *arg0){
     BKSpriteFrameDisplayData *v1;
     Vtx* vtx_end; //sp5C
 
-    header_size = ALIGN(sizeof(BKSpriteDisplayData)+ sizeof(BKSpriteFrameDisplayData)*arg0->frameCnt, 0x10);
+    /* ARM64 port: sprite asset frameCnt is big-endian */
+    s32 realFrameCnt = (s32)(s16)__builtin_bswap16((u16)arg0->frameCnt);
+    header_size = ALIGN(sizeof(BKSpriteDisplayData)+ sizeof(BKSpriteFrameDisplayData)*realFrameCnt, 0x10);
     s1 = 0;
     s6 = (BKSpriteDisplayData *) malloc(header_size);
     s6->sprite = arg0;
-    for(i = 0; i < arg0->frameCnt; i++){//L80344A88
+    for(i = 0; i < realFrameCnt; i++){//L80344A88
         s1 = ALIGN(s1, 0x10);
         s6 = (BKSpriteDisplayData *)realloc(s6, header_size + s1 + 0x12C0);
         vtx_start = (Vtx *)((intptr_t)s6 + header_size + s1);

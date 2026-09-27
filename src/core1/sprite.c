@@ -18,7 +18,7 @@ u32 sprite_getUnk4(BKSprite *this) {
 }
 
 s32 sprite_getFrameCount(BKSprite *this) {
-    return this->frameCnt;
+    return (s16)__builtin_bswap16((u16)this->frameCnt);
 }
 
 BKSpriteFrame *sprite_getFramePtr(BKSprite *this, u32 frame_id) {
