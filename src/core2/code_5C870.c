@@ -423,7 +423,6 @@ void func_802E4214(enum map_e map_id){
     __android_log_print(ANDROID_LOG_ERROR, "BKA-FONT", "after func_8030AFA0: FONTS_1=%p", print_sFonts[1]);
     LOG_BKA_INIT("func_802E3854"); func_802E3854();
     __android_log_print(ANDROID_LOG_ERROR, "BKA-FONT", "after func_802E3854: FONTS_1=%p", print_sFonts[1]);
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-FONT", "after func_802E3854: FONTS_1=%p", print_sFonts[1]);
     LOG_BKA_INIT("func_802E38E8"); func_802E38E8(map_id, 0, 0);
     __android_log_print(ANDROID_LOG_ERROR, "BKA-FONT", "before func_802E38E8: FONTS_1=%p", print_sFonts[1]);
     D_8037E8E0.unk0 = 0;
