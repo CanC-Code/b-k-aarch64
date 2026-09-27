@@ -412,7 +412,10 @@ void heap_init(void) {}
 void func_802546FC(void) {}
 
 // Memory management stubs (from excluded memory.c)
-void defrag(void) {}
+/* ARM64 port: identity defrag. The real heap compactor is in src/core1/memory.c,
+ * which is in EXCLUDE_LIST because it redefines libc malloc/memcpy. Skipping
+ * compaction is safe — objects stay scattered but all pointers remain valid. */
+void *defrag(void *this) { return this; }
 void *defrag_asset(void *ptr) { return ptr; }
 s32 heap_get_size(void) { return 0x211120; }
 s32 heap_get_occupied_size(void) { return 0; }
