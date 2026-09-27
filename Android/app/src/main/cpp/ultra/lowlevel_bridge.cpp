@@ -464,13 +464,6 @@ void VideoPlugin_OutputFrameTexture(uint32_t hostTextureId) {
         }
 
         if (!gN64_RDRAM || hostTextureId == 0) return;
-    // Guard: no current EGL context → don't touch GL objects.
-    {
-        extern void* bka_get_current_egl_context(void);
-        extern void* bka_get_egl_context(void);
-        void* cur = bka_get_current_egl_context();
-        void* own = bka_get_egl_context();
-        if (cur != own) return;
     }
 
         // Only upload when the RSP thread has completed a task since the
