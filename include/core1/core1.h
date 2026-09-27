@@ -28,7 +28,7 @@
 
 /* need to sort out in individual header files */
 
-//void *defrag(void *);
+void *defrag(void *);
 
 void glcrc_calc_checksum(void *start, void *end, u32 checksum[2]);
 
