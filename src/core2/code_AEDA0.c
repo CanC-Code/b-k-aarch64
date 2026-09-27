@@ -332,6 +332,14 @@ void spriteRender_drawWithSegment(Gfx **gfx, Vtx **vtx, BKSprite *sprite, u32 fr
         s16 sw_x = (s16)__builtin_bswap16((u16)var_t2->x);
         s16 sw_y = (s16)__builtin_bswap16((u16)var_t2->y);
         temp_ra = sw_h;
+        {
+            static int s_diag = 0;
+            if (s_diag++ < 200)
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "DWS ch=%d vt=%p tm=%p w=%d h=%d a3=%p ivtx=%d gfx=%p",
+                    sp1BC, (void*)var_t2, (void*)tmem, sw_w, sw_h,
+                    (void*)var_a3, i_vtx, (void*)*gfx);
+        }
         tmem = (u8*)ALIGN(var_t2 + 1, 8); //align
 
         //load texture block
@@ -360,7 +368,7 @@ void spriteRender_drawWithSegment(Gfx **gfx, Vtx **vtx, BKSprite *sprite, u32 fr
                 var_a3->v.ob[0] = (s32)((temp_a2_2 + (sw_w - 1) * ix) * temp_f0);
                 var_a3->v.ob[1] = (s32)((var_t1_8 +  -(temp_ra - 1) * iy) * temp_f2);
                 var_a3->v.ob[2] = 0;
-                var_a3->v.tc[0] = 0x20*(2*var_t2->w * ix  - 1);
+                var_a3->v.tc[0] = 0x20*(2*sw_w * ix  - 1);
                 var_a3->v.tc[1] = 0x20*(2*temp_ra * (iy^0) - 1);
                 *(u32*)&var_a3->v.cn = 0x7F80;
                 var_a3++;
