@@ -92,6 +92,10 @@ static void initGL() {
 
 static void termEGL();   // forward — defined below initEGL
 static ANativeWindow* g_native_window = nullptr;
+extern "C" {
+extern uint8_t* gN64_RDRAM;
+extern uint32_t g_active_fb_offset;
+}
 
 static bool initEGL(ANativeWindow* win) {
     // Context already exists — recreate only the window surface.
@@ -187,7 +191,6 @@ static int64_t nowNs() {
 
 
 static void dumpFramebufferPPM(int frame_num) {
-    extern "C" { extern uint8_t* gN64_RDRAM; extern uint32_t g_active_fb_offset; }
     if (!gN64_RDRAM) return;
     uint16_t* fb = (uint16_t*)(gN64_RDRAM + g_active_fb_offset);
     char path[256];
@@ -207,7 +210,6 @@ static void dumpFramebufferPPM(int frame_num) {
 }
 
 static void presentToWindow(ANativeWindow* win) {
-    extern "C" { extern uint8_t* gN64_RDRAM; extern uint32_t g_active_fb_offset; }
     if (!win || !gN64_RDRAM) return;
 
     // Detach EGL so ANativeWindow_lock can acquire the buffer
