@@ -284,6 +284,11 @@ void spriteRender_drawWithSegment(Gfx **gfx, Vtx **vtx, BKSprite *sprite, u32 fr
     }
     
     frame_ptr = sprite_getFramePtr(sprite, frame);
+    s16 sw_fp_w = (s16)__builtin_bswap16((u16)frame_ptr->w);
+    s16 sw_fp_h = (s16)__builtin_bswap16((u16)frame_ptr->h);
+    s16 sw_fp_unk0 = (s16)__builtin_bswap16((u16)frame_ptr->unk0);
+    s16 sw_fp_unk2 = (s16)__builtin_bswap16((u16)frame_ptr->unk2);
+    s16 sw_fp_chunkCnt = (s16)__builtin_bswap16((u16)frame_ptr->chunkCnt);
     
     //load palette in indexed pixels
     var_t2 = (BKSpriteTextureBlock *)(frame_ptr + 1);
@@ -321,34 +326,38 @@ void spriteRender_drawWithSegment(Gfx **gfx, Vtx **vtx, BKSprite *sprite, u32 fr
     }
     //for each texture (chunk) in frame
     // sp1B4 = sp1B4;
-    for(sp1BC = 0; sp1BC < frame_ptr->chunkCnt; sp1BC++){
-        temp_ra = var_t2->h;
+    for(sp1BC = 0; sp1BC < sw_fp_chunkCnt; sp1BC++){
+        s16 sw_w = (s16)__builtin_bswap16((u16)var_t2->w);
+        s16 sw_h = (s16)__builtin_bswap16((u16)var_t2->h);
+        s16 sw_x = (s16)__builtin_bswap16((u16)var_t2->x);
+        s16 sw_y = (s16)__builtin_bswap16((u16)var_t2->y);
+        temp_ra = sw_h;
         tmem = (u8*)ALIGN(var_t2 + 1, 8); //align
 
         //load texture block
         if (sprite->type & SPRITE_TYPE_RGBA16) {
-            gDPLoadTextureBlock((*gfx)++, tmem, G_IM_FMT_RGBA, G_IM_SIZ_16b, var_t2->w, temp_ra, NULL, 0, 0, 0, 0, 0, 0);
+            gDPLoadTextureBlock((*gfx)++, tmem, G_IM_FMT_RGBA, G_IM_SIZ_16b, sw_w, temp_ra, NULL, 0, 0, 0, 0, 0, 0);
         } else if (sprite->type & SPRITE_TYPE_RGBA32) {
-            gDPLoadTextureBlock((*gfx)++, tmem, G_IM_FMT_RGBA, G_IM_SIZ_32b, var_t2->w, temp_ra, NULL, 0, 0, 0, 0, 0, 0);
+            gDPLoadTextureBlock((*gfx)++, tmem, G_IM_FMT_RGBA, G_IM_SIZ_32b, sw_w, temp_ra, NULL, 0, 0, 0, 0, 0, 0);
         } else if (sprite->type & SPRITE_TYPE_CI4) {
-            gDPLoadTextureBlock_4b((*gfx)++, tmem, G_IM_FMT_CI, var_t2->w, temp_ra, NULL, 0, 0, 0, 0, 0, 0);
+            gDPLoadTextureBlock_4b((*gfx)++, tmem, G_IM_FMT_CI, sw_w, temp_ra, NULL, 0, 0, 0, 0, 0, 0);
         } else if (sprite->type & SPRITE_TYPE_CI8) {
-            gDPLoadTextureBlock((*gfx)++, tmem, G_IM_FMT_CI, G_IM_SIZ_8b, var_t2->w, temp_ra, NULL, 0, 0, 0, 0, 0, 0);
+            gDPLoadTextureBlock((*gfx)++, tmem, G_IM_FMT_CI, G_IM_SIZ_8b, sw_w, temp_ra, NULL, 0, 0, 0, 0, 0, 0);
         }else if (sprite->type & SPRITE_TYPE_IA8) {
-            gDPLoadTextureBlock((*gfx)++, tmem, G_IM_FMT_CI, G_IM_SIZ_8b, var_t2->w, temp_ra, NULL, 0, 0, 0, 0, 0, 0);
+            gDPLoadTextureBlock((*gfx)++, tmem, G_IM_FMT_CI, G_IM_SIZ_8b, sw_w, temp_ra, NULL, 0, 0, 0, 0, 0, 0);
         } else if (sprite->type & SPRITE_TYPE_I8) {
-            gDPLoadTextureBlock((*gfx)++, tmem, G_IM_FMT_I, G_IM_SIZ_8b, var_t2->w, temp_ra, NULL, 0, 0, 0, 0, 0, 0);
+            gDPLoadTextureBlock((*gfx)++, tmem, G_IM_FMT_I, G_IM_SIZ_8b, sw_w, temp_ra, NULL, 0, 0, 0, 0, 0, 0);
         }
 
         //generate vtx coords for texture
         gSP2Triangles((*gfx)++, i_vtx, i_vtx + 1, i_vtx + 3, i_vtx, i_vtx, i_vtx + 3, i_vtx + 2, i_vtx);
-         temp_f0 = ((f32) D_80383640 / (f32) frame_ptr->w);
-         temp_f2 = ((f32) D_80383644 / (f32) frame_ptr->h);
-        temp_a2_2 = var_t2->x - frame_ptr->unk0;
-        var_t1_8 = (frame_ptr->unk2 - var_t2->y);
+         temp_f0 = ((f32) D_80383640 / (f32) sw_fp_w);
+         temp_f2 = ((f32) D_80383644 / (f32) sw_fp_h);
+        temp_a2_2 = sw_x - sw_fp_unk0;
+        var_t1_8 = (sw_fp_unk2 - sw_y);
         for(iy = 0; iy < 2; iy++){
             for(ix = 0; ix < 2; ix++){
-                var_a3->v.ob[0] = (s32)((temp_a2_2 + (var_t2->w - 1) * ix) * temp_f0);
+                var_a3->v.ob[0] = (s32)((temp_a2_2 + (sw_w - 1) * ix) * temp_f0);
                 var_a3->v.ob[1] = (s32)((var_t1_8 +  -(temp_ra - 1) * iy) * temp_f2);
                 var_a3->v.ob[2] = 0;
                 var_a3->v.tc[0] = 0x20*(2*var_t2->w * ix  - 1);
@@ -375,7 +384,7 @@ void spriteRender_drawWithSegment(Gfx **gfx, Vtx **vtx, BKSprite *sprite, u32 fr
                 gSPVertex((*gfx)++, osVirtualToPhysical(sp1B0), 0, 0);
             }
         }
-        var_t2 = (BKSpriteTextureBlock *)(tmem + ((s32) (var_t2->w * var_t2->h) * pixel_size_nibbles / 2));
+        var_t2 = (BKSpriteTextureBlock *)(tmem + ((s32) (sw_w * sw_h) * pixel_size_nibbles / 2));
     }
     // sp1B4 = reinterpret_cast(Gfx *,sp1B4);
     *vtx = var_a3;
