@@ -110,7 +110,6 @@ static bool initEGL(ANativeWindow* win) {
                 eglSwapInterval(g_rs.dpy, 1);
                 glViewport(0, 0, g_rs.w, g_rs.h);
                 g_rs.ready = true;
-                bka_egl_ctx = g_rs.ctx;
                 bka_surface_ready(g_rs.w, g_rs.h);
                 LOGI("EGL surface recreated %dx%d (context preserved)", g_rs.w, g_rs.h);
                 return true;
@@ -148,7 +147,6 @@ static bool initEGL(ANativeWindow* win) {
     initGL();
     glViewport(0, 0, g_rs.w, g_rs.h);
     g_rs.ready = true;
-    bka_egl_ctx = g_rs.ctx;
     bka_surface_ready(g_rs.w, g_rs.h);
     return true;
 }
