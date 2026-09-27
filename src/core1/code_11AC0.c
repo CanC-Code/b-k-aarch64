@@ -297,6 +297,8 @@ void musicTrack_releaseAll(void) {
 
 void musicSlot_loadTrack(u8 index, enum comusic_e track_id) {
     int i;
+    /* ARM64 port: audio subsystem init stubbed, sMIDIAssets is NULL. Boot silent. */
+    if (!sMIDIAssets) return;
 
     if (track_id == -1) {
         if (track_id != sMusicSlots[index].track_id) {
