@@ -297,8 +297,8 @@ static void renderFrame() {
     static int64_t s_lastSwapNs = 0;
     if (t - s_lastSwapNs >= 100000000LL) {   // 100ms ≈ 10 fps
         s_lastSwapNs = t;
-        if (g_rs.frames == 30) dumpFramebufferPPM(30);
-        presentToWindow(g_native_window);
+        dumpFramebufferPPM(g_rs.frames);
+        /* presentToWindow disabled: conflicts with EGL over buffer queue */
     }
 
     if (++g_rs.frames <= 3 || g_rs.frames % 120 == 0) LOGI("frame %d", g_rs.frames);
