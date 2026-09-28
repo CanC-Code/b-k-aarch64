@@ -19,6 +19,7 @@ public class NativeGameActivity extends NativeActivity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
 
         View decor = getWindow().getDecorView();
         decor.setSystemUiVisibility(

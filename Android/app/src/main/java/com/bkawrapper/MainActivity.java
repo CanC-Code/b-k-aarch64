@@ -82,6 +82,7 @@ public class MainActivity extends android.app.Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
         View decor = getWindow().getDecorView();
         decor.setSystemUiVisibility(
               View.SYSTEM_UI_FLAG_LAYOUT_STABLE
