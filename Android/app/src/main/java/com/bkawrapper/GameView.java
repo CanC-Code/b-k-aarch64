@@ -20,7 +20,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     private Thread mThread;
     private volatile boolean mRunning;
 
-    public static native void bkaFillArgb(int[] out);
+    
 
     public GameView(Context c) {
         super(c);
@@ -59,7 +59,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             try {
                 c = getHolder().lockCanvas();
                 if (c == null) { Thread.sleep(16); continue; }
-                bkaFillArgb(mPixels);
+                Native.fillArgb(mPixels);
                 mBitmap.setPixels(mPixels, 0, W, 0, 0, W, H);
                 int vw = c.getWidth(), vh = c.getHeight();
                 int sc = Math.min(vw / W, vh / H);

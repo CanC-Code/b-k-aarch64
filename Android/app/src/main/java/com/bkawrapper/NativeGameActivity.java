@@ -12,7 +12,7 @@ import android.view.WindowManager;
 public class NativeGameActivity extends Activity {
     static { System.loadLibrary("bkawrapper"); }
 
-    public static native void bkaStartEngine(String dir);
+    
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,6 +49,6 @@ public class NativeGameActivity extends Activity {
             }
         });
 
-        bkaStartEngine(getFilesDir().getAbsolutePath());
+        Native.startEngine(getFilesDir().getAbsolutePath());
     }
 }

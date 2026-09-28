@@ -289,7 +289,7 @@ void android_main(android_app* app) {
 
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_bkawrapper_GameView_bkaFillArgb(JNIEnv* env, jobject /*thiz*/, jintArray outArr) {
+Java_com_bkawrapper_Native_fillArgb(JNIEnv* env, jobject /*thiz*/, jintArray outArr) {
     extern uint8_t* gN64_RDRAM;
     extern uint32_t g_active_fb_offset;
     if (!gN64_RDRAM || !outArr) return;
@@ -308,7 +308,7 @@ Java_com_bkawrapper_GameView_bkaFillArgb(JNIEnv* env, jobject /*thiz*/, jintArra
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_bkawrapper_NativeGameActivity_bkaStartEngine(JNIEnv* env, jobject /*thiz*/, jstring dir) {
+Java_com_bkawrapper_Native_startEngine(JNIEnv* env, jobject /*thiz*/, jstring dir) {
     if (!dir) return;
     const char* cdir = env->GetStringUTFChars(dir, nullptr);
     if (!cdir) return;

@@ -290,7 +290,7 @@ public class MainActivity extends android.app.Activity {
 
     private void bootGameEngine() {
         s_lastGameStart = System.currentTimeMillis();
-        Intent intent = new Intent(this, NativeGameActivity.class);
+        Intent intent = new Intent(this, StreamActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
         startActivity(intent);
         // Do NOT finish() — MainActivity stays in the backstack so
