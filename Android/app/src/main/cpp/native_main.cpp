@@ -92,6 +92,7 @@ static void initGL() {
 extern "C" {
 extern uint8_t* gN64_RDRAM;
 extern uint32_t g_active_fb_offset;
+extern volatile int g_bka_pixels_drawn;
 }
 
 static void termEGL();   // forward — defined below initEGL
@@ -251,7 +252,10 @@ static void renderFrame() {
     static int64_t s_lastSwapNs = 0;
     if (t - s_lastSwapNs >= 100000000LL) {   // 100ms ≈ 10 fps
         s_lastSwapNs = t;
-        dumpFramebufferPPM(g_rs.frames);
+        if (g_bka_pixels_drawn > 500) {
+            static int s_dumped = 0;
+            if (!s_dumped) { s_dumped = 1; dumpFramebufferPPM(1); }
+        }
         /* eglSwapBuffers disabled — Motorola UAF at 0x7b15010110 */
     }
 
