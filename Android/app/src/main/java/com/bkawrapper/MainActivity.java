@@ -33,7 +33,7 @@ import java.io.File;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends android.app.Activity {
 
     private static final String TAG              = "BKA-MainActivity";
     private static final int    PICK_ROM_REQUEST = 1001;
