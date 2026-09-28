@@ -1,5 +1,6 @@
 // native_main.cpp — NativeActivity entry and EGL render loop.
 #include <android_native_app_glue.h>
+#include <android/native_window.h>
 #include <android/asset_manager.h>
 #include <android/log.h>
 #include <EGL/egl.h>
@@ -95,35 +96,12 @@ extern uint32_t g_active_fb_offset;
 extern volatile int g_bka_pixels_drawn;
 }
 
+static ANativeWindow* g_native_window = nullptr;
+
 static void termEGL();   // forward — defined below initEGL
 static bool initEGL(ANativeWindow* win) {
-    // Context already exists — recreate only the window surface.
-    if (g_rs.dpy != EGL_NO_DISPLAY && g_rs.ctx != EGL_NO_CONTEXT) {
-        EGLConfig c;
-        EGLint numCfg = 0;
-        const EGLint cfgAttr[] = {
-            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-            EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
-            EGL_RED_SIZE,5, EGL_GREEN_SIZE,6, EGL_BLUE_SIZE,5, EGL_ALPHA_SIZE,0,
-            EGL_DEPTH_SIZE,16, EGL_NONE };
-        eglChooseConfig(g_rs.dpy, cfgAttr, &c, 1, &numCfg);
-        if (numCfg > 0) {
-            g_rs.surf = eglCreateWindowSurface(g_rs.dpy, c, win, nullptr);
-            if (g_rs.surf != EGL_NO_SURFACE &&
-                eglMakeCurrent(g_rs.dpy, g_rs.surf, g_rs.surf, g_rs.ctx)) {
-                eglQuerySurface(g_rs.dpy, g_rs.surf, EGL_WIDTH,  &g_rs.w);
-                eglQuerySurface(g_rs.dpy, g_rs.surf, EGL_HEIGHT, &g_rs.h);
-                eglSwapInterval(g_rs.dpy, 1);
-                glViewport(0, 0, g_rs.w, g_rs.h);
-                g_rs.ready = true;
-                bka_surface_ready(g_rs.w, g_rs.h);
-                LOGI("EGL surface recreated %dx%d (context preserved)", g_rs.w, g_rs.h);
-                return true;
-            }
-        }
-        LOGI("EGL surface recreation failed; falling back to full reinit");
-        termEGL();
-    }
+    g_native_window = win;
+    if (g_rs.dpy != EGL_NO_DISPLAY) termEGL();
 
     g_rs.dpy = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     if (g_rs.dpy == EGL_NO_DISPLAY) return false;
@@ -131,29 +109,25 @@ static bool initEGL(ANativeWindow* win) {
 
     const EGLint cfg[] = {
         EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-        EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
-        EGL_RED_SIZE,5, EGL_GREEN_SIZE,6, EGL_BLUE_SIZE,5, EGL_ALPHA_SIZE,0,
+        EGL_SURFACE_TYPE,    EGL_PBUFFER_BIT,
+        EGL_RED_SIZE,8, EGL_GREEN_SIZE,8, EGL_BLUE_SIZE,8, EGL_ALPHA_SIZE,8,
         EGL_DEPTH_SIZE,16, EGL_NONE };
     EGLConfig c; EGLint n = 0;
-    if (!eglChooseConfig(g_rs.dpy, cfg, &c, 1, &n) || n == 0) { LOGE("chooseConfig"); return false; }
-    EGLint fmt = 0;
-    eglGetConfigAttrib(g_rs.dpy, c, EGL_NATIVE_VISUAL_ID, &fmt);
-    ANativeWindow_setBuffersGeometry(win, 0, 0, fmt);
+    if (!eglChooseConfig(g_rs.dpy, cfg, &c, 1, &n) || n == 0) return false;
 
     const EGLint ca[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
     g_rs.ctx = eglCreateContext(g_rs.dpy, c, EGL_NO_CONTEXT, ca);
-    if (g_rs.ctx == EGL_NO_CONTEXT) { LOGE("createContext"); return false; }
-    g_rs.surf = eglCreateWindowSurface(g_rs.dpy, c, win, nullptr);
-    if (g_rs.surf == EGL_NO_SURFACE) { LOGE("createWindowSurface"); return false; }
-    if (!eglMakeCurrent(g_rs.dpy, g_rs.surf, g_rs.surf, g_rs.ctx)) { LOGE("makeCurrent"); return false; }
-    eglQuerySurface(g_rs.dpy, g_rs.surf, EGL_WIDTH,  &g_rs.w);
-    eglQuerySurface(g_rs.dpy, g_rs.surf, EGL_HEIGHT, &g_rs.h);
-    LOGI("EGL up %dx%d", g_rs.w, g_rs.h);
+    if (g_rs.ctx == EGL_NO_CONTEXT) return false;
+
+    const EGLint pbAttr[] = { EGL_WIDTH, 292, EGL_HEIGHT, 216, EGL_NONE };
+    g_rs.surf = eglCreatePbufferSurface(g_rs.dpy, c, pbAttr);
+    if (g_rs.surf == EGL_NO_SURFACE) return false;
+    if (!eglMakeCurrent(g_rs.dpy, g_rs.surf, g_rs.surf, g_rs.ctx)) return false;
 
     initGL();
-    glViewport(0, 0, g_rs.w, g_rs.h);
+    g_rs.w = 292; g_rs.h = 216;
     g_rs.ready = true;
-    bka_surface_ready(g_rs.w, g_rs.h);
+    LOGI("EGL pbuffer up 292x216");
     return true;
 }
 
@@ -209,51 +183,38 @@ static void dumpFramebufferPPM(int frame_num) {
 extern "C" void bka_dump_fb(int n) { dumpFramebufferPPM(n); }
 
 static void renderFrame() {
-    if (!g_rs.ready) return;
-    // Guard against stale EGL context.  After Android 14's libgui
-    // transaction churn, g_rs.ready can be true while the current
-    // context is invalid.  glClear on a dead surface faults inside
-    // the Adreno driver's memset.
-    if (eglGetCurrentContext() != g_rs.ctx) return;
+    if (!g_rs.ready || !g_native_window) return;
+    if (!gN64_RDRAM) return;
+
     int64_t t = nowNs();
     if (g_rs.lastNs && t - g_rs.lastNs < 33000000LL) return;
     g_rs.lastNs = t;
 
-    bka_update_texture((int)g_rs.tex);
+    uint16_t* src = (uint16_t*)(gN64_RDRAM + g_active_fb_offset);
 
-    { static int64_t s_lastLogNs = 0;
-      if (t - s_lastLogNs >= 1000000000LL) {
-          s_lastLogNs = t;
-          LOGI("renderFrame: ready=%d dims=%dx%d tex=%u frames=%d",
-               (int)g_rs.ready, g_rs.w, g_rs.h, g_rs.tex, g_rs.frames);
-      } }
-
-    glClearColor(0,0,0,1);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glUseProgram(g_rs.prog);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, g_rs.tex);
-    glUniform1i(g_rs.uTex, 0);
-
-    glBindBuffer(GL_ARRAY_BUFFER, g_rs.vboV);
-    glEnableVertexAttribArray(g_rs.posLoc);
-    glVertexAttribPointer(g_rs.posLoc, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
-    glBindBuffer(GL_ARRAY_BUFFER, g_rs.vboT);
-    glEnableVertexAttribArray(g_rs.texLoc);
-    glVertexAttribPointer(g_rs.texLoc, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
-
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    glDisableVertexAttribArray(g_rs.posLoc);
-    glDisableVertexAttribArray(g_rs.texLoc);
-    // Present at a heavily throttled rate.  The Motorola/Android-14
-    // libgui UAF at 0x7b15010110 fires on buffer-transaction callbacks;
-    // reducing the swap rate to ~6 fps cuts the framework's churn to
-    // ~1/5th of 30fps and stays below the UAF trigger threshold in
-    // observed runs.
-    static int64_t s_lastSwapNs = 0;
-    if (t - s_lastSwapNs >= 100000000LL) {   // 100ms ≈ 10 fps
-        s_lastSwapNs = t;
-        /* eglSwapBuffers disabled — Motorola UAF at 0x7b15010110 */
+    ANativeWindow_Buffer buf;
+    if (ANativeWindow_lock(g_native_window, &buf, nullptr) == 0) {
+        int W = 292, H = 216;
+        int dw = buf.width, dh = buf.height;
+        int scale = dw / W < dh / H ? dw / W : dh / H;
+        if (scale < 1) scale = 1;
+        int outW = W * scale, outH = H * scale;
+        int ox = (dw - outW) / 2, oy = (dh - outH) / 2;
+        uint32_t* dst = (uint32_t*)buf.bits;
+        memset(dst, 0, (size_t)dw * dh * 4);
+        for (int y = 0; y < outH; y++) {
+            int sy = y / scale;
+            const uint16_t* srow = src + sy * W;
+            uint32_t* drow = dst + (oy + y) * dw + ox;
+            for (int x = 0; x < outW; x++) {
+                uint16_t px = srow[x / scale];
+                uint8_t r = (px >> 11) & 0x1F; r = (r << 3) | (r >> 2);
+                uint8_t g = (px >> 5)  & 0x3F; g = (g << 2) | (g >> 4);
+                uint8_t b = px & 0x1F;         b = (b << 3) | (b >> 2);
+                drow[x] = 0xFF000000u | (b << 16) | (g << 8) | r;
+            }
+        }
+        ANativeWindow_unlockAndPost(g_native_window);
     }
 
     if (++g_rs.frames <= 3 || g_rs.frames % 120 == 0) LOGI("frame %d", g_rs.frames);
@@ -263,6 +224,8 @@ static void onAppCmd(android_app* app, int32_t cmd) {
     switch (cmd) {
         case APP_CMD_INIT_WINDOW:
             if (app->window) {
+                g_native_window = app->window;
+                ANativeWindow_setBuffersGeometry(app->window, 0, 0, WINDOW_FORMAT_RGBA_8888);
                 initEGL(app->window);
                 if (!g_booted) {
                     g_booted = true;
@@ -272,14 +235,11 @@ static void onAppCmd(android_app* app, int32_t cmd) {
                 }
             }
             break;
-        case APP_CMD_TERM_WINDOW: termSurfaceOnly(); break;
+        case APP_CMD_TERM_WINDOW:
+            g_native_window = nullptr;
+            break;
         case APP_CMD_WINDOW_RESIZED:
-            if (g_rs.ready && app->window) {
-                eglQuerySurface(g_rs.dpy, g_rs.surf, EGL_WIDTH, &g_rs.w);
-                eglQuerySurface(g_rs.dpy, g_rs.surf, EGL_HEIGHT, &g_rs.h);
-                glViewport(0, 0, g_rs.w, g_rs.h);
-                bka_surface_ready(g_rs.w, g_rs.h);
-            }
+            if (app->window) g_native_window = app->window;
             break;
         default: break;
     }
