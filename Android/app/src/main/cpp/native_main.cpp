@@ -92,7 +92,7 @@ static void initGL() {
 extern "C" {
 extern uint8_t* gN64_RDRAM;
 extern uint32_t g_active_fb_offset;
-extern volatile int g_bka_pixels_drawn;
+volatile int g_bka_pixels_drawn;
 }
 
 static void termEGL();   // forward — defined below initEGL
