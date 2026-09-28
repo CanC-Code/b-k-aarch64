@@ -1,6 +1,5 @@
 // native_main.cpp — NativeActivity entry and EGL render loop.
 #include <android_native_app_glue.h>
-#include <android/native_window.h>
 #include <android/asset_manager.h>
 #include <android/log.h>
 #include <EGL/egl.h>
@@ -90,13 +89,12 @@ static void initGL() {
     glBufferData(GL_ARRAY_BUFFER, sizeof(T), T, GL_STATIC_DRAW);
 }
 
-static void termEGL();   // forward — defined below initEGL
-static ANativeWindow* g_native_window = nullptr;
 extern "C" {
 extern uint8_t* gN64_RDRAM;
 extern uint32_t g_active_fb_offset;
 }
 
+static void termEGL();   // forward — defined below initEGL
 static bool initEGL(ANativeWindow* win) {
     // Context already exists — recreate only the window surface.
     if (g_rs.dpy != EGL_NO_DISPLAY && g_rs.ctx != EGL_NO_CONTEXT) {
@@ -189,14 +187,13 @@ static int64_t nowNs() {
     return (int64_t)t.tv_sec * 1000000000LL + t.tv_nsec;
 }
 
-
 static void dumpFramebufferPPM(int frame_num) {
     if (!gN64_RDRAM) return;
     uint16_t* fb = (uint16_t*)(gN64_RDRAM + g_active_fb_offset);
     char path[256];
     snprintf(path, sizeof(path), "/data/data/com.bkawrapper/files/fb_%04d.ppm", frame_num);
     FILE* f = fopen(path, "wb");
-    if (!f) { LOGE("PPM open fail: %s", path); return; }
+    if (!f) return;
     fprintf(f, "P6\n292 216\n255\n");
     for (int i = 0; i < 292 * 216; i++) {
         uint16_t px = fb[i];
@@ -207,49 +204,6 @@ static void dumpFramebufferPPM(int frame_num) {
     }
     fclose(f);
     LOGI("PPM written: %s", path);
-}
-
-static void presentToWindow(ANativeWindow* win) {
-    if (!win || !gN64_RDRAM) return;
-
-    // Detach EGL so ANativeWindow_lock can acquire the buffer
-    if (g_rs.dpy != EGL_NO_DISPLAY && g_rs.ctx != EGL_NO_CONTEXT) {
-        eglMakeCurrent(g_rs.dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, g_rs.ctx);
-    }
-
-    ANativeWindow_Buffer buf;
-    if (ANativeWindow_lock(win, &buf, nullptr) == 0) {
-        uint16_t* src = (uint16_t*)(gN64_RDRAM + g_active_fb_offset);
-        uint32_t* dst = (uint32_t*)buf.bits;
-        int dstW = buf.width, dstH = buf.height;
-        memset(dst, 0, (size_t)dstW * dstH * 4);
-        int srcW = 292, srcH = 216;
-        int fitW, fitH, offX, offY;
-        if (dstW * srcH / srcW <= dstH) {
-            fitW = dstW; fitH = dstW * srcH / srcW;
-            offX = 0; offY = (dstH - fitH) / 2;
-        } else {
-            fitH = dstH; fitW = dstH * srcW / srcH;
-            offX = (dstW - fitW) / 2; offY = 0;
-        }
-        for (int y = 0; y < fitH; y++) {
-            int sy = y * srcH / fitH;
-            for (int x = 0; x < fitW; x++) {
-                int sx = x * srcW / fitW;
-                uint16_t px = src[sy * srcW + sx];
-                uint8_t r = (px >> 11) & 0x1F; r = (r << 3) | (r >> 2);
-                uint8_t g = (px >> 5) & 0x3F;  g = (g << 2) | (g >> 4);
-                uint8_t b = px & 0x1F;         b = (b << 3) | (b >> 2);
-                dst[(y + offY) * dstW + (x + offX)] = 0xFF000000 | (b << 16) | (g << 8) | r;
-            }
-        }
-        ANativeWindow_unlockAndPost(win);
-    }
-
-    // Reattach EGL for subsequent GL calls
-    if (g_rs.dpy != EGL_NO_DISPLAY && g_rs.surf != EGL_NO_SURFACE) {
-        eglMakeCurrent(g_rs.dpy, g_rs.surf, g_rs.surf, g_rs.ctx);
-    }
 }
 
 static void renderFrame() {
@@ -298,7 +252,7 @@ static void renderFrame() {
     if (t - s_lastSwapNs >= 100000000LL) {   // 100ms ≈ 10 fps
         s_lastSwapNs = t;
         dumpFramebufferPPM(g_rs.frames);
-        /* presentToWindow disabled: conflicts with EGL over buffer queue */
+        /* eglSwapBuffers disabled — Motorola UAF at 0x7b15010110 */
     }
 
     if (++g_rs.frames <= 3 || g_rs.frames % 120 == 0) LOGI("frame %d", g_rs.frames);
@@ -308,7 +262,6 @@ static void onAppCmd(android_app* app, int32_t cmd) {
     switch (cmd) {
         case APP_CMD_INIT_WINDOW:
             if (app->window) {
-                g_native_window = app->window;
                 initEGL(app->window);
                 if (!g_booted) {
                     g_booted = true;
