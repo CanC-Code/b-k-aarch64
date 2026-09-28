@@ -62,7 +62,13 @@ static std::recursive_mutex s_n64_gil;
 static std::unordered_map<OSThread*, std::shared_ptr<NativeThread>> s_threadRegistry;
 static std::mutex s_threadMutex;
 
-static std::unordered_map<OSMesgQueue*, std::shared_ptr<NativeQueue>> s_queueRegistry;
+// Android HLE: fixed-size registry. The unordered_map version shared its
+// heap storage with the rest of the app; a stray overflow elsewhere
+// corrupted the bucket chain and crashed the find() path. A fixed array
+// in .bss has no such surface, and the app never uses more than ~20 queues.
+struct QueueSlot { OSMesgQueue* mq; std::shared_ptr<NativeQueue> nq; };
+static QueueSlot s_queueArray[64];
+static int        s_queueArrayCount = 0;
 static std::mutex s_queueMutex;
 
 static std::unordered_map<int, EventRoute> s_eventRegistry;
@@ -264,9 +270,8 @@ void __osDequeueThread(OSThread **queue, OSThread *t) {}
 static std::shared_ptr<NativeQueue> GetNativeQueue(OSMesgQueue* mq) {
     if (!mq) return nullptr;
     std::lock_guard<std::mutex> lock(s_queueMutex);
-    auto it = s_queueRegistry.find(mq);
-    if (it != s_queueRegistry.end()) {
-        return it->second;
+    for (int i = 0; i < s_queueArrayCount; i++) {
+        if (s_queueArray[i].mq == mq) return s_queueArray[i].nq;
     }
     return nullptr;
 }
@@ -281,7 +286,18 @@ void osCreateMesgQueue(OSMesgQueue *mq, OSMesg *msgBuf, s32 count) {
     std::lock_guard<std::mutex> lock(s_queueMutex);
     auto nq = std::make_shared<NativeQueue>();
     nq->capacity = count;
-    s_queueRegistry[mq] = nq; __android_log_print(ANDROID_LOG_INFO, "BKA-RDP", "osCreateMesgQueue: mq=%p capacity=%d", (void*)mq, count);
+    {
+        // Find existing slot or append (never overwrite)
+        bool stored = false;
+        for (int i = 0; i < s_queueArrayCount; i++) {
+            if (s_queueArray[i].mq == mq) { s_queueArray[i].nq = nq; stored = true; break; }
+        }
+        if (!stored && s_queueArrayCount < 64) {
+            s_queueArray[s_queueArrayCount].mq = mq;
+            s_queueArray[s_queueArrayCount].nq = nq;
+            s_queueArrayCount++;
+        }
+    } __android_log_print(ANDROID_LOG_INFO, "BKA-RDP", "osCreateMesgQueue: mq=%p capacity=%d", (void*)mq, count);
     if ((uintptr_t)mq == 0x7428f4d5c8ULL) __android_log_print(ANDROID_LOG_ERROR, "BKA-RDP", "CREATED COMPLETION QUEUE mq=%p", (void*)mq);
 }
 
