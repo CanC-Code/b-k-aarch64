@@ -252,10 +252,7 @@ static void renderFrame() {
     static int64_t s_lastSwapNs = 0;
     if (t - s_lastSwapNs >= 100000000LL) {   // 100ms ≈ 10 fps
         s_lastSwapNs = t;
-        if (g_bka_pixels_drawn > 500) {
-            static int s_dumped = 0;
-            if (!s_dumped) { s_dumped = 1; dumpFramebufferPPM(1); }
-        }
+        if (g_rs.frames >= 2 && g_rs.frames <= 8) dumpFramebufferPPM(g_rs.frames);
         /* eglSwapBuffers disabled — Motorola UAF at 0x7b15010110 */
     }
 
