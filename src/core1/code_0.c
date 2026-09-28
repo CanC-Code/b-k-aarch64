@@ -228,6 +228,7 @@ void mainLoop(void){
                 __android_log_print(ANDROID_LOG_ERROR, "BKA-LOOP", "func_802E4424 returned TRUE, calling game_draw\n");
                 game_draw(FALSE);
                 __android_log_print(ANDROID_LOG_ERROR, "BKA-LOOP", "game_draw returned\n");
+                { extern void bka_dump_fb(int); static int s_d = 0; if (s_d < 4) { s_d++; bka_dump_fb(100 + s_d); } }
             } else {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA-LOOP", "func_802E4424 returned FALSE, skip draw\n");
             }

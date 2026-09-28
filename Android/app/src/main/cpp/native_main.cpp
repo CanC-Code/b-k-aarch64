@@ -206,6 +206,7 @@ static void dumpFramebufferPPM(int frame_num) {
     fclose(f);
     LOGI("PPM written: %s", path);
 }
+extern "C" void bka_dump_fb(int n) { dumpFramebufferPPM(n); }
 
 static void renderFrame() {
     if (!g_rs.ready) return;
@@ -252,7 +253,6 @@ static void renderFrame() {
     static int64_t s_lastSwapNs = 0;
     if (t - s_lastSwapNs >= 100000000LL) {   // 100ms ≈ 10 fps
         s_lastSwapNs = t;
-        if (g_rs.frames >= 2 && g_rs.frames <= 8) dumpFramebufferPPM(g_rs.frames);
         /* eglSwapBuffers disabled — Motorola UAF at 0x7b15010110 */
     }
 
