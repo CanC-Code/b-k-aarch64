@@ -1,5 +1,6 @@
 // native_main.cpp — NativeActivity entry and EGL render loop.
 #include <android_native_app_glue.h>
+#include <jni.h>
 #include <android/native_window.h>
 #include <android/asset_manager.h>
 #include <android/log.h>
@@ -284,4 +285,33 @@ void android_main(android_app* app) {
         }
         if (app->window && g_rs.ready) renderFrame();
     }
+}
+
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_bkawrapper_GameView_bkaFillArgb(JNIEnv* env, jobject /*thiz*/, jintArray outArr) {
+    extern uint8_t* gN64_RDRAM;
+    extern uint32_t g_active_fb_offset;
+    if (!gN64_RDRAM || !outArr) return;
+    jint* out = env->GetIntArrayElements(outArr, nullptr);
+    if (!out) return;
+    uint16_t* src = (uint16_t*)(gN64_RDRAM + g_active_fb_offset);
+    const int W = 292, H = 216;
+    for (int i = 0; i < W * H; i++) {
+        uint16_t px = src[i];
+        uint8_t r = (px >> 11) & 0x1F; r = (r << 3) | (r >> 2);
+        uint8_t g = (px >> 5)  & 0x3F; g = (g << 2) | (g >> 4);
+        uint8_t b = px & 0x1F;         b = (b << 3) | (b >> 2);
+        out[i] = (jint)(0xFF000000u | ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)b);
+    }
+    env->ReleaseIntArrayElements(outArr, out, 0);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_bkawrapper_NativeGameActivity_bkaStartEngine(JNIEnv* env, jobject /*thiz*/, jstring dir) {
+    if (!dir) return;
+    const char* cdir = env->GetStringUTFChars(dir, nullptr);
+    if (!cdir) return;
+    bka_native_game_boot(cdir, nullptr);
+    env->ReleaseStringUTFChars(dir, cdir);
 }
