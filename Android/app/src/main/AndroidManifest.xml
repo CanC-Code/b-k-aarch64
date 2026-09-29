@@ -22,12 +22,30 @@
 
         <meta-data android:name="androidx.profileinstaller.enabled" android:value="false" />
 
+        <!-- Streaming mode: headless service + Chrome display.
+             Works on all devices including Motorola libgui UAF. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:label="Banjo-Kazooie (streaming)"
             android:theme="@android:style/Theme.NoDisplay"
             android:noHistory="true"
             android:excludeFromRecents="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Native mode: SurfaceView + GL blit. Full speed on stock
+             Android. Crashes on Motorola's broken libgui. -->
+        <activity
+            android:name=".NativeGameActivity"
+            android:exported="true"
+            android:label="Banjo-Kazooie (native)"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="orientation|keyboardHidden|screenSize|screenLayout|uiMode|density"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -46,6 +64,5 @@
             android:name=".OtrService"
             android:foregroundServiceType="specialUse"
             android:exported="false" />
-
     </application>
 </manifest>
