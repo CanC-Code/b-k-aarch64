@@ -533,6 +533,19 @@ bool func_802E4424(void) {
     func_80321C34();
     func_8030ED0C();
     coMusicPlayer_update();
+
+    /* BKA diag: is the cutscene/actor layer running at all? */
+    {
+        extern ActorArray *suBaddieActorArray;
+        static int s_cs_dbg = 0;
+        if ((s_cs_dbg++ % 30) == 0) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-CUTSCENE",
+                "suBaddieActorArray=%p cnt=%d map=0x%X",
+                (void*)suBaddieActorArray,
+                suBaddieActorArray ? (int)suBaddieActorArray->cnt : -1,
+                (unsigned)gsworld_getMap());
+        }
+    }
     switch (D_8037E8E0.game_mode) {
         case GAME_MODE_8_BOTTLES_BONUS:
         case GAME_MODE_A_SNS_PICTURE:
