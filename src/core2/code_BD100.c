@@ -232,6 +232,12 @@ BKSpriteDisplayData * func_80344A1C(BKSprite *arg0){
 
     /* ARM64 port: sprite asset frameCnt is big-endian */
     s32 realFrameCnt = (s32)(s16)__builtin_bswap16((u16)arg0->frameCnt);
+    if (realFrameCnt <= 0 || realFrameCnt > 200) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+            "func_80344A1C: bad frameCnt=%d (sprite=%p) skipping",
+            (int)realFrameCnt, (void*)arg0);
+        return NULL;
+    }
     header_size = ALIGN(sizeof(BKSpriteDisplayData)+ sizeof(BKSpriteFrameDisplayData)*realFrameCnt, 0x10);
     s1 = 0;
     s6 = (BKSpriteDisplayData *) malloc(header_size);
@@ -254,7 +260,7 @@ BKSpriteDisplayData * func_80344A1C(BKSprite *arg0){
     osWritebackDCache(s6, header_size + s1);
     v1 = &s6->frame[0];
     s1 = 0;\
-    for(i = 0; i < arg0->frameCnt; i++, v1++){//L80344B94
+    for(i = 0; i < realFrameCnt; i++, v1++){//L80344B94
         v1->vtx = (Vtx *)(s1 + ((intptr_t)s6 + header_size));
         v1->gfx = (Gfx *)((intptr_t)v1->vtx + frame_vtx_size[i]);
         s1 += ALIGN(frame_vtx_size[i] + frame_gfx_size[i], 0x10);
