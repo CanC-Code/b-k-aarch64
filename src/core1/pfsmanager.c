@@ -152,7 +152,7 @@ void pfsManager_update(void) {
         static int autoStartCounter = 0;
         autoStartCounter++;
         if ((autoStartCounter % 60) == 0) {
-            gN64_ControllerData[0].button = 0x8000; // pulse A for one frame
+            gN64_ControllerData[0].button = 0x9000; // pulse A + START for one frame
         } else {
             gN64_ControllerData[0].button = 0;
         }
