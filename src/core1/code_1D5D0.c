@@ -7,6 +7,14 @@
 /* BKA Android port: host RDRAM base (set by InitN64Registers). */
 extern unsigned char* gN64_RDRAM;
 
+/* The real defs are in src/core1/memory.c (EXCLUDE_LIST). The stubs
+ * live in ultra/missing_stubs.c. Without a prototype here, C89
+ * implicit-int rules truncate the malloc return to 32 bits and
+ * snspayload_init_new_payload faults on the truncated pointer. */
+extern void *func_8025484C(s32 size);
+extern void *func_80254898(s32 arg0);
+extern void *func_80254BD0(s32 *size, u32 arg1);
+
 bool snsToRestoreItems = FALSE;
 struct SnsPayload *snsBasePayloadPtr1 = NULL;
 struct SnsPayload *snsBasePayloadPtr2 = NULL;
