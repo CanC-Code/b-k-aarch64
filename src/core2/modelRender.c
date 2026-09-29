@@ -1087,6 +1087,18 @@ void modelRender_geoCmd_CAMERA(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data) 
     struct geo_cmd_camera_s *cmd = (struct geo_cmd_camera_s *) data;
     bool found = cameraAreaList_searchForEntryInBounds(modelRenderCameraAreaList, cmd->id_list, cmd->count);
 
+    /* ARM64 port: bypass camera-area cull. The camera area list is
+     * not loaded (cameraAreaList_searchForEntryInBounds returns FALSE)
+     * so the branch is never taken. Same class as the frustum cull. */
+    {
+        extern int bka_frustum_cull_enabled;
+        if (!bka_frustum_cull_enabled) {
+            if (cmd->branch_offset)
+                modelRender_executeGeoCmds(gfx, mtx, (struct bk_geo_cmd_s *) ((u8 *) cmd + cmd->branch_offset));
+            return;
+        }
+    }
+
     if ((!found && (cmd->flags & BK_GEO_CMD_CAMERA_IS_OUTSIDE_BIT)) || (found && (cmd->flags & BK_GEO_CMD_CAMERA_IS_INSIDE_BIT))) {
         if (cmd->branch_offset)
             modelRender_executeGeoCmds(gfx, mtx, (struct bk_geo_cmd_s *) ((u8 *) cmd + cmd->branch_offset));

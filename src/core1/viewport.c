@@ -375,6 +375,12 @@ bool viewport_cube_isInFrustum2(Cube *cube) {
 
 // viewport_distanceFromPlane ?
 bool viewport_func_8024DB50(f32 pos[3], f32 distance) {
+    /* ARM64 port: same zero-frustum problem as the bounding-box check.
+     * Gate behind the same flag; skip culling entirely until the
+     * frustum planes are populated by a proper viewport_update call. */
+    extern int bka_frustum_cull_enabled;
+    if (!bka_frustum_cull_enabled) return TRUE;
+
     f32 delta[3];
     s32 i;
 
