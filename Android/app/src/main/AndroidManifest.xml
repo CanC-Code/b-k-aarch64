@@ -5,8 +5,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:memtagMode="off"
@@ -18,43 +19,33 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Bkawrapper">
+
         <meta-data android:name="androidx.profileinstaller.enabled" android:value="false" />
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:screenOrientation="portrait"
-            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
-            android:configChanges="orientation|keyboardHidden|screenSize|screenLayout|uiMode|density"
-            android:hardwareAccelerated="false"> 
+            android:theme="@android:style/Theme.NoDisplay"
+            android:noHistory="true"
+            android:excludeFromRecents="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".NativeGameActivity"
+        <service
+            android:name=".BkaService"
             android:exported="false"
-            android:launchMode="singleTask"
-            android:screenOrientation="landscape"
-            android:configChanges="orientation|keyboardHidden|screenSize|screenLayout|uiMode|density"
-            android:hardwareAccelerated="false"
-            android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
-            
-        </activity>
-
-        <service 
-            android:name=".OtrService"
-            android:foregroundServiceType="specialUse"
-            android:exported="false">
+            android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                      android:value="game engine" />
         </service>
 
-            <activity
-            android:name=".StreamActivity"
-            android:exported="true"
-            android:screenOrientation="sensorLandscape"
-            android:configChanges="orientation|keyboardHidden|screenSize|screenLayout|uiMode|density"
-            android:theme="@android:style/Theme.NoTitleBar.Fullscreen" />
+        <service
+            android:name=".OtrService"
+            android:foregroundServiceType="specialUse"
+            android:exported="false" />
+
     </application>
 </manifest>
