@@ -38,9 +38,8 @@ public class StreamActivity extends Activity {
             return;
         }
 
-        Log.i(TAG, "starting engine");
-        Native.startEngine(getFilesDir().getAbsolutePath());
-
+        // Launch Chrome BEFORE starting the engine. The stream page can
+        // open and poll for frames while the engine is still booting.
         tv.postDelayed(() -> {
             Log.i(TAG, "launching Chrome");
             Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse("http://127.0.0.1:8080/"));
@@ -51,6 +50,11 @@ public class StreamActivity extends Activity {
                 Log.e(TAG, "chrome launch failed", e);
                 tv.setText("Chrome launch failed.\nOpen http://127.0.0.1:8080/ manually.");
             }
+        }, 300);
+
+        tv.postDelayed(() -> {
+            Log.i(TAG, "starting engine");
+            Native.startEngine(getFilesDir().getAbsolutePath());
         }, 1500);
     }
 

@@ -464,7 +464,12 @@ void *assetcache_get(enum asset_e assetId) {
 
     if(assetSectionRomMetaList[assetId].compFlag & 0x0001){
         __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "assetcache_get: before bk_inflate assetId=%d", assetId);
-        rarezip_inflate(compressed_file, uncompressed_file);
+        if (uncomp_size > 0) {
+            rarezip_inflate(compressed_file, uncompressed_file);
+        } else {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-CORE",
+                "assetcache_get: SKIPPING bk_inflate for assetId=%d (uncomp_size==0, bad header)", assetId);
+        }
         __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "assetcache_get: after bk_inflate assetId=%d", assetId);
 
         uncompressed_file = (void*)realloc(uncompressed_file, assetCacheCurrentSize);
