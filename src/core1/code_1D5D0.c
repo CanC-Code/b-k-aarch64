@@ -217,6 +217,16 @@ void sns_write_payload_over_heap(void)
     if (globalTimer_getTime() <= 0x3B || snsToRestoreItems)
         return;
 
+    /* ARM64 port: sns_init_base_payloads is only called from
+     * src/core1/memory.c:214, which is in EXCLUDE_LIST. Nothing
+     * else initializes the four payload pointers, so they stay NULL
+     * and sns_generate_payload(NULL) crashes at payload->data[0].
+     * Lazy-init here on first use. */
+    if (snsBasePayloadPtr2 == NULL) {
+        sns_init_base_payloads();
+        if (snsBasePayloadPtr2 == NULL) return;
+    }
+
     sns_generate_payload(snsBasePayloadPtr2);
 
     wmemcpy(snsBasePayloadPtr3, snsBasePayloadPtr2, sizeof(*snsBasePayloadPtr2));
