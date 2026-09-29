@@ -24,7 +24,7 @@ f32 sViewportFrustumPlanes[4][4];
  * unconditionally so the model geo walker descends into every DRAWDIST
  * branch. Required because viewport_update() doesn't run in our boot
  * path and the frustum planes are zero-initialized. */
-bool bka_frustum_cull_enabled = false;
+int bka_frustum_cull_enabled = 0;
 Vp sViewportStack[VIEWPORT_STACK_SIZE];
 int sViewportUnused2; // debug?
 MtxF sViewportMatrix;
@@ -283,7 +283,7 @@ bool viewport_isBoundingBoxInFrustum(f32 min[3], f32 max[3]) {
      * every corner evaluation returns 0, every ">= 0.0f" check passes,
      * and the function returns FALSE — culling every DRAWDIST branch.
      * Force-enable until we can wire viewport_update properly. */
-    extern bool bka_frustum_cull_enabled;
+    extern int bka_frustum_cull_enabled;
     if (!bka_frustum_cull_enabled) return TRUE;
 
     
