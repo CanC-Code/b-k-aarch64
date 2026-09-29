@@ -422,9 +422,20 @@ s32 heap_get_occupied_size(void) { return 0; }
 void func_80255198(void) {}
 void func_80255524(void) {}
 void func_80255ACC(void) {}
-void func_8025484C(void) {}
-void func_80254898(void) {}
-void func_80254BD0(void) {}
+/* Real implementations live in src/core1/memory.c, which is in
+ * EXCLUDE_LIST because it also redefines malloc/free/memcpy. These
+ * two heap helpers are used by the SNS payload system to allocate
+ * structs at boot; the previous void-returning stubs produced NULL
+ * pointers that crashed the caller at NULL->data[0]. */
+void *func_8025484C(s32 size) { return malloc((size_t)size); }
+void *func_80254898(s32 arg0) { return malloc((size_t)arg0); }
+/* ARM64 port: src/core1/memory.c:314 defines this as a heap scanner
+ * that returns the next free segment >= arg1, walking the N64 heap.
+ * We use libc malloc on ARM64, so there is no N64 heap to walk. Return
+ * NULL so the caller's "for each free segment" loop skips itself;
+ * otherwise the loop would compute N64 physical addresses and call
+ * wmemcpy on unmapped host memory. */
+void *func_80254BD0(s32 *size, u32 arg1) { (void)size; (void)arg1; return 0; }
 void func_802559A0(void) {}
 void func_80254BC4(void) {}
 void func_802555C4(void) {}
