@@ -547,24 +547,35 @@ bool func_802E4424(void) {
             break;
         case GAME_MODE_3_NORMAL:                                     /* switch 2 */
             D_8037E8E0.unk10 += time_getDelta();
-            if( (func_8024E698(0) == 1)
-                && func_8028F070()
-                && (func_8028EC04() == 0)
-                && !gctransition_8030BDC0()
-                && gctransition_done()
-                && (level_get() != 0)
-                && (0.6 < D_8037E8E0.unk10)
-                && gcpausemenu_80314B00()
-                && !player_isDead()
-                && func_8032056C()
-                && levelSpecificFlags_validateCRC1()
-                && dummy_func_80320248()
-            ) {
-                game_setMode(GAME_MODE_4_PAUSED, 0U);
-            } else if ((controller_getStartButton(0) == 1) && (D_8037E8E0.unk0 != 0)) {
-                game_setMode(GAME_MODE_1_UNKNOWN, 0U);
-            } else if (sp1C == 0) {
-                game_setMode(GAME_MODE_3_NORMAL, 1U);
+            {
+                int c1 = (func_8024E698(0) == 1);
+                int c2 = func_8028F070();
+                int c3 = (func_8028EC04() == 0);
+                int c4 = !gctransition_8030BDC0();
+                int c5 = gctransition_done();
+                int c6 = (level_get() != 0);
+                int c7 = (0.6 < D_8037E8E0.unk10);
+                int c8 = gcpausemenu_80314B00();
+                int c9 = !player_isDead();
+                int c10 = func_8032056C();
+                int c11 = levelSpecificFlags_validateCRC1();
+                int c12 = dummy_func_80320248();
+                static int s_dbg = 0;
+                if ((s_dbg++ % 30) == 0) {
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA-MODE3",
+                        "c1_start=%d c2_f8070=%d c3_EC04=%d c4_notTransB=%d c5_transDone=%d "
+                        "c6_lvl=%d c7_t=%d c8_pause=%d c9_alive=%d c10_crc=%d c11_lsf=%d c12_dummy=%d "
+                        "unk0=%d unk10=%f sp1C=%d",
+                        c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12,
+                        (int)D_8037E8E0.unk0, (double)D_8037E8E0.unk10, (int)sp1C);
+                }
+                if (c1 && c2 && c3 && c4 && c5 && c6 && c7 && c8 && c9 && c10 && c11 && c12) {
+                    game_setMode(GAME_MODE_4_PAUSED, 0U);
+                } else if ((controller_getStartButton(0) == 1) && (D_8037E8E0.unk0 != 0)) {
+                    game_setMode(GAME_MODE_1_UNKNOWN, 0U);
+                } else if (sp1C == 0) {
+                    game_setMode(GAME_MODE_3_NORMAL, 1U);
+                }
             }
             break;
 
