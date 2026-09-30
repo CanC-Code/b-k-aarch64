@@ -447,6 +447,14 @@ void gsworld_load(enum map_e map_id) {
             "asset[16..31]: %02X %02X %02X %02X %02X %02X %02X %02X  %02X %02X %02X %02X %02X %02X %02X %02X",
             b[16], b[17], b[18], b[19], b[20], b[21], b[22], b[23],
             b[24], b[25], b[26], b[27], b[28], b[29], b[30], b[31]);
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-DUMP",
+            "asset[32..47]: %02X %02X %02X %02X %02X %02X %02X %02X  %02X %02X %02X %02X %02X %02X %02X %02X",
+            b[32], b[33], b[34], b[35], b[36], b[37], b[38], b[39],
+            b[40], b[41], b[42], b[43], b[44], b[45], b[46], b[47]);
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-DUMP",
+            "asset[48..63]: %02X %02X %02X %02X %02X %02X %02X %02X  %02X %02X %02X %02X %02X %02X %02X %02X",
+            b[48], b[49], b[50], b[51], b[52], b[53], b[54], b[55],
+            b[56], b[57], b[58], b[59], b[60], b[61], b[62], b[63]);
     }
     int safety = 0;
     while (!file_isNextByteExpected(f, GS_WORLD_START_INDICATOR_0_END)) {

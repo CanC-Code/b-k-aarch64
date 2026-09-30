@@ -907,6 +907,18 @@ static void __code7AF80_initCubeFromFile(Cube *cube, File* file_ptr) {
     s32 pad[3];
     int safety = 0;
 
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CUBE",
+        "ENTER base=%p cur=%p cur_off=%d b26=%02X b27=%02X b28=%02X b29=%02X b30=%02X b31=%02X",
+        file_ptr->asset_base_ptr,
+        file_ptr->asset_current_ptr,
+        (int)((u8*)file_ptr->asset_current_ptr - (u8*)file_ptr->asset_base_ptr),
+        (unsigned)((u8*)file_ptr->asset_base_ptr)[26],
+        (unsigned)((u8*)file_ptr->asset_base_ptr)[27],
+        (unsigned)((u8*)file_ptr->asset_base_ptr)[28],
+        (unsigned)((u8*)file_ptr->asset_base_ptr)[29],
+        (unsigned)((u8*)file_ptr->asset_base_ptr)[30],
+        (unsigned)((u8*)file_ptr->asset_base_ptr)[31]);
+
     static int s_iter = 0;
     while(!file_isNextByteExpected(file_ptr, CUBE_SEPARATOR_INDICATOR)) {
         if (++safety > 100000) {
@@ -932,8 +944,12 @@ static void __code7AF80_initCubeFromFile(Cube *cube, File* file_ptr) {
         else
         {
             __android_log_print(ANDROID_LOG_ERROR, "BKA-MAP",
-                "__code7AF80_initCubeFromFile: unrecognized cube byte 0x%02X, skipping",
-                (unsigned)(file_ptr->last_expected & 0xFF));
+                "unrec: last_exp=0x%02X cur_off=%d base=%p cur=%p b30_now=0x%02X",
+                (unsigned)(file_ptr->last_expected & 0xFF),
+                (int)((u8*)file_ptr->asset_current_ptr - (u8*)file_ptr->asset_base_ptr),
+                file_ptr->asset_base_ptr,
+                file_ptr->asset_current_ptr,
+                (unsigned)((u8*)file_ptr->asset_base_ptr)[30]);
             file_ptr->last_expected = -1;
             break;  /* abort parse on misalignment */
         }

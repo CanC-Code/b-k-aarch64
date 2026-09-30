@@ -1,3 +1,4 @@
+#include <android/log.h>
 #include <core2/file.h>
 
 #include "functions.h"
@@ -27,8 +28,14 @@ File *file_open(enum asset_e asset_id) {
     this->mode = FILE_MODE_2_FROM_ASSET;
     this->last_expected = -1;
     this->unk80 = -1;
-    this->asset_base_ptr = assetcache_get(asset_id);
-    this->asset_current_ptr = this->asset_base_ptr;
+    {
+        void *p = assetcache_get(asset_id);
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-DUMP",
+            "file_open: asset_id=0x%X this=%p returned=%p",
+            (unsigned)asset_id, (void*)this, p);
+        this->asset_base_ptr = p;
+        this->asset_current_ptr = this->asset_base_ptr;
+    }
 
     if (this->asset_current_ptr != NULL) {
         return this;
