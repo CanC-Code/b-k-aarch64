@@ -433,18 +433,18 @@ void gsworld_load(enum map_e map_id) {
     __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "gsworld_load: file_openMap returned %p", (void*)f);
     if (!f) return;
     {
-        u8 *b = (u8*)f->base_ptr;
-        u8 *c = (u8*)f->current_ptr;
-        u8 *e = (u8*)f->end_ptr;
+        u8 *b = (u8*)f->asset_base_ptr;
+        u8 *c = (u8*)f->asset_current_ptr;
+        int cur_off = (int)(c - b);
         __android_log_print(ANDROID_LOG_ERROR, "BKA-DUMP",
-            "hdr: base=%p cur=%p end=%p size=%d cur_off=%d mode=%d last_exp=%d",
-            b, c, e, (int)(e - b), (int)(c - b), (int)f->mode, (int)f->last_expected);
+            "hdr: asset_base=%p asset_cur=%p cur_off=%d mode=%d last_exp=%d",
+            b, c, cur_off, (int)f->mode, (int)f->last_expected);
         __android_log_print(ANDROID_LOG_ERROR, "BKA-DUMP",
-            "base[0..15]: %02X %02X %02X %02X %02X %02X %02X %02X  %02X %02X %02X %02X %02X %02X %02X %02X",
+            "asset[0..15]:  %02X %02X %02X %02X %02X %02X %02X %02X  %02X %02X %02X %02X %02X %02X %02X %02X",
             b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
             b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]);
         __android_log_print(ANDROID_LOG_ERROR, "BKA-DUMP",
-            "base[16..31]: %02X %02X %02X %02X %02X %02X %02X %02X  %02X %02X %02X %02X %02X %02X %02X %02X",
+            "asset[16..31]: %02X %02X %02X %02X %02X %02X %02X %02X  %02X %02X %02X %02X %02X %02X %02X %02X",
             b[16], b[17], b[18], b[19], b[20], b[21], b[22], b[23],
             b[24], b[25], b[26], b[27], b[28], b[29], b[30], b[31]);
     }
