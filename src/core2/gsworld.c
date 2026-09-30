@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <ultra64.h>
 #include <android/log.h>
 #define LOG_BKA_INIT(tag) __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "gsworld_set: %s", tag)
@@ -479,15 +480,17 @@ void gsworld_load(enum map_e map_id) {
             "bytes[482..497]: %02X %02X %02X %02X %02X %02X %02X %02X  %02X %02X %02X %02X %02X %02X %02X %02X",
             b[482], b[483], b[484], b[485], b[486], b[487], b[488], b[489],
             b[490], b[491], b[492], b[493], b[494], b[495], b[496], b[497]);
-        for (int row = 0; row < 8; row++) {
-            int off = row * 16;
-            __android_log_print(ANDROID_LOG_ERROR, "BKA-DUMP",
-                "  [%03d..%03d]: %02X %02X %02X %02X %02X %02X %02X %02X  %02X %02X %02X %02X %02X %02X %02X %02X",
-                off, off + 15,
-                b[off+0],  b[off+1],  b[off+2],  b[off+3],
-                b[off+4],  b[off+5],  b[off+6],  b[off+7],
-                b[off+8],  b[off+9],  b[off+10], b[off+11],
-                b[off+12], b[off+13], b[off+14], b[off+15]);
+        {
+            FILE *fp = fopen("/data/data/com.bkawrapper/files/world_dump.bin", "wb");
+            if (fp) {
+                fwrite(b, 1, 848, fp);
+                fclose(fp);
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-DUMP",
+                    "wrote 848 bytes to world_dump.bin");
+            } else {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-DUMP",
+                    "fopen world_dump.bin failed");
+            }
         }
         __android_log_print(ANDROID_LOG_ERROR, "BKA-DUMP",
             "bytes[800..831]: %02X %02X %02X %02X %02X %02X %02X %02X  %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X  %02X %02X %02X %02X %02X %02X %02X %02X",
