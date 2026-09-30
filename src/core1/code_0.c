@@ -71,7 +71,7 @@ void func_8023DA9C(s32 arg0){
     D_8027A130 = arg0;
     if (D_8027A130 == 3){
         LOG_BKA_INIT("func_8023DA9C: func_802E4214");
-        func_802E4214(gBootMap);
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-MAP", "before func_802E4214: gBootMap=%d (0x%X)", gBootMap, gBootMap); func_802E4214(gBootMap);
     }
     if (D_8027A130 == 4){
         LOG_BKA_INIT("func_8023DA9C: dummy_func_802E35D0");

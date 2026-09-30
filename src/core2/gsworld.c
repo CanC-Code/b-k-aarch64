@@ -209,6 +209,7 @@ void gsworld_free(void) {
 
 void gsworld_set(enum map_e map, s32 exit, bool reload) {
     LOG_BKA_INIT("start");
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-MAP", "gsworld_set ENTER: map=%d (0x%X) exit=%d", map, map, exit);
     sGsWorldData.unk0 = 3;
     sGsWorldData.map = map;
     sGsWorldData.exit = exit;

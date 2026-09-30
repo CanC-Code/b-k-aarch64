@@ -89,6 +89,7 @@ void func_802E3854(void){
 
 void func_802E38E8(enum map_e map, s32 exit, s32 reset_on_load){
     LOG_BKA_INIT("func_802E38E8: start");
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-MAP", "func_802E38E8 ENTER: map=%d (0x%X) exit=%d", map, map, exit);
     if(reset_on_load || level_get() != map_getLevel(map)){
         LOG_BKA_INIT("func_802E38E8: func_8030AFD8(1)");
         func_8030AFD8(1);
@@ -385,6 +386,7 @@ void func_802E4170(void){
 
 void func_802E4214(enum map_e map_id){
     LOG_BKA_INIT("start");
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-MAP", "func_802E4214 ENTER: map_id=%d (0x%X)", map_id, map_id);
     D_8037E8E0.transition = TRANSITION_0_NONE;
     D_8037E8E0.unk19 = D_8037E8E0.unk18 = 0;
     D_8037E8E0.map = D_8037E8E0.exit = D_8037E8E0.unk17 = 0;
