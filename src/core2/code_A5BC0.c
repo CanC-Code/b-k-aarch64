@@ -1,3 +1,4 @@
+#include <android/log.h>
 #include <ultra64.h>
 #include "core1/core1.h"
 #include "functions.h"
@@ -918,6 +919,8 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
     Prop *this_prop2;
     s32 is_in_furnace_fun;
     s32 sprite_id;
+    int _off0 = (int)((u8*)file_ptr->asset_current_ptr - (u8*)file_ptr->asset_base_ptr);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-FMT", "code7AF80 ENTER off=%d", _off0);
 
     cube_free(cube);
     if (file_getByte_ifExpected(file_ptr, CUBE_PROP_1_INDICATOR, &cube1_count)) {
@@ -925,6 +928,10 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
         cube->prop1Ptr = (NodeProp*) malloc(cube1_count * sizeof(NodeProp));
         node_prop_ptr = (NodeProp*) malloc(cube1_count * sizeof(NodeProp));
         file_getNBytes_ifExpected(file_ptr, CUBE_PROP_1_LIST_START_INDICATOR, node_prop_ptr, cube->prop1Cnt * sizeof(NodeProp));
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-FMT",
+            "  P1 count=%d read=%d off=%d",
+            cube1_count, cube->prop1Cnt * (int)sizeof(NodeProp),
+            (int)((u8*)file_ptr->asset_current_ptr - (u8*)file_ptr->asset_base_ptr));
         __codeA5BC0_initPropPointerForCube(node_prop_ptr, cube, cube1_count);
         
     } else if (file_getByte_ifExpected(file_ptr, CUBE_PROP_1_OTHER_INDICATOR, &cube1_count)) {
@@ -932,6 +939,10 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
         cube->prop1Ptr = (NodeProp*) malloc(cube1_count * sizeof(OtherNode));
         node_prop_ptr = (NodeProp*) malloc(cube1_count * sizeof(OtherNode));
         file_getNBytes_ifExpected(file_ptr, CUBE_PROP_1_OTHER_LIST_START_INDICATOR, node_prop_ptr, cube->prop1Cnt * sizeof(OtherNode));
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-FMT",
+            "  P1O count=%d read=%d off=%d",
+            cube1_count, cube->prop1Cnt * (int)sizeof(OtherNode),
+            (int)((u8*)file_ptr->asset_current_ptr - (u8*)file_ptr->asset_base_ptr));
         for(other_prop_ptr = (OtherNode *)node_prop_ptr; other_prop_ptr < (OtherNode*)&node_prop_ptr[cube1_count]; other_prop_ptr++){
             if(other_prop_ptr->unk4_0 && !other_prop_ptr->unkC_0){
                 other_prop_ptr->unk4_17 = 0;
@@ -955,6 +966,10 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
         cube->prop2Cnt = prop2_count;
         cube->prop2Ptr = (Prop *) malloc(prop2_count * sizeof(Prop));
         file_getNBytes_ifExpected(file_ptr, CUBE_PROP_2_LIST_START_INDICATOR, cube->prop2Ptr, cube->prop2Cnt * sizeof(Prop));
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-FMT",
+            "  P2 count=%d read=%d off=%d",
+            prop2_count, cube->prop2Cnt * (int)sizeof(Prop),
+            (int)((u8*)file_ptr->asset_current_ptr - (u8*)file_ptr->asset_base_ptr));
         for(this_prop2 = cube->prop2Ptr; this_prop2 < cube->prop2Ptr + prop2_count; this_prop2++){
                 this_prop2->isNotFeatherEggOrNote = TRUE;
                 if (this_prop2->isModelProp) {
@@ -985,6 +1000,8 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
         cube->prop1Ptr = NULL;
         cube->unk0_4 = 0;
     }
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-FMT", "code7AF80 EXIT  off=%d",
+        (int)((u8*)file_ptr->asset_current_ptr - (u8*)file_ptr->asset_base_ptr));
 }
 
 void func_8032EE0C(Method_Core2_A5BC0 arg0, s32 arg1){
