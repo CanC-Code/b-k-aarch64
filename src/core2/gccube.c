@@ -907,11 +907,18 @@ static void __code7AF80_initCubeFromFile(Cube *cube, File* file_ptr) {
     s32 pad[3];
     int safety = 0;
 
+    static int s_iter = 0;
     while(!file_isNextByteExpected(file_ptr, CUBE_SEPARATOR_INDICATOR)) {
         if (++safety > 100000) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA-MAP",
                 "__code7AF80_initCubeFromFile: safety break after %d iters", safety);
             break;
+        }
+        if ((++s_iter % 1000) == 0) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-CUBE",
+                "inner iter=%d last_exp=0x%02X cur_off=%d",
+                s_iter, (unsigned)(file_ptr->last_expected & 0xFF),
+                (int)((u8*)file_ptr->asset_current_ptr - (u8*)file_ptr->asset_base_ptr));
         }
         if (file_getNWords_ifExpected(file_ptr, CUBE_SECTION_END_INDICATOR, pad, 3))
         {
@@ -950,6 +957,11 @@ void cubeList_fromFile(File *file_ptr) {
     // Gets the dimensions of the cubes
     file_getNWords_ifExpected(file_ptr, CUBE_DIMENSIONS_START_INDICATOR, cube_position_from, 3);
     file_getNWords(file_ptr, cube_position_to, 3);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CUBE",
+        "from=(%d,%d,%d) to=(%d,%d,%d) cur_off=%d",
+        cube_position_from[0], cube_position_from[1], cube_position_from[2],
+        cube_position_to[0], cube_position_to[1], cube_position_to[2],
+        (int)((u8*)file_ptr->asset_current_ptr - (u8*)file_ptr->asset_base_ptr));
 
     // Gets the props within each of the cubes
     for(cube_position[0] = cube_position_from[0]; cube_position[0] <= cube_position_to[0]; cube_position[0]++){
