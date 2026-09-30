@@ -1,3 +1,4 @@
+#include <android/log.h>
 #include <ultra64.h>
 #include "core1/core1.h"
 #include "functions.h"
@@ -904,8 +905,14 @@ At this index in the file, we are looking at the start of a cube.
 */
 static void __code7AF80_initCubeFromFile(Cube *cube, File* file_ptr) {
     s32 pad[3];
+    int safety = 0;
 
     while(!file_isNextByteExpected(file_ptr, CUBE_SEPARATOR_INDICATOR)) {
+        if (++safety > 100000) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-MAP",
+                "__code7AF80_initCubeFromFile: safety break after %d iters", safety);
+            break;
+        }
         if (file_getNWords_ifExpected(file_ptr, CUBE_SECTION_END_INDICATOR, pad, 3))
         {
             file_getNWords(file_ptr, pad, 3);
@@ -914,6 +921,13 @@ static void __code7AF80_initCubeFromFile(Cube *cube, File* file_ptr) {
                     && file_isNextByteExpected(file_ptr, CUBE_START_INDICATOR))
         {
             code7AF80_initCubeFromFile(file_ptr, cube);
+        }
+        else
+        {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-MAP",
+                "__code7AF80_initCubeFromFile: unrecognized cube byte 0x%02X, skipping",
+                (unsigned)(file_ptr->last_expected & 0xFF));
+            file_ptr->last_expected = -1;
         }
     }
 }

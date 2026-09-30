@@ -431,11 +431,8 @@ void gsworld_load(enum map_e map_id) {
 
     f = file_openMap(map_id);
     __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "gsworld_load: file_openMap returned %p", (void*)f);
-    // TEMPORARY: skip world file parsing to bypass cubeList_fromFile hang
-    if (f) file_close(f);
-    return;
-
     if (!f) return;
+    int safety = 0;
     while (!file_isNextByteExpected(f, GS_WORLD_START_INDICATOR_0_END)) {
         if (file_isNextByteExpected(f, GS_WORLD_START_INDICATOR_2_UNUSED)) {
             LOG_BKA_INIT("gsworld_load: unused section");
@@ -451,6 +448,16 @@ void gsworld_load(enum map_e map_id) {
             LOG_BKA_INIT("gsworld_load: before lightingVectorList_fromFile");
             lightingVectorList_fromFile(f);
             LOG_BKA_INIT("gsworld_load: after lightingVectorList_fromFile");
+        } else {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-MAP",
+                "gsworld_load: unrecognized section byte 0x%02X, skipping",
+                (unsigned)(f->last_expected & 0xFF));
+            f->last_expected = -1;
+        }
+        if (++safety > 100000) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-MAP",
+                "gsworld_load: safety break after %d iterations", safety);
+            break;
         }
     }
 
