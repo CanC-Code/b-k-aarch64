@@ -432,6 +432,17 @@ void gsworld_load(enum map_e map_id) {
     f = file_openMap(map_id);
     __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "gsworld_load: file_openMap returned %p", (void*)f);
     if (!f) return;
+    {
+        u8 *p = (u8*)f->current_ptr;
+        int sz = (int)((u8*)f->end_ptr - (u8*)f->base_ptr);
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-DUMP",
+            "hdr: base=%p cur=%p end=%p size=%d mode=%d",
+            f->base_ptr, f->current_ptr, f->end_ptr, sz, (int)f->mode);
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-DUMP",
+            "bytes: %02X %02X %02X %02X %02X %02X %02X %02X  %02X %02X %02X %02X %02X %02X %02X %02X",
+            p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7],
+            p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]);
+    }
     int safety = 0;
     while (!file_isNextByteExpected(f, GS_WORLD_START_INDICATOR_0_END)) {
         if (file_isNextByteExpected(f, GS_WORLD_START_INDICATOR_2_UNUSED)) {
@@ -453,6 +464,7 @@ void gsworld_load(enum map_e map_id) {
                 "gsworld_load: unrecognized section byte 0x%02X, skipping",
                 (unsigned)(f->last_expected & 0xFF));
             f->last_expected = -1;
+            break;  /* abort parse on misalignment */
         }
         if (++safety > 100000) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA-MAP",

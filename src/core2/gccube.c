@@ -928,6 +928,7 @@ static void __code7AF80_initCubeFromFile(Cube *cube, File* file_ptr) {
                 "__code7AF80_initCubeFromFile: unrecognized cube byte 0x%02X, skipping",
                 (unsigned)(file_ptr->last_expected & 0xFF));
             file_ptr->last_expected = -1;
+            break;  /* abort parse on misalignment */
         }
     }
 }
