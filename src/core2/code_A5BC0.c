@@ -1,3 +1,4 @@
+#include <string.h>
 #include <android/log.h>
 #include <ultra64.h>
 #include "core1/core1.h"
@@ -965,11 +966,31 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
         }
         cube->prop2Cnt = prop2_count;
         cube->prop2Ptr = (Prop *) malloc(prop2_count * sizeof(Prop));
-        file_getNBytes_ifExpected(file_ptr, CUBE_PROP_2_LIST_START_INDICATOR, cube->prop2Ptr, cube->prop2Cnt * sizeof(Prop));
-        __android_log_print(ANDROID_LOG_ERROR, "BKA-FMT",
-            "  P2 count=%d read=%d off=%d",
-            prop2_count, cube->prop2Cnt * (int)sizeof(Prop),
-            (int)((u8*)file_ptr->asset_current_ptr - (u8*)file_ptr->asset_base_ptr));
+        {
+            PropFile *disk = (PropFile *) malloc(prop2_count * sizeof(PropFile));
+            file_getNBytes_ifExpected(file_ptr, CUBE_PROP_2_LIST_START_INDICATOR,
+                                      disk, prop2_count * sizeof(PropFile));
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-FMT",
+                "  P2 count=%d read=%d off=%d",
+                prop2_count, prop2_count * (int)sizeof(PropFile),
+                (int)((u8*)file_ptr->asset_current_ptr - (u8*)file_ptr->asset_base_ptr));
+            for (s32 _i = 0; _i < prop2_count; _i++) {
+                memset(&cube->prop2Ptr[_i], 0, sizeof(Prop));
+                cube->prop2Ptr[_i].actorProp.marker = NULL;  /* TODO: resolve marker ID */
+                cube->prop2Ptr[_i].actorProp.position[0] = disk[_i].position[0];
+                cube->prop2Ptr[_i].actorProp.position[1] = disk[_i].position[1];
+                cube->prop2Ptr[_i].actorProp.position[2] = disk[_i].position[2];
+                cube->prop2Ptr[_i].actorProp.frame = disk[_i].frame;
+                cube->prop2Ptr[_i].actorProp.unk8_10 = disk[_i].unk8_10;
+                cube->prop2Ptr[_i].actorProp.isMirrored = disk[_i].isMirrored;
+                cube->prop2Ptr[_i].actorProp.isNotFeatherEggOrNote = disk[_i].isNotFeatherEggOrNote;
+                cube->prop2Ptr[_i].actorProp.unk8_3 = disk[_i].unk8_3;
+                cube->prop2Ptr[_i].actorProp.isCollisionResolved = disk[_i].isCollisionResolved;
+                cube->prop2Ptr[_i].actorProp.isModelProp = disk[_i].isModelProp;
+                cube->prop2Ptr[_i].actorProp.isActorProp = disk[_i].isActorProp;
+            }
+            free(disk);
+        }
         for(this_prop2 = cube->prop2Ptr; this_prop2 < cube->prop2Ptr + prop2_count; this_prop2++){
                 this_prop2->isNotFeatherEggOrNote = TRUE;
                 if (this_prop2->isModelProp) {

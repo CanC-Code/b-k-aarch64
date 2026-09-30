@@ -37,6 +37,26 @@ typedef struct sprite_prop_s{
     u16 isActorProp:1; // always false for this struct
 } SpriteProp;
 
+/* On-disk representation of a P2 prop. N64 sized this at 12 bytes
+   (4-byte marker/id + 6-byte position + 2 bytes of bitfields). ARM64
+   inflates the runtime Prop union to 16 bytes because ActorProp.marker
+   is a real pointer. Read the file into PropFile, expand to Prop. */
+typedef struct {
+    u32 marker_or_id;
+    s16 position[3];
+    u16 frame:5;
+    u16 unk8_10:5;
+    u16 isMirrored:1;
+    u16 isNotFeatherEggOrNote:1;
+    u16 unk8_3:1;
+    u16 isCollisionResolved:1;
+    u16 isModelProp:1;
+    u16 isActorProp:1;
+} PropFile;
+#if defined(__GNUC__) || defined(__clang__)
+_Static_assert(sizeof(PropFile) == 12, "PropFile must match N64 file format");
+#endif
+
 #define SPRITE_ASSET_OFFSET 0x572
 
 typedef struct model_prop_s{
