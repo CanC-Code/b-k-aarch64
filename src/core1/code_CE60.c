@@ -79,10 +79,10 @@ void core1_ce60_func_8024AAB0(void) {
     sTrackId[1] = func_80322758();
     sTrackId[2] = sTrackId[3] = 0;
 
-    if (0 <= sTrackId[0])
+    if ((s32)sTrackId[0] >= 0)
         sTrackId[2] = gcMusic_getDefaultVolumeForTrack(sTrackId[0]);
 
-    if (0 <= sTrackId[1])
+    if ((s32)sTrackId[1] >= 0)
         sTrackId[3] = gcMusic_getDefaultVolumeForTrack(sTrackId[1]);
 
     switch (gsworld_getMap()) {

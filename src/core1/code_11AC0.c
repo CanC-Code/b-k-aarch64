@@ -480,6 +480,10 @@ void func_8024FF34(void) {
 }
 
 s32 gcMusic_getDefaultVolumeForTrack(enum comusic_e track_id) {
+    if ((s32)track_id < 0 || (s32)track_id >= 176) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-MUSIC", "gcMusic_getDefaultVolumeForTrack OOB: track_id=%d (0x%X)", (s32)track_id, (unsigned)track_id);
+        return 0x7FFF;
+    }
     return musicTrackInfo[track_id].volume;
 }
 
