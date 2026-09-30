@@ -1,3 +1,4 @@
+extern void *D_80386114;
 #include <ultra64.h>
 #include <android/log.h>
 #define LOG_BKA_INIT(tag) __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "func_802E4214: %s", tag)
@@ -541,6 +542,24 @@ bool func_802E4424(void) {
         extern ActorArray *suBaddieActorArray;
         static int s_cs_dbg = 0;
         if ((s_cs_dbg++ % 30) == 0) {
+            if (suBaddieActorArray && suBaddieActorArray->cnt > 0) {
+                Actor *a = &suBaddieActorArray->data[0];
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-ACTOR",
+                    "marker_id=%d model_id=%d info_unk18=%d info_unk20=%d pos=(%d,%d,%d) despawn=%d",
+                    a->marker ? (int)a->marker->id : -1,
+                    a->marker ? (int)a->marker->modelId : -1,
+                    a->actor_info ? (int)a->actor_info->unk18 : -1,
+                    a->actor_info ? (int)a->actor_info->unk20 : -1,
+                    (int)a->position[0],
+                    (int)a->position[1],
+                    (int)a->position[2],
+                    (int)a->despawn_flag);
+            }
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-SYS",
+                "transition=%d unk1A=%d unk1B=%d unk0=%d gameMode=%d demoPtr=%p",
+                (int)D_8037E8E0.transition, (int)D_8037E8E0.unk1A,
+                (int)D_8037E8E0.unk1B, (int)D_8037E8E0.unk0,
+                (int)D_8037E8E0.game_mode, (void*)D_80386114);
             __android_log_print(ANDROID_LOG_ERROR, "BKA-CUTSCENE",
                 "suBaddieActorArray=%p cnt=%d map=0x%X",
                 (void*)suBaddieActorArray,
