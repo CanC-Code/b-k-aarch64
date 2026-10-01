@@ -1,4 +1,3 @@
-#include <string.h>
 #include <android/log.h>
 #include <ultra64.h>
 #include "core1/core1.h"
@@ -975,7 +974,7 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
                 prop2_count, prop2_count * (int)sizeof(PropFile),
                 (int)((u8*)file_ptr->asset_current_ptr - (u8*)file_ptr->asset_base_ptr));
             for (s32 _i = 0; _i < prop2_count; _i++) {
-                memset(&cube->prop2Ptr[_i], 0, sizeof(Prop));
+                __builtin_memset(&cube->prop2Ptr[_i], 0, sizeof(Prop));
                 cube->prop2Ptr[_i].actorProp.marker = NULL;  /* TODO: resolve marker ID */
                 cube->prop2Ptr[_i].actorProp.position[0] = disk[_i].position[0];
                 cube->prop2Ptr[_i].actorProp.position[1] = disk[_i].position[1];
