@@ -656,7 +656,7 @@ void cube_free(Cube *cube){
 
     if(cube->prop2Ptr){
         for(iProp = cube->prop2Ptr; iProp < cube->prop2Ptr +cube->prop2Cnt; iProp++){
-            if(iProp->isActorProp){
+            if(iProp->isActorProp && iProp->actorProp.marker != NULL){
                 func_80332B2C(iProp->actorProp.marker);
             }
         }
