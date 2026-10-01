@@ -1,4 +1,5 @@
 #include <android/log.h>
+#include <android/log.h>
 #include <ultra64.h>
 #include "core1/core1.h"
 #include "functions.h"
@@ -1397,8 +1398,12 @@ void code_A5BC0_initCubePropActorProp(Cube *cube) {
     if (cube->prop2Cnt != 0) {
         prop_ptr = cube->prop2Ptr;
         prop_cnt = cube->prop2Cnt;
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-PROP",
+            "initCubePropActorProp cube=%p cnt=%u first_isActor=%d first_marker=%p",
+            (void*)cube, (unsigned)cube->prop2Cnt,
+            (int)cube->prop2Ptr->isActorProp, (void*)cube->prop2Ptr->actorProp.marker);
         while(prop_cnt != 0){
-            if(prop_ptr->isActorProp == TRUE){
+            if(prop_ptr->isActorProp == TRUE && prop_ptr->actorProp.marker != NULL){
                 prop_ptr->actorProp.marker->propPtr = &prop_ptr->actorProp;
                 prop_ptr->actorProp.marker->cubePtr = cube;
             }
