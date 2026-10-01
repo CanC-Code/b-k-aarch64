@@ -6,7 +6,7 @@
 typedef struct {
     s32 type: 24;
     s32 valid: 8;
-    s32 data_ptr;
+    void *data_ptr;  /* N64 stored a pointer in an s32 slot; on ARM64 s32 truncates it */
 } CameraNode;
 
 typedef struct {
