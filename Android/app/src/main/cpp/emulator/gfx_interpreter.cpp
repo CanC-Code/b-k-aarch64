@@ -2662,7 +2662,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         }
 
         // Fix L: top-level stride via multi-slot detector (once, not per loop)
-        current_stride = 16;   /* Fix Y1: top-level is always 8+8 */
+        current_stride = 8;    /* F3DEX v1 uses 8-byte commands */
 
         if (total <= 100) {
             if (log_after_jump) jump_log_count++;
