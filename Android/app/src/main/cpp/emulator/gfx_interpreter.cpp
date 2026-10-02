@@ -1888,16 +1888,19 @@ static void Matrix_Multiply(BKMatrix result, const BKMatrix a, const BKMatrix b)
 
 static void Cmd_Mtx(GfxCommand cmd) {
     uint32_t flag = (cmd.w0 >> 16) & 0xFF;
-    // Real F3DEX2 G_MTX only uses bits 0-2 (PROJECTION=0x01, LOAD=0x02,
-    // PUSH=0x04).  Any higher bits set means the command was misdecoded;
-    // without this guard, spurious G_MTX writes with flag=0x0B overwrite
-    // the projection matrix with zeros loaded from garbage addresses.
+    /* F3DEX v1 G_MTX uses only bits 0-2 (PROJECTION=0x01, LOAD=0x02,
+     * PUSH=0x04).  The recomp emits high bits in the flag byte that are
+     * not part of the F3DEX spec but do not change the low 3 bits
+     * (observed values: 0x15, 0x1E, 0x20, 0x2C, 0x34, 0x46, 0x4C, 0xAD).
+     * Mask them off rather than rejecting, or 30000+ legitimate matrix
+     * loads get dropped and the modelview goes stale. */
     if (flag & 0xF8) {
-        static int s_badmtx = 0;
-        if (s_badmtx++ < 10)
+        static int s_mtx_hi = 0;
+        if (s_mtx_hi++ < 5)
             __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                "Cmd_Mtx: bad flag=0x%02X w1=0x%08X — skipping", flag, cmd.w1);
-        return;
+                "Cmd_Mtx: high bits in flag=0x%02X, masking to 0x%02X (w1=0x%08X)",
+                flag, flag & 0x07, cmd.w1);
+        flag &= 0x07;
     }
     void *mtx_src = RDP_TranslateAddr(cmd.w1);
     if (!mtx_src) {
