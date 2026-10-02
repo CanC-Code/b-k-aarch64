@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "gfx_interpreter.h"
 
 extern "C" volatile int g_bka_pixels_drawn = 0;
@@ -2456,6 +2457,20 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     int visited_dl_count = 0;
     uint8_t *cur = (uint8_t*)tp->t.data_ptr;
     uint8_t *cur_end = cur + tp->t.data_size;
+    {
+        static int s_dl_dump = 0;
+        if (s_dl_dump++ < 3) {
+            FILE *fp = fopen("/data/data/com.bkawrapper/files/dl_dump.bin", "wb");
+            if (fp) {
+                size_t n = (size_t)(cur_end - cur);
+                if (n > 131072) n = 131072;
+                fwrite(cur, 1, n, fp);
+                fclose(fp);
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-DLDMP",
+                    "wrote %zu bytes to dl_dump.bin", n);
+            }
+        }
+    }
 
     const size_t MAX_TOTAL_CMDS = 20000;   /* real RSP tasks are <2000 cmds */
     const size_t MAX_DL_CMDS = 5000;
