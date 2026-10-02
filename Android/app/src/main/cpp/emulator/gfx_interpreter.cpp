@@ -2520,8 +2520,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
      * path is broken. */
     {
         static int s_rdp_selftest = 0;
-        if (s_rdp_selftest == 0) {
-            s_rdp_selftest = 1;
+        if (s_rdp_selftest++ < 5000) {
             GfxCommand tc[2];
             tc[0].w0 = 0xF7000000; tc[0].w1 = 0xFFFCFFFC;  /* SETFILLCOLOR white */
             tc[1].w0 = 0xF6000000; tc[1].w1 = 0x00000000;  /* FILLRECT (0,0,319,239) */
@@ -2541,6 +2540,9 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     } break;
                 }
             }
+            /* Bypass the entire game DL for this test. If the screen
+             * stays white, the RDP pipeline works end to end. */
+            return;
         }
     }
     while (cur + current_stride <= cur_end) {
