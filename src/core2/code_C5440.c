@@ -1,3 +1,4 @@
+#include <android/log.h>
 #include <ultra64.h>
 #include "functions.h"
 #include "variables.h"
@@ -156,7 +157,18 @@ void func_8034C6DC(BKModel *arg0){
     BKMesh *mesh = mesh_list->data;
     int i;
 
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-MESH",
+        "func_8034C6DC ENTER arg0=%p mesh_list=%p count=%d data=%p",
+        (void*)arg0, (void*)mesh_list,
+        mesh_list ? (int)mesh_list->count : -1,
+        mesh_list ? (void*)mesh_list->data : NULL);
+
     for (i = 0; i < mesh_list->count; i++) {
+        if (i < 3) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-MESH",
+                "  iter=%d mesh=%p uid=%d vtx_count=%d",
+                i, (void*)mesh, (int)mesh->uid, (int)mesh->vtx_count);
+        }
         if ((mesh->uid >= 101) && (mesh->uid < 200)) {
             func_8034C3D0(arg0, mesh->uid, 1, mesh->uid - 100);
         } else if ((mesh->uid >= 200) && (mesh->uid < 300)) {
