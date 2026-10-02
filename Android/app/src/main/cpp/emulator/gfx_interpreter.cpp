@@ -2459,7 +2459,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     uint8_t *cur_end = cur + tp->t.data_size;
     {
         static int s_dl_dump = 0;
-        if (s_dl_dump++ < 3) {
+        if (s_dl_dump++ < 20) {
             FILE *fp = fopen("/data/data/com.bkawrapper/files/dl_dump.bin", "wb");
             if (fp) {
                 size_t n = (size_t)(cur_end - cur);
@@ -3003,11 +3003,12 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     if (s_nomap++ < 50) {
                         void* m = bka_lookup_addr_mapping(raw_addr);
                         __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                            "G_DL: refusing addr=0x%08X (dl_ptr=%p map_lookup=%p) tag=%02X%02X%02X%02X %02X%02X%02X%02X w0=%08X w1=%08X",
+                            "G_DL: refusing addr=0x%08X (dl_ptr=%p map_lookup=%p) tag=%02X%02X%02X%02X %02X%02X%02X%02X w0=%08X w1=%08X off=%ld",
                             raw_addr, dl_ptr, m,
                             cur[8], cur[9], cur[10], cur[11],
                             cur[12], cur[13], cur[14], cur[15],
-                            c.w0, c.w1);
+                            c.w0, c.w1,
+                            (long)(cur - (uint8_t*)tp->t.data_ptr));
                     }
                     {
                         const uint8_t* p = (const uint8_t*)cur;
