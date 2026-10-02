@@ -2457,6 +2457,28 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     int visited_dl_count = 0;
     uint8_t *cur = (uint8_t*)tp->t.data_ptr;
     uint8_t *cur_end = cur + tp->t.data_size;
+
+    {
+        static int s_dual = 0;
+        if (s_dual++ < 6) {
+            uint8_t* p = cur;
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-DUAL", "task ptr=%p size=%u", (void*)p, (unsigned)tp->t.data_size);
+            for (int i = 0; i < 8; i++) {
+                uint8_t* q = p + i * 16;
+                if (!bka_is_readable(q + 16)) break;
+                uint32_t w_le = *(uint32_t*)q;
+                uint32_t w_be = __builtin_bswap32(w_le);
+                uint8_t op_le = (w_le >> 24) & 0xFF;
+                uint8_t op_be = (w_be >> 24) & 0xFF;
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-DUAL",
+                    "  i=%d bytes=%02X%02X%02X%02X | LE w0=%08X op=%02X %s | BE w0=%08X op=%02X %s",
+                    i, q[0],q[1],q[2],q[3],
+                    w_le, op_le, bka_is_f3dex_opcode(op_le) ? "OK" : "bad",
+                    w_be, op_be, bka_is_f3dex_opcode(op_be) ? "OK" : "bad");
+            }
+        }
+    }
+
     {
         static int s_dl_dump = 0;
         if (s_dl_dump++ < 20) {
