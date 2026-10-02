@@ -2188,7 +2188,7 @@ static int bka_probe_dl_encoding(uint8_t* ptr) {
     if (!ptr) return 0;
     int le = 0, be = 0, le_bad = 0, be_bad = 0;
     for (int i = 0; i < 32; i++) {
-        uint8_t* p = ptr + i * 8;
+        uint8_t* p = ptr + i * 16;
         if (!bka_is_readable(p + 8)) break;
         uint32_t w_le = *(uint32_t*)p;
         uint32_t w_be = __builtin_bswap32(w_le);
@@ -2605,13 +2605,11 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                      * within the first few commands, since half the DLs
                      * interpreted every opcode as a MOVEWORD-style command
                      * with the real opcode in the wrong byte. */
-                    c.w0 = __builtin_bswap32(c.w0);
-                    c.w1 = __builtin_bswap32(c.w1);
-                    cur_dl_enc = 2;
+                    cur_dl_enc = 1;
                     static int s_amb = 0;
                     if ((s_amb++ % 500) == 0)
                         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                            "DLENC AMBIG->BE @%p bytes %02X%02X%02X%02X op=0x%02X",
+                            "DLENC AMBIG->LE @%p bytes %02X%02X%02X%02X op=0x%02X",
                             cur, cur[0],cur[1],cur[2],cur[3],
                             (uint8_t)(c.w0 >> 24));
                 } else if (lo_is_g && !hi_is_g) {
