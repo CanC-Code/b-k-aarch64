@@ -2522,7 +2522,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         static int s_rdp_selftest = 0;
         if (s_rdp_selftest++ < 5000) {
             GfxCommand tc[2];
-            tc[0].w0 = 0xF7000000; tc[0].w1 = 0xFF00FF00;  /* SETFILLCOLOR green */
+            tc[0].w0 = 0xF7000000; tc[0].w1 = 0xFF00FFFF;  /* SETFILLCOLOR, alpha=0xFF */
             /* FILLRECT from (0,0) to (319,239): w0 = 0xF6 | lrx(319)<<12 | lry(239);
              * w1 = uly(0)<<12 | ulx(0). */
             tc[1].w0 = 0xF613F0EF; tc[1].w1 = 0x00000000;
