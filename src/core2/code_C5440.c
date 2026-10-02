@@ -156,42 +156,46 @@ void func_8034C6DC(BKModel *arg0){
     BKMeshList *mesh_list = model_getMeshList(arg0);
     BKMesh *mesh = mesh_list->data;
     int i;
+    s16 mesh_count = (s16)__builtin_bswap16((u16)mesh_list->count);
 
     __android_log_print(ANDROID_LOG_ERROR, "BKA-MESH",
         "func_8034C6DC ENTER arg0=%p mesh_list=%p count=%d data=%p",
         (void*)arg0, (void*)mesh_list,
-        mesh_list ? (int)mesh_list->count : -1,
+        (int)mesh_count,
         mesh_list ? (void*)mesh_list->data : NULL);
 
-    for (i = 0; i < mesh_list->count; i++) {
+    for (i = 0; i < mesh_count; i++) {
+        s16 uid = (s16)__builtin_bswap16((u16)mesh->uid);
+        s16 vtx_count = (s16)__builtin_bswap16((u16)mesh->vtx_count);
+
         if (i < 3) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA-MESH",
                 "  iter=%d mesh=%p uid=%d vtx_count=%d",
-                i, (void*)mesh, (int)mesh->uid, (int)mesh->vtx_count);
+                i, (void*)mesh, (int)uid, (int)vtx_count);
         }
-        if ((mesh->uid >= 101) && (mesh->uid < 200)) {
-            func_8034C3D0(arg0, mesh->uid, 1, mesh->uid - 100);
-        } else if ((mesh->uid >= 200) && (mesh->uid < 300)) {
-            func_8034C3D0(arg0, mesh->uid, 0, mesh->uid - 200);
-        } else if ((mesh->uid >= 300) && (mesh->uid < 400)) {
-            func_8034C3D0(arg0, mesh->uid, 3, mesh->uid - 300);
-        } else if ((mesh->uid >= 400) && (mesh->uid < 500)) {
-            func_8034C3D0(arg0, mesh->uid, 2, mesh->uid - 400);
-        } else if ((mesh->uid >= 500) && (mesh->uid < 600)) {
-            func_8034C3D0(arg0, mesh->uid, 4, mesh->uid - 500);
-        } else if ((mesh->uid >= 600) && (mesh->uid < 700)) {
-            func_8034C3D0(arg0, mesh->uid, 2, mesh->uid - 600);
-        } else if ((mesh->uid >= 700) && (mesh->uid < 800)) {
-            func_8034C3D0(arg0, mesh->uid, 5, mesh->uid - 700);
-        } else if ((mesh->uid >= 800) && (mesh->uid < 900)) {
-            func_8034C3D0(arg0, mesh->uid, 6, mesh->uid - 800);
-        } else if ((mesh->uid >= 900) && (mesh->uid < 1000)) {
-            func_8034C3D0(arg0, mesh->uid, 8, mesh->uid - 900);
-        } else if ((mesh->uid >= 1000) && (mesh->uid < 1100)) {
-            func_8034C3D0(arg0, mesh->uid, 7, mesh->uid - 1000);
+        if ((uid >= 101) && (uid < 200)) {
+            func_8034C3D0(arg0, uid, 1, uid - 100);
+        } else if ((uid >= 200) && (uid < 300)) {
+            func_8034C3D0(arg0, uid, 0, uid - 200);
+        } else if ((uid >= 300) && (uid < 400)) {
+            func_8034C3D0(arg0, uid, 3, uid - 300);
+        } else if ((uid >= 400) && (uid < 500)) {
+            func_8034C3D0(arg0, uid, 2, uid - 400);
+        } else if ((uid >= 500) && (uid < 600)) {
+            func_8034C3D0(arg0, uid, 4, uid - 500);
+        } else if ((uid >= 600) && (uid < 700)) {
+            func_8034C3D0(arg0, uid, 2, uid - 600);
+        } else if ((uid >= 700) && (uid < 800)) {
+            func_8034C3D0(arg0, uid, 5, uid - 700);
+        } else if ((uid >= 800) && (uid < 900)) {
+            func_8034C3D0(arg0, uid, 6, uid - 800);
+        } else if ((uid >= 900) && (uid < 1000)) {
+            func_8034C3D0(arg0, uid, 8, uid - 900);
+        } else if ((uid >= 1000) && (uid < 1100)) {
+            func_8034C3D0(arg0, uid, 7, uid - 1000);
         }
 
-        mesh = &mesh->vertices[mesh->vtx_count];
+        mesh = (BKMesh *)&mesh->vertices[vtx_count];
     }
 }
 
