@@ -971,6 +971,14 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
     float ox, oy, oz, ow;
     Matrix_MultVec(s_rdp.modelview, x, y, z, 1.0f, &ox, &oy, &oz, &ow);
 
+    {
+        static int s_v = 0;
+        if (s_v++ < 20)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-VIEW",
+                "world=(%d,%d,%d) view=(%.1f,%.1f,%.1f) w=%.4f",
+                (int)v->x, (int)v->y, (int)v->z,
+                ox, oy, oz, ow);
+    }
     // Apply projection — use locals to avoid aliasing input/output
     float px, py, pz, pw;
     Matrix_MultVec(s_rdp.projection, ox, oy, oz, ow, &px, &py, &pz, &pw);
