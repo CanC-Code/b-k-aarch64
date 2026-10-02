@@ -2940,6 +2940,23 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
             case 0x06: {
                 uint32_t raw_addr = c.w1;
+                /* Port recomp relocates pointer-carrying commands. The 8-byte
+                 * tag following the command holds the physical target; the
+                 * command word w1 is left as 0. Read the tag BE and use it. */
+                if (raw_addr == 0) {
+                    uint32_t tag_be = ((uint32_t)cur[8] << 24) |
+                                      ((uint32_t)cur[9] << 16) |
+                                      ((uint32_t)cur[10] << 8) |
+                                       (uint32_t)cur[11];
+                    if (tag_be != 0) {
+                        static int s_tag_use = 0;
+                        if (s_tag_use++ < 20)
+                            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                                "G_DL w1=0, using tag 0x%08X (cur=%p)",
+                                tag_be, (void*)cur);
+                        raw_addr = tag_be;
+                    }
+                }
                 /* STRICT G_DL resolution: real G_DL targets are either
                  * registered in the address map, or inside RDRAM.  Any other
                  * target (e.g. an arbitrary heap page that happens to be
