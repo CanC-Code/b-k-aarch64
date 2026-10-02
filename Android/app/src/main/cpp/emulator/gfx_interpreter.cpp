@@ -2513,6 +2513,36 @@ void RSP_ProcessGfxTask(OSTask* tp) {
     struct { uint8_t* ptr; uint32_t w0, w1; uint8_t op; int enc; size_t stride; int depth; } s_lastcmds[32];
     int s_lastcmd_idx = 0;
     memset(s_lastcmds, 0, sizeof(s_lastcmds));
+    /* One-shot self-test: submit a hardcoded 2-command DL to the RDP.
+     * SETFILLCOLOR(white) + FILLRECT(fullscreen). If the screen turns
+     * white on the first frame, the RDP pipeline is proven working and
+     * the remaining problem is the game DL. If it stays black, the RDP
+     * path is broken. */
+    {
+        static int s_rdp_selftest = 0;
+        if (s_rdp_selftest == 0) {
+            s_rdp_selftest = 1;
+            GfxCommand tc[2];
+            tc[0].w0 = 0xF7000000; tc[0].w1 = 0xFFFCFFFC;  /* SETFILLCOLOR white */
+            tc[1].w0 = 0xF6000000; tc[1].w1 = 0x00000000;  /* FILLRECT (0,0,319,239) */
+            for (int _k = 0; _k < 2; _k++) {
+                uint8_t _op = (uint8_t)(tc[_k].w0 >> 24);
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-SELFTEST",
+                    "submit op=0x%02X w0=%08X w1=%08X", _op, tc[_k].w0, tc[_k].w1);
+                /* Reuse existing dispatch by feeding through Cmd_ handlers */
+                switch (_op) {
+                    case 0xF7: /* setfillcolor */ {
+                        extern void Cmd_SetFillColor(GfxCommand);
+                        Cmd_SetFillColor(tc[_k]);
+                    } break;
+                    case 0xF6: /* fillrect */ {
+                        extern void Cmd_FillRect(GfxCommand);
+                        Cmd_FillRect(tc[_k]);
+                    } break;
+                }
+            }
+        }
+    }
     while (cur + current_stride <= cur_end) {
         if (++total > MAX_TOTAL_CMDS) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
