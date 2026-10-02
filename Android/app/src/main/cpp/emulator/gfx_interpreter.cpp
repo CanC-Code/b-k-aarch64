@@ -2966,6 +2966,15 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                             "G_DL: refusing addr=0x%08X (dl_ptr=%p map_lookup=%p)",
                             raw_addr, dl_ptr, m);
                     }
+                    {
+                        const uint8_t* p = (const uint8_t*)cur;
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA-DLRAW",
+                            "refused target=%08X cur=%p prev8=%02X%02X%02X%02X %02X%02X%02X%02X next16=%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+                            raw_addr, (void*)cur,
+                            p[-8],p[-7],p[-6],p[-5],p[-4],p[-3],p[-2],p[-1],
+                            p[0],p[1],p[2],p[3], p[4],p[5],p[6],p[7],
+                            p[8],p[9],p[10],p[11], p[12],p[13],p[14],p[15]);
+                    }
                     if (++consecutive_bad_gdl > 8) {
                         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                             "walker: %d consecutive failed G_DLs — bailing (drift past DL end)",
