@@ -2544,20 +2544,23 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     cur_dl_enc = 1;
                 } else                 if (hi_is_g && lo_is_g) {
                     /* Ambiguous: both byte[0] and byte[3] are valid F3DEX
-                     * opcodes.  Examples:
-                     *   06 00 00 BC: LE = gSPSegment(0,0), BE = G_DL
-                     *   FC 62 FE 04: LE = G_VTX,          BE = G_SETCOMBINE
-                     * Cannot distinguish by opcode alone.  Default to LE
-                     * (ARM-native writes go through recompiled code that
-                     * stores u32 as LE), and rely on the NOP-detection rule
-                     * above to catch BE-formatted DLs (they always start
-                     * with a byte[0] opcode and byte[3]=0x00). */
-                    cur_dl_enc = 1;
+                     * opcodes.  Default to BE: N64 architecture is big-endian
+                     * and F3DEX display lists are defined in BE byte order.
+                     * Empirically, B-K top-level DL bytes 06 00 00 BC only
+                     * decode correctly as BE (= G_DL, target in w1).  The
+                     * previous LE default caused walker drift at depth=0
+                     * within the first few commands, since half the DLs
+                     * interpreted every opcode as a MOVEWORD-style command
+                     * with the real opcode in the wrong byte. */
+                    c.w0 = __builtin_bswap32(c.w0);
+                    c.w1 = __builtin_bswap32(c.w1);
+                    cur_dl_enc = 2;
                     static int s_amb = 0;
                     if ((s_amb++ % 500) == 0)
                         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                            "DLENC AMBIG->LE @%p bytes %02X%02X%02X%02X",
-                            cur, cur[0],cur[1],cur[2],cur[3]);
+                            "DLENC AMBIG->BE @%p bytes %02X%02X%02X%02X op=0x%02X",
+                            cur, cur[0],cur[1],cur[2],cur[3],
+                            (uint8_t)(c.w0 >> 24));
                 } else if (lo_is_g && !hi_is_g) {
                     c.w0 = __builtin_bswap32(c.w0);
                     c.w1 = __builtin_bswap32(c.w1);
