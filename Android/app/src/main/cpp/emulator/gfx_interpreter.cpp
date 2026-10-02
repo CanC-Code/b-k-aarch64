@@ -2522,8 +2522,10 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         static int s_rdp_selftest = 0;
         if (s_rdp_selftest++ < 5000) {
             GfxCommand tc[2];
-            tc[0].w0 = 0xF7000000; tc[0].w1 = 0xFFFCFFFC;  /* SETFILLCOLOR white */
-            tc[1].w0 = 0xF6000000; tc[1].w1 = 0x00000000;  /* FILLRECT (0,0,319,239) */
+            tc[0].w0 = 0xF7000000; tc[0].w1 = 0xFF00FF00;  /* SETFILLCOLOR green */
+            /* FILLRECT from (0,0) to (319,239): w0 = 0xF6 | lrx(319)<<12 | lry(239);
+             * w1 = uly(0)<<12 | ulx(0). */
+            tc[1].w0 = 0xF613F0EF; tc[1].w1 = 0x00000000;
             for (int _k = 0; _k < 2; _k++) {
                 uint8_t _op = (uint8_t)(tc[_k].w0 >> 24);
                 __android_log_print(ANDROID_LOG_ERROR, "BKA-SELFTEST",
