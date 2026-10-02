@@ -952,6 +952,20 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
         }
     }
 
+    {
+        static int s_tv_snap = 0;
+        if (s_tv_snap++ < 5) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-TVSNAP",
+                "PROJ r0=(%.4f %.4f %.4f %.4f) r2=(%.4f %.4f %.4f %.4f) r3=(%.4f %.4f %.4f %.4f)",
+                s_rdp.projection[0][0], s_rdp.projection[0][1], s_rdp.projection[0][2], s_rdp.projection[0][3],
+                s_rdp.projection[2][0], s_rdp.projection[2][1], s_rdp.projection[2][2], s_rdp.projection[2][3],
+                s_rdp.projection[3][0], s_rdp.projection[3][1], s_rdp.projection[3][2], s_rdp.projection[3][3]);
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-TVSNAP",
+                "MV   r0=(%.4f %.4f %.4f %.4f) r3=(%.4f %.4f %.4f %.4f)",
+                s_rdp.modelview[0][0], s_rdp.modelview[0][1], s_rdp.modelview[0][2], s_rdp.modelview[0][3],
+                s_rdp.modelview[3][0], s_rdp.modelview[3][1], s_rdp.modelview[3][2], s_rdp.modelview[3][3]);
+        }
+    }
     // Apply modelview
     float ox, oy, oz, ow;
     Matrix_MultVec(s_rdp.modelview, x, y, z, 1.0f, &ox, &oy, &oz, &ow);
