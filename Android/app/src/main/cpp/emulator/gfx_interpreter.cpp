@@ -2552,17 +2552,15 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                      * within the first few commands, since half the DLs
                      * interpreted every opcode as a MOVEWORD-style command
                      * with the real opcode in the wrong byte. */
-                    /* Ambiguous: both bytes[0] and bytes[3] are valid opcodes.
-                     * Top-level B-K display lists are LE-encoded (bytes[3] is
-                     * the real opcode). Sub-DLs at depth>=1 are BE-encoded;
-                     * that case is detected via the NOP rule above, not here. */
-                    cur_dl_enc = 1;
+                    c.w0 = __builtin_bswap32(c.w0);
+                    c.w1 = __builtin_bswap32(c.w1);
+                    cur_dl_enc = 2;
                     static int s_amb = 0;
                     if ((s_amb++ % 500) == 0)
                         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                            "DLENC AMBIG->LE @%p bytes %02X%02X%02X%02X op=0x%02X",
+                            "DLENC AMBIG->BE @%p bytes %02X%02X%02X%02X op=0x%02X",
                             cur, cur[0],cur[1],cur[2],cur[3],
-                            (uint8_t)(c.w0 & 0xFF));
+                            (uint8_t)(c.w0 >> 24));
                 } else if (lo_is_g && !hi_is_g) {
                     c.w0 = __builtin_bswap32(c.w0);
                     c.w1 = __builtin_bswap32(c.w1);
