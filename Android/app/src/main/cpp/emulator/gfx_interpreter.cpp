@@ -630,6 +630,22 @@ static void Matrix_LoadFromN64(BKMatrix* out, const void* src) {
         }
     }
     {
+        static int s_full = 0;
+        if (s_full++ < 3) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-MTXFULL",
+                "src=%p raw= %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X  %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+                src,
+                p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],
+                p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15],
+                p[16],p[17],p[18],p[19],p[20],p[21],p[22],p[23],
+                p[24],p[25],p[26],p[27],p[28],p[29],p[30],p[31]);
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-MTXFULL",
+                "parsed r0=(%.4f %.4f %.4f %.4f) r3=(%.4f %.4f %.4f %.4f)",
+                (*out)[0][0],(*out)[0][1],(*out)[0][2],(*out)[0][3],
+                (*out)[3][0],(*out)[3][1],(*out)[3][2],(*out)[3][3]);
+        }
+    }
+    {
         static int s_res = 0;
         if (s_res++ < 2) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -1894,13 +1910,17 @@ static void Cmd_Mtx(GfxCommand cmd) {
      * (observed values: 0x15, 0x1E, 0x20, 0x2C, 0x34, 0x46, 0x4C, 0xAD).
      * Mask them off rather than rejecting, or 30000+ legitimate matrix
      * loads get dropped and the modelview goes stale. */
+    /* F3DEX v1 G_MTX valid flags are 0x00-0x07.  Anything with bits
+     * 3-7 set is walker drift into non-command data, and its w1 is a
+     * garbage address (observed: 0x017C0000, 0x06340000, 0x03300000).
+     * Reject the command. */
     if (flag & 0xF8) {
         static int s_mtx_hi = 0;
-        if (s_mtx_hi++ < 5)
+        if (s_mtx_hi++ < 10)
             __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                "Cmd_Mtx: high bits in flag=0x%02X, masking to 0x%02X (w1=0x%08X)",
-                flag, flag & 0x07, cmd.w1);
-        flag &= 0x07;
+                "Cmd_Mtx: bad flag=0x%02X w1=0x%08X — skipping (drift)",
+                flag, cmd.w1);
+        return;
     }
     void *mtx_src = RDP_TranslateAddr(cmd.w1);
     if (!mtx_src) {
