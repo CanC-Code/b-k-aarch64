@@ -493,6 +493,14 @@ static void RDP_InitState() {
     s_rdp.segmentBase[0x01] = 0x80000000u;
     s_rdp.segmentBase[0x02] = 0x80000000u;
     s_rdp.segmentBase[0x03] = 0x80000000u;
+    s_rdp.segmentBase[0x04] = 0x08000000u;
+    s_rdp.segmentBase[0x05] = 0x08000000u;
+    s_rdp.segmentBase[0x06] = 0x08000000u;
+    s_rdp.segmentBase[0x07] = 0x08000000u;
+    s_rdp.segmentBase[0x08] = 0x08000000u;
+    s_rdp.segmentBase[0x09] = 0x08000000u;
+    s_rdp.segmentBase[0x0A] = 0x08000000u;
+    s_rdp.segmentBase[0x0B] = 0x08000000u;
     s_rdp.segmentBase[0x0C] = 0x0C000000u;
     s_rdp.segmentBase[0x0D] = 0x80000000u;
     s_rdp.segmentBase[0x0E] = 0x80000000u;
