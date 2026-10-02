@@ -2696,7 +2696,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         }
 
         // Fix L: top-level stride via multi-slot detector (once, not per loop)
-        current_stride = 8;    /* F3DEX v1 uses 8-byte commands */
+        current_stride = 16;   /* port recomp adds 8-byte physical-addr tag after each cmd */
 
         if (total <= 100) {
             if (log_after_jump) jump_log_count++;
@@ -2986,8 +2986,11 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     if (s_nomap++ < 50) {
                         void* m = bka_lookup_addr_mapping(raw_addr);
                         __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
-                            "G_DL: refusing addr=0x%08X (dl_ptr=%p map_lookup=%p)",
-                            raw_addr, dl_ptr, m);
+                            "G_DL: refusing addr=0x%08X (dl_ptr=%p map_lookup=%p) tag=%02X%02X%02X%02X %02X%02X%02X%02X w0=%08X w1=%08X",
+                            raw_addr, dl_ptr, m,
+                            cur[8], cur[9], cur[10], cur[11],
+                            cur[12], cur[13], cur[14], cur[15],
+                            c.w0, c.w1);
                     }
                     {
                         const uint8_t* p = (const uint8_t*)cur;
