@@ -556,14 +556,16 @@ static void Matrix_Identity(BKMatrix m) {
 
 static void Matrix_MultVec(const BKMatrix m, float x, float y, float z, float w,
                            float* ox, float* oy, float* oz, float* ow) {
-    /* N64 Mtx is stored row-major (guMtxF2L packs mf[i][j] in row-major
-     * order) with translation in row 3.  The transform is v' = M * v.
-     * Previous code computed M^T * v, which put the modelview translation
-     * into the w output and produced view coords off by ~16000. */
-    *ox = m[0][0]*x + m[0][1]*y + m[0][2]*z + m[0][3]*w;
-    *oy = m[1][0]*x + m[1][1]*y + m[1][2]*z + m[1][3]*w;
-    *oz = m[2][0]*x + m[2][1]*y + m[2][2]*z + m[2][3]*w;
-    *ow = m[3][0]*x + m[3][1]*y + m[3][2]*z + m[3][3]*w;
+    /* N64 Mtx layout has translation in ROW 3 (verified from MTXFULL dump:
+     * modelview row 3 = (15991, 15306, 16305, 1)). The correct transform
+     * of a column vector under this layout is v' = v * M (row-vector
+     * times matrix), equivalently M^T * v. Under this form the w output
+     * stays 1 for a rigid transform, and translation is applied via
+     * column 3. */
+    *ox = m[0][0]*x + m[1][0]*y + m[2][0]*z + m[3][0]*w;
+    *oy = m[0][1]*x + m[1][1]*y + m[2][1]*z + m[3][1]*w;
+    *oz = m[0][2]*x + m[1][2]*y + m[2][2]*z + m[3][2]*w;
+    *ow = m[0][3]*x + m[1][3]*y + m[2][3]*z + m[3][3]*w;
 }
 
 // Load N64 fixed-point matrix (int16_t[4][4] with 32-bit integer parts)
@@ -2069,6 +2071,13 @@ static void Cmd_Mtx(GfxCommand cmd) {
         }
         if (flag & G_MTX_LOAD) {
             memcpy(s_rdp.modelview, newMatrix, sizeof(BKMatrix));
+            { static int s_mvl = 0; if (s_mvl++ < 20)
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-MVLOAD",
+                    "MV-LOAD r0=(%.3f %.3f %.3f %.3f) r1=(%.3f %.3f %.3f %.3f) r2=(%.3f %.3f %.3f %.3f) r3=(%.1f %.1f %.1f %.1f)",
+                    s_rdp.modelview[0][0], s_rdp.modelview[0][1], s_rdp.modelview[0][2], s_rdp.modelview[0][3],
+                    s_rdp.modelview[1][0], s_rdp.modelview[1][1], s_rdp.modelview[1][2], s_rdp.modelview[1][3],
+                    s_rdp.modelview[2][0], s_rdp.modelview[2][1], s_rdp.modelview[2][2], s_rdp.modelview[2][3],
+                    s_rdp.modelview[3][0], s_rdp.modelview[3][1], s_rdp.modelview[3][2], s_rdp.modelview[3][3]); }
         } else {
             BKMatrix tmp;
             Matrix_Multiply(tmp, newMatrix, s_rdp.modelview); // new × existing
