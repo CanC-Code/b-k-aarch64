@@ -2056,7 +2056,9 @@ static void Cmd_Mtx(GfxCommand cmd) {
                 s_rdp.projection[3][0], s_rdp.projection[3][1], s_rdp.projection[3][2], s_rdp.projection[3][3]); }
         } else {
             BKMatrix tmp;
-            Matrix_Multiply(tmp, newMatrix, s_rdp.projection); // new × existing
+            /* Row-vector convention: apply existing first then new.
+             * Combined = existing * new (existing on the LEFT). */
+            Matrix_Multiply(tmp, s_rdp.projection, newMatrix);
             memcpy(s_rdp.projection, tmp, sizeof(BKMatrix));
         }
     } else {
@@ -2080,7 +2082,8 @@ static void Cmd_Mtx(GfxCommand cmd) {
                     s_rdp.modelview[3][0], s_rdp.modelview[3][1], s_rdp.modelview[3][2], s_rdp.modelview[3][3]); }
         } else {
             BKMatrix tmp;
-            Matrix_Multiply(tmp, newMatrix, s_rdp.modelview); // new × existing
+            /* Same row-vector convention: existing on the left. */
+            Matrix_Multiply(tmp, s_rdp.modelview, newMatrix);
             memcpy(s_rdp.modelview, tmp, sizeof(BKMatrix));
         }
     }
