@@ -1210,7 +1210,7 @@ static void Cmd_SetTile(GfxCommand cmd) {
     t.mirrorS = (cmd.w1 >>  8) & 0x1;
     t.maskS   = (cmd.w1 >>  4) & 0xF;
     t.shiftS  =  cmd.w1        & 0xF;
-    { static int s_st = 0; if (s_st++ < 120) __android_log_print(ANDROID_LOG_ERROR, "BKA-SETTILE", "tile=%u fmt=%u siz=%u line=%u tmem=%u pal=%u w0=%08X w1=%08X", tile, t.format, t.size, t.line, t.tmemAddr, t.palette, cmd.w0, cmd.w1); }
+    { static int s_st = 0; if (s_st++ < 10000) __android_log_print(ANDROID_LOG_ERROR, "BKA-SETTILE", "tile=%u fmt=%u siz=%u line=%u tmem=%u pal=%u w0=%08X w1=%08X", tile, t.format, t.size, t.line, t.tmemAddr, t.palette, cmd.w0, cmd.w1); }
 }
 
 static void Cmd_SetTileSize(GfxCommand cmd) {
