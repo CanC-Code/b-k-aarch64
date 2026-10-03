@@ -1179,6 +1179,10 @@ static void Cmd_Texture(GfxCommand cmd) {
     uint32_t enable, tile;
     if (op == 0xBB) {
         // F3DEX (non-2): w0=[BB:8][bowtie:8][level:3][tile:3][on:8]
+        // Drift guard: game code (see banjo-kazooie decomp) never emits
+        // nonzero level/bowtie and only ever uses G_TX_RENDERTILE.
+        // w0 != 0xBB000000|on means the walker landed on non-command bytes.
+        if ((cmd.w0 & 0x00FFFF00u) != 0) return;
         enable =  cmd.w0        & 0xFF;
         tile   = (cmd.w0 >>  8) & 0x7;
     } else {
