@@ -1333,16 +1333,36 @@ static void Cmd_LoadTile(GfxCommand cmd) {
 }
 
 static void Cmd_LoadTLUT(GfxCommand cmd) {
-    uint32_t tile = (cmd.w0 >> 24) & 0x7;
-    if (tile >= 8) return;
-    auto& t = s_rdp.tiles[tile];
+    // N64 rule: TLUT is ALWAYS in TMEM words 256-511 (bytes 2048-4095).
+    // The LOADTILE descriptor's tmem field is only relevant for LoadBlock.
+    // Earlier code indexed the tile from (w0>>24)&7, but w0>>24 is the
+    // opcode (0xF0), which masked to tile 0 (tmem=0). That clobbered the
+    // first 32 bytes of texture data and left the palette region empty,
+    // so every CI4 lookup returned black.
     uint32_t sl = (cmd.w0 >> 12) & 0xFFF;
     uint32_t tl = cmd.w0 & 0xFFF;
     uint32_t count = (cmd.w1 >> 14) & 0x3FF;
+    const uint32_t tmemBase = 256u * 8u;  // = 2048
     if (s_rdp.texAddr) {
-        uint32_t tmemBase = t.tmemAddr * 8;
         uint32_t srcOffset = tl * 2 + sl * 2;
         memcpy(s_rdp.tmem + tmemBase, s_rdp.texAddr + srcOffset, (count + 1) * 2);
+        static int s_lt = 0;
+        if (s_lt++ < 20) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADTLUT",
+                "ENTRY sl=%u tl=%u count=%u texAddr=%p tmemBase=%u src0..7=%02X%02X%02X%02X%02X%02X%02X%02X tmem2048..2055=%02X%02X%02X%02X%02X%02X%02X%02X",
+                sl, tl, count, (void*)s_rdp.texAddr, tmemBase,
+                s_rdp.texAddr[srcOffset+0], s_rdp.texAddr[srcOffset+1],
+                s_rdp.texAddr[srcOffset+2], s_rdp.texAddr[srcOffset+3],
+                s_rdp.texAddr[srcOffset+4], s_rdp.texAddr[srcOffset+5],
+                s_rdp.texAddr[srcOffset+6], s_rdp.texAddr[srcOffset+7],
+                s_rdp.tmem[2048], s_rdp.tmem[2049], s_rdp.tmem[2050], s_rdp.tmem[2051],
+                s_rdp.tmem[2052], s_rdp.tmem[2053], s_rdp.tmem[2054], s_rdp.tmem[2055]);
+        }
+    } else {
+        static int s_ltn = 0;
+        if (s_ltn++ < 10)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADTLUT",
+                "SKIP sl=%u tl=%u count=%u texAddr=null", sl, tl, count);
     }
 }
 
