@@ -168,6 +168,9 @@ void viewport_debug4(int arg0) {
 
 void viewport_setPosition_vec3f(f32 src[3]) {
     ml_vec3f_copy(sViewportPosition, src);
+    { static int s_vp = 0; if (s_vp++ < 20)
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-VPSET",
+            "POS set to (%.2f %.2f %.2f)", src[0], src[1], src[2]); }
 }
 
 void viewport_setPosition_vec3w(s32 src[3]) {
@@ -184,6 +187,9 @@ void viewport_setPosition_f3(f32 x, f32 y, f32 z) {
 
 void viewport_setRotation_vec3f(f32 src[3]) {
     ml_vec3f_copy(sViewportRotation, src);
+    { static int s_vr = 0; if (s_vr++ < 20)
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-VPSET",
+            "ROT set to (%.2f %.2f %.2f)", src[0], src[1], src[2]); }
 }
 
 void viewport_setRotation_f3(f32 pitch, f32 yaw, f32 roll) {
