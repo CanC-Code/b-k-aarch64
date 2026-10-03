@@ -106,6 +106,7 @@ static void bka_install_watch(void) {
     sigaction(SIGSEGV, &sa, nullptr);
 }
 
+int g_bka_force_identity_mv = 1;  /* TEST: bypass modelview */
 static uintptr_t s_dl_base = 0;
 
 /* F3DEX opcodes that we recognize.  Used to distinguish LE-encoded runtime
@@ -987,7 +988,14 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
     }
     // Apply modelview
     float ox, oy, oz, ow;
-    Matrix_MultVec(s_rdp.modelview, x, y, z, 1.0f, &ox, &oy, &oz, &ow);
+    {
+        extern int g_bka_force_identity_mv;
+        if (g_bka_force_identity_mv) {
+            ox = x; oy = y; oz = z; ow = 1.0f;
+        } else {
+            Matrix_MultVec(s_rdp.modelview, x, y, z, 1.0f, &ox, &oy, &oz, &ow);
+        }
+    }
 
     {
         static int s_v = 0;
