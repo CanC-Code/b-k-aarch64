@@ -981,10 +981,24 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
                 (int)v->x, (int)v->y, (int)v->z,
                 ox, oy, oz, ow);
     }
+    float view_x = ox, view_y = oy, view_z = oz, view_w = ow;
     // Apply projection — use locals to avoid aliasing input/output
     float px, py, pz, pw;
     Matrix_MultVec(s_rdp.projection, ox, oy, oz, ow, &px, &py, &pz, &pw);
     ox = px; oy = py; oz = pz; ow = pw;
+
+    {
+        static int s_txfm = 0;
+        if (s_txfm++ < 5) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-TXFM",
+                "world=(%.0f,%.0f,%.0f) view=(%.1f,%.1f,%.1f) wv=%.3f | clip=(%.1f,%.1f,%.1f) wc=%.3f | ndc=(%.3f,%.3f)",
+                (float)v->x, (float)v->y, (float)v->z,
+                view_x, view_y, view_z, view_w,
+                px, py, pz, pw,
+                (pw != 0.0f) ? (px / pw) : 0.0f,
+                (pw != 0.0f) ? (py / pw) : 0.0f);
+        }
+    }
 
     {
         static int s_rd = 0;
