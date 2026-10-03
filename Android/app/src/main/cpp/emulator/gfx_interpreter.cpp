@@ -1333,37 +1333,42 @@ static void Cmd_LoadTile(GfxCommand cmd) {
 }
 
 static void Cmd_LoadTLUT(GfxCommand cmd) {
-    // N64 rule: TLUT is ALWAYS in TMEM words 256-511 (bytes 2048-4095).
-    // The LOADTILE descriptor's tmem field is only relevant for LoadBlock.
-    // Earlier code indexed the tile from (w0>>24)&7, but w0>>24 is the
-    // opcode (0xF0), which masked to tile 0 (tmem=0). That clobbered the
-    // first 32 bytes of texture data and left the palette region empty,
-    // so every CI4 lookup returned black.
-    uint32_t sl = (cmd.w0 >> 12) & 0xFFF;
-    uint32_t tl = cmd.w0 & 0xFFF;
+    // F3DEX1 _gDPLoadTLUTCmd: w1[24:26]=tile, w1[14:23]=count.
+    // Destination TMEM address comes from that tile's descriptor (set by the
+    // preceding gDPSetTile). Standard G_TX_LOADTILE (7) is used for the
+    // real texture, and here the palette lands wherever the game placed it
+    // (usually 256 words = byte 2048 for pal 0).
+    uint32_t tile  = (cmd.w1 >> 24) & 0x7;
     uint32_t count = (cmd.w1 >> 14) & 0x3FF;
-    const uint32_t tmemBase = 256u * 8u;  // = 2048
-    if (s_rdp.texAddr) {
-        uint32_t srcOffset = tl * 2 + sl * 2;
-        memcpy(s_rdp.tmem + tmemBase, s_rdp.texAddr + srcOffset, (count + 1) * 2);
-        static int s_lt = 0;
-        if (s_lt++ < 20) {
-            __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADTLUT",
-                "ENTRY sl=%u tl=%u count=%u texAddr=%p tmemBase=%u src0..7=%02X%02X%02X%02X%02X%02X%02X%02X tmem2048..2055=%02X%02X%02X%02X%02X%02X%02X%02X",
-                sl, tl, count, (void*)s_rdp.texAddr, tmemBase,
-                s_rdp.texAddr[srcOffset+0], s_rdp.texAddr[srcOffset+1],
-                s_rdp.texAddr[srcOffset+2], s_rdp.texAddr[srcOffset+3],
-                s_rdp.texAddr[srcOffset+4], s_rdp.texAddr[srcOffset+5],
-                s_rdp.texAddr[srcOffset+6], s_rdp.texAddr[srcOffset+7],
-                s_rdp.tmem[2048], s_rdp.tmem[2049], s_rdp.tmem[2050], s_rdp.tmem[2051],
-                s_rdp.tmem[2052], s_rdp.tmem[2053], s_rdp.tmem[2054], s_rdp.tmem[2055]);
-        }
-    } else {
+    if (tile >= 8) return;
+    auto& t = s_rdp.tiles[tile];
+    uint32_t tmemBase = t.tmemAddr * 8;
+    if (tmemBase < 2048) tmemBase = 2048;   // palette must live at word 256+
+    if (tmemBase >= 4096) tmemBase = 2048;
+    if (!s_rdp.texAddr) {
         static int s_ltn = 0;
         if (s_ltn++ < 10)
             __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADTLUT",
-                "SKIP sl=%u tl=%u count=%u texAddr=null", sl, tl, count);
+                "SKIP tile=%u tmem=%u count=%u texAddr=null",
+                tile, t.tmemAddr, count);
+        return;
     }
+    uint32_t bytes = (count + 1) * 2;
+    if (bytes > 1024) bytes = 1024;
+    memcpy(s_rdp.tmem + tmemBase, s_rdp.texAddr, bytes);
+    { static int s_lt = 0; if (s_lt++ < 20)
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADTLUT",
+            "ENTRY tile=%u tmem=%u tmemBase=%u count=%u bytes=%u texAddr=%p "
+            "src0..7=%02X%02X%02X%02X%02X%02X%02X%02X "
+            "tmem[%u..%u]=%02X%02X%02X%02X%02X%02X%02X%02X",
+            tile, t.tmemAddr, tmemBase, count, bytes, (void*)s_rdp.texAddr,
+            s_rdp.texAddr[0], s_rdp.texAddr[1], s_rdp.texAddr[2], s_rdp.texAddr[3],
+            s_rdp.texAddr[4], s_rdp.texAddr[5], s_rdp.texAddr[6], s_rdp.texAddr[7],
+            tmemBase, tmemBase+7,
+            s_rdp.tmem[tmemBase+0], s_rdp.tmem[tmemBase+1],
+            s_rdp.tmem[tmemBase+2], s_rdp.tmem[tmemBase+3],
+            s_rdp.tmem[tmemBase+4], s_rdp.tmem[tmemBase+5],
+            s_rdp.tmem[tmemBase+6], s_rdp.tmem[tmemBase+7]); }
 }
 
 static void Cmd_LoadBlock(GfxCommand cmd) {
@@ -3005,6 +3010,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xD7: Cmd_Texture(c); break;
             case 0xBB: Cmd_Texture(c); break;   // F3DEX (non-2) G_TEXTURE
             case 0xF5: Cmd_SetTile(c); break;
+            case 0xF0: Cmd_LoadTLUT(c); break;
             case 0xF2: Cmd_SetTileSize(c); break;
             case 0xFD: Cmd_SetTImg(c); break;
             case 0xF3: Cmd_LoadBlock(c); break;
