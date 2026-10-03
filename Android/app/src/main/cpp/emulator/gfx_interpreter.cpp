@@ -107,7 +107,7 @@ static void bka_install_watch(void) {
 }
 
 int g_bka_force_identity_mv = 0;  /* set per-frame based on current map */
-extern int gsworld_getMap(void);
+extern "C" int gsworld_getMap(void);
 static inline int bka_should_force_identity_mv(void) {
     /* MAP_91 (file select) is a UI map drawn near origin; the port loads a
      * stale player-shadow-derived modelview for it that translates by
