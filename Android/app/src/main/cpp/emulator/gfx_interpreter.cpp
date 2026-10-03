@@ -680,43 +680,97 @@ static void Matrix_LoadFromN64(BKMatrix* out, const void* src) {
 static void RDP_FetchTexel(int tile, uint32_t s, uint32_t t, uint8_t* outRGBA) {
     uint32_t u = s >> 5, v = t >> 5;
     auto& tdesc = s_rdp.tiles[tile];
-    uint32_t bpp = RDP_BPP(tdesc.size);
     uint32_t texW = (tdesc.sh >> 2) + 1, texH = (tdesc.th >> 2) + 1;
-    
+    if (texW == 0) texW = 1;
+    if (texH == 0) texH = 1;
+
     if (tdesc.clampS) { if (u >= texW) u = texW - 1; } else { u &= (texW - 1); }
     if (tdesc.clampT) { if (v >= texH) v = texH - 1; } else { v &= (texH - 1); }
-    
-    uint32_t tmemBase = tdesc.tmemAddr * 8, lineBytes = tdesc.line * 8;
-    
-    if (bpp == 2) {
-        uint32_t offset = tmemBase + v * lineBytes + u * 2;
-        if (offset + 1 < 4096) {
-            uint16_t pixel = (s_rdp.tmem[offset] << 8) | s_rdp.tmem[offset + 1];
-            if (tdesc.format == 0) {
-                outRGBA[0] = ((pixel >> 11) & 0x1F) << 3;
-                outRGBA[1] = ((pixel >> 6) & 0x1F) << 3;
-                outRGBA[2] = ((pixel >> 1) & 0x1F) << 3;
-                outRGBA[3] = (pixel & 1) ? 255 : 0;
-            } else if (tdesc.format == 5) {
-                outRGBA[0] = outRGBA[1] = outRGBA[2] = (pixel >> 8) & 0xFF;
-                outRGBA[3] = pixel & 0xFF;
-            } else {
-                outRGBA[0] = outRGBA[1] = outRGBA[2] = outRGBA[3] = 255;
-            }
-        } else { outRGBA[0] = outRGBA[1] = outRGBA[2] = outRGBA[3] = 0; }
-    } else if (bpp == 1) {
-        uint32_t offset = tmemBase + v * lineBytes + u;
-        if (offset < 4096) {
-            uint8_t pixel = s_rdp.tmem[offset];
-            if (tdesc.format == 4) {
-                outRGBA[0] = outRGBA[1] = outRGBA[2] = (pixel & 0xF0);
-                outRGBA[3] = (pixel & 0x0F) << 4;
-            } else {
-                outRGBA[0] = outRGBA[1] = outRGBA[2] = outRGBA[3] = pixel;
-            }
-        } else { outRGBA[0] = outRGBA[1] = outRGBA[2] = outRGBA[3] = 0; }
-    } else {
-        outRGBA[0] = outRGBA[1] = outRGBA[2] = outRGBA[3] = 255;
+
+    uint32_t bppBits = 4u << (tdesc.size & 3);
+
+    uint32_t rowWord   = (tdesc.tmemAddr + v * tdesc.line) & 0x1FFu;
+    uint32_t bitInRow  = u * bppBits;
+    uint32_t wordInRow = bitInRow >> 6;
+    uint32_t bitInWord = bitInRow & 63u;
+    uint32_t word      = (rowWord + wordInRow) & 0x1FFu;
+    if ((tdesc.size & 3) >= 2 && (v & 1)) word ^= 1u;
+    uint32_t byteAddr  = word * 8u + (bitInWord >> 3);
+
+    if (byteAddr >= 4096) { outRGBA[0]=outRGBA[1]=outRGBA[2]=outRGBA[3]=0; return; }
+
+    {
+        static int s_td = 0;
+        if (s_td++ < 12) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-TEX",
+                "TILEDESC tile=%d fmt=%u siz=%u line=%u tmem=%u pal=%u sh=%u th=%u uv=(%u,%u) bpp=%u word=%u byte=%u raw=%02X%02X%02X%02X%02X%02X%02X%02X",
+                tile, tdesc.format, tdesc.size, tdesc.line, tdesc.tmemAddr,
+                tdesc.palette, tdesc.sh, tdesc.th, u, v, bppBits, word, byteAddr,
+                s_rdp.tmem[(byteAddr+0) & 0xFFF], s_rdp.tmem[(byteAddr+1) & 0xFFF],
+                s_rdp.tmem[(byteAddr+2) & 0xFFF], s_rdp.tmem[(byteAddr+3) & 0xFFF],
+                s_rdp.tmem[(byteAddr+4) & 0xFFF], s_rdp.tmem[(byteAddr+5) & 0xFFF],
+                s_rdp.tmem[(byteAddr+6) & 0xFFF], s_rdp.tmem[(byteAddr+7) & 0xFFF]);
+        }
+    }
+
+    switch (tdesc.size & 3) {
+    case 0: {
+        uint8_t b = s_rdp.tmem[byteAddr];
+        uint32_t idx = (bitInWord & 4u) ? (b & 0xFu) : (b >> 4);
+        if (tdesc.format == 2) {
+            uint32_t palWord = 256u + (uint32_t)tdesc.palette * 16u + (idx >> 2);
+            uint32_t palByte = (palWord & 0x1FFu) * 8u + ((idx & 3u) * 2u);
+            if (palByte + 1 >= 4096) { outRGBA[0]=outRGBA[1]=outRGBA[2]=outRGBA[3]=0; return; }
+            uint16_t p = ((uint16_t)s_rdp.tmem[palByte] << 8) | s_rdp.tmem[palByte+1];
+            outRGBA[0] = ((p >> 11) & 0x1F) << 3;
+            outRGBA[1] = ((p >>  6) & 0x1F) << 3;
+            outRGBA[2] = ((p >>  1) & 0x1F) << 3;
+            outRGBA[3] = (p & 1) ? 255 : 0;
+        } else {
+            outRGBA[0] = outRGBA[1] = outRGBA[2] = idx << 4;
+            outRGBA[3] = idx << 4;
+        }
+        return;
+    }
+    case 1: {
+        uint8_t b = s_rdp.tmem[byteAddr];
+        if (tdesc.format == 2) {
+            uint32_t palWord = 256u + (uint32_t)tdesc.palette * 256u + (b >> 2);
+            uint32_t palByte = (palWord & 0x1FFu) * 8u + ((b & 3u) * 2u);
+            if (palByte + 1 >= 4096) { outRGBA[0]=outRGBA[1]=outRGBA[2]=outRGBA[3]=0; return; }
+            uint16_t p = ((uint16_t)s_rdp.tmem[palByte] << 8) | s_rdp.tmem[palByte+1];
+            outRGBA[0] = ((p >> 11) & 0x1F) << 3;
+            outRGBA[1] = ((p >>  6) & 0x1F) << 3;
+            outRGBA[2] = ((p >>  1) & 0x1F) << 3;
+            outRGBA[3] = (p & 1) ? 255 : 0;
+        } else {
+            outRGBA[0] = outRGBA[1] = outRGBA[2] = b;
+            outRGBA[3] = b;
+        }
+        return;
+    }
+    case 2: {
+        if (byteAddr + 1 >= 4096) { outRGBA[0]=outRGBA[1]=outRGBA[2]=outRGBA[3]=0; return; }
+        uint16_t p = ((uint16_t)s_rdp.tmem[byteAddr] << 8) | s_rdp.tmem[byteAddr+1];
+        if (tdesc.format == 3) {
+            outRGBA[0] = outRGBA[1] = outRGBA[2] = (p >> 8) & 0xFF;
+            outRGBA[3] = p & 0xFF;
+        } else {
+            outRGBA[0] = ((p >> 11) & 0x1F) << 3;
+            outRGBA[1] = ((p >>  6) & 0x1F) << 3;
+            outRGBA[2] = ((p >>  1) & 0x1F) << 3;
+            outRGBA[3] = (p & 1) ? 255 : 0;
+        }
+        return;
+    }
+    case 3: {
+        if (byteAddr + 3 >= 4096) { outRGBA[0]=outRGBA[1]=outRGBA[2]=outRGBA[3]=0; return; }
+        outRGBA[0] = s_rdp.tmem[byteAddr];
+        outRGBA[1] = s_rdp.tmem[byteAddr+1];
+        outRGBA[2] = s_rdp.tmem[byteAddr+2];
+        outRGBA[3] = s_rdp.tmem[byteAddr+3];
+        return;
+    }
     }
 }
 
@@ -1147,15 +1201,15 @@ static void Cmd_SetTile(GfxCommand cmd) {
     t.size    = (cmd.w0 >> 19) & 0x3;
     t.line    = (cmd.w0 >> 9) & 0x1FF;
     t.tmemAddr = cmd.w0 & 0x1FF;
-    t.palette = (cmd.w0 >> 20) & 0xF;
-    t.clampT  = (cmd.w0 >> 18) & 0x1;
-    t.mirrorT = (cmd.w0 >> 17) & 0x1;
-    t.maskT   = (cmd.w0 >> 13) & 0xF;
-    t.shiftT  = (cmd.w0 >> 9) & 0xF;
-    t.clampS  = (cmd.w1 >> 31) & 0x1;
-    t.mirrorS = (cmd.w1 >> 30) & 0x1;
-    t.maskS   = (cmd.w1 >> 26) & 0xF;
-    t.shiftS  = (cmd.w1 >> 22) & 0xF;
+    t.palette = (cmd.w1 >> 20) & 0xF;
+    t.clampT  = (cmd.w1 >> 18) & 0x1;
+    t.mirrorT = (cmd.w1 >> 17) & 0x1;
+    t.maskT   = (cmd.w1 >> 14) & 0xF;
+    t.shiftT  = (cmd.w1 >> 10) & 0xF;
+    t.clampS  = (cmd.w1 >>  9) & 0x1;
+    t.mirrorS = (cmd.w1 >>  8) & 0x1;
+    t.maskS   = (cmd.w1 >>  4) & 0xF;
+    t.shiftS  =  cmd.w1        & 0xF;
 }
 
 static void Cmd_SetTileSize(GfxCommand cmd) {
@@ -1290,12 +1344,13 @@ static void Cmd_LoadTLUT(GfxCommand cmd) {
 static void Cmd_LoadBlock(GfxCommand cmd) {
     /* Fix T: F3DEX LoadBlock.  Tile field is bits 16-23 of w0, NOT low 3.
      * Contiguous transfer; sh encodes 16-bit word count - 1. */
-    uint32_t tile = (cmd.w0 >> 16) & 0x7;
+    uint32_t tile = (cmd.w1 >> 24) & 0x7;
     if (tile >= 8) return;
     auto& t = s_rdp.tiles[tile];
     uint32_t sl = (cmd.w0 >> 12) & 0xFFF, tl = cmd.w0 & 0xFFF;
     uint32_t sh = (cmd.w1 >> 12) & 0xFFF, th = cmd.w1 & 0xFFF;
     t.sl = sl; t.tl = tl; t.sh = sh; t.th = th;
+    { static int s_lb = 0; if (s_lb++ < 20) __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADBLK", "ENTRY tile=%u w0=%08X w1=%08X sl=%u tl=%u sh=%u th=%u tmemAddr=%u line=%u texAddr=%p", tile, cmd.w0, cmd.w1, sl, tl, sh, th, t.tmemAddr, t.line, (void*)s_rdp.texAddr); }
 
     uint32_t texSizeBytes = (sh + 1) * 2;
     uint32_t tmemBase = t.tmemAddr * 8;
