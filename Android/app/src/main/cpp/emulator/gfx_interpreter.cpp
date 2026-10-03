@@ -2984,7 +2984,6 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xE6:
             case 0xE1:
             case 0xF1:
-            case 0xF0:
             case 0x02:
             case 0xDA:            case 0xBE:
             case 0xBA:
