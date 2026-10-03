@@ -106,7 +106,16 @@ static void bka_install_watch(void) {
     sigaction(SIGSEGV, &sa, nullptr);
 }
 
-int g_bka_force_identity_mv = 1;  /* TEST: bypass modelview */
+int g_bka_force_identity_mv = 0;  /* set per-frame based on current map */
+extern int gsworld_getMap(void);
+static inline int bka_should_force_identity_mv(void) {
+    /* MAP_91 (file select) is a UI map drawn near origin; the port loads a
+     * stale player-shadow-derived modelview for it that translates by
+     * ~16000, pushing all geometry out of frustum.  Force identity here
+     * until the camera-source bug is fixed.
+     * TODO: investigate why modelview r3 = (-shadow_pos). */
+    return gsworld_getMap() == 0x91;
+}
 static uintptr_t s_dl_base = 0;
 
 /* F3DEX opcodes that we recognize.  Used to distinguish LE-encoded runtime
@@ -733,7 +742,7 @@ static void RasterizeTriangle(
         float mny = fminf(fminf(y0,y1),y2), mxy = fmaxf(fmaxf(y0,y1),y2);
         bool visible = !(mxx < 0.0f || mnx >= (float)FB_WIDTH || mxy < 0.0f || mny >= (float)FB_HEIGHT);
         if (visible) s_in++; else s_out++;
-        if ((s_frame % 500) == 0) {
+        if ((s_frame % 500) == 0 && 0) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA-NDC",
                 "frame=%lu on_screen=%lu off_screen=%lu (%.1f%% visible) last=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f) fb=%dx%d",
                 s_frame, s_in, s_out,
@@ -989,8 +998,7 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
     // Apply modelview
     float ox, oy, oz, ow;
     {
-        extern int g_bka_force_identity_mv;
-        if (g_bka_force_identity_mv) {
+        if (bka_should_force_identity_mv()) {
             ox = x; oy = y; oz = z; ow = 1.0f;
         } else {
             Matrix_MultVec(s_rdp.modelview, x, y, z, 1.0f, &ox, &oy, &oz, &ow);
