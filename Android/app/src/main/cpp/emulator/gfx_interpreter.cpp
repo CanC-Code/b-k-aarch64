@@ -725,6 +725,22 @@ static void RasterizeTriangle(
     uint8_t r2, uint8_t g2, uint8_t b2, uint8_t a2,
     int16_t s0 = 0, int16_t t0 = 0, int16_t s1 = 0, int16_t t1 = 0, int16_t s2 = 0, int16_t t2 = 0)
 {
+    {
+        static unsigned long s_in = 0, s_out = 0, s_frame = 0;
+        s_frame++;
+        float mnx = fminf(fminf(x0,x1),x2), mxx = fmaxf(fmaxf(x0,x1),x2);
+        float mny = fminf(fminf(y0,y1),y2), mxy = fmaxf(fmaxf(y0,y1),y2);
+        bool visible = !(mxx < 0.0f || mnx >= (float)FB_WIDTH || mxy < 0.0f || mny >= (float)FB_HEIGHT);
+        if (visible) s_in++; else s_out++;
+        if ((s_frame % 500) == 0) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-NDC",
+                "frame=%lu on_screen=%lu off_screen=%lu (%.1f%% visible) last=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f) fb=%dx%d",
+                s_frame, s_in, s_out,
+                (s_in + s_out) ? (100.0 * s_in / (s_in + s_out)) : 0.0,
+                x0, y0, x1, y1, x2, y2, FB_WIDTH, FB_HEIGHT);
+        }
+    }
+
     { static int s_rt = 0; if (s_rt++ < 30 || s_rt % 100 == 0)
         __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST",
             "RAST-ENTER #%d s1=%08lX s3=%08lX texEn=%d tile=%d xy=(%.1f,%.1f)(%.1f,%.1f)(%.1f,%.1f)",
