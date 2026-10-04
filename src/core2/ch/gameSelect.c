@@ -638,9 +638,19 @@ void gameSelect_update(Actor *this) {
     gameSelectCameraDelta += delta_time;
     sp48 = func_803097A0();
 
+    { static int s_gs = 0; if (s_gs++ < 10)
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-GS",
+            "update: marker_id=%d model_id=%d unk14_21=%d sp48=%p",
+            this->marker ? (int)this->marker->id : -1,
+            this->marker ? (int)this->marker->modelId : -1,
+            this->marker ? (int)this->marker->unk14_21 : -1,
+            (void*)sp48); }
     if (this->marker->unk14_21) {
         for (i = 0; i < 3; i++) {
             vec3fArray_get_vec3f(sp48, i + 5, sp34);
+            { static int s_ov = 0; if (s_ov++ < 10)
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-GS",
+                    "OVERWRITE[%d] <- (%.1f, %.1f, %.1f)", i, sp34[0], sp34[1], sp34[2]); }
             ml_vec3f_copy(INITIAL_CAMERA_POSITIONS[i], sp34);
         }
     }
