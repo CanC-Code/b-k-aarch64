@@ -1,3 +1,4 @@
+#include <android/log.h>
 #include <ultra64.h>
 #include "core1/core1.h"
 #include "functions.h"
@@ -1133,8 +1134,13 @@ void func_803283D4(void){
         if(D_8036E578)
             for(i = suBaddieActorArray->cnt-1; i >= 0 ; i--){
                 iPtr = &suBaddieActorArray->data[i];
-                if(iPtr->despawn_flag)
+                if(iPtr->despawn_flag){
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA-FREE",
+                        "i=%d cnt=%d marker=%p actor=%p info=%p despawn=%d",
+                        i, suBaddieActorArray->cnt, (void*)iPtr->marker, (void*)iPtr,
+                        (void*)iPtr->actor_info, (int)iPtr->despawn_flag);
                     __actor_free(iPtr->marker, iPtr);
+                }
             }
     }
     D_8036E574 = 0;
