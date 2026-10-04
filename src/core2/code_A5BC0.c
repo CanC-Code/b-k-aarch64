@@ -7,6 +7,14 @@
 #include "enums.h"
 
 #include <core2/file.h>
+static void __bka_bswap_u16_array(void *buf, int u16_count) {
+    u16 *p = (u16 *)buf;
+    for (int i = 0; i < u16_count; i++) {
+        u16 v = p[i];
+        p[i] = (u16)((v >> 8) | (v << 8));
+    }
+}
+
 
 #define AssetCacheSize 0x3D5
 
@@ -929,6 +937,7 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
         cube->prop1Ptr = (NodeProp*) malloc(cube1_count * sizeof(NodeProp));
         node_prop_ptr = (NodeProp*) malloc(cube1_count * sizeof(NodeProp));
         file_getNBytes_ifExpected(file_ptr, CUBE_PROP_1_LIST_START_INDICATOR, node_prop_ptr, cube->prop1Cnt * sizeof(NodeProp));
+        __bka_bswap_u16_array(node_prop_ptr, (cube1_count * (int)sizeof(NodeProp)) / 2);
         __android_log_print(ANDROID_LOG_ERROR, "BKA-FMT",
             "  P1 count=%d read=%d off=%d",
             cube1_count, cube->prop1Cnt * (int)sizeof(NodeProp),
@@ -940,6 +949,7 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
         cube->prop1Ptr = (NodeProp*) malloc(cube1_count * sizeof(OtherNode));
         node_prop_ptr = (NodeProp*) malloc(cube1_count * sizeof(OtherNode));
         file_getNBytes_ifExpected(file_ptr, CUBE_PROP_1_OTHER_LIST_START_INDICATOR, node_prop_ptr, cube->prop1Cnt * sizeof(OtherNode));
+        __bka_bswap_u16_array(node_prop_ptr, (cube1_count * (int)sizeof(OtherNode)) / 2);
         __android_log_print(ANDROID_LOG_ERROR, "BKA-FMT",
             "  P1O count=%d read=%d off=%d",
             cube1_count, cube->prop1Cnt * (int)sizeof(OtherNode),
