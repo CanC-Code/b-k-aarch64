@@ -4,6 +4,7 @@
 #include "gameSelect.h"
 
 #include "core2/modelRender.h"
+#include <android/log.h>
 
 #include "../gc/zoombox.h"
 #include "../code_C9E70.h"
@@ -651,7 +652,16 @@ void gameSelect_update(Actor *this) {
             { static int s_ov = 0; if (s_ov++ < 10)
                 __android_log_print(ANDROID_LOG_ERROR, "BKA-GS",
                     "OVERWRITE[%d] <- (%.1f, %.1f, %.1f)", i, sp34[0], sp34[1], sp34[2]); }
-            ml_vec3f_copy(INITIAL_CAMERA_POSITIONS[i], sp34);
+            /* Guard: the port's ref-points array is empty because the
+               file-select actors haven't spawned.  Empty reads come back
+               around -16000, which would clobber the hardcoded init values
+               and put the camera miles from geometry.  Only overwrite when
+               the value looks like a real position. */
+            if (sp34[0] > -5000.0f && sp34[0] < 5000.0f &&
+                sp34[1] > -5000.0f && sp34[1] < 5000.0f &&
+                sp34[2] > -5000.0f && sp34[2] < 5000.0f) {
+                ml_vec3f_copy(INITIAL_CAMERA_POSITIONS[i], sp34);
+            }
         }
     }
 
