@@ -7,6 +7,28 @@
 #include "enums.h"
 
 #include <core2/file.h>
+static void __bka_fixNodePropEndian(void *buf, int cnt) {
+    /* Positions and actorId are stored big-endian in the map file.
+       The selector/category/bit0 u16 field must stay as-is: reading it
+       LE gives the correct bitfield extraction on the host. */
+    struct P1Layout {
+        s16 position_x;
+        s16 position_y;
+        s16 position_z;
+        u16 flags;
+        u16 actorId;
+        u8  tail[10];
+    };
+    struct P1Layout *p = (struct P1Layout *)buf;
+    for (int i = 0; i < cnt; i++) {
+        u16 v;
+        v = (u16)p[i].position_x; p[i].position_x = (s16)((v >> 8) | (v << 8));
+        v = (u16)p[i].position_y; p[i].position_y = (s16)((v >> 8) | (v << 8));
+        v = (u16)p[i].position_z; p[i].position_z = (s16)((v >> 8) | (v << 8));
+        v = p[i].actorId;         p[i].actorId     = (u16)((v >> 8) | (v << 8));
+    }
+}
+
 
 #define AssetCacheSize 0x3D5
 
@@ -929,6 +951,7 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
         cube->prop1Ptr = (NodeProp*) malloc(cube1_count * sizeof(NodeProp));
         node_prop_ptr = (NodeProp*) malloc(cube1_count * sizeof(NodeProp));
         file_getNBytes_ifExpected(file_ptr, CUBE_PROP_1_LIST_START_INDICATOR, node_prop_ptr, cube->prop1Cnt * sizeof(NodeProp));
+        __bka_fixNodePropEndian(node_prop_ptr, cube1_count);
         { static int s_nr=0; if(s_nr++<3 && cube1_count>0){ const u8*r=(const u8*)node_prop_ptr; __android_log_print(ANDROID_LOG_ERROR,"BKA-NRAW","cnt=%d first20=%02X%02X%02X%02X%02X%02X%02X%02X %02X%02X%02X%02X%02X%02X%02X%02X %02X%02X%02X%02X",cube1_count,r[0],r[1],r[2],r[3],r[4],r[5],r[6],r[7],r[8],r[9],r[10],r[11],r[12],r[13],r[14],r[15],r[16],r[17],r[18],r[19]); } }
         __android_log_print(ANDROID_LOG_ERROR, "BKA-FMT",
             "  P1 count=%d read=%d off=%d",
@@ -941,6 +964,7 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
         cube->prop1Ptr = (NodeProp*) malloc(cube1_count * sizeof(OtherNode));
         node_prop_ptr = (NodeProp*) malloc(cube1_count * sizeof(OtherNode));
         file_getNBytes_ifExpected(file_ptr, CUBE_PROP_1_OTHER_LIST_START_INDICATOR, node_prop_ptr, cube->prop1Cnt * sizeof(OtherNode));
+        __bka_fixNodePropEndian(node_prop_ptr, cube1_count);
         __android_log_print(ANDROID_LOG_ERROR, "BKA-FMT",
             "  P1O count=%d read=%d off=%d",
             cube1_count, cube->prop1Cnt * (int)sizeof(OtherNode),
