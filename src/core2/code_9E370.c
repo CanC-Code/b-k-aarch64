@@ -1042,7 +1042,11 @@ static void __actor_free(ActorMarker *arg0, Actor *arg1){
     if((s32)arg1 != arrayEnd)
         memcpy(arg1, arrayEnd, 0x180);
     __android_log_print(ANDROID_LOG_ERROR,"BKA-AF","s4 after memcpy arg1->marker=%p",(void*)arg1->marker);
-    arg1->marker->actrArrayIdx = arg0->actrArrayIdx;
+    if (arg1->marker != NULL) {
+        arg1->marker->actrArrayIdx = arg0->actrArrayIdx;
+    } else {
+        static int s_nm=0; if(s_nm++<10) __android_log_print(ANDROID_LOG_ERROR,"BKA-AF","null-marker actor in array at cnt=%d",suBaddieActorArray->cnt);
+    }
     __android_log_print(ANDROID_LOG_ERROR,"BKA-AF","s5 after idx");
     (void)0;
 
