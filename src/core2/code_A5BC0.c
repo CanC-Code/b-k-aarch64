@@ -1444,6 +1444,7 @@ void func_80330208(Cube *cube) {
     if ((cube != NULL) && (cube->prop1Cnt != 0)) {
         i_prop = cube->prop1Ptr;
         end_prop = cube->prop1Ptr + cube->prop1Cnt;
+        { static int s_p1=0; if(s_p1++<30) __android_log_print(ANDROID_LOG_ERROR,"BKA-P1","cube=%p prop1Cnt=%d cat0=%d id0=0x%X",(void*)cube,cube->prop1Cnt,i_prop->category,i_prop->actorId); }
         func_80326C24(1);
         while(i_prop < end_prop){
             if (i_prop->category == PROP_1_CATEGORY_6_ACTOR) {
@@ -1456,6 +1457,7 @@ void func_80330208(Cube *cube) {
                     i_prop->yaw,
                     i_prop->unk10_31,
                     i_prop->unk10_19);
+                { static int s_as=0; if(s_as++<30) __android_log_print(ANDROID_LOG_ERROR,"BKA-P1","SPAWN id=0x%X pos=(%d,%d,%d) -> %p",i_prop->actorId,(int)i_prop->position_x,(int)i_prop->position_y,(int)i_prop->position_z,(void*)actor); }
                 if (actor != NULL) {
                     actor->secondaryId = i_prop->unk10_31;
                     actor->actorTypeSpecificField = i_prop->selector_or_radius;
