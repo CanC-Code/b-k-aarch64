@@ -531,6 +531,16 @@ void func_803268B4(void) {
             actor_info = actor->actor_info;
             marker = actor->marker;
             anim_ctrl = actor->anctrl;
+            if (marker == NULL) {
+                static int s_nm2=0;
+                if (s_nm2++<5) __android_log_print(ANDROID_LOG_ERROR,"BKA-AF","skip null-marker actor i=%d cnt=%d",temp_v1,suBaddieActorArray->cnt);
+                continue;
+            }
+            if (marker->propPtr == NULL) {
+                static int s_np=0;
+                if (s_np++<5) __android_log_print(ANDROID_LOG_ERROR,"BKA-AF","skip null-propPtr marker i=%d cnt=%d",temp_v1,suBaddieActorArray->cnt);
+                continue;
+            }
             temp_s1 = actor->actor_info->unk18;
             if (marker->propPtr->isNotFeatherEggOrNote) {
                 if(sp54){
