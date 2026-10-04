@@ -99,8 +99,7 @@ enum map_e getSpecialBootMap(void){
 }
 
 enum map_e getDefaultBootMap(void){
-    /* DIAGNOSTIC: boot to file select instead of Rareware logo */
-    return MAP_91_FILE_SELECT;
+    return MAP_1F_CS_START_RAREWARE;
 }
 
 void func_8023DBAC(void){
