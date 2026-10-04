@@ -977,6 +977,13 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
             for (s32 _i = 0; _i < prop2_count; _i++) {
                 __builtin_memset(&cube->prop2Ptr[_i], 0, sizeof(Prop));
                 cube->prop2Ptr[_i].actorProp.marker = NULL;  /* TODO: resolve marker ID */
+                { static int s_mk = 0; if (s_mk++ < 40 && disk[_i].isActorProp) {
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA-MARKER",
+                        "raw_marker_or_id=0x%08X isActor=%d isModel=%d pos=(%d,%d,%d) frame=%d",
+                        disk[_i].marker_or_id,
+                        disk[_i].isActorProp, disk[_i].isModelProp,
+                        disk[_i].position[0], disk[_i].position[1], disk[_i].position[2],
+                        disk[_i].frame); } }
                 cube->prop2Ptr[_i].actorProp.position[0] = disk[_i].position[0];
                 cube->prop2Ptr[_i].actorProp.position[1] = disk[_i].position[1];
                 cube->prop2Ptr[_i].actorProp.position[2] = disk[_i].position[2];
