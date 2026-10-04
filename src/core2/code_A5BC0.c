@@ -1008,14 +1008,14 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
                 cube->prop2Ptr[_i].actorProp.position[0] = px_be;
                 cube->prop2Ptr[_i].actorProp.position[1] = py_be;
                 cube->prop2Ptr[_i].actorProp.position[2] = pz_be;
-                cube->prop2Ptr[_i].actorProp.frame       = (flags_be >>  0) & 0x1F;
-                cube->prop2Ptr[_i].actorProp.unk8_10     = (flags_be >>  5) & 0x1F;
-                cube->prop2Ptr[_i].actorProp.isMirrored  = (flags_be >> 10) & 1;
-                cube->prop2Ptr[_i].actorProp.isNotFeatherEggOrNote = (flags_be >> 11) & 1;
-                cube->prop2Ptr[_i].actorProp.unk8_3      = (flags_be >> 12) & 1;
-                cube->prop2Ptr[_i].actorProp.isCollisionResolved = (flags_be >> 13) & 1;
-                cube->prop2Ptr[_i].actorProp.isModelProp = (flags_be >> 14) & 1;
-                cube->prop2Ptr[_i].actorProp.isActorProp = (flags_be >> 15) & 1;
+                cube->prop2Ptr[_i].actorProp.frame       = (flags_be >> 11) & 0x1F;
+                cube->prop2Ptr[_i].actorProp.unk8_10     = (flags_be >>  6) & 0x1F;
+                cube->prop2Ptr[_i].actorProp.isMirrored  = (flags_be >>  5) & 1;
+                cube->prop2Ptr[_i].actorProp.isNotFeatherEggOrNote = (flags_be >> 4) & 1;
+                cube->prop2Ptr[_i].actorProp.unk8_3      = (flags_be >>  3) & 1;
+                cube->prop2Ptr[_i].actorProp.isCollisionResolved = (flags_be >> 2) & 1;
+                cube->prop2Ptr[_i].actorProp.isModelProp = (flags_be >>  1) & 1;
+                cube->prop2Ptr[_i].actorProp.isActorProp = (flags_be >>  0) & 1;
                 { static int s_mk = 0; if (s_mk++ < 40) {
                     u16 flags_le = ((u16)raw[11] << 8) | raw[10];
                     __android_log_print(ANDROID_LOG_ERROR, "BKA-MARKER",
