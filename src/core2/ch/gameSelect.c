@@ -660,7 +660,7 @@ void gameSelect_update(Actor *this) {
             if (sp34[0] > -5000.0f && sp34[0] < 5000.0f &&
                 sp34[1] > -5000.0f && sp34[1] < 5000.0f &&
                 sp34[2] > -5000.0f && sp34[2] < 5000.0f) {
-                ml_vec3f_copy(INITIAL_CAMERA_POSITIONS[i], sp34);
+                if (sp34[0] > -5000.0f && sp34[0] < 5000.0f && sp34[1] > -5000.0f && sp34[1] < 5000.0f && sp34[2] > -5000.0f && sp34[2] < 5000.0f) { ml_vec3f_copy(INITIAL_CAMERA_POSITIONS[i], sp34); }
             }
         }
     }
