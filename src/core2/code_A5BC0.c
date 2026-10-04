@@ -992,26 +992,41 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
                 prop2_count, prop2_count * (int)sizeof(PropFile),
                 (int)((u8*)file_ptr->asset_current_ptr - (u8*)file_ptr->asset_base_ptr));
             for (s32 _i = 0; _i < prop2_count; _i++) {
+                /* Decode PropFile from raw bytes; the on-disk format is
+                   big-endian (N64). We avoid the struct's bitfields because
+                   the host reads them as little-endian, which scrambles
+                   both the multi-byte position fields and the flag bits. */
+                const u8 *raw = (const u8 *)&disk[_i];
+                u32 marker_be = ((u32)raw[0] << 24) | ((u32)raw[1] << 16)
+                              | ((u32)raw[2] <<  8) |  (u32)raw[3];
+                s16 px_be = (s16)(((u16)raw[4] << 8) | raw[5]);
+                s16 py_be = (s16)(((u16)raw[6] << 8) | raw[7]);
+                s16 pz_be = (s16)(((u16)raw[8] << 8) | raw[9]);
+                u16 flags_be = ((u16)raw[10] << 8) | raw[11];
                 __builtin_memset(&cube->prop2Ptr[_i], 0, sizeof(Prop));
-                cube->prop2Ptr[_i].actorProp.marker = NULL;  /* TODO: resolve marker ID */
-                { static int s_mk = 0; if (s_mk++ < 40 && disk[_i].isActorProp) {
+                cube->prop2Ptr[_i].actorProp.marker = NULL;
+                cube->prop2Ptr[_i].actorProp.position[0] = px_be;
+                cube->prop2Ptr[_i].actorProp.position[1] = py_be;
+                cube->prop2Ptr[_i].actorProp.position[2] = pz_be;
+                cube->prop2Ptr[_i].actorProp.frame       = (flags_be >>  0) & 0x1F;
+                cube->prop2Ptr[_i].actorProp.unk8_10     = (flags_be >>  5) & 0x1F;
+                cube->prop2Ptr[_i].actorProp.isMirrored  = (flags_be >> 10) & 1;
+                cube->prop2Ptr[_i].actorProp.isNotFeatherEggOrNote = (flags_be >> 11) & 1;
+                cube->prop2Ptr[_i].actorProp.unk8_3      = (flags_be >> 12) & 1;
+                cube->prop2Ptr[_i].actorProp.isCollisionResolved = (flags_be >> 13) & 1;
+                cube->prop2Ptr[_i].actorProp.isModelProp = (flags_be >> 14) & 1;
+                cube->prop2Ptr[_i].actorProp.isActorProp = (flags_be >> 15) & 1;
+                { static int s_mk = 0; if (s_mk++ < 40) {
+                    u16 flags_le = ((u16)raw[11] << 8) | raw[10];
                     __android_log_print(ANDROID_LOG_ERROR, "BKA-MARKER",
-                        "raw_marker_or_id=0x%08X isActor=%d isModel=%d pos=(%d,%d,%d) frame=%d",
-                        disk[_i].marker_or_id,
-                        disk[_i].isActorProp, disk[_i].isModelProp,
+                        "markerBE=0x%08X markerLE=0x%08X posBE=(%d,%d,%d) posLE=(%d,%d,%d) "
+                        "flagsBE=0x%04X flagsLE=0x%04X isActBE=%d isActLE=%d",
+                        marker_be,
+                        (u32)disk[_i].marker_or_id,
+                        px_be, py_be, pz_be,
                         disk[_i].position[0], disk[_i].position[1], disk[_i].position[2],
-                        disk[_i].frame); } }
-                cube->prop2Ptr[_i].actorProp.position[0] = disk[_i].position[0];
-                cube->prop2Ptr[_i].actorProp.position[1] = disk[_i].position[1];
-                cube->prop2Ptr[_i].actorProp.position[2] = disk[_i].position[2];
-                cube->prop2Ptr[_i].actorProp.frame = disk[_i].frame;
-                cube->prop2Ptr[_i].actorProp.unk8_10 = disk[_i].unk8_10;
-                cube->prop2Ptr[_i].actorProp.isMirrored = disk[_i].isMirrored;
-                cube->prop2Ptr[_i].actorProp.isNotFeatherEggOrNote = disk[_i].isNotFeatherEggOrNote;
-                cube->prop2Ptr[_i].actorProp.unk8_3 = disk[_i].unk8_3;
-                cube->prop2Ptr[_i].actorProp.isCollisionResolved = disk[_i].isCollisionResolved;
-                cube->prop2Ptr[_i].actorProp.isModelProp = disk[_i].isModelProp;
-                cube->prop2Ptr[_i].actorProp.isActorProp = disk[_i].isActorProp;
+                        flags_be, flags_le,
+                        (flags_be >> 15) & 1, (flags_le >> 15) & 1); } }
             }
             free(disk);
         }
