@@ -2076,6 +2076,11 @@ void func_8032ACA8(Actor *arg0) {
         }
     }
 
+    if (sp30 == NULL) {
+        static int s_nm3=0;
+        if (s_nm3++<5) __android_log_print(ANDROID_LOG_ERROR,"BKA-AF","func_8032ACA8 null marker actor=%p",(void*)arg0);
+        return;
+    }
     if (sp30->unk20 != NULL) {
         animMtxList_free(sp30->unk20);
         sp30->unk20 = 0;
