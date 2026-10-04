@@ -1,3 +1,4 @@
+#include <android/log.h>
 #include <ultra64.h>
 #include "core1/core1.h"
 #include "functions.h"
@@ -28,7 +29,7 @@ void ncStaticCamera_rotateToTarget(f32 target[3]){
     ncStaticCameraRotation[2] = 0.0f;
 }
 
-void ncStaticCamera_setPosition(f32 arg0[3]){
+void ncStaticCamera_setPosition(f32 arg0[3]){ __android_log_print(ANDROID_LOG_ERROR,"BKA-SC","setPosition (%.1f,%.1f,%.1f)",arg0[0],arg0[1],arg0[2]);
     ml_vec3f_copy(ncStaticCameraPosition, arg0);
 }
 
@@ -37,7 +38,7 @@ void ncStaticCamera_update(void){
     viewport_setRotation_vec3f(ncStaticCameraRotation);
 }
 
-void __ncStaticCamera_setToNode(s32 camera_node_index){
+void __ncStaticCamera_setToNode(s32 camera_node_index){ __android_log_print(ANDROID_LOG_ERROR,"BKA-SC","setToNode idx=%d",camera_node_index);
     UNK_TYPE(s32) sp1C;
 
     sp1C = ncCameraNodeList_getStaticCameraNode(camera_node_index);
@@ -54,13 +55,13 @@ void ncStaticCamera_exit(void){
     camera_setType(CAMERA_TYPE_2_DYNAMIC);
 }
 
-void ncStaticCamera_setPositionAndRotation(f32 arg0[3], f32 arg1[3]){
+void ncStaticCamera_setPositionAndRotation(f32 arg0[3], f32 arg1[3]){ __android_log_print(ANDROID_LOG_ERROR,"BKA-SC","setPosAndRot (%.1f,%.1f,%.1f)",arg0[0],arg0[1],arg0[2]);
     camera_setType(CAMERA_TYPE_3_STATIC);
     ml_vec3f_copy(ncStaticCameraPosition, arg0);
     ml_vec3f_copy(ncStaticCameraRotation, arg1);
 }
 
-void ncStaticCamera_setPositionAndTarget(f32 arg0[3], f32 arg1[3]){
+void ncStaticCamera_setPositionAndTarget(f32 arg0[3], f32 arg1[3]){ __android_log_print(ANDROID_LOG_ERROR,"BKA-SC","setPosAndTarget (%.1f,%.1f,%.1f)",arg0[0],arg0[1],arg0[2]);
     camera_setType(CAMERA_TYPE_3_STATIC);
     ml_vec3f_copy(ncStaticCameraPosition, arg0);
     ncStaticCamera_rotateToTarget(arg1);
