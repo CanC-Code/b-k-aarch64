@@ -61,9 +61,7 @@ bool func_802BB720(s32 arg0, f32 arg1[3], f32 arg2[3], s32 *arg3) {
     if ((arg0 >= 0x5B) && (arg0 < 0x63)) {
         arg0 -= 0x40;
     }
-    { static int s_bb=0; if (s_bb++<10) __android_log_print(ANDROID_LOG_ERROR,"BKA-BB","exit=%d actor_id=%d table=%p",arg0,(int)D_803657E0[arg0],(void*)D_803657E0); }
     temp_v0 = cubeList_findNodePropByActorIdAndPosition_s32(D_803657E0[arg0], NULL);
-    { static int s_bb2=0; if (s_bb2++<10) __android_log_print(ANDROID_LOG_ERROR,"BKA-BB","lookup node=%p",(void*)temp_v0); }
     if (temp_v0 != NULL) {
         nodeprop_getPosition(temp_v0, arg1);
         *arg3 = nodeprop_getScale(temp_v0);

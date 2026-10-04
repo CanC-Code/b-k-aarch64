@@ -970,23 +970,6 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
             PropFile *disk = (PropFile *) malloc(prop2_count * sizeof(PropFile));
             file_getNBytes_ifExpected(file_ptr, CUBE_PROP_2_LIST_START_INDICATOR,
                                       disk, prop2_count * sizeof(PropFile));
-            { static int s_raw = 0; if (s_raw++ < 3 && prop2_count > 0) {
-                const u8 *raw = (const u8 *)disk;
-                __android_log_print(ANDROID_LOG_ERROR, "BKA-MARKER-RAW",
-                    "cnt=%d sizeof(PropFile)=%d first 48 bytes: "
-                    "%02X%02X%02X%02X%02X%02X%02X%02X "
-                    "%02X%02X%02X%02X%02X%02X%02X%02X "
-                    "%02X%02X%02X%02X%02X%02X%02X%02X "
-                    "%02X%02X%02X%02X%02X%02X%02X%02X "
-                    "%02X%02X%02X%02X%02X%02X%02X%02X "
-                    "%02X%02X%02X%02X%02X%02X%02X%02X",
-                    prop2_count, (int)sizeof(PropFile),
-                    raw[0],raw[1],raw[2],raw[3],raw[4],raw[5],raw[6],raw[7],
-                    raw[8],raw[9],raw[10],raw[11],raw[12],raw[13],raw[14],raw[15],
-                    raw[16],raw[17],raw[18],raw[19],raw[20],raw[21],raw[22],raw[23],
-                    raw[24],raw[25],raw[26],raw[27],raw[28],raw[29],raw[30],raw[31],
-                    raw[32],raw[33],raw[34],raw[35],raw[36],raw[37],raw[38],raw[39],
-                    raw[40],raw[41],raw[42],raw[43],raw[44],raw[45],raw[46],raw[47]); } }
             __android_log_print(ANDROID_LOG_ERROR, "BKA-FMT",
                 "  P2 count=%d read=%d off=%d",
                 prop2_count, prop2_count * (int)sizeof(PropFile),
