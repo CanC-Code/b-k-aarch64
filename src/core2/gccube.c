@@ -1042,6 +1042,10 @@ NodeProp *cubeList_findNodePropByActorIdAndPosition_s32(enum actor_e actor_id, s
     s32 *var_a3;
     NodeProp *i_node_prop;
 
+    if (sCubeList.cubes == NULL) {
+        return NULL;
+    }
+
     if (position != NULL) {
         position_f32[0] = (f32) position[0];
         position_f32[1] = (f32) position[1];
