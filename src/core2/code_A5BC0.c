@@ -720,6 +720,7 @@ bool __codeA5BC0_pad_func_8032E178(Cube *arg0, s32 *arg1, s32 arg2) {
 
 NodeProp *cube_findNodePropByActorId(Cube *cube, enum actor_e actor_id) {
     NodeProp *i_ptr;
+    { static int s_cfn=0; if(s_cfn++<10) __android_log_print(ANDROID_LOG_ERROR,"BKA-CFN","cube=%p p1ptr=%p p1cnt=%d target=0x%X",(void*)cube,(void*)(cube?cube->prop1Ptr:0),(int)(cube?cube->prop1Cnt:0),(int)actor_id); }
 
     if (cube != NULL && cube->prop1Cnt != 0){
         for(i_ptr = cube->prop1Ptr; i_ptr < cube->prop1Ptr + cube->prop1Cnt; i_ptr++){
