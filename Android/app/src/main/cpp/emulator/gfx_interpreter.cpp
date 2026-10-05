@@ -102,14 +102,16 @@ static void bka_sigsegv_handler(int sig, siginfo_t* si, void* uc) {
     static int s_seen = 0;
     if (s_seen++ < 20)
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-            "WRITEHIT addr=%p page=0x%lX pc=0x%lX pc_off=0x%lX pc_base=0x%lX pc_sym=%s+0x%lX lib=%s lr=0x%lX lr_off=0x%lX lr_sym=%s+0x%lX",
+            "SEGVDUMP addr=%p page=0x%lX pc=0x%lX pc_off=0x%lX pc_base=0x%lX pc_sym=%s+0x%lX lib=%s lr=0x%lX lr_off=0x%lX lr_sym=%s+0x%lX",
             si->si_addr, (unsigned long)page,
             (unsigned long)pc, (unsigned long)pc_off, (unsigned long)pc_base,
             pc_name, (unsigned long)pc_off, pc_lib,
             (unsigned long)lr, (unsigned long)lr_off,
             lr_name, (unsigned long)lr_off);
     { int n = __atomic_load_n(&s_bka_ring_n, __ATOMIC_ACQUIRE); int cnt = (n < BKA_RING_SZ) ? n : BKA_RING_SZ; __android_log_print(ANDROID_LOG_ERROR, "BKA-RING", "ring_n=%d last %d DL commands:", n, cnt); for (int k = 0; k < cnt; k++) { int idx = (n - 1 - k) & (BKA_RING_SZ - 1); __android_log_print(ANDROID_LOG_ERROR, "BKA-RING", "  -%02d cur=%p w0=0x%08X w1=0x%08X op=0x%02X enc=%u", k, (void*)s_bka_ring[idx].dl_cur, s_bka_ring[idx].w0, s_bka_ring[idx].w1, s_bka_ring[idx].op, s_bka_ring[idx].enc); } }
-    mprotect((void*)page, 0x1000, PROT_READ | PROT_WRITE);
+    (void)page; /* do NOT re-enable; would re-execute the faulting insn and loop */
+    signal(sig, SIG_DFL);
+    raise(sig);
 }
 static void bka_install_watch(void) {
     struct sigaction sa = {0};
