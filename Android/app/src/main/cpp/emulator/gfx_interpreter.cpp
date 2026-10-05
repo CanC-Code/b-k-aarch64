@@ -114,7 +114,7 @@ static inline int bka_should_force_identity_mv(void) {
      * ~16000, pushing all geometry out of frustum.  Force identity here
      * until the camera-source bug is fixed.
      * TODO: investigate why modelview r3 = (-shadow_pos). */
-    return gsworld_getMap() == 0x91;
+    return 0; /* disabled: camera source fix in place */
 }
 static uintptr_t s_dl_base = 0;
 
