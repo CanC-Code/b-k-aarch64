@@ -68,6 +68,17 @@ static const uint8_t* s_current_cmd = nullptr;
 #include <sys/mman.h>
 #include <unistd.h>
 #include <dlfcn.h>
+#define BKA_RING_SZ 32
+static struct {
+    uintptr_t dl_cur;
+    uint32_t w0;
+    uint32_t w1;
+    uint8_t op;
+    uint8_t enc;
+} s_bka_ring[BKA_RING_SZ];
+static volatile int s_bka_ring_n = 0;
+static void bka_install_watch(void);
+
 static void bka_sigsegv_handler(int sig, siginfo_t* si, void* uc) {
     ucontext_t* ctx = (ucontext_t*)uc;
     uintptr_t pc = (uintptr_t)ctx->uc_mcontext.pc;
@@ -97,6 +108,7 @@ static void bka_sigsegv_handler(int sig, siginfo_t* si, void* uc) {
             pc_name, (unsigned long)pc_off, pc_lib,
             (unsigned long)lr, (unsigned long)lr_off,
             lr_name, (unsigned long)lr_off);
+    { int n = __atomic_load_n(&s_bka_ring_n, __ATOMIC_ACQUIRE); int cnt = (n < BKA_RING_SZ) ? n : BKA_RING_SZ; __android_log_print(ANDROID_LOG_ERROR, "BKA-RING", "ring_n=%d last %d DL commands:", n, cnt); for (int k = 0; k < cnt; k++) { int idx = (n - 1 - k) & (BKA_RING_SZ - 1); __android_log_print(ANDROID_LOG_ERROR, "BKA-RING", "  -%02d cur=%p w0=0x%08X w1=0x%08X op=0x%02X enc=%u", k, (void*)s_bka_ring[idx].dl_cur, s_bka_ring[idx].w0, s_bka_ring[idx].w1, s_bka_ring[idx].op, s_bka_ring[idx].enc); } }
     mprotect((void*)page, 0x1000, PROT_READ | PROT_WRITE);
 }
 static void bka_install_watch(void) {
@@ -2450,6 +2462,7 @@ static inline int bka_detect_stride(const uint8_t* p) {
 }
 
 void RSP_ProcessGfxTask(OSTask* tp) {
+    { static int s_once = 0; if (s_once++ == 0) bka_install_watch(); }
     { static int s_ent = 0; if (s_ent++ < 30) {
         uint8_t* dp = tp ? (uint8_t*)tp->t.data_ptr : nullptr;
         __android_log_print(ANDROID_LOG_ERROR, "BKA-DL",
@@ -2737,6 +2750,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         GfxCommand c = {0};
         memcpy(&c, cur, 8);
         s_current_cmd = cur;
+        { int ri = s_bka_ring_n & (BKA_RING_SZ - 1); s_bka_ring[ri].dl_cur = (uintptr_t)cur; s_bka_ring[ri].w0 = c.w0; s_bka_ring[ri].w1 = c.w1; s_bka_ring[ri].op = (uint8_t)(c.w0 >> 24); s_bka_ring[ri].enc = (uint8_t)cur_dl_enc; __atomic_store_n(&s_bka_ring_n, s_bka_ring_n + 1, __ATOMIC_RELEASE); }
         {
             static int s_last_enc = -1;
             static int s_enc_flips = 0;
