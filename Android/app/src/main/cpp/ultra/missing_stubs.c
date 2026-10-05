@@ -477,7 +477,7 @@ void func_8023DA9C_stub(s32 arg0) { (void)arg0; }
 //void func_802E4170(void) {}
 void ucode_load(void) {}
 void ucode_stub1(void) {}
-void ucode_stub3(void) {}
+s32 ucode_stub3(void) { return 0; }
 void ucode_getPtrAndSize(void **ptr, u32 *size) { *ptr = NULL; *size = 0; }
 
 
