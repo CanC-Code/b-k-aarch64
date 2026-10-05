@@ -74,6 +74,7 @@ static void __overlayManager802511C4(void){
 }
 
 enum overlay_e overlayManager_getLoadedID(void) {
+    __android_log_print(ANDROID_LOG_ERROR,"BKA-OVW","getLoadedID returns %d",(int)sLoadedOverlay);
     return sLoadedOverlay;
 }
 
@@ -81,7 +82,8 @@ bool overlayManager_isOverlayLoaded(enum overlay_e id) {
     return sLoadedOverlay == id;
 }
 
-bool overlayManager_load(enum overlay_e id) { 
+bool overlayManager_load(enum overlay_e id) {
+    __android_log_print(ANDROID_LOG_ERROR,"BKA-OVW","load ENTER id=%d cur=%d",(int)id,(int)sLoadedOverlay); 
     s32 rom_addr;
     
     if (id == 0)
