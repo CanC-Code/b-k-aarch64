@@ -549,6 +549,7 @@ void func_803268B4(void) {
                     }
                 }
                 if (!actor->despawn_flag) {
+                    { static int s_upd=0; if (s_upd++<80) __android_log_print(ANDROID_LOG_ERROR,"BKA-UPD","actor=%p marker=%p upd=%p upd2=%p m2C_2=%d info_unk18=%d",(void*)actor,(void*)marker,(void*)marker->actorUpdateFunc,(void*)marker->actorUpdate2Func,(int)marker->unk2C_2,(int)temp_s1); }
                     if (marker->unk2C_2) {
                         marker->actorUpdate2Func(actor);
                         if (anim_ctrl != NULL) {
