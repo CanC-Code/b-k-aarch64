@@ -1,3 +1,4 @@
+#include <android/log.h>
 #include <ultra64.h>
 #include "core1/core1.h"
 #include "functions.h"
@@ -191,6 +192,7 @@ void spawnQueue_malloc(void){
 
 void spawnQueue_reset(void){
     enum overlay_e loaded_asm_file = overlayManager_getLoadedID();
+    __android_log_print(ANDROID_LOG_ERROR,"BKA-OVR","spawnQueue_reset overlay=%d",(int)loaded_asm_file);
     spawnQueue_lock();
     spawnQueueLength = 0;
     chmumbo_func_802D1724();
