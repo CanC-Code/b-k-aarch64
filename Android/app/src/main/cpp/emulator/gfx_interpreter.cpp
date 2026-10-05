@@ -3320,6 +3320,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 stack_stride[depth] = current_stride;
                 stack_dl_base[depth] = s_dl_base;
                 stack_enc[depth] = cur_dl_enc;
+                { static int s_jt = 0; if (s_jt++ < 10) { uint8_t* p = (uint8_t*)dl_ptr; __android_log_print(ANDROID_LOG_ERROR, "BKA-DLJMP", "jump raw=0x%08X host=%p parent_cur=%p parent_enc=%d bytes=%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X", raw_addr, (void*)dl_ptr, (void*)cur, (int)cur_dl_enc, p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15]); } }
                 depth++;
                 if (depth > g_bka_task_max_depth) g_bka_task_max_depth = depth;
                 /* Inherit parent encoding — Banjo's sub-DLs are almost always
