@@ -2409,6 +2409,25 @@ static int bka_probe_dl_encoding(uint8_t* ptr) {
     { static int _pc = 0; if (_pc++ < 60) __android_log_print(ANDROID_LOG_ERROR,
         "BKA_GFX", "PROBE-VOTE ptr=%p le=%d le_bad=%d be=%d be_bad=%d -> %d",
         (void*)ptr, le, le_bad, be, be_bad, _res); }
+    /* Structural check: a real DL contains G_ENDDL within the first 64 slots. */
+    if (_res != 0) {
+        int enddl_found = 0;
+        for (int i = 0; i < 64; i++) {
+            uint8_t* p = ptr + i * 16;
+            if (!bka_is_readable(p + 8)) break;
+            uint32_t w = *(uint32_t*)p;
+            if (_res == 2) w = __builtin_bswap32(w);
+            if ((uint8_t)(w >> 24) == 0xB8) { enddl_found = 1; break; }
+        }
+        if (!enddl_found) {
+            static int s_noend = 0;
+            if (s_noend++ < 30)
+                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                    "PROBE-ENDDL ptr=%p vote=%d no G_ENDDL in 64 slots -> 0",
+                    (void*)ptr, _res);
+            _res = 0;
+        }
+    }
     return _res;
 }
 
@@ -3347,13 +3366,16 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
                     int probed = bka_probe_dl_encoding((uint8_t*)dl_ptr);
                     int parent_enc = (depth > 0) ? stack_enc[depth - 1] : 0;
-                    if (probed != 0) {
-                        cur_dl_enc = probed;
-                    } else if (parent_enc != 0) {
-                        cur_dl_enc = parent_enc;
-                    } else {
-                        cur_dl_enc = 1;
+                    if (probed == 0) {
+                        static int s_refuse = 0;
+                        if (s_refuse++ < 20)
+                            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                                "G_DL REFUSE non-DL target=0x%08X parent_enc=%d cur=%p",
+                                raw_addr, parent_enc, (void*)cur);
+                        depth--;  /* undo the push above */
+                        break;
                     }
+                    cur_dl_enc = probed;
                     static int s_enc_probe = 0;
                     if (s_enc_probe++ < 40) {
                         uint8_t* b = (uint8_t*)dl_ptr;
