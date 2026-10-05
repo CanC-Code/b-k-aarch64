@@ -2412,12 +2412,14 @@ static int bka_probe_dl_encoding(uint8_t* ptr) {
     /* Structural check: a real DL contains G_ENDDL within the first 64 slots. */
     if (_res != 0) {
         int enddl_found = 0;
-        for (int i = 0; i < 64; i++) {
+        for (int i = 0; i < 256; i++) {
             uint8_t* p = ptr + i * 16;
             if (!bka_is_readable(p + 8)) break;
             uint32_t w = *(uint32_t*)p;
             if (_res == 2) w = __builtin_bswap32(w);
-            if ((uint8_t)(w >> 24) == 0xB8) { enddl_found = 1; break; }
+            /* ENDDL is 0xB8 in F3DEX v1, 0xDF in F3DEX2. Accept either. */
+            uint8_t op = (uint8_t)(w >> 24);
+            if (op == 0xB8 || op == 0xDF) { enddl_found = 1; break; }
         }
         if (!enddl_found) {
             static int s_noend = 0;
@@ -3366,16 +3368,23 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
                     int probed = bka_probe_dl_encoding((uint8_t*)dl_ptr);
                     int parent_enc = (depth > 0) ? stack_enc[depth - 1] : 0;
-                    if (probed == 0) {
+                    if (parent_enc != 0) {
+                        /* B-K sub-DLs are always same encoding as parent.
+                         * Inherit unconditionally — don't re-probe, don't
+                         * refuse.  The probe misfires on large/compact
+                         * sub-DLs and produced 7 KB frames. */
+                        cur_dl_enc = parent_enc;
+                    } else if (probed != 0) {
+                        cur_dl_enc = probed;
+                    } else {
                         static int s_refuse = 0;
                         if (s_refuse++ < 20)
                             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                                 "G_DL REFUSE non-DL target=0x%08X parent_enc=%d cur=%p",
                                 raw_addr, parent_enc, (void*)cur);
-                        depth--;  /* undo the push above */
+                        depth--;
                         break;
                     }
-                    cur_dl_enc = probed;
                     static int s_enc_probe = 0;
                     if (s_enc_probe++ < 40) {
                         uint8_t* b = (uint8_t*)dl_ptr;
