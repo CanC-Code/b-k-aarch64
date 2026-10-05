@@ -1274,7 +1274,6 @@ bool func_8030526C(f32 arg0[3], s32 arg1, s32 arg2){
 bool func_80305290(bool (* arg0)(NodeProp *), bool (* arg1)(Prop *)){
     Cube *phi_s0;
 
-    __android_log_print(ANDROID_LOG_ERROR,"BKA-SCAN","scan cubes=%p cnt=%d",(void*)sCubeList.cubes,(int)sCubeList.cubeCnt);
     phi_s0 = sCubeList.cubes;
     while (phi_s0 < &sCubeList.cubes[sCubeList.cubeCnt]) {
         if (!func_8032E398(phi_s0, arg0, arg1)) {
