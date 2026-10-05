@@ -949,9 +949,12 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
     cube_free(cube);
     if (file_getByte_ifExpected(file_ptr, CUBE_PROP_1_INDICATOR, &cube1_count)) {
         __codeA5BC0_freeCube1Pointer(cube, cube1_count);
+        __android_log_print(ANDROID_LOG_ERROR,"BKA-P1ALLOC","A after-free prop1Ptr=%p prop1Cnt=%d cube1_count=%d",(void*)cube->prop1Ptr,(int)cube->prop1Cnt,(int)cube1_count);
         cube->prop1Ptr = (NodeProp*) malloc(cube1_count * sizeof(NodeProp));
         node_prop_ptr = (NodeProp*) malloc(cube1_count * sizeof(NodeProp));
-        file_getNBytes_ifExpected(file_ptr, CUBE_PROP_1_LIST_START_INDICATOR, node_prop_ptr, cube->prop1Cnt * sizeof(NodeProp));
+        __android_log_print(ANDROID_LOG_ERROR,"BKA-P1ALLOC","B pre-read  prop1Ptr=%p node_prop_ptr=%p cube1_count=%d prop1Cnt=%d sz=%d",(void*)cube->prop1Ptr,(void*)node_prop_ptr,(int)cube1_count,(int)cube->prop1Cnt,(int)sizeof(NodeProp));
+        s32 __p1rc = file_getNBytes_ifExpected(file_ptr, CUBE_PROP_1_LIST_START_INDICATOR, node_prop_ptr, cube->prop1Cnt * sizeof(NodeProp));
+        __android_log_print(ANDROID_LOG_ERROR,"BKA-P1ALLOC","C post-read rc=%d prop1Ptr=%p",(int)__p1rc,(void*)cube->prop1Ptr);
         __bka_fixNodePropEndian(node_prop_ptr, cube1_count);
         { static int s_nr=0; if(s_nr++<3 && cube1_count>0){ const u8*r=(const u8*)node_prop_ptr; __android_log_print(ANDROID_LOG_ERROR,"BKA-NRAW","cnt=%d first20=%02X%02X%02X%02X%02X%02X%02X%02X %02X%02X%02X%02X%02X%02X%02X%02X %02X%02X%02X%02X",cube1_count,r[0],r[1],r[2],r[3],r[4],r[5],r[6],r[7],r[8],r[9],r[10],r[11],r[12],r[13],r[14],r[15],r[16],r[17],r[18],r[19]); } }
         __android_log_print(ANDROID_LOG_ERROR, "BKA-FMT",
