@@ -3,6 +3,7 @@
 #include "core1/core1.h"
 #include "functions.h"
 #include "variables.h"
+extern s32 D_8037BFBC;
 
 
 void func_802CD898(Actor *);
