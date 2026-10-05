@@ -1149,6 +1149,7 @@ s32 nodeprop_getScale(NodeProp *nodeProp) {
 
 bool nodeprop_findPositionFromActorId(enum actor_e actor_id, s32 *position) {
     NodeProp *node_prop;
+    { static int s_np=0; if(s_np++<6) __android_log_print(ANDROID_LOG_ERROR,"BKA-NODEPROP","id=0x%X cubes=%p cnt=%d min=(%d,%d,%d) max=(%d,%d,%d) stride=(%d,%d) prop1cnts=%p aba8=%d",(int)actor_id,(void*)sCubeList.cubes,(int)sCubeList.cubeCnt,sCubeList.min[0],sCubeList.min[1],sCubeList.min[2],sCubeList.max[0],sCubeList.max[1],sCubeList.max[2],sCubeList.stride[0],sCubeList.stride[1],(void*)sProp1TotalCounts,(int)D_8036ABA8); }
 
     node_prop = cubeList_findNodePropByActorIdAndPosition_s32(actor_id, NULL);
     if (node_prop != 0) {
