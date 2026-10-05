@@ -198,6 +198,9 @@ void guOrtho(void *m, f32 l, f32 r, f32 b, f32 t, f32 n, f32 f, f32 scale) {
 void bkmemset64(void *dst, u32 val, u32 size) {}
 void *osViGetNextFramebuffer(void) { return 0; }
 void osViBlack(u8 active) {}
-s32  overlayManager_getLoadedID(void) { return 0; }
-void overlayManager_load(s32 id) {}
+static s32 sBkaLoadedOverlayId = 0;
+s32  overlayManager_getLoadedID(void) { return sBkaLoadedOverlayId; }
+void overlayManager_load(s32 id) { if (id != 0) sBkaLoadedOverlayId = id; }
+void overlayManager_clearLoadedId(void) { sBkaLoadedOverlayId = 0; }
+void overlayManager_loadCore2(void) { overlayManager_clearLoadedId(); }
 void osSyncPrintf(const char *fmt, ...) {}

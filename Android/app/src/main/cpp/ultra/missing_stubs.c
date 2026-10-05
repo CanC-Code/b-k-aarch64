@@ -379,7 +379,8 @@ s32 osMotorStart(OSPfs *pfs) { (void)pfs; return 0; }
 s32 osMotorStop(OSPfs *pfs) { (void)pfs; return 0; }
 s32 osPfsInit(OSMesgQueue *mq, OSPfs *pfs, int channel) { (void)mq; (void)pfs; (void)channel; return 0; }
 void osWritebackDCacheAll(void) {}
-void overlayManager_loadCore2(void) {}
+/* removed: real impl in linker_stubs.c */
+/* void overlayManager_loadCore2(void) {} */
 void overlayManagerloadCore2(void) {}
 int bkboot_inflate_unlocked(void) { return 0; }
 f32 alCents2Ratio(s32 cents) { (void)cents; return 1.0f; }
