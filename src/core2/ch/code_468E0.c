@@ -1,3 +1,4 @@
+#include <android/log.h>
 #include <ultra64.h>
 #include "core1/core1.h"
 #include "functions.h"
@@ -32,6 +33,7 @@ void func_802CD898(Actor *this){
 }
 
 void func_802CD8C0(Actor *this){
+    { static int s_tg=0; if (s_tg++%60==0 && s_tg<600) __android_log_print(ANDROID_LOG_ERROR,"BKA-TRIG","state=%d field=%d BFBC=%d unkBC=%d",(int)this->state,(int)this->actorTypeSpecificField,(int)D_8037BFBC,(int)*(s32*)this->unkBC); }
     if(!this->volatile_initialized){
         this->volatile_initialized = TRUE;
         this->marker->unk2C_1 = 1;
