@@ -1948,6 +1948,7 @@ static void Cmd_MoveMem(GfxCommand cmd) {
     
     // Matrix load: index 0x0E = G_MTX_MODELVIEW, 0x00 = G_MTX_PROJECTION
     // offset 0 = projection, offset 0 = modelview (upper bits differ)
+    { static int s_mm=0; if(s_mm++<30) __android_log_print(ANDROID_LOG_ERROR,"BKA-MOVEMEM","len=%u off=%u idx=0x%02X addr=0x%08X",(unsigned)length,(unsigned)offset,(unsigned)index,(unsigned)addr); }
     if (length == 8 && (index == 0x0E || index == 0x00)) {
         BKMatrix* target;
         // F3DEX2 G_MOVEMEM: index 0x0E = G_MTX_PROJECTION, 0x00 = G_MTX_MODELVIEW
