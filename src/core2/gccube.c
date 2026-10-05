@@ -1036,7 +1036,6 @@ s32 func_80304984(s32 actor_id, u32 *arg1) {
 NodeProp *cube_findNodePropByActorId(Cube *cube, enum actor_e actor_id);
 
 NodeProp *cubeList_findNodePropByActorIdAndPosition_s32(enum actor_e actor_id, s32 position[3]) {
-    __android_log_print(ANDROID_LOG_ERROR,"BKA-CFN","enter find actorId=0x%X cubeCnt=%d cubes=%p pos=%p",(int)actor_id,(int)sCubeList.cubeCnt,(void*)sCubeList.cubes,(void*)position);
     s32 cube_indices[3];
     s32 i;
     f32 position_f32[3];
@@ -1155,7 +1154,6 @@ bool nodeprop_findPositionFromActorId(enum actor_e actor_id, s32 *position) {
     { static int s_np=0; if(s_np++<6) __android_log_print(ANDROID_LOG_ERROR,"BKA-NODEPROP","id=0x%X cubes=%p cnt=%d min=(%d,%d,%d) max=(%d,%d,%d) stride=(%d,%d) prop1cnts=%p aba8=%d",(int)actor_id,(void*)sCubeList.cubes,(int)sCubeList.cubeCnt,sCubeList.min[0],sCubeList.min[1],sCubeList.min[2],sCubeList.max[0],sCubeList.max[1],sCubeList.max[2],sCubeList.stride[0],sCubeList.stride[1],(void*)sProp1TotalCounts,(int)D_8036ABA8); }
 
     node_prop = cubeList_findNodePropByActorIdAndPosition_s32(actor_id, NULL);
-    __android_log_print(ANDROID_LOG_ERROR,"BKA-NPF","ret node_prop=%p position=%p actorId=0x%X",(void*)node_prop,(void*)position,(int)actor_id);
     if (node_prop != 0) {
         position[0] = (s32) node_prop->position_x;
         position[1] = (s32) node_prop->position_y;
