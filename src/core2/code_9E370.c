@@ -817,6 +817,7 @@ Actor *actor_new(s32 position[3], s32 yaw, ActorInfo* actorInfo, u32 flags){
     suLastBaddie->modelCacheIndex = actorInfo->actorId;
     suLastBaddie->unk44_2 = func_80326C18();
     suLastBaddie->marker = marker_init(position, actorInfo->draw_func, (asset_getFlag(actorInfo->modelId) == 1) ? 0 : 1, actorInfo->markerId, (flags & 0x400) ? 1 : 0);
+    { static int s_an=0; if (s_an++<40) __android_log_print(ANDROID_LOG_ERROR,"BKA-AN","new id=0x%X actorId=0x%X marker=%p slot=%d cnt=%d",(unsigned)actorInfo->markerId,(unsigned)actorInfo->actorId,(void*)suLastBaddie->marker,(int)(suBaddieActorArray->cnt-1),(int)suBaddieActorArray->cnt); }
     suLastBaddie->marker->unk3E_0 = 1;
     suLastBaddie->unk138_28 = 1;
     suLastBaddie->unk10_3 = -1;
