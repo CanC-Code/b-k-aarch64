@@ -1042,15 +1042,15 @@ Actor *actor_new(s32 position[3], s32 yaw, ActorInfo* actorInfo, u32 flags){
 }
 
 static void __actor_free(ActorMarker *arg0, Actor *arg1){
-    s32 arrayEnd;
+    Actor *arrayEnd;
 
     __android_log_print(ANDROID_LOG_ERROR,"BKA-AF","s1 arg0=%p arg1=%p cnt=%d",(void*)arg0,(void*)arg1,suBaddieActorArray->cnt);
     arrayEnd = &suBaddieActorArray->data[suBaddieActorArray->cnt - 1];
     __android_log_print(ANDROID_LOG_ERROR,"BKA-AF","s2 arrayEnd=%p end_marker=%p",(void*)arrayEnd,(void*)((Actor*)arrayEnd)->marker);
     func_80325FE8(arg1);
     __android_log_print(ANDROID_LOG_ERROR,"BKA-AF","s3 after 25FE8");
-    if((s32)arg1 != arrayEnd)
-        memcpy(arg1, arrayEnd, 0x180);
+    if(arg1 != arrayEnd)
+        memcpy(arg1, arrayEnd, sizeof(Actor));
     __android_log_print(ANDROID_LOG_ERROR,"BKA-AF","s4 after memcpy arg1->marker=%p",(void*)arg1->marker);
     if (arg1->marker != NULL) {
         arg1->marker->actrArrayIdx = arg0->actrArrayIdx;
