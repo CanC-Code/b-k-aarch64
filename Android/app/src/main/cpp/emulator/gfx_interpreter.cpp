@@ -2071,6 +2071,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
      * 3-7 set is walker drift into non-command data, and its w1 is a
      * garbage address (observed: 0x017C0000, 0x06340000, 0x03300000).
      * Reject the command. */
+    flag &= 0x07;  /* F3DEX v1: mask off non-spec high bits the recomp emits */
     if (flag & 0xF8) {
         static int s_mtx_hi = 0;
         if (s_mtx_hi++ < 10)
