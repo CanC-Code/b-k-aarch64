@@ -1151,7 +1151,16 @@ void func_803283D4(void){
     int i;
     Actor *iPtr;
     if(D_8036E574){
-        if(D_8036E578)
+        if(D_8036E578){
+            { static int s_snap=0; if(s_snap++<10) {
+                for(int _k=0; _k<suBaddieActorArray->cnt; _k++){
+                    __android_log_print(ANDROID_LOG_ERROR,"BKA-SNAP","despawn-pass slot=%d cnt=%d marker=%p despawn=%d info=%p",
+                        _k, suBaddieActorArray->cnt,
+                        (void*)suBaddieActorArray->data[_k].marker,
+                        (int)suBaddieActorArray->data[_k].despawn_flag,
+                        (void*)suBaddieActorArray->data[_k].actor_info);
+                }
+            } }
             for(i = suBaddieActorArray->cnt-1; i >= 0 ; i--){
                 iPtr = &suBaddieActorArray->data[i];
                 if(iPtr->despawn_flag){
