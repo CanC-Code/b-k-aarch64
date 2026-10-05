@@ -1,3 +1,4 @@
+#include <android/log.h>
 #include <ultra64.h>
 #include "core1/core1.h"
 
@@ -90,6 +91,7 @@ bool overlayManager_load(enum overlay_e id) {
         return FALSE;
 
     sLoadedOverlay = id;
+    __android_log_print(ANDROID_LOG_ERROR,"BKA-OVW","load: setting sLoadedOverlay=%d",(int)id);
     rom_addr = (s32)(sOverlayAdressMap + id);
     
     overlay_load(
@@ -110,6 +112,7 @@ bool overlayManager_load(enum overlay_e id) {
 
 void overlayManager_clearLoadedId(void) {
     sLoadedOverlay = OVERLAY_0_CORE2;
+    __android_log_print(ANDROID_LOG_ERROR,"BKA-OVW","loadCore2: RESET sLoadedOverlay=0");
 }
 
 void overlayManager_loadCore2(void) {
