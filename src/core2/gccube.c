@@ -1033,6 +1033,8 @@ s32 func_80304984(s32 actor_id, u32 *arg1) {
     return 0;
 }
 
+NodeProp *cube_findNodePropByActorId(Cube *cube, enum actor_e actor_id);
+
 NodeProp *cubeList_findNodePropByActorIdAndPosition_s32(enum actor_e actor_id, s32 position[3]) {
     __android_log_print(ANDROID_LOG_ERROR,"BKA-CFN","enter find actorId=0x%X cubeCnt=%d cubes=%p pos=%p",(int)actor_id,(int)sCubeList.cubeCnt,(void*)sCubeList.cubes,(void*)position);
     s32 cube_indices[3];
