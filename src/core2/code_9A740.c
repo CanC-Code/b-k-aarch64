@@ -23,6 +23,7 @@ void func_803216D0(enum map_e map){
     __android_log_print(ANDROID_LOG_ERROR, "BKA-LVL",
         "SET &D_80383300=%p level=%d map=%d map_getLevel=%d",
         (void*)&D_80383300, (int)D_80383300.level, (int)map, (int)map_getLevel(map));
+    { enum overlay_e _oid = leveloverlay_getOverlayFromLevel(D_80383300.level); __android_log_print(ANDROID_LOG_ERROR,"BKA-OVRLD","map=%d level=%d overlay=%d",(int)map,(int)D_80383300.level,(int)_oid); }
     overlayManager_load(leveloverlay_getOverlayFromLevel(D_80383300.level));
     D_80383300.unk0 = 0;
     if(func_802E4A8C()){
