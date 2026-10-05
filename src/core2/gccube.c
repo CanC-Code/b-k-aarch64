@@ -1273,11 +1273,10 @@ bool func_8030526C(f32 arg0[3], s32 arg1, s32 arg2){
 
 bool func_80305290(bool (* arg0)(NodeProp *), bool (* arg1)(Prop *)){
     Cube *phi_s0;
-    { static int s_sc=0; if(s_sc++<8) __android_log_print(ANDROID_LOG_ERROR,"BKA-SCAN","scan cubes=%p cnt=%d cb1=%p cb2=%p",(void*)sCubeList.cubes,(int)sCubeList.cubeCnt,(void*)arg0,(void*)arg1); }
 
     phi_s0 = sCubeList.cubes;
     while (phi_s0 < &sCubeList.cubes[sCubeList.cubeCnt]) {
-        { static int s_sc2=0; if(s_sc2++<40) __android_log_print(ANDROID_LOG_ERROR,"BKA-SCAN","cube=%p idx=%d p1ptr=%p p1cnt=%d p2ptr=%p p2cnt=%d",(void*)phi_s0,(int)(phi_s0-sCubeList.cubes),(void*)phi_s0->prop1Ptr,(int)phi_s0->prop1Cnt,(void*)phi_s0->prop2Ptr,(int)phi_s0->prop2Cnt); }
+        if (!func_8032E398(phi_s0, arg0, arg1)) {
             return FALSE;
         }
         phi_s0++;
