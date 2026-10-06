@@ -1011,14 +1011,12 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
                 const u8 *raw = (const u8 *)&disk[_i];
                 u32 marker_be = ((u32)raw[0] << 24) | ((u32)raw[1] << 16)
                               | ((u32)raw[2] <<  8) |  (u32)raw[3];
-                { static int s_mb=0; if(s_mb++<40) __android_log_print(ANDROID_LOG_ERROR,"BKA-MARK","cube=%p i=%d raw0_3=%02X%02X%02X%02X marker_be=0x%08X raw4_15=%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",(void*)cube,(int)_i,raw[0],raw[1],raw[2],raw[3],(unsigned)marker_be,raw[4],raw[5],raw[6],raw[7],raw[8],raw[9],raw[10],raw[11],raw[12],raw[13],raw[14],raw[15]); }
                 { void *xlat = RDP_TranslateAddr(marker_be); static int s_xl=0; if(s_xl++<40) __android_log_print(ANDROID_LOG_ERROR,"BKA-XLAT","marker_be=0x%08X xlat=%p seg6=0x%lX seg14=0x%lX",(unsigned)marker_be,xlat,(unsigned long)s_rdp.segmentBase[6],(unsigned long)s_rdp.segmentBase[0x14]); }
                 s16 px_be = (s16)(((u16)raw[4] << 8) | raw[5]);
                 s16 py_be = (s16)(((u16)raw[6] << 8) | raw[7]);
                 s16 pz_be = (s16)(((u16)raw[8] << 8) | raw[9]);
                 u16 flags_be = ((u16)raw[10] << 8) | raw[11];
                 __builtin_memset(&cube->prop2Ptr[_i], 0, sizeof(Prop));
-                cube->prop2Ptr[_i].actorProp.marker = NULL;
                 cube->prop2Ptr[_i].actorProp.position[0] = px_be;
                 cube->prop2Ptr[_i].actorProp.position[1] = py_be;
                 cube->prop2Ptr[_i].actorProp.position[2] = pz_be;
@@ -1030,17 +1028,18 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
                 cube->prop2Ptr[_i].actorProp.isCollisionResolved = (flags_be >> 2) & 1;
                 cube->prop2Ptr[_i].actorProp.isModelProp = (flags_be >>  1) & 1;
                 cube->prop2Ptr[_i].actorProp.isActorProp = (flags_be >>  0) & 1;
-                { static int s_mk = 0; if (s_mk++ < 40) {
-                    u16 flags_le = ((u16)raw[11] << 8) | raw[10];
-                    __android_log_print(ANDROID_LOG_ERROR, "BKA-MARKER",
-                        "markerBE=0x%08X markerLE=0x%08X posBE=(%d,%d,%d) posLE=(%d,%d,%d) "
-                        "flagsBE=0x%04X flagsLE=0x%04X isActBE=%d isActLE=%d",
-                        marker_be,
-                        (u32)disk[_i].marker_or_id,
-                        px_be, py_be, pz_be,
-                        disk[_i].position[0], disk[_i].position[1], disk[_i].position[2],
-                        flags_be, flags_le,
-                        (flags_be >> 15) & 1, (flags_le >> 15) & 1); } }
+                /* PropFile.marker is a segment-relative N64 pointer.  Segments
+                   4..0x0B all base to physical 0x08000000 (see segmentBase[]
+                   init in gfx_interpreter.cpp) which is where map files load
+                   on N64; the low 26 bits are therefore a byte offset into the
+                   map file.  asset_base_ptr is the port's equivalent base. */
+                if (cube->prop2Ptr[_i].actorProp.isActorProp && marker_be != 0) {
+                    uint32_t off = marker_be & 0x03FFFFFF;
+                    if (off < 0x4000000) {
+                        cube->prop2Ptr[_i].actorProp.marker =
+                            (ActorMarker *)((uint8_t *)file_ptr->asset_base_ptr + off);
+                    }
+                }
             }
             free(disk);
         }
@@ -1456,7 +1455,7 @@ void code_A5BC0_initCubePropActorProp(Cube *cube) {
             (void*)cube, (unsigned)cube->prop2Cnt,
             (int)cube->prop2Ptr->isActorProp, (void*)cube->prop2Ptr->actorProp.marker);
         while(prop_cnt != 0){
-            if(prop_ptr->isActorProp == TRUE && prop_ptr->actorProp.marker != NULL){
+            if(prop_ptr->isActorProp == TRUE){
                 prop_ptr->actorProp.marker->propPtr = &prop_ptr->actorProp;
                 prop_ptr->actorProp.marker->cubePtr = cube;
             }
