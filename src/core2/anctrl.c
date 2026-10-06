@@ -99,7 +99,11 @@ void func_802871A4(AnimCtrl *this){
 AnimCtrl *anctrl_new(s32 arg0){ //new
     ActorAnimCtrl *this;
 
-    this = (ActorAnimCtrl *)malloc( anim_getSize() + 0x28);
+    /* N64 sized the allocation as sizeof(AnimCtrl_N64) + anim_getSize().
+       On arm64 both structs are larger because GenFunction_2 is an 8-byte
+       pointer rather than 4 bytes.  Allocate by the host struct size to
+       avoid an overflow into adjacent heap. */
+    this = (ActorAnimCtrl *)malloc( sizeof(AnimCtrl) + anim_getSize() );
     this->anctrl.animation = &this->animation;
     anim_new(&this->animation, 1);
     this->anctrl.playback_type = 0;
