@@ -1042,11 +1042,10 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
                    offsets into a ~30 KB file).  Callers must tolerate NULL. */
                 if (cube->prop2Ptr[_i].actorProp.isActorProp && marker_be != 0) {
                     uint32_t off = marker_be & 0x03FFFFFF;
-                    /* Conservative bound: only translate if the offset is
-                       within a plausible loaded-file size. */
-                    extern s32 file_getSize(File *f);
-                    s32 fsz = file_ptr ? file_getSize(file_ptr) : 0;
-                    if (fsz > 0 && (s32)off < fsz) {
+                    /* B-K map files are tens of KB.  Anything larger cannot
+                       be a file offset, and the port has no way to resolve
+                       the original game's fixed-RDRAM segment scheme. */
+                    if (off < 0x100000) {
                         cube->prop2Ptr[_i].actorProp.marker =
                             (ActorMarker *)((uint8_t *)file_ptr->asset_base_ptr + off);
                     }
