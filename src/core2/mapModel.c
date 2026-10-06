@@ -413,9 +413,12 @@ Vec3fArray *func_803097A0(void){
 
 
 void mapModel_getCubeBounds(s32 min[3], s32 max[3]) {
-    if (!mapModel.model_bin_opa) { min[0] = min[1] = min[2] = -1; max[0] = max[1] = max[2] = 1; return; }
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CB", "enter model_bin_opa=%p ra=%p", (void*)mapModel.model_bin_opa, __builtin_return_address(0));
+    if (!mapModel.model_bin_opa) { min[0] = min[1] = min[2] = -1; max[0] = max[1] = max[2] = 1; __android_log_print(ANDROID_LOG_ERROR, "BKA-CB", "  null bin -> (-1..1)"); return; }
     vtxList_getBounds_s32(modelbin_getVtxList(mapModel.model_bin_opa), min, max);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CB", "  raw min=(%d,%d,%d) max=(%d,%d,%d)", min[0], min[1], min[2], max[0], max[1], max[2]);
     coords_scale(min, max, 1000);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CB", "  scaled min=(%d,%d,%d) max=(%d,%d,%d)", min[0], min[1], min[2], max[0], max[1], max[2]);
     min[0] = min[0] + mapModel.description->unk6[0];
     min[1] = min[1] + mapModel.description->unk6[1];
     min[2] = min[2] + mapModel.description->unk6[2];
