@@ -1011,6 +1011,7 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
                 const u8 *raw = (const u8 *)&disk[_i];
                 u32 marker_be = ((u32)raw[0] << 24) | ((u32)raw[1] << 16)
                               | ((u32)raw[2] <<  8) |  (u32)raw[3];
+                { static int s_mb=0; if(s_mb++<40) __android_log_print(ANDROID_LOG_ERROR,"BKA-MARK","cube=%p i=%d raw0_3=%02X%02X%02X%02X marker_be=0x%08X raw4_15=%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",(void*)cube,(int)_i,raw[0],raw[1],raw[2],raw[3],(unsigned)marker_be,raw[4],raw[5],raw[6],raw[7],raw[8],raw[9],raw[10],raw[11],raw[12],raw[13],raw[14],raw[15]); }
                 s16 px_be = (s16)(((u16)raw[4] << 8) | raw[5]);
                 s16 py_be = (s16)(((u16)raw[6] << 8) | raw[7]);
                 s16 pz_be = (s16)(((u16)raw[8] << 8) | raw[9]);
