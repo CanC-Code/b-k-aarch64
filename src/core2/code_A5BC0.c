@@ -1011,7 +1011,6 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
                 const u8 *raw = (const u8 *)&disk[_i];
                 u32 marker_be = ((u32)raw[0] << 24) | ((u32)raw[1] << 16)
                               | ((u32)raw[2] <<  8) |  (u32)raw[3];
-                { void *xlat = RDP_TranslateAddr(marker_be); static int s_xl=0; if(s_xl++<40) __android_log_print(ANDROID_LOG_ERROR,"BKA-XLAT","marker_be=0x%08X xlat=%p seg6=0x%lX seg14=0x%lX",(unsigned)marker_be,xlat,(unsigned long)s_rdp.segmentBase[6],(unsigned long)s_rdp.segmentBase[0x14]); }
                 s16 px_be = (s16)(((u16)raw[4] << 8) | raw[5]);
                 s16 py_be = (s16)(((u16)raw[6] << 8) | raw[7]);
                 s16 pz_be = (s16)(((u16)raw[8] << 8) | raw[9]);
