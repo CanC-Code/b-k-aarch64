@@ -1032,9 +1032,21 @@ void code7AF80_initCubeFromFile(File *file_ptr, Cube *cube) {
                    init in gfx_interpreter.cpp) which is where map files load
                    on N64; the low 26 bits are therefore a byte offset into the
                    map file.  asset_base_ptr is the port's equivalent base. */
+                /* PropFile.marker is a segment-relative N64 pointer to a
+                   structure that only exists in the original game's fixed
+                   RDRAM layout.  The port loads map files to heap and has no
+                   equivalent runtime address space, so the value cannot be
+                   resolved by simple offset arithmetic.  Leave marker NULL
+                   unless the offset is provably in-file (which it never is
+                   for MAP_91's data — values like 0x06578C00 imply 5.7 MB
+                   offsets into a ~30 KB file).  Callers must tolerate NULL. */
                 if (cube->prop2Ptr[_i].actorProp.isActorProp && marker_be != 0) {
                     uint32_t off = marker_be & 0x03FFFFFF;
-                    if (off < 0x4000000) {
+                    /* Conservative bound: only translate if the offset is
+                       within a plausible loaded-file size. */
+                    extern s32 file_getSize(File *f);
+                    s32 fsz = file_ptr ? file_getSize(file_ptr) : 0;
+                    if (fsz > 0 && (s32)off < fsz) {
                         cube->prop2Ptr[_i].actorProp.marker =
                             (ActorMarker *)((uint8_t *)file_ptr->asset_base_ptr + off);
                     }
@@ -1852,6 +1864,14 @@ void func_80330FF4(void){
 bool func_80331158(ActorMarker *arg0, s32 arg1, s32 arg2) {
     Actor *actor;
     u32 temp_a0;
+
+    /* Port: markers loaded from disk cannot be resolved to runtime
+       addresses on arm64 (fixed N64 segment scheme).  Treat unresolved
+       markers as "no collision contribution" so the caller skips the
+       prop rather than dereferencing garbage. */
+    if (arg0 == NULL) {
+        return TRUE;
+    }
 
     actor = marker_getActor(arg0);
     if ((actor->unk3C & 0x400) && ((s32)actor->unk3C << 4) >= 0){
