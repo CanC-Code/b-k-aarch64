@@ -1584,6 +1584,7 @@ BKVertexList *modelbin_getVtxList(BKModelBin *this) {
     if (this == NULL || this->vtx_list_offset == 0) return NULL;
     this = (BKModelBin*)((uintptr_t)this & 0x00FFFFFFFFFFFFFFUL);
     BKVertexList *result = modelbin_getVtxList_MACRO(this);
+    { static int s_vl=0; if(s_vl++<5) __android_log_print(ANDROID_LOG_ERROR,"BKA-VL","this=%p off=0x%X swapped=0x%X result=%p (delta=0x%lX) min16=(%d,%d,%d) max16=(%d,%d,%d)",(void*)this,(unsigned)this->vtx_list_offset,(unsigned)__builtin_bswap32(this->vtx_list_offset),(void*)result,(unsigned long)((uintptr_t)result-(uintptr_t)this),result?(int)result->minCoord[0]:0,result?(int)result->minCoord[1]:0,result?(int)result->minCoord[2]:0,result?(int)result->maxCoord[0]:0,result?(int)result->maxCoord[1]:0,result?(int)result->maxCoord[2]:0); }
     return (BKVertexList*)((uintptr_t)result & 0x00FFFFFFFFFFFFFFUL);
 }
 
