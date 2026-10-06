@@ -413,12 +413,9 @@ Vec3fArray *func_803097A0(void){
 
 
 void mapModel_getCubeBounds(s32 min[3], s32 max[3]) {
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-CB", "enter model_bin_opa=%p ra=%p", (void*)mapModel.model_bin_opa, __builtin_return_address(0));
-    if (!mapModel.model_bin_opa) { min[0] = min[1] = min[2] = -1; max[0] = max[1] = max[2] = 1; __android_log_print(ANDROID_LOG_ERROR, "BKA-CB", "  null bin -> (-1..1)"); return; }
+    if (!mapModel.model_bin_opa) { min[0] = min[1] = min[2] = -1; max[0] = max[1] = max[2] = 1; return; }
     vtxList_getBounds_s32(modelbin_getVtxList(mapModel.model_bin_opa), min, max);
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-CB", "  raw min=(%d,%d,%d) max=(%d,%d,%d)", min[0], min[1], min[2], max[0], max[1], max[2]);
     coords_scale(min, max, 1000);
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-CB", "  scaled min=(%d,%d,%d) max=(%d,%d,%d)", min[0], min[1], min[2], max[0], max[1], max[2]);
     min[0] = min[0] + mapModel.description->unk6[0];
     min[1] = min[1] + mapModel.description->unk6[1];
     min[2] = min[2] + mapModel.description->unk6[2];
@@ -613,18 +610,7 @@ void func_8030A078(void) {
     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
         "func_8030A078: map=%d opa_model_id=0x%x xlu_model_id=0x%x",
         gsworld_getMap(), description->opa_model_id, description->xlu_model_id);
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-ML", "pre-load desc=%p opa_id=0x%X desc_map=%d unk6=(%d,%d,%d) unkC=(%d,%d,%d)",
-        (void*)mapModel.description,
-        mapModel.description ? (unsigned)mapModel.description->opa_model_id : 0,
-        mapModel.description ? (int)mapModel.description->map_id : -1,
-        mapModel.description ? mapModel.description->unk6[0] : 0,
-        mapModel.description ? mapModel.description->unk6[1] : 0,
-        mapModel.description ? mapModel.description->unk6[2] : 0,
-        mapModel.description ? mapModel.description->unkC[0] : 0,
-        mapModel.description ? mapModel.description->unkC[1] : 0,
-        mapModel.description ? mapModel.description->unkC[2] : 0);
     mapModel.model_bin_opa = (BKModelBin *)assetcache_get(mapModel.description->opa_model_id);
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-ML", "post-load bin_opa=%p", (void*)mapModel.model_bin_opa);
     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
         "func_8030A078: model_bin_opa=%p collision_opa=%p",
         mapModel.model_bin_opa, mapModel.model_bin_opa ? modelbin_getCollisionList(mapModel.model_bin_opa) : NULL);
