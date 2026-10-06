@@ -1584,7 +1584,7 @@ BKVertexList *modelbin_getVtxList(BKModelBin *this) {
     if (this == NULL || this->vtx_list_offset == 0) return NULL;
     this = (BKModelBin*)((uintptr_t)this & 0x00FFFFFFFFFFFFFFUL);
     BKVertexList *result = modelbin_getVtxList_MACRO(this);
-    { static int s_vl=0; if(s_vl++<5) __android_log_print(ANDROID_LOG_ERROR,"BKA-VL","this=%p off=0x%X swapped=0x%X result=%p (delta=0x%lX) min16=(%d,%d,%d) max16=(%d,%d,%d)",(void*)this,(unsigned)this->vtx_list_offset,(unsigned)__builtin_bswap32(this->vtx_list_offset),(void*)result,(unsigned long)((uintptr_t)result-(uintptr_t)this),result?(int)result->minCoord[0]:0,result?(int)result->minCoord[1]:0,result?(int)result->minCoord[2]:0,result?(int)result->maxCoord[0]:0,result?(int)result->maxCoord[1]:0,result?(int)result->maxCoord[2]:0); }
+    { static int s_vl=0; if(s_vl++<3) { const uint8_t *raw = (const uint8_t*)result; __android_log_print(ANDROID_LOG_ERROR,"BKA-VL","this=%p off=0x%X swapped=0x%X result=%p delta=0x%lX raw24=%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",(void*)this,(unsigned)this->vtx_list_offset,(unsigned)__builtin_bswap32(this->vtx_list_offset),(void*)result,(unsigned long)((uintptr_t)result-(uintptr_t)this),raw[0],raw[1],raw[2],raw[3],raw[4],raw[5],raw[6],raw[7],raw[8],raw[9],raw[10],raw[11],raw[12],raw[13],raw[14],raw[15],raw[16],raw[17],raw[18],raw[19],raw[20],raw[21],raw[22],raw[23]); } }
     return (BKVertexList*)((uintptr_t)result & 0x00FFFFFFFFFFFFFFUL);
 }
 
