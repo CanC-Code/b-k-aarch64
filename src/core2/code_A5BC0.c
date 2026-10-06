@@ -36,7 +36,7 @@ extern Cube *cubeList_GetCubeAtPosition_s32(s32 position[3]);
 extern Cube *func_8030364C(void);
 extern NodeProp *func_803080C8(s32);
 extern Cube *func_80308224(void);
-extern int func_802E74A0(f32[3], f32, s32, s32);
+extern int func_802E74A0(f32[3], f32, f32[3], f32[3]);
 extern s32 func_802E9118(BKCollisionList * collision_list, BKVertexList *vtx_list, f32 arg2[3], s32 arg3, f32 arg4, f32 arg5[3], f32 arg6[3], f32 arg7, f32 arg8[3], s32 arg9, s32 argA);
 
 extern void spawnQueue_func_802C39D4(void);
@@ -1860,7 +1860,7 @@ void func_80330FF4(void){
     //L80331144
 }
 
-bool func_80331158(ActorMarker *arg0, s32 arg1, s32 arg2) {
+bool func_80331158(ActorMarker *arg0, f32 *arg1, f32 *arg2) {
     Actor *actor;
     u32 temp_a0;
 
@@ -2289,7 +2289,7 @@ Prop *func_803322F0(Cube *cube, ActorMarker *marker, f32 arg2, s32 arg3, s32 *ar
         phi_s1 = &cube->prop2Ptr[(*arg4)++];
         for(phi_s3 = phi_s3; phi_s3 != 0; phi_s3--){
             if (phi_s1->isNotFeatherEggOrNote) {
-                if( phi_s1->isActorProp &&  (!phi_s1->actorProp.marker->unk3E_0 || !marker_getActor(phi_s1->actorProp.marker)->despawn_flag)){
+                if( phi_s1->isActorProp && phi_s1->actorProp.marker != NULL && (!phi_s1->actorProp.marker->unk3E_0 || !marker_getActor(phi_s1->actorProp.marker)->despawn_flag)){
                     if (phi_s1->actorProp.marker->collidable && (marker != phi_s1->actorProp.marker)) {
                         if( (phi_s1->actorProp.marker->modelId) 
                             && (func_803327A8(phi_s1->actorProp.marker->modelId) & arg3)
