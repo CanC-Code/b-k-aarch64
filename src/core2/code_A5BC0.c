@@ -1957,7 +1957,7 @@ BKCollisionTriangle *func_803311D4(Cube *cube, f32 *arg1, f32 *arg2, f32 *arg3, 
                     }
                 }
             }
-        } else if (var_s1->isActorProp) {
+        } else if (var_s1->isActorProp && var_s1->actorProp.marker != NULL) {
             if (var_s1->actorProp.marker->unk18 != NULL) {
                 if (var_s1->actorProp.marker->unk18->unk0 != NULL) {
                     var_v0 = var_s1->actorProp.marker->unk18->unk0(var_s1->actorProp.marker, arg1, arg2, arg3, arg4);
