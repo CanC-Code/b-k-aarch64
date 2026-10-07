@@ -3029,7 +3029,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     static uint64_t s_tri_ops = 0;
                     s_hist[opcode]++;
                     s_total++;
-                    if (opcode==0xBF||opcode==0xB1||opcode==0xC4||opcode==0x34||opcode==0x05||opcode==0x06) s_tri_ops++;
+                    if (opcode==0xBF||opcode==0xB1||opcode==0xC4||opcode==0x34) s_tri_ops++;
                     if ((s_total % 2000) == 0) {
                         uint64_t copy[256];
                         for (int i = 0; i < 256; i++) copy[i] = s_hist[i];
