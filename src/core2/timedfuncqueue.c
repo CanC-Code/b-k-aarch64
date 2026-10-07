@@ -21,7 +21,7 @@ typedef struct timed_function_queue_s{
         GenFunction_5 func5;
         GenFunction_6 func6;
     };
-    s32  arg[25];
+    intptr_t arg[25];
     
 }TimedFunction;
 

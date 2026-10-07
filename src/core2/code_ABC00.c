@@ -312,7 +312,7 @@ void func_803333DC(Struct81s *arg0, Actor *arg1) {
         arg0->unk14(arg1, arg0->unk18);
     }
     marker_setFreeMethod(arg1->marker, jiggy_free);
-    jiggy_id = ((s32) ((s32)arg0 - (s32)&jiggylist_list) / 0x2C) + 1;
+    jiggy_id = (s32)(((intptr_t)arg0 - (intptr_t)&jiggylist_list) / 0x2C) + 1;
     chjiggy_setJiggyId(arg1, jiggy_id);
     if ((jiggy_id == JIGGY_49_CCW_EYRIE) || (jiggy_id == JIGGY_39_LAIR_MMM_WITCH_SWITCH) || (jiggy_id == JIGGY_3C_LAIR_CCW_WITCH_SWITCH)) {
         arg1->marker->unk40_21 = TRUE;

@@ -168,7 +168,7 @@ void chTreasurehunt_checkStepProgress5(NodeProp *this, ActorMarker *arg1){
         particleEmitter_emitN(particleEmitter, 5);
         particleTargetPosition[2] += 300.0f;
         gcpausemenu_80314AC8(0);
-        timedFunc_set_2(0.1f, (GenFunction_2) func_8028F45C, 9, (s32)&particleTargetPosition);
+        timedFunc_set_2(0.1f, (GenFunction_2) func_8028F45C, 9, (intptr_t)&particleTargetPosition);
         timedFunc_set_1(0.1f, (GenFunction_1) gcpausemenu_80314AC8, 1);
         gcdialog_showDialog(VER_SELECT(ASSET_A17_DIALOG_BURIED_TREASURE_SPAWNED, 0x917, 0, 0), 4, NULL, NULL, NULL, NULL);
         chtreasureHunt_puzzleCurrentStep++;

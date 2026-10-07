@@ -854,7 +854,7 @@ static void __maCastle_resetSecretCheatCodeProgress(void)
 
 static u32 __maCastle_scrambleAddressForSecretCheatCode()
 {
-    s32 addr = (s32)&sSecretsCheatCodes;
+    intptr_t addr = (intptr_t)&sSecretsCheatCodes;
     s32 scrambled;
     SecretCheatCode *i_ptr;
     u32 var_a3;
