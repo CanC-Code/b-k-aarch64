@@ -3176,8 +3176,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 }
                 if (opcode == 0xBF) Cmd_Tri1(c);
                 else if (opcode == 0xB1) Cmd_Tri2(c);
-                else if (opcode == 0xC4) Cmd_Tri1_F3DEX2(c);
-                else if (opcode == 0x34) Cmd_Tri2_F3DEX2(c);
+                else if (opcode == 0xC4) Cmd_Tri2_F3DEX2(c);
+                else if (opcode == 0x34) Cmd_Tri1_F3DEX2(c);
                 break;
             case 0x03: Cmd_MoveMem(c); break;
             case 0xDB: Cmd_MoveWord(c); break;
