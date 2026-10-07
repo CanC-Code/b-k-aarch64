@@ -3010,6 +3010,18 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         // followed by vertex/index data. We now use the task data size
         // as the boundary, so no early stop is needed.
 
+                /* BKA-DLOP: first 64 decoded opcodes, one line each. */
+                {
+                    static int s_dlop = 0;
+                    if (s_dlop++ < 64) {
+                        const uint8_t* rp = (const uint8_t*)cur;
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA-DLOP",
+                            "op=%02X w0=%08X w1=%08X depth=%d enc=%d off=%ld raw=%02X%02X%02X%02X",
+                            opcode, c.w0, c.w1, depth, (int)cur_dl_enc,
+                            (long)(cur - (uint8_t*)s_dl_base),
+                            rp[0], rp[1], rp[2], rp[3]);
+                    }
+                }
                 switch (opcode) {
             case 0xAF: // G_LOAD_UCODE - not needed for software RDP
             case 0xB3: // G_RDPHALF_2
