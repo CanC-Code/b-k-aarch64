@@ -1108,8 +1108,9 @@ Actor *func_80328230(enum actor_e id, f32 pos[3], f32 rot[3]){
     for(i = 0; i < 3; i++){
         sp30[i] = (s32)pos[i];
     }
+    { static int s_pre=0; if (s_pre++<10) __android_log_print(ANDROID_LOG_ERROR,"BKA-F28230","PRE  id=0x%X pos=%p rot=%p sp30=%p",(int)id,(void*)pos,(void*)rot,(void*)sp30); }
     actor = func_803055E0(id, sp30, (f32) rot[1], 0, 0);
-    { static int s_f = 0; if (s_f++ < 20) __android_log_print(ANDROID_LOG_ERROR,"BKA-F28230","actor=%p id=0x%X rot=%p pos=%p",(void*)actor,(int)id,(void*)rot,(void*)pos); }
+    { static int s_post=0; if (s_post++<10) __android_log_print(ANDROID_LOG_ERROR,"BKA-F28230","POST actor=%p id=0x%X rot=%p",(void*)actor,(int)id,(void*)rot); }
     actor->pitch = rot[0];
     return actor;
 }
