@@ -2934,7 +2934,10 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     c.w0, c.w1, opcode, cur_dl_enc, depth);
             }
         }
-        if (bka_is_f3dex_opcode(opcode)) unknown_opcode_run = 0;
+        /* SPNOOP (0x00) is a valid no-op command in DL trees; it counts as
+                     * progress for the drift detector even though it is excluded
+                     * from the encoding probe to keep LE/BE disambiguation clean. */
+                if (bka_is_f3dex_opcode(opcode) || opcode == 0x00) unknown_opcode_run = 0;
         else unknown_opcode_run++;
         if (opcode == 0x04 && total <= 5) {
             const uint8_t *raw = cur;
