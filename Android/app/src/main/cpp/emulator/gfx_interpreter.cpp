@@ -141,7 +141,11 @@ static inline bool bka_is_f3dex_opcode(uint8_t op) {
      * DMA: 0x00 SPNOOP, 0x01 MTX, 0x03 MOVEMEM, 0x04 VTX, 0x06 DL
      * Imm: 0xAF-0xBF (LOAD_UCODE..TRI1)
      * RDP: 0xE4-0xFF (TEXRECT..SETCIMG) */
-    if (op == 0x00 || op == 0x01 || op == 0x03 ||
+    /* 0x00 (SPNOOP) deliberately excluded: any all-zero byte slot would
+     * otherwise look like a valid opcode, making LE/BE encoding detection
+     * ambiguous for sub-DLs whose first command starts with 0x00 (as N64
+     * BE bytes) or ends with 0x00 (as port-emitted LE bytes). */
+    if (op == 0x01 || op == 0x03 ||
         op == 0x04 || op == 0x06) return true;
     if (op >= 0xAF && op <= 0xBF) return true;
     if (op >= 0xE4) return true;
@@ -3376,6 +3380,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 stack_stride[depth] = current_stride;
                 stack_dl_base[depth] = s_dl_base;
                 stack_enc[depth] = cur_dl_enc;
+                cur_dl_enc = 0;  /* re-probe encoding on sub-DL: outer DL is LE (port-emitted), sub-DLs copied from ROM asset cache are BE */
                 { static int s_jt = 0; if (s_jt++ < 10) { uint8_t* p = (uint8_t*)dl_ptr; __android_log_print(ANDROID_LOG_ERROR, "BKA-DLJMP", "jump raw=0x%08X host=%p parent_cur=%p parent_enc=%d bytes=%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X", raw_addr, (void*)dl_ptr, (void*)cur, (int)cur_dl_enc, p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15]); } }
                 depth++;
                 if (depth > g_bka_task_max_depth) g_bka_task_max_depth = depth;
