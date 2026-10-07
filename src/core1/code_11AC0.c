@@ -381,16 +381,17 @@ void musicSlot_stopAll(void) {
 }
 
 void musicSlot_func_8024FC1C(u8 index, enum comusic_e track_id) {
-    { static int s_ms=0; if (s_ms++ < 20) __android_log_print(ANDROID_LOG_ERROR, "BKA-MSLOT",
-        "index=%u track=%d &slot=%p &track=%p track_base=%p",
-        (unsigned)index, (int)track_id,
-        (void*)&sMusicSlots[index],
-        (void*)((int)track_id >= 0 ? &musicTrackInfo[track_id] : NULL),
-        (void*)musicTrackInfo); }
     sMusicSlots[index].index_cpy = track_id;
     sMusicSlots[index].unk2 = TRUE;
     sMusicSlots[index].unk3 = FALSE;
-    sMusicSlots[index].volume =  musicTrackInfo[track_id].volume;
+    /* track_id is -1 as a "clear slot" sentinel from comusic_func_802599B4.
+       N64 read musicTrackInfo[-1].volume harmlessly from .data; on arm64
+       the array lives in heap-adjacent memory.  Skip the read. */
+    if ((int)track_id >= 0) {
+        sMusicSlots[index].volume = musicTrackInfo[track_id].volume;
+    } else {
+        sMusicSlots[index].volume = 0;
+    }
 }
 
 void musicSlot_func_8024FC6C(u8 index) {
