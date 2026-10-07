@@ -3026,8 +3026,10 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 {
                     static uint64_t s_hist[256];
                     static uint64_t s_total = 0;
+                    static uint64_t s_tri_ops = 0;
                     s_hist[opcode]++;
                     s_total++;
+                    if (opcode==0xBF||opcode==0xB1||opcode==0xC4||opcode==0x34||opcode==0x05||opcode==0x06) s_tri_ops++;
                     if ((s_total % 2000) == 0) {
                         uint64_t copy[256];
                         for (int i = 0; i < 256; i++) copy[i] = s_hist[i];
@@ -3040,7 +3042,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                             n += snprintf(buf+n, sizeof(buf)-n, " %02X=%llu", bi, (unsigned long long)best);
                             copy[bi] = 0;
                         }
-                        __android_log_print(ANDROID_LOG_ERROR, "BKA-OPHIST", "%s", buf);
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA-OPHIST", "%s tri_ops=%llu", buf, (unsigned long long)s_tri_ops);
                     }
                 }
                 switch (opcode) {
