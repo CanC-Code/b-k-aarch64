@@ -3022,6 +3022,27 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                             rp[0], rp[1], rp[2], rp[3]);
                     }
                 }
+                /* BKA-OPHIST: cumulative opcode histogram, top-8 logged every 2000 decoded commands. */
+                {
+                    static uint64_t s_hist[256];
+                    static uint64_t s_total = 0;
+                    s_hist[opcode]++;
+                    s_total++;
+                    if ((s_total % 2000) == 0) {
+                        uint64_t copy[256];
+                        for (int i = 0; i < 256; i++) copy[i] = s_hist[i];
+                        char buf[1024];
+                        int n = snprintf(buf, sizeof(buf), "total=%llu top:", (unsigned long long)s_total);
+                        for (int k = 0; k < 8; k++) {
+                            uint64_t best = 0; int bi = -1;
+                            for (int i = 0; i < 256; i++) if (copy[i] > best) { best = copy[i]; bi = i; }
+                            if (bi < 0 || best == 0) break;
+                            n += snprintf(buf+n, sizeof(buf)-n, " %02X=%llu", bi, (unsigned long long)best);
+                            copy[bi] = 0;
+                        }
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA-OPHIST", "%s", buf);
+                    }
+                }
                 switch (opcode) {
             case 0xAF: // G_LOAD_UCODE - not needed for software RDP
             case 0xB3: // G_RDPHALF_2
