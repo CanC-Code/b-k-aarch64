@@ -91,9 +91,11 @@ s32 sfxInstruments_getMusicSoundBankSoundCount(void) {
 }
 
 bool func_803354EC(enum sfx_e sfx_id) {
+    if (sSfxSoundBank == NULL) return FALSE;
     return func_802445C4(sSfxSoundBank, (s16) (sfx_id + 1));
 }
 
 bool func_80335520(enum sfx_e sfx_id) {
+    if (musicInstruments_getSoundBank() == NULL) return FALSE;
     return func_802445C4(musicInstruments_getSoundBank(), (s16) (sfx_id + 1));
 }
