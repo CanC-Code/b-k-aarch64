@@ -3756,6 +3756,22 @@ default:
                         "RAW128BACK ending@%p bytes%s", (void*)cur, hb);
                 }
             }
+            if (depth > 0) {
+                /* Pop the broken sub-DL and resume the parent.  Bailing
+                 * the whole task discarded the parent DL's remaining
+                 * commands, including G_DLs to valid sub-DLs. */
+                depth--;
+                cur             = stack[depth].ptr;
+                cur_end         = stack[depth].end;
+                current_stride  = stack_stride[depth];
+                s_dl_base       = stack_dl_base[depth];
+                cur_dl_enc      = stack_enc[depth];
+                unknown_opcode_run = 0;
+                dl_cmds         = 0;
+                zero_run        = 0;
+                g_bka_task_pops++;
+                continue;
+            }
             return;
         }
     }
