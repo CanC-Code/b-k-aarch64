@@ -1105,6 +1105,7 @@ Actor *func_80328230(enum actor_e id, f32 pos[3], f32 rot[3]){
     s32 sp30[3];
     Actor *actor;
 
+    { static int s_ent=0; if (s_ent++<10) __android_log_print(ANDROID_LOG_ERROR,"BKA-F28230","ENTRY id=0x%X pos=%p rot=%p",(int)id,(void*)pos,(void*)rot); }
     for(i = 0; i < 3; i++){
         sp30[i] = (s32)pos[i];
     }
