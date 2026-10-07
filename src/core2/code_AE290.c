@@ -37,11 +37,17 @@ void sfxInstruments_init(void) {
 }
 
 int sfxInstruments_func_8033531C(enum sfx_e sfx_id, struct46s *arg1) {
+    /* Port: sfxInstruments_init lives in code_1D00.c which is on the
+       CMake EXCLUDE_LIST.  The audio backend is stubbed, so sSfxSoundBank
+       is never populated.  Silently no-op so callers don't crash. */
+    if (sSfxSoundBank == NULL) return 0;
     return func_80244608(sSfxSoundBank, (s16) (sfx_id + 1), arg1);
 }
 
 int sfxInstruments_func_80335354(enum sfx_e sfx_id, struct46s *arg1) {
-    return func_80244608(musicInstruments_getSoundBank(), (s16) (sfx_id + 1), arg1);
+    ALBank *bank = musicInstruments_getSoundBank();
+    if (bank == NULL) return 0;
+    return func_80244608(bank, (s16) (sfx_id + 1), arg1);
 }
 
 void sfxInstruments_func_80335394(s32 arg0, f32 arg1) {

@@ -101,16 +101,16 @@ s32 func_8034C4F0(s32 arg0) {
     u8 sp8[0xA8];
     u8 *temp_v1;
 
-    temp_v1 = (s32)&sp8;
-    return *(s32*)(arg0 - (s32)(&temp_v1[8] - &temp_v1[0]));
+    temp_v1 = sp8;
+    return *(s32*)(arg0 - (intptr_t)(&temp_v1[8] - &temp_v1[0]));
 }
 
 s16 func_8034C50C(s32 arg0) {
     u8 sp8[0xA8];
     u8 *temp_v1;
 
-    temp_v1 = (s32)&sp8;
-    return *(s16*)(arg0 - (s32)(&temp_v1[4] - &temp_v1[0]));
+    temp_v1 = sp8;
+    return *(s16*)(arg0 - (intptr_t)(&temp_v1[4] - &temp_v1[0]));
 }
 
 
