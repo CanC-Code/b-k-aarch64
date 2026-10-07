@@ -167,16 +167,16 @@ extern ActorInfo D_80373DC0;
 
 
 typedef struct function_queue_s{
-    union { 
+    union {
         void (* func0)(void);
-        void (* func1)(s32);
-        void (* func2)(s32, s32);
-        void (* func3)(s32, s32, s32);
-        void (* func4)(s32, s32, s32, s32);
-        void (* func5)(s32, s32, s32, s32, s32);
+        void (* func1)(intptr_t);
+        void (* func2)(intptr_t, intptr_t);
+        void (* func3)(intptr_t, intptr_t, intptr_t);
+        void (* func4)(intptr_t, intptr_t, intptr_t, intptr_t);
+        void (* func5)(intptr_t, intptr_t, intptr_t, intptr_t, intptr_t);
     };
-    s32  arg[5];
-    s32  arg_cnt;
+    intptr_t arg[5];
+    s32      arg_cnt;
 }FunctionQueue;
 
 /* .data */
