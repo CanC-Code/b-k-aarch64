@@ -209,8 +209,13 @@ void graphicsCache_release(void) {
 
 void graphicsCache_init(void) {
     if (sGfxStack[0] == NULL) {
-        sGfxStack[0] = (Gfx *)malloc(29600); // 3700 dlist commands
-        sGfxStack[1] = (Gfx *)malloc(29600);
+        /* Port: gfx pool must hold a full frame of port-format Gfx commands.
+         * On port, sizeof stride is 16 bytes (8 command + 8 tag); the walker
+         * emits >10k commands per frame on MAP_91 once geometry is correct,
+         * far exceeding the 3700-command N64 budget.  2 MB per buffer =
+         * 131k commands at 16-byte stride. */
+        sGfxStack[0] = (Gfx *)malloc(2 << 20);
+        sGfxStack[1] = (Gfx *)malloc(2 << 20);
         sMtxStack[0] = (Mtx *)malloc(44800); // 700 matrices
         sMtxStack[1] = (Mtx *)malloc(44800);
         sVtxStack[0] = (Vtx *)malloc(6880); // 430 vertices
