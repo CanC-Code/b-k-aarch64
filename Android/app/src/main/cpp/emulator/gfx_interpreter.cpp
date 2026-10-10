@@ -2228,6 +2228,20 @@ static void Cmd_Mtx(GfxCommand cmd) {
         "MTXACT flag=0x%02X src=0x%08X new[0][0]=%.4f new[3][2]=%.4f | PROJ=%d LOAD=%d PUSH=%d",
         flag, cmd.w1, newMatrix[0][0], newMatrix[3][2],
         (flag & G_MTX_PROJECTION)?1:0, (flag & G_MTX_LOAD)?1:0, (flag & G_MTX_PUSH)?1:0); }
+    /* BKA-MTXRAW: dump raw 16 bytes at the command entry for PROJ+LOAD, first 30 hits.
+     * If these are real G_MTX commands, we will see 01 <flag> 00 <idx> | <addr BE>.
+     * If we see matrix data or DL trailer bytes, the walker has drifted. */
+    if ((flag & G_MTX_PROJECTION) && (flag & G_MTX_LOAD)) {
+        static int s_mraw = 0;
+        if (s_mraw++ < 30) {
+            const uint8_t* p8 = (const uint8_t*)s_current_cmd;
+            if (p8) __android_log_print(ANDROID_LOG_ERROR, "BKA-MTXRAW",
+                "cur=%p w0=%08X w1=%08X raw=%02X%02X%02X%02X %02X%02X%02X%02X | tag=%02X%02X%02X%02X %02X%02X%02X%02X",
+                (void*)p8, cmd.w0, cmd.w1,
+                p8[0],p8[1],p8[2],p8[3],p8[4],p8[5],p8[6],p8[7],
+                p8[8],p8[9],p8[10],p8[11],p8[12],p8[13],p8[14],p8[15]);
+        }
+    }
 
     if (flag & G_MTX_PROJECTION) {
         // Projection matrix slot
