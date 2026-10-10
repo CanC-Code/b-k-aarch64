@@ -3215,6 +3215,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 }
                 Cmd_Vtx(c);
                 break;
+            /* BKA-CMDENTRY: log last commands before any dispatch, cap 500. */
+            { static int s_ce = 0; if (s_ce++ < 200000) __android_log_print(ANDROID_LOG_ERROR, "BKA-CMDENTRY", "#%d op=%02X cur=%p w0=%08X w1=%08X enc=%d depth=%d dlbase=%p", s_ce, opcode, (void*)cur, c.w0, c.w1, cur_dl_enc, depth, (void*)s_dl_base); }
             case 0xBF:
             case 0xB1:
             case 0xC4:
