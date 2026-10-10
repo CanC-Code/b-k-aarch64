@@ -2107,6 +2107,19 @@ static void Cmd_Mtx(GfxCommand cmd) {
         }
         return;
     }
+    /* RDP_TranslateAddr can return a pointer whose byte 0 is mapped but whose
+     * surrounding allocation ends before byte 63 (e.g. seg-1 base + a large
+     * low-24 offset that runs past the source model's buffer).  Validate the
+     * full 64-byte matrix before any dereference. */
+    if (!bka_is_readable((void*)((const uint8_t*)mtx_src + 63))) {
+        static int s_bad = 0;
+        if (s_bad++ < 10) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "Cmd_Mtx: src %p (raw=0x%08X flag=0x%02X) not fully readable — skipping",
+                mtx_src, cmd.w1, flag);
+        }
+        return;
+    }
 
     // DIAGNOSTIC: always dump full 64 bytes for PROJECTION matrices
     if ((flag & 0x04) != 0) {
@@ -3426,7 +3439,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 stack_dl_base[depth] = s_dl_base;
                 stack_enc[depth] = cur_dl_enc;
                 cur_dl_enc = 0;  /* re-probe encoding on sub-DL: outer DL is LE (port-emitted), sub-DLs copied from ROM asset cache are BE */
-                { static int s_jt = 0; if (s_jt++ < 10) { uint8_t* p = (uint8_t*)dl_ptr; __android_log_print(ANDROID_LOG_ERROR, "BKA-DLJMP", "jump raw=0x%08X host=%p parent_cur=%p parent_enc=%d bytes=%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X", raw_addr, (void*)dl_ptr, (void*)cur, (int)stack_enc[depth - 1], p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15]); } }
+                { static int s_jt = 0; if (s_jt++ < 10) { uint8_t* p = (uint8_t*)dl_ptr; __android_log_print(ANDROID_LOG_ERROR, "BKA-DLJMP", "jump raw=0x%08X host=%p parent_cur=%p parent_enc=%d bytes=%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X", raw_addr, (void*)dl_ptr, (void*)cur, (int)stack_enc[depth], p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15]); } }
                 depth++;
                 if (depth > g_bka_task_max_depth) g_bka_task_max_depth = depth;
                 /* Inherit parent encoding — Banjo's sub-DLs are almost always
