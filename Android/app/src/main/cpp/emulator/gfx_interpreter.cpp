@@ -2413,11 +2413,15 @@ static int bka_probe_dl_encoding(uint8_t* ptr) {
     { static int _pc = 0; if (_pc++ < 60) __android_log_print(ANDROID_LOG_ERROR,
         "BKA_GFX", "PROBE-VOTE ptr=%p le=%d le_bad=%d be=%d be_bad=%d -> %d",
         (void*)ptr, le, le_bad, be, be_bad, _res); }
-    /* Structural check: a real DL contains G_ENDDL within the first 64 slots. */
+    /* Structural check: a real DL contains G_ENDDL within the first ~256 slots.
+     * Walk at 8-byte stride: B-K sub-DLs are copied verbatim from the ROM
+     * asset cache and use N64 8-byte Gfx encoding (handoff §7).  Sampling at
+     * 16-byte stride missed real terminators and vetoed every sub-DL.
+     * A decisive vote (large margin) overrides the veto regardless. */
     if (_res != 0) {
         int enddl_found = 0;
         for (int i = 0; i < 256; i++) {
-            uint8_t* p = ptr + i * 16;
+            uint8_t* p = ptr + i * 8;
             if (!bka_is_readable(p + 8)) break;
             uint32_t w = *(uint32_t*)p;
             if (_res == 2) w = __builtin_bswap32(w);
@@ -2426,12 +2430,14 @@ static int bka_probe_dl_encoding(uint8_t* ptr) {
             if (op == 0xB8 || op == 0xDF) { enddl_found = 1; break; }
         }
         if (!enddl_found) {
+            int score = (_res == 2) ? (be - be_bad) - (le - le_bad)
+                                    : (le - le_bad) - (be - be_bad);
             static int s_noend = 0;
             if (s_noend++ < 30)
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                    "PROBE-ENDDL ptr=%p vote=%d no G_ENDDL in 64 slots -> 0",
-                    (void*)ptr, _res);
-            _res = 0;
+                    "PROBE-ENDDL ptr=%p vote=%d score=%d no G_ENDDL -> %s",
+                    (void*)ptr, _res, score, (score >= 10) ? "keep" : "0");
+            if (score < 10) _res = 0;
         }
     }
     return _res;
@@ -3420,7 +3426,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                 stack_dl_base[depth] = s_dl_base;
                 stack_enc[depth] = cur_dl_enc;
                 cur_dl_enc = 0;  /* re-probe encoding on sub-DL: outer DL is LE (port-emitted), sub-DLs copied from ROM asset cache are BE */
-                { static int s_jt = 0; if (s_jt++ < 10) { uint8_t* p = (uint8_t*)dl_ptr; __android_log_print(ANDROID_LOG_ERROR, "BKA-DLJMP", "jump raw=0x%08X host=%p parent_cur=%p parent_enc=%d bytes=%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X", raw_addr, (void*)dl_ptr, (void*)cur, (int)cur_dl_enc, p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15]); } }
+                { static int s_jt = 0; if (s_jt++ < 10) { uint8_t* p = (uint8_t*)dl_ptr; __android_log_print(ANDROID_LOG_ERROR, "BKA-DLJMP", "jump raw=0x%08X host=%p parent_cur=%p parent_enc=%d bytes=%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X", raw_addr, (void*)dl_ptr, (void*)cur, (int)stack_enc[depth - 1], p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15]); } }
                 depth++;
                 if (depth > g_bka_task_max_depth) g_bka_task_max_depth = depth;
                 /* Inherit parent encoding — Banjo's sub-DLs are almost always
@@ -3447,14 +3453,15 @@ void RSP_ProcessGfxTask(OSTask* tp) {
 
                     int probed = bka_probe_dl_encoding((uint8_t*)dl_ptr);
                     int parent_enc = (depth > 0) ? stack_enc[depth - 1] : 0;
-                    if (parent_enc != 0) {
-                        /* B-K sub-DLs are always same encoding as parent.
-                         * Inherit unconditionally — don't re-probe, don't
-                         * refuse.  The probe misfires on large/compact
-                         * sub-DLs and produced 7 KB frames. */
-                        cur_dl_enc = parent_enc;
-                    } else if (probed != 0) {
+                    if (probed != 0) {
+                        /* Trust the probe when it returns an answer.  Outer
+                         * DLs are LE (port-emitted); sub-DLs copied from
+                         * the ROM asset cache are BE (handoff §7).  The
+                         * old parent-first branch forced LE on every
+                         * sub-DL and the walker crashed ~8 commands in. */
                         cur_dl_enc = probed;
+                    } else if (parent_enc != 0) {
+                        cur_dl_enc = parent_enc;
                     } else {
                         static int s_refuse = 0;
                         if (s_refuse++ < 20)
