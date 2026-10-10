@@ -24,7 +24,7 @@
  * 
  */
 
-static u32 *sMapSavestates[MAP_NUM_MAPS]; /* Android port: host pointers are 64-bit; u32 truncates */
+static u32 sMapSavestates[MAP_NUM_MAPS]; // TODO: This is supposed to be an array of u32* pointers
 
 void mapSavestate_init(void) {
     int i;
@@ -78,7 +78,7 @@ void mapSavestate_save(enum map_e map) {
         if (bit_position >= (8 * (savestate_size * (sizeof(u32))))) {
             savestate_size += 4;
             sMapSavestates[map] = (u32 *) realloc(sMapSavestates[map], savestate_size * new_var);
-            data_ptr = sMapSavestates[map] + savestate_size;
+            data_ptr = ((s32) sMapSavestates[map]) + (savestate_size * new_var);
             data_ptr[-1] = 0;
             new_var = 1;
             data_ptr[-2] = 0;
