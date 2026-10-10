@@ -308,6 +308,14 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
                          * so we silently read zeros (or faulted) instead of
                          * refusing the resolution.  64 = max read width for
                          * this API (matrix / Vtx / DL stride). */
+                        if (off >= 0x100000) {
+                            static int s_bigoff = 0;
+                            if (s_bigoff++ < 40)
+                                __android_log_print(ANDROID_LOG_ERROR, "BKA-BIGOFF",
+                                    "seg=%u base=0x%08X off=0x%06X mapped=%p cand=%p mend=%p",
+                                    seg, (uint32_t)base, off, mapped,
+                                    (void*)cand, (void*)mend);
+                        }
                         if (mend != 0 && cand + 64 <= mend &&
                             bka_is_readable((void*)cand)) {
                             return (uint8_t*)cand;
