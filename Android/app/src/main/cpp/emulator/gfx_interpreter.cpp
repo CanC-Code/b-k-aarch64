@@ -2883,6 +2883,27 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         }
         g_bka_dl_cur = cur;
         uint8_t opcode = GFX_OPCODE(c);
+
+        /* BKA-DLFLIP: structural encoding check for G_DL ambiguity.
+         * BE G_TRI2 bytes (B1 XX XX XX) mis-read as LE become
+         * 0xXX XX XX B1 with opcode 0x06 (G_DL) and a nonsense target
+         * address.  The flip-on-invalid-opcode path does not catch this
+         * because 0x06 is a valid opcode.  Detect the pattern directly:
+         * if LE yields op=0x06 and BE yields a valid non-G_DL opcode,
+         * the byte order is wrong.  Prefer BE. */
+        if (opcode == 0x06 && cur_dl_enc == 1) {
+            uint32_t bw0 = __builtin_bswap32(c.w0);
+            uint8_t bop = (uint8_t)(bw0 >> 24);
+            if (bop != 0x06 && bka_is_f3dex_opcode(bop)) {
+                cur_dl_enc = 2;
+                c.w0 = bw0;
+                c.w1 = __builtin_bswap32(c.w1);
+                opcode = bop;
+                { static int s_dlflip = 0; if (s_dlflip++ < 30)
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA-DLFLIP",
+                        "flip G_DL->BE op=0x%02X cur=%p", opcode, (void*)cur); }
+            }
+        }
         /* Fix R: after popping out of a G_DL, verify the parent has a
          * valid command next.  If not, the parent DL has ended -- the
          * walker did not return to a real command sequence.  Unwind or
