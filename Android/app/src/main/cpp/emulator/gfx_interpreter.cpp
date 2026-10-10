@@ -2937,8 +2937,22 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         /* SPNOOP (0x00) is a valid no-op command in DL trees; it counts as
                      * progress for the drift detector even though it is excluded
                      * from the encoding probe to keep LE/BE disambiguation clean. */
-                if (bka_is_f3dex_opcode(opcode) || opcode == 0x00) unknown_opcode_run = 0;
-        else unknown_opcode_run++;
+        if (opcode == 0x00 || bka_is_f3dex_opcode(opcode)) {
+            unknown_opcode_run = 0;
+        } else {
+            uint32_t flipped_w0 = __builtin_bswap32(c.w0);
+            uint8_t flipped_op = (uint8_t)(flipped_w0 >> 24);
+            if (bka_is_f3dex_opcode(flipped_op)) {
+                cur_dl_enc = (cur_dl_enc == 1) ? 2 : 1;
+                c.w0 = flipped_w0;
+                c.w1 = __builtin_bswap32(c.w1);
+                opcode = flipped_op;
+                unknown_opcode_run = 0;
+                { static int s_encflip = 0; if (s_encflip++ < 20) __android_log_print(ANDROID_LOG_ERROR, "BKA-ENCFLIP", "flip enc=%d cur=%p op=0x%02X", cur_dl_enc, (void*)cur, opcode); }
+            } else {
+                unknown_opcode_run++;
+            }
+        }
         if (opcode == 0x04 && total <= 5) {
             const uint8_t *raw = cur;
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -3107,8 +3121,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                      * with 0xFF. Count these as unknown opcodes so the walker
                      * bails instead of looping on garbage. */
                     if (c.w1 >= 0xF0000000u) {
-                        unknown_opcode_run += 3;
-                        opcode = 0xFF;   // force the drift counter below to increment
+                        /* Skip silently — the top-of-loop encoding flip handles misreads. */
                         if (unknown_opcode_run >= 16) {
                             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                                 "walker: spurious G_VTX addr=0x%08X at cur=%p depth=%d — bailing",
