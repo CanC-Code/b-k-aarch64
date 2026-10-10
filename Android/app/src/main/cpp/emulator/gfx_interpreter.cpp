@@ -299,8 +299,19 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
                 if (base < 0x80000000u) {
                     void* mapped = bka_lookup_addr_mapping((uint32_t)base);
                     if (mapped) {
-                        uint8_t* cand = (uint8_t*)mapped + off;
-                        if (bka_is_readable(cand)) return cand;
+                        uintptr_t cand = (uintptr_t)mapped + off;
+                        uintptr_t mend = bka_get_mapped_end(mapped);
+                        /* Bounds check: B-K segment buffers are small (a few
+                         * hundred KB).  Without this,  values in the
+                         * multi-MB range walked past the containing mmap
+                         * region; bka_is_readable(cand) only checked byte 0,
+                         * so we silently read zeros (or faulted) instead of
+                         * refusing the resolution.  64 = max read width for
+                         * this API (matrix / Vtx / DL stride). */
+                        if (mend != 0 && cand + 64 <= mend &&
+                            bka_is_readable((void*)cand)) {
+                            return (uint8_t*)cand;
+                        }
                     }
                 }
                 // Case B: physical RDRAM (0x00..0x03FFFFFF).
