@@ -317,6 +317,18 @@ void cube_sortRelative(Cube *cube){
 }
 
 static void __marker_draw(ActorMarker *this, Gfx **gfx, Mtx **mtx, Vtx **vtx){
+    { static int s_m = 0;
+      if (s_m++ < 60)
+          __android_log_print(ANDROID_LOG_ERROR, "BKA-MKRDR",
+              "marker=%p id=%d modelId=%d drawFunc=%p unk3E_0=%d unk40_22=%d unk40_19=%d",
+              (void*)this,
+              this ? (int)this->id : -1,
+              this ? (int)this->modelId : -1,
+              this ? (void*)this->drawFunc : NULL,
+              this ? (int)this->unk3E_0 : -1,
+              this ? (int)this->unk40_22 : -1,
+              this ? (int)this->unk40_19 : -1);
+    }
     Actor *actor;
     u32 draw_dist;
     f32 draw_dist_f;
