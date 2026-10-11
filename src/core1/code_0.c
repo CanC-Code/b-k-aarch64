@@ -99,8 +99,7 @@ enum map_e getSpecialBootMap(void){
 }
 
 enum map_e getDefaultBootMap(void){
-    /* DIAGNOSTIC: boot direct to MAP_91 */
-    return MAP_91_FILE_SELECT;
+    return MAP_1F_CS_START_RAREWARE;
 }
 
 void func_8023DBAC(void){
