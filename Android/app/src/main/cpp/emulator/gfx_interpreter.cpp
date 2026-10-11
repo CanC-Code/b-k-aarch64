@@ -2118,6 +2118,17 @@ static void Cmd_Mtx(GfxCommand cmd) {
         return;
     }
     void *mtx_src = RDP_TranslateAddr(cmd.w1);
+    if (mtx_src && (flag & G_MTX_PROJECTION) && (flag & G_MTX_LOAD)) {
+        static int s_projsrc = 0;
+        if (s_projsrc++ < 8) {
+            const uint8_t* q = (const uint8_t*)mtx_src;
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-PROJSRC",
+                "addr=0x%08X ptr=%p bytes=%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+                cmd.w1, mtx_src,
+                q[0],q[1],q[2],q[3],q[4],q[5],q[6],q[7],
+                q[8],q[9],q[10],q[11],q[12],q[13],q[14],q[15]);
+        }
+    }
     if (!mtx_src) {
         static int null_log = 0;
         if (null_log++ < 6) {
