@@ -818,6 +818,7 @@ Actor *actor_new(s32 position[3], s32 yaw, ActorInfo* actorInfo, u32 flags){
     suLastBaddie->modelCacheIndex = actorInfo->actorId;
     suLastBaddie->unk44_2 = func_80326C18();
     suLastBaddie->marker = marker_init(position, actorInfo->draw_func, (asset_getFlag(actorInfo->modelId) == 1) ? 0 : 1, actorInfo->markerId, (flags & 0x400) ? 1 : 0);
+    func_8032FFD4(suLastBaddie->marker, suBaddieActorArray->cnt - 1);
     suLastBaddie->marker->unk3E_0 = 1;
     suLastBaddie->unk138_28 = 1;
     suLastBaddie->unk10_3 = -1;
