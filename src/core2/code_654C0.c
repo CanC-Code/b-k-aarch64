@@ -176,6 +176,14 @@ BKVertexList *vtxList_clone(BKVertexList *this) {
     
     list_size = sizeof(BKVertexList) + this->count * sizeof(Vtx);
     new_ptr = (BKVertexList *) malloc(list_size);
+    { static int s_v=0;
+      if (s_v++ < 8)
+          __android_log_print(ANDROID_LOG_ERROR, "BKA-VTXCL2",
+              "this=%p count=%u sizeofBL=%zu sizeofVtx=%zu list_size=%u new_ptr=%p",
+              (void*)this, (unsigned)this->count,
+              sizeof(BKVertexList), sizeof(Vtx), (unsigned)list_size,
+              (void*)new_ptr);
+    }
     wmemcpy(new_ptr, this, list_size);
     return new_ptr;
 }
