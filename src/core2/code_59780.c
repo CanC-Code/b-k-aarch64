@@ -1,4 +1,5 @@
 #include <ultra64.h>
+#include <android/log.h>
 #include "core1/core1.h"
 #include "functions.h"
 #include "variables.h"
@@ -90,6 +91,11 @@ Actor *func_802E0738(ActorMarker *marker, Gfx **gfx, Mtx **mtx, Vtx **vtx){
     Actor *this;
 
     this = marker_getActorAndRotation(marker, &rotation);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-ACTOR2",
+        "draw entry: modelId=%d pos=(%.0f %.0f %.0f) scale=%.2f",
+        (int)this->marker->modelId,
+        this->position[0], this->position[1], this->position[2],
+        (double)this->scale);
     modelRender_setPreDrawCallback( (GenFunction_1)func_802E0710, (intptr_t)this);
     modelRender_setPostDrawCallback((GenFunction_1)actor_postdrawMethod, (s32)marker);
     modelRender_draw(gfx, mtx, this->position, rotation, this->scale, NULL, marker_loadModelBin(marker));
