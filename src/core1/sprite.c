@@ -1,5 +1,6 @@
 #include <ultra64.h>
 #include "core1/core1.h"
+#include <android/log.h>
 
 u32 sprite_getUnk8(BKSprite *this) {
     return this->unk8;
@@ -22,8 +23,18 @@ s32 sprite_getFrameCount(BKSprite *this) {
 }
 
 BKSpriteFrame *sprite_getFramePtr(BKSprite *this, u32 frame_id) {
-    u32 offset = __builtin_bswap32((u32)this->offsets[frame_id]);
+    u32 raw = (u32)this->offsets[frame_id];
+    u32 offset = __builtin_bswap32(raw);
     s16 frame_cnt = (s16)__builtin_bswap16((u16)this->frameCnt);
     u8 *base = (u8 *)this + sizeof(BKSprite) + frame_cnt * sizeof(s32);
-    return (BKSpriteFrame *)(base + offset);
+    BKSpriteFrame *ret = (BKSpriteFrame *)(base + offset);
+    {
+        static int s_fp = 0;
+        if (s_fp++ < 30)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-FRPTR",
+                "sprite=%p id=%u cnt=%d szofBKSprite=%zu raw=%08X off=%08X base=%p ret=%p",
+                (void*)this, frame_id, (int)frame_cnt,
+                sizeof(BKSprite), raw, offset, (void*)base, (void*)ret);
+    }
+    return ret;
 }
