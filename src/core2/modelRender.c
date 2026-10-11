@@ -746,6 +746,17 @@ void modelRender_reset(void){
     modelRender_setAppendageVisibility(1,1);
     modelRender_setAppendageVisibility(2,0);
     if(D_80383758.unk18){
+        /* BKA-VPDESC-R: log struct at the geo-walker reader.  Compare with
+         * BKA-VPDESC-W below to see whether the writer and reader agree. */
+        { static int s_r = 0;
+          if (s_r++ < 20)
+              __android_log_print(ANDROID_LOG_ERROR, "BKA-VPDESC-R",
+                  "R unk1C=(%.1f %.1f %.1f) unk28=(%.1f %.1f %.1f) unk0=(%.1f %.1f %.1f) unk18=%d",
+                  D_80383758.unk1C[0], D_80383758.unk1C[1], D_80383758.unk1C[2],
+                  D_80383758.unk28[0], D_80383758.unk28[1], D_80383758.unk28[2],
+                  D_80383758.unk0[0], D_80383758.unk0[1], D_80383758.unk0[2],
+                  D_80383758.unk18);
+        }
         viewport_setPosition_vec3f(D_80383758.unk1C);
         viewport_setRotation_vec3f(D_80383758.unk28);
         viewport_update();
@@ -1223,6 +1234,16 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
     viewport_getRotation_vec3f(modelRenderCameraRotation);
 
     if(D_80383758.unk18){
+        /* BKA-VPDESC-W: log modelRenderCameraPosition before writing into
+         * D_80383758.  Compare with BKA-VPDESC-R to see which site is
+         * corrupt or if only one of them runs. */
+        { static int s_w = 0;
+          if (s_w++ < 20)
+              __android_log_print(ANDROID_LOG_ERROR, "BKA-VPDESC-W",
+                  "W modelRenderCameraPosition=(%.1f %.1f %.1f) unk0=(%.1f %.1f %.1f)",
+                  modelRenderCameraPosition[0], modelRenderCameraPosition[1], modelRenderCameraPosition[2],
+                  D_80383758.unk0[0], D_80383758.unk0[1], D_80383758.unk0[2]);
+        }
         D_80383758.unk1C[0] = modelRenderCameraPosition[0],
         D_80383758.unk1C[1] = modelRenderCameraPosition[1],
         D_80383758.unk1C[2] = modelRenderCameraPosition[2];
