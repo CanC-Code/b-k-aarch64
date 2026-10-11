@@ -308,8 +308,8 @@ void ncDynamicCamera_update(void){
      * a position ~16 km from the scene, and the frustum cull correctly
      * rejects every cube.  Skipping leaves the static camera (called from
      * ncStaticCamera_update) as the effective camera, matching reference. */
-    if(gsworld_getMap() == MAP_91_FILE_SELECT)
-        return;
+    if(gsworld_getMap() == MAP_91_FILE_SELECT || gsworld_getMap() == MAP_1F_CS_START_RAREWARE)
+        return; // port: skip at MAP_1F too (same uninit-camera bug as MAP_91)
 
     func_802BCD60();
     D_8037D948[0] = cameraPosition[0];
@@ -984,8 +984,8 @@ void func_802BE720(void){
 void func_802BE794(void){
     f32 sp2C[3];
     f32 sp20[3];
-    if(gsworld_getMap() == MAP_91_FILE_SELECT)
-        return;
+    if(gsworld_getMap() == MAP_91_FILE_SELECT || gsworld_getMap() == MAP_1F_CS_START_RAREWARE)
+        return; // port: skip at MAP_1F too
     if(dynamicCameraState == 1 || dynamicCameraState == 0xb || dynamicCameraState == 3){
         player_getPosition(sp2C);
         sp2C[1] += 100.0f;
