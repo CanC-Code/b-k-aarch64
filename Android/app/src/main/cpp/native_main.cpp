@@ -292,9 +292,19 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_bkawrapper_Native_fillArgb(JNIEnv* env, jobject /*thiz*/, jintArray outArr) {
     extern uint8_t* gN64_RDRAM;
     extern uint32_t g_active_fb_offset;
+    { static int s_fa = 0;
+      if (s_fa++ < 5)
+          __android_log_print(ANDROID_LOG_ERROR, "BKA-FILLARGB",
+              "enter rddram=%p off=0x%x outArr=%p",
+              (void*)gN64_RDRAM, (unsigned)g_active_fb_offset, (void*)outArr); }
     if (!gN64_RDRAM || !outArr) return;
     jint* out = env->GetIntArrayElements(outArr, nullptr);
     if (!out) return;
+    { static int s_fa2 = 0;
+      if (s_fa2++ < 5)
+          __android_log_print(ANDROID_LOG_ERROR, "BKA-FILLARGB",
+              "out=%p len=%d", (void*)out,
+              (int)env->GetArrayLength(outArr)); }
     uint16_t* src = (uint16_t*)(gN64_RDRAM + g_active_fb_offset);
     const int W = 292, H = 216;
     for (int i = 0; i < W * H; i++) {
