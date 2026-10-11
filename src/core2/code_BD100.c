@@ -244,10 +244,7 @@ BKSpriteDisplayData * func_80344A1C(BKSprite *arg0){
     s6->sprite = arg0;
     for(i = 0; i < realFrameCnt; i++){//L80344A88
         s1 = ALIGN(s1, 0x10);
-        /* port 2026-10-11: enlarge per-frame scratch.  Sparkle sprites
-           exceed the original 0x12C0 (200 Vtx + 100 Gfx) and were
-           overflowing the realloc, crashing in spriteRender_drawWithSegment. */
-        s6 = (BKSpriteDisplayData *)realloc(s6, header_size + s1 + 0x4000);
+        s6 = (BKSpriteDisplayData *)realloc(s6, header_size + s1 + 0x12C0);
         vtx_start = (Vtx *)((intptr_t)s6 + header_size + s1);
         gfx_start = (Gfx *)(vtx_start + 200);
         vtx_end = vtx_start;
