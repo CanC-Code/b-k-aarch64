@@ -268,11 +268,13 @@ void viewport_update(void) {
         static int s_vpu = 0;
         if (s_vpu++ < 8)
             __android_log_print(ANDROID_LOG_ERROR, "BKA-VPUPD",
-                "rot=(%.2f %.2f %.2f) pos=(%.2f %.2f %.2f) plane0=(%.4f %.4f %.4f %.4f)",
+                "rot=(%.2f %.2f %.2f) pos=(%.2f %.2f %.2f) p0=(%.3f %.3f %.3f %.1f) p1=(%.3f %.3f %.3f %.1f) p2=(%.3f %.3f %.3f %.1f) p3=(%.3f %.3f %.3f %.1f)",
                 sViewportRotation[0], sViewportRotation[1], sViewportRotation[2],
                 sViewportPosition[0], sViewportPosition[1], sViewportPosition[2],
-                sViewportFrustumPlanes[0][0], sViewportFrustumPlanes[0][1],
-                sViewportFrustumPlanes[0][2], sViewportFrustumPlanes[0][3]);
+                sViewportFrustumPlanes[0][0], sViewportFrustumPlanes[0][1], sViewportFrustumPlanes[0][2], sViewportFrustumPlanes[0][3],
+                sViewportFrustumPlanes[1][0], sViewportFrustumPlanes[1][1], sViewportFrustumPlanes[1][2], sViewportFrustumPlanes[1][3],
+                sViewportFrustumPlanes[2][0], sViewportFrustumPlanes[2][1], sViewportFrustumPlanes[2][2], sViewportFrustumPlanes[2][3],
+                sViewportFrustumPlanes[3][0], sViewportFrustumPlanes[3][1], sViewportFrustumPlanes[3][2], sViewportFrustumPlanes[3][3]);
     }
 }
 
