@@ -378,7 +378,14 @@ void func_8032D3A8(void){
     vector_clear(D_80383554);
 }
 
-void core2_A5BC0_drawUnknownMarkers(Gfx **gfx, Mtx **mtx, Vtx **vtx) { // further investigation needed what's drawn here
+void core2_A5BC0_drawUnknownMarkers(Gfx **gfx, Mtx **mtx, Vtx **vtx) {
+    { static int s_u = 0;
+      if (s_u++ < 10)
+          __android_log_print(ANDROID_LOG_ERROR, "BKA-UMKR",
+              "drawUnknownMarkers ENTER vec=%p sz=%d",
+              (void*)D_80383550,
+              D_80383550 ? (int)vector_size(D_80383550) : -1);
+    } // further investigation needed what's drawn here
     int i;
 
     for (i = 0; i < vector_size(D_80383550); i++) {
@@ -395,6 +402,12 @@ void core2_A5BC0_drawScreenOverlayMarkers(Gfx **gfx, Mtx **mtx, Vtx **vtx) {
 }
 
 void func_8032D510(Cube *cube, Gfx **gfx, Mtx **mtx, Vtx **vtx){
+    { static int s_c = 0;
+      if (s_c++ < 10)
+          __android_log_print(ANDROID_LOG_ERROR, "BKA-CUBE",
+              "func_8032D510 ENTER cube=%p prop2Cnt=%d",
+              (void*)cube, cube ? (int)cube->prop2Cnt : -1);
+    }
     Prop *iProp;
     int i;
     f32 position[3];
