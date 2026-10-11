@@ -168,10 +168,14 @@ void viewport_debug4(int arg0) {
 
 void viewport_setPosition_vec3f(f32 src[3]) {
     ml_vec3f_copy(sViewportPosition, src);
-    { static int s_vp = 0; if (s_vp++ < 20)
-        __android_log_print(ANDROID_LOG_ERROR, "BKA-VPSET",
-            "caller=%p POS set to (%.2f %.2f %.2f)",
-            __builtin_return_address(0), src[0], src[1], src[2]); }
+    { static f32 last[3] = {1e30f, 1e30f, 1e30f};
+      static int s_vp = 0;
+      if ((src[0] != last[0] || src[1] != last[1] || src[2] != last[2]) && s_vp++ < 200) {
+          last[0] = src[0]; last[1] = src[1]; last[2] = src[2];
+          __android_log_print(ANDROID_LOG_ERROR, "BKA-VPSET",
+              "caller=%p POS set to (%.2f %.2f %.2f)",
+              __builtin_return_address(0), src[0], src[1], src[2]);
+      } }
 }
 
 void viewport_setPosition_vec3w(s32 src[3]) {
@@ -188,10 +192,14 @@ void viewport_setPosition_f3(f32 x, f32 y, f32 z) {
 
 void viewport_setRotation_vec3f(f32 src[3]) {
     ml_vec3f_copy(sViewportRotation, src);
-    { static int s_vr = 0; if (s_vr++ < 20)
-        __android_log_print(ANDROID_LOG_ERROR, "BKA-VPSET",
-            "caller=%p ROT set to (%.2f %.2f %.2f)",
-            __builtin_return_address(0), src[0], src[1], src[2]); }
+    { static f32 last[3] = {1e30f, 1e30f, 1e30f};
+      static int s_vr = 0;
+      if ((src[0] != last[0] || src[1] != last[1] || src[2] != last[2]) && s_vr++ < 200) {
+          last[0] = src[0]; last[1] = src[1]; last[2] = src[2];
+          __android_log_print(ANDROID_LOG_ERROR, "BKA-VPSET",
+              "caller=%p ROT set to (%.2f %.2f %.2f)",
+              __builtin_return_address(0), src[0], src[1], src[2]);
+      } }
 }
 
 void viewport_setRotation_f3(f32 pitch, f32 yaw, f32 roll) {
