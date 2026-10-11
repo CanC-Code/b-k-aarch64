@@ -2269,7 +2269,10 @@ bool cube_getOrSetProp2Flag(Cube *this_cube, s32 *prop2_index, bool set_flag, bo
     bool old_value;
 
     prop = this_cube->prop2Ptr + *prop2_index;
-    while ((prop->isActorProp == 1) && (*prop2_index < this_cube->prop2Cnt)) {
+    /* Bounds check must come first — the original code dereferenced
+     * prop->isActorProp before validating the index, reading past the
+     * end of the prop array whenever *prop2_index == prop2Cnt. */
+    while ((*prop2_index < this_cube->prop2Cnt) && (prop->isActorProp == 1)) {
         (*prop2_index)++;
         prop++;
     }

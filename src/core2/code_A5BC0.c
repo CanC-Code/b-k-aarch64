@@ -1466,8 +1466,22 @@ void code_A5BC0_initCubePropActorProp(Cube *cube) {
             (int)cube->prop2Ptr->isActorProp, (void*)cube->prop2Ptr->actorProp.marker);
         while(prop_cnt != 0){
             if(prop_ptr->isActorProp == TRUE){
-                prop_ptr->actorProp.marker->propPtr = &prop_ptr->actorProp;
-                prop_ptr->actorProp.marker->cubePtr = cube;
+                ActorMarker *m = prop_ptr->actorProp.marker;
+                /* Android port: some prop entries carry isActorProp=TRUE with a
+                 * null or stale marker pointer (observed crash at
+                 * code_A5BC0_initCubePropActorProp+200 on the first map
+                 * transition after load).  Skip instead of faulting. */
+                if (m != NULL) {
+                    m->propPtr = &prop_ptr->actorProp;
+                    m->cubePtr = cube;
+                } else {
+                    static int s_null_marker = 0;
+                    if (s_null_marker++ < 10)
+                        __android_log_print(ANDROID_LOG_WARN, "BKA-PROP",
+                            "initCubePropActorProp: null marker at cube=%p prop[%u/%u]",
+                            (void*)cube, (unsigned)(cube->prop2Cnt - prop_cnt),
+                            (unsigned)cube->prop2Cnt);
+                }
             }
             prop_cnt--;
             prop_ptr++;
