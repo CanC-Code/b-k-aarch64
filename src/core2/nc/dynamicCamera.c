@@ -303,6 +303,14 @@ void ncDynamicCamera_update(void){
     if(!cameraUpdateEnabled)
         return;
     
+    /* ARM64 port: same fix as func_802BE794 below.  At MAP_91 file-select
+     * the dynamic-camera state is uninitialized; func_802C22C0 produces
+     * a position ~16 km from the scene, and the frustum cull correctly
+     * rejects every cube.  Skipping leaves the static camera (called from
+     * ncStaticCamera_update) as the effective camera, matching reference. */
+    if(gsworld_getMap() == MAP_91_FILE_SELECT)
+        return;
+
     func_802BCD60();
     D_8037D948[0] = cameraPosition[0];
     D_8037D948[1] = cameraPosition[1];
