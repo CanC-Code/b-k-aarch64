@@ -1,4 +1,5 @@
 #include <ultra64.h>
+#include <android/log.h>
 #include "core1/core1.h"
 #include "functions.h"
 #include "variables.h"
@@ -308,6 +309,17 @@ void ncDynamicCamera_update(void){
      * a position ~16 km from the scene, and the frustum cull correctly
      * rejects every cube.  Skipping leaves the static camera (called from
      * ncStaticCamera_update) as the effective camera, matching reference. */
+    if (gsworld_getMap() == MAP_1F_CS_START_RAREWARE) {
+        static int s_dc = 0;
+        if (s_dc++ < 10) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-DCSTATE",
+                "state=%d camPos=(%.1f %.1f %.1f) camRot=(%.1f %.1f %.1f) updEn=%d",
+                dynamicCameraState,
+                cameraPosition[0], cameraPosition[1], cameraPosition[2],
+                cameraRotation[0], cameraRotation[1], cameraRotation[2],
+                cameraUpdateEnabled);
+        }
+    }
     if(gsworld_getMap() == MAP_91_FILE_SELECT || gsworld_getMap() == MAP_1F_CS_START_RAREWARE)
         return; // port: skip at MAP_1F too (same uninit-camera bug as MAP_91)
 
