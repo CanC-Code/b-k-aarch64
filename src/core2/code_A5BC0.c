@@ -432,9 +432,27 @@ void func_8032D510(Cube *cube, Gfx **gfx, Mtx **mtx, Vtx **vtx){
             }
             tmp_v0.word = *(u32 *)((uintptr_t)iProp + 0x8);
             if(tmp_v0.unk0){//actorProp;
-                /* port 2026-10-11: guard NULL marker — cutscene props
-                   can have isActorProp=1 with no marker attached. */
+                /* port 2026-10-11: reject NULL and stale markers.  A
+                   freed marker pointer can be non-NULL garbage; verify
+                   it points to a live actor before reading its fields. */
                 if(iProp->actorProp.marker == NULL) continue;
+                {
+                    extern int bka_is_readable(void*);
+                    extern ActorArray *suBaddieActorArray;
+                    ActorMarker *__m = iProp->actorProp.marker;
+                    if (!bka_is_readable(__m) ||
+                        __m->actrArrayIdx >= (u32)suBaddieActorArray->cnt ||
+                        &suBaddieActorArray->data[__m->actrArrayIdx] == NULL ||
+                        suBaddieActorArray->data[__m->actrArrayIdx].marker != __m) {
+                        static int s_bm = 0;
+                        if (s_bm++ < 6)
+                            __android_log_print(ANDROID_LOG_ERROR, "BKA-STALE",
+                                "stale marker=%p idx=%d cnt=%d",
+                                (void*)__m, (int)__m->actrArrayIdx,
+                                (int)suBaddieActorArray->cnt);
+                        continue;
+                    }
+                }
                 if(iProp->actorProp.marker->unk40_22){
                     markerPtr = (ActorMarker **)vector_pushBackNew(&D_80383550);
                     *markerPtr = iProp->actorProp.marker;

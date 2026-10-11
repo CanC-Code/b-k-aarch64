@@ -47,6 +47,21 @@ void modelRender_geoCmd_UnkE(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data);
 void modelRender_geoCmd_CAMERA(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data);
 void modelRender_executeGeoCmds(Gfx **gfx, Mtx **mtx, struct bk_geo_cmd_s *data);
 
+/* port 2026-10-11: reject corrupted model bins before their header is read. */
+int bka_modelbin_is_valid(BKModelBin *bin) {
+    if (bin == NULL) return 0;
+    extern int bka_is_readable(void*);
+    if (!bka_is_readable(bin)) return 0;
+    if ((unsigned)bin->magic_number != 0x0b000000u) {
+        static int s_mb = 0;
+        if (s_mb++ < 8)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-MBIN",
+                "corrupt bin=%p magic=0x%08x", (void*)bin, (unsigned)bin->magic_number);
+        return 0;
+    }
+    return 1;
+}
+
 // Sets up 2 cycle mode
 Gfx setup2CycleDL[] =
 {
