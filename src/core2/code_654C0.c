@@ -1,4 +1,5 @@
 #include <ultra64.h>
+#include <android/log.h>
 #include "core1/core1.h"
 #include "functions.h"
 #include "variables.h"
@@ -160,6 +161,18 @@ BKVertexList *vtxList_clone(BKVertexList *this) {
     BKVertexList *new_ptr;
     u32 list_size;
     if (this == NULL) return NULL;
+    /* cutscene actors carry pure Gfx geometry — no valid vtx list.
+       modelbin_getVtxList can still return a bogus non-NULL ptr for
+       those bins because the mask only strips the top byte. Bound
+       count so a garbage value cannot blow up malloc/memcpy. */
+    if (this->count == 0 || this->count > 0x10000) {
+        static int s_bad = 0;
+        if (s_bad++ < 5)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-VTXCL",
+                "rejecting vtxList count=%u this=%p",
+                (unsigned)this->count, (void*)this);
+        return NULL;
+    }
     
     list_size = sizeof(BKVertexList) + this->count * sizeof(Vtx);
     new_ptr = (BKVertexList *) malloc(list_size);
