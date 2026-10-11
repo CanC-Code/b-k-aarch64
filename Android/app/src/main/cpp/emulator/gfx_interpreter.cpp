@@ -2150,6 +2150,24 @@ static void Cmd_Mtx(GfxCommand cmd) {
         }
         return;
     }
+    /* B-K recomp emits G_MTX with targets that resolve to empty RDRAM
+     * locations (seg-0/seg-F addresses pointing at never-written
+     * buffers).  Loading those clobbers a previously-good projection
+     * with a zero matrix — the frame renders 100% black.
+     * Detect all-zero source and skip the load; keep the prior matrix. */
+    {
+        const uint32_t* m32 = (const uint32_t*)mtx_src;
+        int all_zero = 1;
+        for (int i = 0; i < 16; i++) { if (m32[i] != 0) { all_zero = 0; break; } }
+        if (all_zero) {
+            static int s_zero = 0;
+            if (s_zero++ < 10)
+                __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                    "Cmd_Mtx: zero source at raw=0x%08X flag=0x%02X — keeping previous",
+                    cmd.w1, flag);
+            return;
+        }
+    }
 
     // DIAGNOSTIC: always dump full 64 bytes for PROJECTION matrices
     if ((flag & 0x04) != 0) {
