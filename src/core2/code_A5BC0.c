@@ -1787,11 +1787,29 @@ BKModelBin *marker_loadModelBin(ActorMarker *this){
             (int)thisActor->unk17C_31);
         //func_8032ACA8(thisActor);
     }
+    if (this->modelId == 934 || this->modelId == 935) {
+        u32* h = (u32*)modelInfo->modelPtr;
+        if (h) __android_log_print(ANDROID_LOG_ERROR, "BKA-POSTAB",
+            "pre-AB84  id=%d ptr=%p hdr=%08x %08x %08x %08x",
+            (int)this->modelId, (void*)h, h[0], h[1], h[2], h[3]);
+    }
     func_8032AB84(thisActor);
+    if (this->modelId == 934 || this->modelId == 935) {
+        u32* h = (u32*)modelInfo->modelPtr;
+        if (h) __android_log_print(ANDROID_LOG_ERROR, "BKA-POSTAB",
+            "post-AB84 id=%d ptr=%p hdr=%08x %08x %08x %08x",
+            (int)this->modelId, (void*)h, h[0], h[1], h[2], h[3]);
+    }
     if(!this->unk18 && this->propPtr->isModelProp && modelInfo->modelPtr && modelbin_getUnk14List(modelInfo->modelPtr)){
         this->unk18 = func_80330B10();
     }
     modelInfo->unk10 = globalTimer_getTime();
+    if (this->modelId == 934 || this->modelId == 935) {
+        u32* h = (u32*)modelInfo->modelPtr;
+        if (h) __android_log_print(ANDROID_LOG_ERROR, "BKA-POSTAB",
+            "pre-ret   id=%d ptr=%p hdr=%08x %08x %08x %08x",
+            (int)this->modelId, (void*)h, h[0], h[1], h[2], h[3]);
+    }
     return modelInfo->modelPtr;
 }
 
