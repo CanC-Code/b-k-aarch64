@@ -479,6 +479,29 @@ s32 func_8032D9C0(Cube *cube, Prop* prop){
 
     sp24 = 0;
     if(cube->prop2Cnt != 0){
+        /* ARM64 port: bounds check before any deref of prop.
+         * The reference check
+         *     if((prop - cube->prop2Ptr) < (cube->prop2Cnt - 1))
+         * passes for negative indices (signed diff of 0 or less <
+         * positive) and the following memcpy size casts a negative
+         * pointer delta to size_t — a huge copy that faults.
+         * Hit at teardown when a marker's propPtr is stale: the marker
+         * was already unlinked, or freed and its slot realloc'd to a
+         * new address that lies before prop2Ptr. */
+        {
+            s32 _idx = (s32)(prop - cube->prop2Ptr);
+            if (_idx < 0 || _idx >= (s32)cube->prop2Cnt) {
+                static int s_unlk = 0;
+                if (s_unlk++ < 10)
+                    __android_log_print(ANDROID_LOG_WARN, "BKA-UNLINK",
+                        "func_8032D9C0: prop %p out of range for cube %p [%p..%p) cnt=%d — skipping",
+                        (void*)prop, (void*)cube,
+                        (void*)cube->prop2Ptr,
+                        (void*)(cube->prop2Ptr + cube->prop2Cnt),
+                        (int)cube->prop2Cnt);
+                return 0;
+            }
+        }
         sp24 = prop->isModelProp; 
         if(func_80305D14()){
             func_80305CD8(func_803058C0(prop->position_y), -1);
