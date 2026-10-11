@@ -58,6 +58,20 @@ void gsworld_draw(Gfx** gfx, Mtx **mtx, Vtx **vtx) {
     sky_draw(gfx, mtx, vtx);
     core2_34790_getClipDistances(&near, &far);
     viewport_setNearAndFar(near, far);
+    if (gsworld_getMap() == MAP_1F_CS_START_RAREWARE) {
+        /* DIAGNOSTIC 2026-10-11 v2b: ncCamera_update is short-circuited at
+         * MAP_1F (D_8037D8C5/D_8037D8C6 both 0). Force viewport in the
+         * main render path (not the sEnableDraw early-return). Answers
+         * "does the RARE logo render when the camera points at it?" */
+        static int s_cf = 0;
+        extern void viewport_setPosition_f3(f32, f32, f32);
+        extern void viewport_setRotation_f3(f32, f32, f32);
+        viewport_setPosition_f3(620.0f, 500.0f, 2000.0f);
+        viewport_setRotation_f3(-12.0f, 0.0f, 0.0f);
+        if (s_cf++ < 3)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-CAMFIX2",
+                "forced viewport pos=(620 500 2000) rot=(-12 0 0)");
+    }
     viewport_setRenderViewportAndPerspectiveMatrix(gfx, mtx);
 
     if (mapModel_has_xlu_bin()) {
