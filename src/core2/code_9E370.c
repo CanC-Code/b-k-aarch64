@@ -2066,6 +2066,10 @@ void func_8032AB84(Actor *arg0) {
 
     if (marker->unk20 == NULL && arg0->unk3C & 0x20) {
         marker->unk20 = animMtxList_new();
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-UNK20",
+            "ALLOC actor=%p marker=%p unk3C=%08x new=%p",
+            (void*)arg0, (void*)marker, (unsigned)arg0->unk3C,
+            (void*)marker->unk20);
     }
 }
 
@@ -2078,6 +2082,9 @@ void func_8032ACA8(Actor *arg0) {
         if (arg0->unk14C[var_s0] != NULL) {
             switch (var_s0) {                       /* irregular */
                 case 0:
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA-UNK20",
+                        "FREE-VTX0 actor=%p marker=%p ptr=%p",
+                        (void*)arg0, (void*)sp30, (void*)arg0->unk14C[0]);
                     vtxList_free(arg0->unk14C[0]);
                     break;
                 case 1:
@@ -2096,6 +2103,12 @@ void func_8032ACA8(Actor *arg0) {
         return;
     }
     if (sp30->unk20 != NULL) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-UNK20",
+            "FREE actor=%p marker=%p unk3C=%08x unk20=%p "
+            "unk14C0=%p unk14C1=%p",
+            (void*)arg0, (void*)sp30, (unsigned)arg0->unk3C,
+            (void*)sp30->unk20,
+            (void*)arg0->unk14C[0], (void*)arg0->unk14C[1]);
         animMtxList_free(sp30->unk20);
         sp30->unk20 = 0;
     }
