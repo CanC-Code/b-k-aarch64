@@ -531,6 +531,13 @@ void *assetcache_get(enum asset_e assetId) {
         g_assetCacheCapacity = new_cap;
     }
 
+    if (assetId == 934 || assetId == 935) {
+        u32* h = (u32*)uncompressed_file;
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-XFER",
+            "A_pre_store id=%d ptr=%p hdr=%08x %08x %08x %08x",
+            (int)assetId, (void*)uncompressed_file,
+            h[0], h[1], h[2], h[3]);
+    }
     assetCacheCurrentIndex = assetCacheLength;
     assetCacheDependencyCount[assetCacheLength] = 1;
     assetCachePtrList[assetCacheLength] = uncompressed_file;
@@ -538,6 +545,12 @@ void *assetcache_get(enum asset_e assetId) {
     assetCacheAssetIdList[assetCacheLength] = assetId;
     assetCacheLength++;
 
+    if (assetId == 934 || assetId == 935) {
+        u32* h = (u32*)assetCachePtrList[assetCacheCurrentIndex];
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-XFER",
+            "B_pre_return id=%d ptr=%p hdr=%08x %08x %08x %08x",
+            (int)assetId, (void*)h, h[0], h[1], h[2], h[3]);
+    }
     __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "assetcache_get: COMPLETE assetId=%d", assetId);
     return uncompressed_file;
 }

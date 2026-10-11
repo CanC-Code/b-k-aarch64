@@ -1768,6 +1768,13 @@ BKModelBin *marker_loadModelBin(ActorMarker *this){
     if((modelInfo = &modelCache[thisActor->modelCacheIndex])->modelPtr == NULL){
         model = assetcache_get(this->modelId);
         modelInfo->modelPtr = model;
+        if (this->modelId == 934 || this->modelId == 935) {
+            u32* h = (u32*)model;
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-XFER",
+                "C_post_get id=%d ptr=%p hdr=%08x %08x %08x %08x",
+                (int)this->modelId, (void*)model,
+                h ? h[0] : 0, h ? h[1] : 0, h ? h[2] : 0, h ? h[3] : 0);
+        }
         if(modelbin_getAnimTextureList(model)){
             modelInfo->animated_texture_cache_id = AnimTextureListCache_newList();
             AnimTextureListCache_setAnimTextureList(modelInfo->animated_texture_cache_id, modelbin_getAnimTextureList(modelInfo->modelPtr));
