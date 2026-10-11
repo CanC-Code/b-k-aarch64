@@ -1513,7 +1513,18 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
             "modelRender_draw: model_bin=%p raw_geo_off=0x%08x swapped=0x%08x geoCmd=%p\n",
             model_bin, raw_offset, swapped_offset, geoCmd);
         //bka_mr_log("about to call executeGeoCmds");
-    modelRender_executeGeoCmds(gfx, mtx, geoCmd);
+    /* port 2026-10-11: reject bins whose swapped geo offset is out of
+       range.  Some cutscene bins carry garbage at geo_list_offset —
+       host pointer lands unmapped and executeGeoCmds faults on the
+       first read.  Skip the draw for those. */
+    if ((u32)swapped_offset == 0 || (u32)swapped_offset > 0x200000) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-GEO",
+            "reject geo offset 0x%08x (raw 0x%08x) bin=%p",
+            (unsigned)swapped_offset, (unsigned)raw_offset,
+            (void*)model_bin);
+    } else {
+        modelRender_executeGeoCmds(gfx, mtx, geoCmd);
+    }
     //bka_mr_log("executeGeoCmds returned");
     }
     gSPPopMatrix((*gfx)++, G_MTX_MODELVIEW);
