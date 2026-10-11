@@ -1542,7 +1542,7 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
 }
 
 BKAnimVerticesList *modelbin_getAnimVerticesList(BKModelBin *this) {
-    if (this->anim_vertices_list_offset == 0)
+    if (this == NULL || this->anim_vertices_list_offset == 0)
         return NULL;
 
     return modelbin_getAnimVerticesList_MACRO(this);
@@ -1584,7 +1584,7 @@ f32 modelbin_getUnk34(BKModelBin *this) {
 }
 
 BKAnimationList *modelbin_getAnimationList(BKModelBin *this) {
-    if (this->animation_list_offset == 0)
+    if (this == NULL || this->animation_list_offset == 0)
         return NULL;
 
     return modelbin_getAnimationList_MACRO(this);
@@ -1606,7 +1606,7 @@ BKAnimTextureList *modelbin_getAnimTextureList(BKModelBin *this) {
 }
 
 BKModelUnk14List *modelbin_getUnk14List(BKModelBin *this) {
-    if (this->unk14_list_offset == 0)
+    if (this == NULL || this->unk14_list_offset == 0)
         return NULL;
 
     return modelbin_getUnk14List_MACRO(this);
