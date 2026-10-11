@@ -30,7 +30,7 @@ BKSpriteFrame *sprite_getFramePtr(BKSprite *this, u32 frame_id) {
     BKSpriteFrame *ret = (BKSpriteFrame *)(base + offset);
     {
         static int s_fp = 0;
-        if (s_fp++ < 30)
+        if (s_fp++ < 500)
             __android_log_print(ANDROID_LOG_ERROR, "BKA-FRPTR",
                 "sprite=%p id=%u cnt=%d szofBKSprite=%zu raw=%08X off=%08X base=%p ret=%p",
                 (void*)this, frame_id, (int)frame_cnt,

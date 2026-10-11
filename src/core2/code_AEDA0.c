@@ -218,9 +218,10 @@ void spriteRender_draw(Gfx **gfx, Vtx **vtx, BKSprite *sp, u32 frame){
 void spriteRender_drawWithSegment(Gfx **gfx, Vtx **vtx, BKSprite *sprite, u32 frame, u32 segment) {
     {
         static int s_any = 0;
-        if (s_any++ < 30)
+        if (s_any++ < 500)
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                "DWS-CALL #%d segment=%u", s_any, segment);
+                "DWS-CALL #%d sprite=%p frame=%u segment=%u",
+                s_any, (void*)sprite, frame, segment);
     }
     {
         static int s_e = 0;
