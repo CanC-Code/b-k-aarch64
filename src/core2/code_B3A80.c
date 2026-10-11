@@ -416,6 +416,15 @@ void *assetcache_get(enum asset_e assetId) {
     for(i = 0; i < assetCacheLength && assetId != assetCacheAssetIdList[i]; i++);
     assetCacheCurrentIndex = i;
 
+    /* ARM64 port: reference bails when the cache search walks past the
+     * reserved slot at index 0x96 (150).  Without this, asset 0x96
+     * returns a stale cache slot pointer, which flows through
+     * codeB3A80_getSprite -> func_80344A1C -> spriteRender_drawWithSegment
+     * and faults at spriteRender_drawWithSegment+2140 (ldrh from a bad
+     * base, at the cutscene sprite-draw path). */
+    if (i == 0x96)
+        return NULL;
+
     if(i < assetCacheLength){
         assetCacheDependencyCount[i]++;
         __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "assetcache_get: CACHE HIT assetId=%d", assetId);
