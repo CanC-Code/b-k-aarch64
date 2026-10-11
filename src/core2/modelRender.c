@@ -1602,9 +1602,15 @@ BKModelUnk14List *modelbin_getUnk14List(BKModelBin *this) {
 }
 
 BKVertexList *modelbin_getVtxList(BKModelBin *this) {
-    if (this == NULL || this->vtx_list_offset == 0) return NULL;
+    if (this == NULL) return NULL;
+    /* port 2026-10-11: vtx_list_offset is big-endian on disk (like
+       mesh_list_offset and animated_texture_list_offset).  Reading
+       it raw yielded 0xc0110000 instead of 0x000011c0, producing a
+       bogus host pointer ~3 GB past the bin.  Byteswap before use. */
+    u32 off = __builtin_bswap32((u32)this->vtx_list_offset);
+    if (off == 0) return NULL;
     this = (BKModelBin*)((uintptr_t)this & 0x00FFFFFFFFFFFFFFUL);
-    BKVertexList *result = modelbin_getVtxList_MACRO(this);
+    BKVertexList *result = (BKVertexList *)((uintptr_t)this + off);
     return (BKVertexList*)((uintptr_t)result & 0x00FFFFFFFFFFFFFFUL);
 }
 
