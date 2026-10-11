@@ -1779,7 +1779,13 @@ BKModelBin *marker_loadModelBin(ActorMarker *this){
             modelInfo->animated_texture_cache_id = AnimTextureListCache_newList();
             AnimTextureListCache_setAnimTextureList(modelInfo->animated_texture_cache_id, modelbin_getAnimTextureList(modelInfo->modelPtr));
         }
-        func_8032ACA8(thisActor);
+        // DIAG 2026-10-11: skip — testing if this is the corruptor of the model bin
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-SKIP",
+            "skipping func_8032ACA8 actor=%p marker=%p u14C0=%p u14C1=%p u17C31=%d",
+            (void*)thisActor, (void*)thisActor->marker,
+            (void*)thisActor->unk14C[0], (void*)thisActor->unk14C[1],
+            (int)thisActor->unk17C_31);
+        //func_8032ACA8(thisActor);
     }
     func_8032AB84(thisActor);
     if(!this->unk18 && this->propPtr->isModelProp && modelInfo->modelPtr && modelbin_getUnk14List(modelInfo->modelPtr)){
