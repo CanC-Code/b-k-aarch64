@@ -250,22 +250,6 @@ void gsworld_set(enum map_e map, s32 exit, bool reload) {
     LOG_BKA_INIT("func_8033F9C0"); func_8033F9C0();
     LOG_BKA_INIT("ncCameraNodeList_init"); ncCameraNodeList_init();
     LOG_BKA_INIT("nccamera_init"); nccamera_init();
-    if (gsworld_getMap() == MAP_1F_CS_START_RAREWARE) {
-        /* DIAGNOSTIC 2026-10-11: force static camera at a position that
-         * looks toward the RARE-logo actor at (620,-42,-780). Answers
-         * "does modelRender produce pixels for the logo when camera is
-         * correct?"  Revert once answered. */
-        extern void ncStaticCamera_setPositionAndTarget(f32[3], f32[3]);
-        extern void camera_setType(s32);
-        f32 cam_pos[3] = { 620.0f, 500.0f, 2000.0f };
-        f32 cam_tgt[3] = { 620.0f, -42.0f, -780.0f };
-        ncStaticCamera_setPositionAndTarget(cam_pos, cam_tgt);
-        camera_setType(3);
-        __android_log_print(ANDROID_LOG_ERROR, "BKA-CAMFIX",
-            "MAP_1F static cam pos=(%.0f %.0f %.0f) tgt=(%.0f %.0f %.0f)",
-            cam_pos[0], cam_pos[1], cam_pos[2],
-            cam_tgt[0], cam_tgt[1], cam_tgt[2]);
-    }
     LOG_BKA_INIT("partEmitMgr_init"); partEmitMgr_init();
     LOG_BKA_INIT("pem_setAllInactive"); pem_setAllInactive();
     LOG_BKA_INIT("pem_initDependencies"); pem_initDependencies();
