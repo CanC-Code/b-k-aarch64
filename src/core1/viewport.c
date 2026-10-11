@@ -259,6 +259,21 @@ void viewport_update(void) {
     sViewportLookVector[2] = -1.0f;
 
     mlMtx_apply_vec3f(sViewportLookVector, sViewportLookVector);
+
+    /* BKA-VPUPD: confirm viewport_update runs and planes are non-zero.
+     * If these lines never appear, func_802E3800 (its only boot caller)
+     * is not reached for map 0x91 and the stale workaround is justified.
+     * If they appear with non-zero plane0, the workaround is stale. */
+    {
+        static int s_vpu = 0;
+        if (s_vpu++ < 8)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-VPUPD",
+                "rot=(%.2f %.2f %.2f) pos=(%.2f %.2f %.2f) plane0=(%.4f %.4f %.4f %.4f)",
+                sViewportRotation[0], sViewportRotation[1], sViewportRotation[2],
+                sViewportPosition[0], sViewportPosition[1], sViewportPosition[2],
+                sViewportFrustumPlanes[0][0], sViewportFrustumPlanes[0][1],
+                sViewportFrustumPlanes[0][2], sViewportFrustumPlanes[0][3]);
+    }
 }
 
 void viewport_getFrustumPlanes(f32 arg0[4], f32 arg1[4], f32 arg2[4], f32 arg3[4]) {
