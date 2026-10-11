@@ -141,10 +141,11 @@ public class StreamServer {
                 Native.fillArgb(pixels);
                 bmp.setPixels(pixels, 0, W, 0, 0, W, H);
                 jpegBuf.reset();
-                bmp.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, jpegBuf);
+                // PNG avoids Moto G Play libjpeg NEON crash in Bitmap.compress
+                bmp.compress(Bitmap.CompressFormat.PNG, 100, jpegBuf);
                 byte[] jpeg = jpegBuf.toByteArray();
 
-                String partHdr = "--bka\r\nContent-Type: image/jpeg\r\nContent-Length: "
+                String partHdr = "--bka\r\nContent-Type: image/png\r\nContent-Length: "
                         + jpeg.length + "\r\n\r\n";
                 out.write(partHdr.getBytes("UTF-8"));
                 out.write(jpeg);
