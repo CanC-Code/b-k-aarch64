@@ -1291,9 +1291,18 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
     }
 
     if(model_bin){
-        verts = modelRendervertexList ? modelRendervertexList : modelbin_getVtxList_MACRO(model_bin);
-        spD0 = verts->global_norm;
-        spD4 = verts->local_norm;
+        /* port 2026-10-11: use the guarded getter — raw MACRO returns
+           model_bin when vtx_list_offset==0, and verts->global_norm
+           then reads bin header bytes as a Vtx struct.  Pure-Gfx
+           cutscene bins legitimately have no vtx list. */
+        verts = modelRendervertexList ? modelRendervertexList : modelbin_getVtxList(model_bin);
+        if (verts != NULL) {
+            spD0 = verts->global_norm;
+            spD4 = verts->local_norm;
+        } else {
+            spD0 = 0.0f;
+            spD4 = 0.0f;
+        }
     }
     else{
         spD0 = sSecondaryModelData.distance_from_origin;
