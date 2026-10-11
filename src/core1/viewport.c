@@ -341,6 +341,22 @@ bool viewport_isBoundingBoxInFrustum(f32 min[3], f32 max[3]) {
     if (!bka_frustum_cull_enabled) return TRUE;
 
     
+    /* BKA-PLANE: log the four plane tests on min[] before the full
+     * 24-condition check.  Values are the same arithmetic the function
+     * is about to run, so this is ground truth for the cull decision. */
+    {
+        static int s_pl = 0;
+        if (s_pl++ < 40) {
+            f32 v0 = sViewportFrustumPlanes[0][0]*min[0] + sViewportFrustumPlanes[0][1]*min[1] + sViewportFrustumPlanes[0][2]*min[2] + sViewportFrustumPlanes[0][3];
+            f32 v1 = sViewportFrustumPlanes[1][0]*min[0] + sViewportFrustumPlanes[1][1]*min[1] + sViewportFrustumPlanes[1][2]*min[2] + sViewportFrustumPlanes[1][3];
+            f32 v2 = sViewportFrustumPlanes[2][0]*min[0] + sViewportFrustumPlanes[2][1]*min[1] + sViewportFrustumPlanes[2][2]*min[2] + sViewportFrustumPlanes[2][3];
+            f32 v3 = sViewportFrustumPlanes[3][0]*min[0] + sViewportFrustumPlanes[3][1]*min[1] + sViewportFrustumPlanes[3][2]*min[2] + sViewportFrustumPlanes[3][3];
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-PLANE",
+                "min=(%.0f %.0f %.0f) v=[%.1f %.1f %.1f %.1f] vp=(%.0f %.0f %.0f)",
+                min[0], min[1], min[2], v0, v1, v2, v3,
+                sViewportPosition[0], sViewportPosition[1], sViewportPosition[2]);
+        }
+    }
     if (((sViewportFrustumPlanes[0][0] * min[0] + sViewportFrustumPlanes[0][1] * min[1] + sViewportFrustumPlanes[0][2] * min[2] + sViewportFrustumPlanes[0][3]) >= 0.0f) &&
         ((sViewportFrustumPlanes[0][0] * min[0] + sViewportFrustumPlanes[0][1] * min[1] + sViewportFrustumPlanes[0][2] * max[2] + sViewportFrustumPlanes[0][3]) >= 0.0f) &&
         ((sViewportFrustumPlanes[0][0] * min[0] + sViewportFrustumPlanes[0][1] * max[1] + sViewportFrustumPlanes[0][2] * min[2] + sViewportFrustumPlanes[0][3]) >= 0.0f) &&
