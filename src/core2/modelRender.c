@@ -1193,7 +1193,7 @@ static void bka_mr_log(const char *msg) {
 BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation[3], f32 scale, f32*arg5, BKModelBin* model_bin) {
     //bka_mr_log("ENTER");
     //bka_mr_log("modelRender_draw ENTER");
-    __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "modelRender_draw ENTER model_bin=%p", model_bin);
+    /* modelRender_draw ENTER log disabled */
     f32 camera_focus[3];
     f32 camera_focus_distance;
     f32 padEC;
@@ -1518,9 +1518,10 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
         BKGeoCmd *geoCmd = modelbin_getGeoCmdList_MACRO(model_bin);
         s32 raw_offset = model_bin->geo_list_offset;
         s32 swapped_offset = __builtin_bswap32((u32)raw_offset);
-        __android_log_print(ANDROID_LOG_ERROR, "BKA-MODEL",
-            "modelRender_draw: model_bin=%p magic=0x%08x raw_geo_off=0x%08x swapped=0x%08x geoCmd=%p\n",
-            model_bin, (unsigned)model_bin->magic_number, raw_offset, swapped_offset, geoCmd);
+        { static int s_mm = 0; if (s_mm++ < 5)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-MODEL",
+                "modelRender_draw: model_bin=%p magic=0x%08x raw_geo_off=0x%08x swapped=0x%08x",
+                model_bin, (unsigned)model_bin->magic_number, raw_offset, swapped_offset); }
         //bka_mr_log("about to call executeGeoCmds");
     /* port 2026-10-11: reject bins whose swapped geo offset is out of
        range.  Some cutscene bins carry garbage at geo_list_offset —

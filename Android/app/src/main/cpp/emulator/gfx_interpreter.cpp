@@ -3168,8 +3168,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                         __android_log_print(ANDROID_LOG_ERROR, "BKA-OPHIST", "%s tri_ops=%llu", buf, (unsigned long long)s_tri_ops);
                     }
                 }
-                /* BKA-CMDENTRY: log every dispatched opcode for crash forensics. */
-                { static int s_ce = 0; if (s_ce++ < 200000) __android_log_print(ANDROID_LOG_ERROR, "BKA-CMDENTRY", "#%d op=%02X cur=%p w0=%08X w1=%08X enc=%d depth=%d dlbase=%p", s_ce, opcode, (void*)cur, c.w0, c.w1, cur_dl_enc, depth, (void*)s_dl_base); }
+                /* BKA-CMDENTRY: disabled 2026-10-11 — per-opcode logcat was starving the render loop */
+                /* BKA-CMDENTRY line removed */
                 switch (opcode) {
             case 0xAF: // G_LOAD_UCODE - not needed for software RDP
             case 0xB3: // G_RDPHALF_2
