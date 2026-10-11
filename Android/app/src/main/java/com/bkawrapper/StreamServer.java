@@ -16,7 +16,7 @@ public class StreamServer {
     private static final String TAG = "BKA-Stream";
     private static final int W = 292, H = 216;
     private static final int PORT = 8080;
-    private static final int FPS = 30;
+    private static final int FPS = 1;  // diag: test if stream thread starves render loop
     private static final int JPEG_QUALITY = 75;
 
     private final ServerSocket server;
