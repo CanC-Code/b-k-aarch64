@@ -1760,6 +1760,11 @@ BKModelBin *marker_loadModelBin(ActorMarker *this){
         return NULL;
 
     thisActor = marker_getActor(this);
+    if(this->modelId == 934 || this->modelId == 935)
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-MODCACHE",
+            "loadModelBin modelId=%d cacheIdx=%d cachedPtr=%p",
+            (int)this->modelId, (int)thisActor->modelCacheIndex,
+            (void*)modelCache[thisActor->modelCacheIndex].modelPtr);
     if((modelInfo = &modelCache[thisActor->modelCacheIndex])->modelPtr == NULL){
         model = assetcache_get(this->modelId);
         modelInfo->modelPtr = model;

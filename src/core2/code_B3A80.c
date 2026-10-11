@@ -322,6 +322,11 @@ s32 assetcache_release(void * arg0){
         if(assetCacheDependencyCount[i] == 1){
             if(D_80383CD4[i])
                 func_803449DC(D_80383CD4[i]);
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-REF",
+                "RELEASE free id=%d i=%d ptr=%p refcnt=%d",
+                (int)assetCacheAssetIdList[i], (int)i,
+                (void*)assetCachePtrList[i],
+                (int)assetCacheDependencyCount[i]);
             free(arg0);
             assetCacheLength--;
             assetCacheDependencyCount[i] = assetCacheDependencyCount[assetCacheLength];
@@ -332,6 +337,11 @@ s32 assetcache_release(void * arg0){
         }
         else{
             assetCacheDependencyCount[i]--;
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-REF",
+                "RELEASE dec id=%d i=%d ptr=%p refcnt=%d",
+                (int)assetCacheAssetIdList[i], (int)i,
+                (void*)assetCachePtrList[i],
+                (int)assetCacheDependencyCount[i]);
             return 1;
         }
     } else{
@@ -427,6 +437,12 @@ void *assetcache_get(enum asset_e assetId) {
 
     if(i < assetCacheLength){
         assetCacheDependencyCount[i]++;
+        if (assetId == 934 || assetId == 935)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-REF",
+                "GET hit id=%d i=%d ptr=%p refcnt=%d",
+                (int)assetId, (int)i,
+                (void*)assetCachePtrList[i],
+                (int)assetCacheDependencyCount[i]);
         __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "assetcache_get: CACHE HIT assetId=%d", assetId);
         return assetCachePtrList[i];
     }
