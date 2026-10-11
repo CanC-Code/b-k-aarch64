@@ -167,6 +167,15 @@ void viewport_debug4(int arg0) {
 }
 
 void viewport_setPosition_vec3f(f32 src[3]) {
+    /* BKA-SYMBASE: emit the runtime address of a known symbol once at boot.
+     * Its file offset (0x17fca4 for RSP_ProcessGfxTask) subtracted from the
+     * runtime value gives the module base, which in turn converts any
+     * __builtin_return_address into a file offset for symbol lookup. */
+    { extern void RSP_ProcessGfxTask(void*);
+      static int s_sb = 0;
+      if (s_sb++ == 0)
+          __android_log_print(ANDROID_LOG_ERROR, "BKA-SYMBASE",
+              "RSP_ProcessGfxTask=%p", (void*)RSP_ProcessGfxTask); }
     ml_vec3f_copy(sViewportPosition, src);
     { static f32 last[3] = {1e30f, 1e30f, 1e30f};
       static int s_vp = 0;
