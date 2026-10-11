@@ -320,8 +320,8 @@ void ncDynamicCamera_update(void){
                 cameraUpdateEnabled);
         }
     }
-    if(gsworld_getMap() == MAP_91_FILE_SELECT || gsworld_getMap() == MAP_1F_CS_START_RAREWARE)
-        return; // port: skip at MAP_1F too (same uninit-camera bug as MAP_91)
+    if(gsworld_getMap() == MAP_91_FILE_SELECT)
+        return; // port: skip at MAP_91 (uninit camera state)
 
     func_802BCD60();
     D_8037D948[0] = cameraPosition[0];
@@ -996,8 +996,8 @@ void func_802BE720(void){
 void func_802BE794(void){
     f32 sp2C[3];
     f32 sp20[3];
-    if(gsworld_getMap() == MAP_91_FILE_SELECT || gsworld_getMap() == MAP_1F_CS_START_RAREWARE)
-        return; // port: skip at MAP_1F too
+    if(gsworld_getMap() == MAP_91_FILE_SELECT)
+        return; // port: skip at MAP_91 (uninit camera state)
     if(dynamicCameraState == 1 || dynamicCameraState == 0xb || dynamicCameraState == 3){
         player_getPosition(sp2C);
         sp2C[1] += 100.0f;
