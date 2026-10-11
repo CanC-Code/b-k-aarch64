@@ -299,6 +299,18 @@ void viewport_setFrustumPlanes(f32 arg0[4], f32 arg1[4], f32 arg2[4], f32 arg3[4
 }
 
 bool viewport_isBoundingBoxInFrustum(f32 min[3], f32 max[3]) {
+    /* BKA-BBOX: log inputs before the cull guard.  Tells us whether the
+     * caller's min/max are in world coords (matching sViewportPosition)
+     * or cube coords, and whether the cull test would have rejected
+     * correct geometry. */
+    {
+        static int s_bbox = 0;
+        if (s_bbox++ < 30)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-BBOX",
+                "min=(%.1f %.1f %.1f) max=(%.1f %.1f %.1f) vp=(%.1f %.1f %.1f)",
+                min[0], min[1], min[2], max[0], max[1], max[2],
+                sViewportPosition[0], sViewportPosition[1], sViewportPosition[2]);
+    }
     /* ARM64 port: sViewportFrustumPlanes is BSS-init to all zeros because
      * viewport_update() never runs in our boot path. With zero planes
      * every corner evaluation returns 0, every ">= 0.0f" check passes,
