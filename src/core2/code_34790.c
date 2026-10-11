@@ -45,6 +45,11 @@ f32 D_8037D918[3];
 bool func_802BB720(s32 arg0, f32 arg1[3], f32 arg2[3], s32 *arg3) {
     f32 temp_f6;
     NodeProp *temp_v0;
+    { static int s_e = 0;
+      if (s_e++ < 30)
+          __android_log_print(ANDROID_LOG_ERROR, "BKA-CAMNODE",
+              "enter arg0=0x%X table_id=0x%X", arg0,
+              (arg0 < 0x80) ? D_803657E0[arg0] : 0); }
 
     if (arg0 == 0x65) {
         arg0 = 0x1A;
@@ -56,16 +61,28 @@ bool func_802BB720(s32 arg0, f32 arg1[3], f32 arg2[3], s32 *arg3) {
         arg2[0] = 0.0f;
         arg2[1] = mlNormalizeAngle((f32) func_802E4B24(arg0) - 180.0f);
         arg2[2] = 0.0f;
+        { static int s_l = 0;
+          if (s_l++ < 10)
+              __android_log_print(ANDROID_LOG_ERROR, "BKA-CAMNODE",
+                  "large-arg arg0=0x%X pos=(%.1f %.1f %.1f)", arg0, arg1[0], arg1[1], arg1[2]); }
         return TRUE;
     }
     if ((arg0 >= 0x5B) && (arg0 < 0x63)) {
         arg0 -= 0x40;
     }
     temp_v0 = cubeList_findNodePropByActorIdAndPosition_s32(D_803657E0[arg0], NULL);
+    { static int s_n = 0;
+      if (s_n++ < 30)
+          __android_log_print(ANDROID_LOG_ERROR, "BKA-CAMNODE",
+              "lookup arg0=0x%X id=0x%X found=%p", arg0, D_803657E0[arg0], (void*)temp_v0); }
     if (temp_v0 != NULL) {
         nodeprop_getPosition(temp_v0, arg1);
         *arg3 = nodeprop_getScale(temp_v0);
         temp_f6 = (f32) nodeProp_getYaw(temp_v0) - 180.0f;
+        { static int s_p = 0;
+          if (s_p++ < 30)
+              __android_log_print(ANDROID_LOG_ERROR, "BKA-CAMNODE",
+                  "pos arg0=0x%X pos=(%.1f %.1f %.1f)", arg0, arg1[0], arg1[1], arg1[2]); }
         arg2[0] = 0.0f;\
         arg2[1] = mlNormalizeAngle(temp_f6);\
         arg2[2] = 0.0f;
