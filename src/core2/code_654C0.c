@@ -159,6 +159,7 @@ void vtxList_free(BKVertexList *this) {
 BKVertexList *vtxList_clone(BKVertexList *this) {
     BKVertexList *new_ptr;
     u32 list_size;
+    if (this == NULL) return NULL;
     
     list_size = sizeof(BKVertexList) + this->count * sizeof(Vtx);
     new_ptr = (BKVertexList *) malloc(list_size);

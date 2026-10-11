@@ -2052,11 +2052,12 @@ void func_8032AB84(Actor *arg0) {
             if (arg0->unk14C[var_s0] == NULL) {
                 switch (var_s0) {                       /* irregular */
                     case 0:
-                        arg0->unk14C[0] = vtxList_clone(modelbin_getVtxList(func_80330DE4(marker)));
+                        { BKVertexList *__vl = modelbin_getVtxList(func_80330DE4(marker));
+                          if (__vl != NULL) arg0->unk14C[0] = vtxList_clone(__vl); }
                         break;
                     case 1:
-                        arg0->unk14C[1] = (arg0->unk17C_31) ? modelbin_getVtxList(func_80330DE4(marker))
-                                        : vtxList_clone(modelbin_getVtxList(func_80330DE4(marker)));
+                        { BKVertexList *__vl = modelbin_getVtxList(func_80330DE4(marker));
+                          if (__vl != NULL) arg0->unk14C[1] = (arg0->unk17C_31) ? __vl : vtxList_clone(__vl); }
                         break;
                 }
             }
