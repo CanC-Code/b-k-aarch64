@@ -233,7 +233,7 @@ void spriteRender_drawWithSegment(Gfx **gfx, Vtx **vtx, BKSprite *sprite, u32 fr
         }
     }
     s32 ix;
-    s32 pixel_size_nibbles; //sp1C0
+    s32 pixel_size_nibbles = 2; //sp1C0 port: safe default for unmatched sprite type (DWCHK saw type=0x08)
     s32 sp1BC;
     Vtx *var_a3;
     Gfx *sp1B4;
