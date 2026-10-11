@@ -336,9 +336,9 @@ bool viewport_isBoundingBoxInFrustum(f32 min[3], f32 max[3]) {
      * viewport_update() never runs in our boot path. With zero planes
      * every corner evaluation returns 0, every ">= 0.0f" check passes,
      * and the function returns FALSE — culling every DRAWDIST branch.
-     * Force-enable until we can wire viewport_update properly.
-     * (Removed: the camera is now correct at MAP_91 after ab9cc94c, and
-     *  the frustum planes describe the correct view.  Test in progress.) */
+     * Force-enable until we can wire viewport_update properly. */
+    extern int bka_frustum_cull_enabled;
+    if (!bka_frustum_cull_enabled) return TRUE;
 
     
     if (((sViewportFrustumPlanes[0][0] * min[0] + sViewportFrustumPlanes[0][1] * min[1] + sViewportFrustumPlanes[0][2] * min[2] + sViewportFrustumPlanes[0][3]) >= 0.0f) &&
