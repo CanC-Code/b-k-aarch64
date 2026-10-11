@@ -165,7 +165,7 @@ BKVertexList *vtxList_clone(BKVertexList *this) {
        modelbin_getVtxList can still return a bogus non-NULL ptr for
        those bins because the mask only strips the top byte. Bound
        count so a garbage value cannot blow up malloc/memcpy. */
-    if (this->count == 0 || this->count > 0x10000) {
+    if (this->count <= 0 || (u32)this->count > 0x10000) {
         static int s_bad = 0;
         if (s_bad++ < 5)
             __android_log_print(ANDROID_LOG_ERROR, "BKA-VTXCL",
