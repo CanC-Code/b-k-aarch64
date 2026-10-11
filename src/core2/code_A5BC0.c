@@ -432,6 +432,9 @@ void func_8032D510(Cube *cube, Gfx **gfx, Mtx **mtx, Vtx **vtx){
             }
             tmp_v0.word = *(u32 *)((uintptr_t)iProp + 0x8);
             if(tmp_v0.unk0){//actorProp;
+                /* port 2026-10-11: guard NULL marker — cutscene props
+                   can have isActorProp=1 with no marker attached. */
+                if(iProp->actorProp.marker == NULL) continue;
                 if(iProp->actorProp.marker->unk40_22){
                     markerPtr = (ActorMarker **)vector_pushBackNew(&D_80383550);
                     *markerPtr = iProp->actorProp.marker;
