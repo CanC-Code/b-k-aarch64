@@ -285,6 +285,16 @@ void spriteRender_drawWithSegment(Gfx **gfx, Vtx **vtx, BKSprite *sprite, u32 fr
     }
     
     frame_ptr = sprite_getFramePtr(sprite, frame);
+    {
+        extern int bka_is_readable(void*);
+        static int s_chk = 0;
+        if (s_chk++ < 100)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-DWCHK",
+                "sprite=%p sprite_rd=%d frame_ptr=%p frame_rd=%d type=%08X",
+                (void*)sprite, bka_is_readable((void*)sprite),
+                (void*)frame_ptr, bka_is_readable((void*)frame_ptr),
+                (unsigned)sprite->type);
+    }
     s16 sw_fp_w = (s16)__builtin_bswap16((u16)frame_ptr->w);
     s16 sw_fp_h = (s16)__builtin_bswap16((u16)frame_ptr->h);
     s16 sw_fp_unk0 = (s16)__builtin_bswap16((u16)frame_ptr->unk0);
