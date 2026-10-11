@@ -480,6 +480,21 @@ void *assetcache_get(enum asset_e assetId) {
                 "assetcache_get: SKIPPING bk_inflate for assetId=%d (uncomp_size==0, bad header)", assetId);
         }
         __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "assetcache_get: after bk_inflate assetId=%d", assetId);
+        if (assetId == 934 || assetId == 935 || assetId == 1800 || assetId == 1811) {
+            u32* raw = (u32*)uncompressed_file;
+            u32* cmp = (u32*)compressed_file;
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-BINHDR",
+                "assetId=%d uncomp_size=%d comp_size=%d",
+                (int)assetId, (int)uncomp_size, (int)comp_size);
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-BINHDR",
+                "assetId=%d uncomp[0..7]=%08x %08x %08x %08x %08x %08x %08x %08x",
+                (int)assetId,
+                raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], raw[6], raw[7]);
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-BINHDR",
+                "assetId=%d comp[0..7]=%08x %08x %08x %08x %08x %08x %08x %08x",
+                (int)assetId,
+                cmp[0], cmp[1], cmp[2], cmp[3], cmp[4], cmp[5], cmp[6], cmp[7]);
+        }
 
         uncompressed_file = (void*)realloc(uncompressed_file, assetCacheCurrentSize);
         osWritebackDCache(uncompressed_file, assetCacheCurrentSize);
