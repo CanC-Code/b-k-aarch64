@@ -1,6 +1,7 @@
 #include <ultra64.h>
 #include "core1/core1.h"
 #include <android/log.h>
+#include <malloc.h>
 
 u32 sprite_getUnk8(BKSprite *this) {
     return this->unk8;
@@ -32,9 +33,10 @@ BKSpriteFrame *sprite_getFramePtr(BKSprite *this, u32 frame_id) {
         static int s_fp = 0;
         if (s_fp++ < 500)
             __android_log_print(ANDROID_LOG_ERROR, "BKA-FRPTR",
-                "sprite=%p id=%u cnt=%d szofBKSprite=%zu raw=%08X off=%08X base=%p ret=%p",
-                (void*)this, frame_id, (int)frame_cnt,
-                sizeof(BKSprite), raw, offset, (void*)base, (void*)ret);
+                "sprite=%p usable=%zu id=%u cnt=%d raw=%08X off=%08X ret=%p",
+                (void*)this, malloc_usable_size((void*)this),
+                frame_id, (int)frame_cnt,
+                raw, offset, (void*)ret);
     }
     return ret;
 }
