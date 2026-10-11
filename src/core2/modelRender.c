@@ -1339,10 +1339,20 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
         model_bin = assetcache_get(sSecondaryModelData.model_id);
     }
     modelRenderModelBin = model_bin;
-    modelRenderDisplayList = modelRenderDisplayList ? modelRenderDisplayList : modelbin_getGfxList_MACRO(modelRenderModelBin),
-    modelRenderTextureList = modelRenderTextureList ? modelRenderTextureList : modelbin_getTextureList_MACRO(modelRenderModelBin),
-    modelRendervertexList = modelRendervertexList ? modelRendervertexList : modelbin_getVtxList_MACRO(modelRenderModelBin),
-    modelRenderCameraAreaList = (modelRenderModelBin->camera_area_list_offset == NULL) ? NULL : modelbin_getCameraAreaList_MACRO(model_bin);
+    modelRenderDisplayList = modelRenderDisplayList ? modelRenderDisplayList : modelbin_getGfxList(modelRenderModelBin);
+    modelRenderTextureList = modelRenderTextureList ? modelRenderTextureList : modelbin_getTextureList(modelRenderModelBin);
+    modelRendervertexList = modelRendervertexList ? modelRendervertexList : modelbin_getVtxList(modelRenderModelBin);
+    modelRenderCameraAreaList = (modelRenderModelBin->camera_area_list_offset == NULL) ? NULL : modelbin_getCameraAreaList(model_bin);
+
+    if (modelRendervertexList == NULL || modelRenderTextureList == NULL) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-MRBIN",
+            "missing vtx/tex list bin=%p vtx=%p tex=%p gfx=%p",
+            (void*)modelRenderModelBin,
+            (void*)modelRendervertexList, (void*)modelRenderTextureList,
+            (void*)modelRenderDisplayList);
+        modelRender_reset();
+        return NULL;
+    }
 
     if(D_80383710){
         tmp_f0 = D_80383708 - 500.0f;
@@ -1567,6 +1577,7 @@ BkGeoType modelbin_getGeoType(BKModelBin *this) {
 }
 
 BKGfxList *modelbin_getGfxList(BKModelBin *this) {
+    if (this == NULL || this->gfx_list_offset == 0) return NULL;
     return modelbin_getGfxList_MACRO(this);
 }
 
@@ -1605,6 +1616,7 @@ s32 modelRender_func_8033A0F0(s32 arg0) {
 }
 
 BKTextureList *modelbin_getTextureList(BKModelBin *this) {
+    if (this == NULL || this->texture_list_offset == 0) return NULL;
     return modelbin_getTextureList_MACRO(this);
 }
 
