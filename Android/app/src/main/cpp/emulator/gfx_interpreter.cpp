@@ -3380,6 +3380,20 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                         raw_addr = tag_be;
                     }
                 }
+                /* ARM64 port: reject sentinel G_DL targets.  0xFFFFFFFF,
+                 * 0x80000000, and 0xFFFF0000+ are flag/padding values the
+                 * resolver maps to a zero-filled block; the walker then
+                 * spins 700K+ zero-NOPs per task (5M+ opcodes overall). */
+                if (raw_addr == 0xFFFFFFFFu || raw_addr == 0x80000000u ||
+                    raw_addr >= 0xFFFF0000u) {
+                    static int s_sent = 0;
+                    if (s_sent++ < 20)
+                        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                            "G_DL: refusing sentinel target=0x%08X cur=%p depth=%d",
+                            raw_addr, (void*)cur, depth);
+                    consecutive_bad_gdl++;
+                    break;
+                }
                 /* STRICT G_DL resolution: real G_DL targets are either
                  * registered in the address map, or inside RDRAM.  Any other
                  * target (e.g. an arbitrary heap page that happens to be
@@ -3506,9 +3520,11 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                         dl_ptr, dump[0], dump[1], dump[2], dump[3], dump[4], dump[5], dump[6], dump[7],
                         dump[8], dump[9], dump[10], dump[11], dump[12], dump[13], dump[14], dump[15]);
                 }
-                if (depth >= 63) {
+                if (depth >= 16) {   /* ARM64 port: was 63; real B-K DL trees are 4-8 deep */
                     __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                        "G_DL: max depth reached");
+                        "G_DL: max depth 16 reached at cur=%p target=0x%08X",
+                        (void*)cur, raw_addr);
+                    consecutive_bad_gdl++;
                     break;
                 }
 
