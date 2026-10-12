@@ -244,7 +244,12 @@ BKSpriteDisplayData * func_80344A1C(BKSprite *arg0){
     s6->sprite = arg0;
     for(i = 0; i < realFrameCnt; i++){//L80344A88
         s1 = ALIGN(s1, 0x10);
-        s6 = (BKSpriteDisplayData *)realloc(s6, header_size + s1 + 0x12C0);
+        /* ARM64 port: 0x12C0 (4800 bytes) gave 1600 bytes for Gfx = 100 cmds/frame.
+           RARE intro IA8 sparkle sprite emits more than that on some frames and
+           walks *gfx past the malloc block; fault is a gSP* str to unmapped memory
+           at spriteRender_drawWithSegment+1828 (ldr x9,[*gfx]; str w8,[x9]).  Grow
+           to 0x10000 (65536 bytes) = 62464 bytes for Gfx = 3904 cmds/frame. */
+        s6 = (BKSpriteDisplayData *)realloc(s6, header_size + s1 + 0x10000);
         vtx_start = (Vtx *)((intptr_t)s6 + header_size + s1);
         gfx_start = (Gfx *)(vtx_start + 200);
         vtx_end = vtx_start;
