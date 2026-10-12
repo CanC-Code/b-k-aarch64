@@ -345,10 +345,18 @@ void spriteRender_drawWithSegment(Gfx **gfx, Vtx **vtx, BKSprite *sprite, u32 fr
     //for each texture (chunk) in frame
     // sp1B4 = sp1B4;
     for(sp1BC = 0; sp1BC < sw_fp_chunkCnt; sp1BC++){
-        if ((uintptr_t)var_t2 + sizeof(BKSpriteTextureBlock) > sprite_end) {
+        /* ARM64 port: log every iteration so we see the exact var_t2 that
+           crashes at ldrh [var_t2+4].  Cap at 400 lines to avoid flooding. */
+        { static int s_lg = 0; if (s_lg++ < 400)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_IT",
+                "IT frame=%u c=%d vt=%p sprite_end=%p cnt=%d",
+                frame, sp1BC, (void*)var_t2, (void*)sprite_end, (int)sw_fp_chunkCnt); }
+
+        if ((uintptr_t)var_t2 < (uintptr_t)sprite ||
+            (uintptr_t)var_t2 + sizeof(BKSpriteTextureBlock) > sprite_end) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                "DWS chunk %d OOB: vt=%p sprite_end=%p cnt=%d",
-                sp1BC, (void*)var_t2, (void*)sprite_end, (int)sw_fp_chunkCnt);
+                "DWS chunk %d OOB: vt=%p sprite=%p sprite_end=%p cnt=%d",
+                sp1BC, (void*)var_t2, (void*)sprite, (void*)sprite_end, (int)sw_fp_chunkCnt);
             break;
         }
         s16 sw_w = (s16)__builtin_bswap16((u16)var_t2->w);
