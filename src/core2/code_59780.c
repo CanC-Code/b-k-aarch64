@@ -101,6 +101,14 @@ Actor *func_802E0738(ActorMarker *marker, Gfx **gfx, Mtx **mtx, Vtx **vtx){
         (double)this->scale);
     modelRender_setPreDrawCallback( (GenFunction_1)func_802E0710, (intptr_t)this);
     modelRender_setPostDrawCallback((GenFunction_1)actor_postdrawMethod, (s32)marker);
+    /* port 2026-10-11: clamp actor scale.  Between spawn (scale=1.0)
+       and draw, some code path writes a Q15-style fixed-point value
+       (32768.0 / 62259.2) into this f32 field.  Root cause TBD.  Clamp
+       to a sane range so the model renders at legible size. */
+    {
+        f32 __s = this->scale;
+        if (__s < 0.01f || __s > 100.0f) this->scale = 1.0f;
+    }
     modelRender_draw(gfx, mtx, this->position, rotation, this->scale, NULL, marker_loadModelBin(marker));
     return this;
 }
