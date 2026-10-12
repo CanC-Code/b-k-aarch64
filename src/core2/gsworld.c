@@ -67,8 +67,10 @@ void gsworld_draw(Gfx** gfx, Mtx **mtx, Vtx **vtx) {
     if (gsworld_getMap() == MAP_1F_CS_START_RAREWARE) {
         extern void viewport_setPosition_f3(f32, f32, f32);
         extern void viewport_setRotation_f3(f32, f32, f32);
-        viewport_setPosition_f3(500.0f, 300.0f, 2500.0f);
-        viewport_setRotation_f3(-9.0f, 0.0f, 0.0f);
+        /* pull in closer, aim at the RARE actor's center.  Actor 935
+           is at (434,-323,444); camera on the Z axis looking -Z. */
+        viewport_setPosition_f3(434.0f, -243.0f, 1100.0f);
+        viewport_setRotation_f3(-5.0f, 0.0f, 0.0f);
     }
     viewport_setRenderViewportAndPerspectiveMatrix(gfx, mtx);
 
