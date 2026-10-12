@@ -71,7 +71,12 @@ void gsworld_draw(Gfx** gfx, Mtx **mtx, Vtx **vtx) {
            is at (434,-323,444); camera on the Z axis looking -Z. */
         /* port 2026-10-11: framed shot of the RARE logo.  Actor at
            (434,-323,444).  Camera further back at the same height. */
-        viewport_setPosition_f3(434.0f, -323.0f, 1200.0f);
+        /* ARM64 port 2026-10-12: RARE-logo camera override removed.
+           It was added as a band-aid for the actor_postdrawMethod+12 crash,
+           which is fixed (14 (s32)->(intptr_t) callback truncations, commits
+           8d6e251c..6aa61cec).  With it gone, the intro camera should follow
+           the real cutscene path into the lair. */
+        /* viewport_setPosition_f3(434.0f, -323.0f, 1200.0f);  disabled */
         viewport_setRotation_f3(0.0f, 0.0f, 0.0f);
     }
     viewport_setRenderViewportAndPerspectiveMatrix(gfx, mtx);
