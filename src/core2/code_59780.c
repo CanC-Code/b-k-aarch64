@@ -100,7 +100,7 @@ Actor *func_802E0738(ActorMarker *marker, Gfx **gfx, Mtx **mtx, Vtx **vtx){
         this->position[0], this->position[1], this->position[2],
         (double)this->scale);
     modelRender_setPreDrawCallback( (GenFunction_1)func_802E0710, (intptr_t)this);
-    modelRender_setPostDrawCallback((GenFunction_1)actor_postdrawMethod, (s32)marker);
+    modelRender_setPostDrawCallback((GenFunction_1)actor_postdrawMethod, (intptr_t)marker);  /* ARM64 port: was (s32)marker, truncated 64-bit ptr */
     /* port 2026-10-11: clamp actor scale.  Between spawn (scale=1.0)
        and draw, some code path writes a Q15-style fixed-point value
        (32768.0 / 62259.2) into this f32 field.  Root cause TBD.  Clamp
