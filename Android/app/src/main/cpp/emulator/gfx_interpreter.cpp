@@ -738,7 +738,12 @@ static void RDP_FetchTexel(int tile, uint32_t s, uint32_t t, uint8_t* outRGBA) {
 
     {
         static int s_td = 0;
-        if (s_td++ < 12) {
+        /* port 2026-10-11: only log tile samples once its sh has
+           been configured (i.e. after the preceding SetTileSize
+           or SetTile has run).  The previous cap of 12 filled up
+           on frame-1 pre-load samples, so we never saw the state
+           the sampler reads after the texture was uploaded. */
+        if (tdesc.sh != 0 && s_td++ < 30) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA-TEX",
                 "TILEDESC tile=%d fmt=%u siz=%u line=%u tmem=%u pal=%u sh=%u th=%u uv=(%u,%u) bpp=%u word=%u byte=%u raw=%02X%02X%02X%02X%02X%02X%02X%02X",
                 tile, tdesc.format, tdesc.size, tdesc.line, tdesc.tmemAddr,
