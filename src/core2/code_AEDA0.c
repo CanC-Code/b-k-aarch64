@@ -285,6 +285,13 @@ void spriteRender_drawWithSegment(Gfx **gfx, Vtx **vtx, BKSprite *sprite, u32 fr
     }
     
     frame_ptr = sprite_getFramePtr(sprite, frame);
+    /* ARM64 port: compute the sprite's allocation end so we can bound
+       the chunk walk.  The chunk loop trusts sw_fp_chunkCnt, but some
+       cutscene sprites have a frame header whose chunkCnt is one past
+       the actual chunk data.  Without this, var_t2 walks out of the
+       sprite and the ldrh [var_t2 + 4] faults at +2272. */
+    extern unsigned long malloc_usable_size(const void*);
+    const uintptr_t sprite_end = (uintptr_t)sprite + malloc_usable_size((void*)sprite);
     {
         extern int bka_is_readable(void*);
         static int s_chk = 0;
@@ -338,6 +345,12 @@ void spriteRender_drawWithSegment(Gfx **gfx, Vtx **vtx, BKSprite *sprite, u32 fr
     //for each texture (chunk) in frame
     // sp1B4 = sp1B4;
     for(sp1BC = 0; sp1BC < sw_fp_chunkCnt; sp1BC++){
+        if ((uintptr_t)var_t2 + sizeof(BKSpriteTextureBlock) > sprite_end) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                "DWS chunk %d OOB: vt=%p sprite_end=%p cnt=%d",
+                sp1BC, (void*)var_t2, (void*)sprite_end, (int)sw_fp_chunkCnt);
+            break;
+        }
         s16 sw_w = (s16)__builtin_bswap16((u16)var_t2->w);
         s16 sw_h = (s16)__builtin_bswap16((u16)var_t2->h);
         s16 sw_x = (s16)__builtin_bswap16((u16)var_t2->x);
