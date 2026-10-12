@@ -3885,9 +3885,10 @@ default:
                 "walker: %d consecutive unknown opcodes at cur=%p depth=%d — returning",
                 unknown_opcode_run, cur, depth);
             /* ARM64 port 2026-10-12: dump 64 bytes at the bail address.
-               Writes to /data/local/tmp so logcat truncation can't lose it. */
+               Written to the app's own files dir so logcat rate-limiting
+               can't drop it; pulled via `rish -c "cat ..."`. */
             { static int s_bd = 0; if (s_bd++ < 3) {
-                FILE* f = fopen("/data/local/tmp/bka_bail.bin", "ab");
+                FILE* f = fopen("/data/data/com.bkawrapper/files/bka_bail.bin", "ab");
                 if (f) {
                     fprintf(f, "BAIL cur=%p depth=%d run=%d\n",
                         (void*)cur, depth, unknown_opcode_run);
