@@ -71,7 +71,7 @@ void gsworld_draw(Gfx** gfx, Mtx **mtx, Vtx **vtx) {
            is at (434,-323,444); camera on the Z axis looking -Z. */
         /* port 2026-10-11: framed shot of the RARE logo.  Actor at
            (434,-323,444).  Camera further back at the same height. */
-        viewport_setPosition_f3(434.0f, -323.0f, 2400.0f);
+        viewport_setPosition_f3(434.0f, -323.0f, 1200.0f);
         viewport_setRotation_f3(0.0f, 0.0f, 0.0f);
     }
     viewport_setRenderViewportAndPerspectiveMatrix(gfx, mtx);
