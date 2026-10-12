@@ -1510,7 +1510,23 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
     }
 
     if(model_bin->anim_vertices_list_offset != NULL && D_8038371C != NULL){
-        animVerticesList_transform(modelbin_getAnimVerticesList_MACRO(modelRenderModelBin), modelRendervertexList, D_8038371C);
+        /* port 2026-10-11: use guarded getter + validate every input.  Raw
+           MACRO aliased the bin header when anim_vertices_list_offset was
+           0; modelRendervertexList can be NULL for pure-Gfx cutscene bins;
+           D_8038371C can be stale across actor despawning. */
+        extern int bka_is_readable(void*);
+        BKAnimVerticesList *__avl = modelbin_getAnimVerticesList(modelRenderModelBin);
+        if (__avl != NULL && modelRendervertexList != NULL &&
+            bka_is_readable(__avl) && bka_is_readable(modelRendervertexList) &&
+            bka_is_readable((void*)D_8038371C)) {
+            animVerticesList_transform(__avl, modelRendervertexList, D_8038371C);
+        } else {
+            static int s_av = 0;
+            if (s_av++ < 5)
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-AVL",
+                    "skip animVertices: avl=%p vlist=%p anim=%p",
+                    (void*)__avl, (void*)modelRendervertexList, (void*)D_8038371C);
+        }
     }
 
     mlMtxIdent();
