@@ -768,6 +768,11 @@ static void RDP_FetchTexel(int tile, uint32_t s, uint32_t t, uint8_t* outRGBA) {
             outRGBA[1] = ((p >>  6) & 0x1F) << 3;
             outRGBA[2] = ((p >>  1) & 0x1F) << 3;
             outRGBA[3] = (p & 1) ? 255 : 0;
+            { static int s_rb = 0; if (s_rb++ < 40)
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-TEXRES",
+                    "TEXRES pal=%u idx=%u palWord=%u palByte=%u p=%04X rgba=%02X%02X%02X%02X",
+                    tdesc.palette, idx, palWord, palByte, p,
+                    outRGBA[0],outRGBA[1],outRGBA[2],outRGBA[3]); }
         } else {
             outRGBA[0] = outRGBA[1] = outRGBA[2] = idx << 4;
             outRGBA[3] = idx << 4;
@@ -1398,6 +1403,15 @@ static void Cmd_LoadTLUT(GfxCommand cmd) {
     uint32_t bytes = (count + 1) * 2;
     if (bytes > 1024) bytes = 1024;
     memcpy(s_rdp.tmem + tmemBase, s_rdp.texAddr, bytes);
+    { static int s_tdmp = 0; if (s_tdmp++ < 8) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-TLUTDUMP",
+            "TLUTDUMP base=%u bytes=%u w256..263=%02X%02X%02X%02X%02X%02X%02X%02X w264..271=%02X%02X%02X%02X%02X%02X%02X%02X w272..279=%02X%02X%02X%02X%02X%02X%02X%02X w280..287=%02X%02X%02X%02X%02X%02X%02X%02X",
+            tmemBase, bytes,
+            s_rdp.tmem[2048],s_rdp.tmem[2049],s_rdp.tmem[2050],s_rdp.tmem[2051],s_rdp.tmem[2052],s_rdp.tmem[2053],s_rdp.tmem[2054],s_rdp.tmem[2055],
+            s_rdp.tmem[2056],s_rdp.tmem[2057],s_rdp.tmem[2058],s_rdp.tmem[2059],s_rdp.tmem[2060],s_rdp.tmem[2061],s_rdp.tmem[2062],s_rdp.tmem[2063],
+            s_rdp.tmem[2064],s_rdp.tmem[2065],s_rdp.tmem[2066],s_rdp.tmem[2067],s_rdp.tmem[2068],s_rdp.tmem[2069],s_rdp.tmem[2070],s_rdp.tmem[2071],
+            s_rdp.tmem[2072],s_rdp.tmem[2073],s_rdp.tmem[2074],s_rdp.tmem[2075],s_rdp.tmem[2076],s_rdp.tmem[2077],s_rdp.tmem[2078],s_rdp.tmem[2079]);
+    }}
     { static int s_lt = 0; if (s_lt++ < 20)
         __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADTLUT",
             "ENTRY tile=%u tmem=%u tmemBase=%u count=%u bytes=%u texAddr=%p "
