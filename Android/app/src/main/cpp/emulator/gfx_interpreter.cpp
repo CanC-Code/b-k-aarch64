@@ -2971,7 +2971,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             uint8_t b6 = (c.w1 >>  8) & 0xFF;
             if (b4 == b5 && b5 == b6 && b4 != 0 && b4 != 0xFF) {
                 unknown_opcode_run += 3;
-                if (unknown_opcode_run >= 64) {   /* ARM64 port: was 8; fires on legit texture bytes that look like repeating patterns */
+                if (unknown_opcode_run >= 8) {
                     __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                         "walker: fill-pattern at cur=%p depth=%d w0=%08X w1=%08X -- drifting",
                         (void*)cur, depth, c.w0, c.w1);
