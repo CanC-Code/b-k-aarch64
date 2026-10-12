@@ -3884,6 +3884,18 @@ default:
             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                 "walker: %d consecutive unknown opcodes at cur=%p depth=%d — returning",
                 unknown_opcode_run, cur, depth);
+            /* ARM64 port 2026-10-12: dump 64 bytes at the bail address.
+               Writes to /data/local/tmp so logcat truncation can't lose it. */
+            { static int s_bd = 0; if (s_bd++ < 3) {
+                FILE* f = fopen("/data/local/tmp/bka_bail.bin", "ab");
+                if (f) {
+                    fprintf(f, "BAIL cur=%p depth=%d run=%d\n",
+                        (void*)cur, depth, unknown_opcode_run);
+                    fwrite(cur, 1, 64, f);
+                    fprintf(f, "\n---\n");
+                    fclose(f);
+                }
+            }}
                 { static int s_bd = 0; if (s_bd++ < 12) {
                     const uint8_t* b = (const uint8_t*)cur;
                     __android_log_print(ANDROID_LOG_ERROR, "BKA-BAILDUMP",
