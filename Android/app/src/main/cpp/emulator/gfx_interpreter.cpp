@@ -3888,7 +3888,7 @@ default:
                Written to the app's own files dir so logcat rate-limiting
                can't drop it; pulled via `rish -c "cat ..."`. */
             { static int s_bd = 0; if (s_bd++ < 3) {
-                FILE* f = fopen("/data/data/com.bkawrapper/files/bka_bail.bin", "ab");
+                FILE* f = fopen("/sdcard/Android/data/com.bkawrapper/files/bka_bail.bin", "ab");
                 if (f) {
                     fprintf(f, "BAIL cur=%p depth=%d run=%d\n",
                         (void*)cur, depth, unknown_opcode_run);
