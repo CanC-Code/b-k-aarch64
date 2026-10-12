@@ -40,8 +40,8 @@ Actor *chOverlayNoController_draw(ActorMarker *marker, Gfx **gdl, Mtx **mptr, Vt
     
 
     actor = marker_getActor(marker);
-    modelRender_setPreDrawCallback((GenFunction_1)actor_predrawMethod,  (s32)actor);
-    modelRender_setPostDrawCallback((GenFunction_1)actor_postdrawMethod, (s32)marker);
+    modelRender_setPreDrawCallback((GenFunction_1)actor_predrawMethod,  (intptr_t)actor);  /* ARM64 port: was (s32), 64-bit ptr truncation */
+    modelRender_setPostDrawCallback((GenFunction_1)actor_postdrawMethod, (intptr_t)marker);  /* ARM64 port: was (s32), 64-bit ptr truncation */
     viewport_backupState();
     {sp58[0] = 0.0f; sp58[1] = 0.0f; sp58[2] = 1312.5f;};
     {sp4C[0] = 0.0f; sp4C[1] = 0.0f; sp4C[2] = 0.0f;};

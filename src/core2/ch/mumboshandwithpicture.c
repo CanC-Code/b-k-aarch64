@@ -66,7 +66,7 @@ Actor *chMumbosHandWithPicture_draw(ActorMarker *marker, Gfx **gfx, Mtx **mtx, V
     depthbuffer_clear(gfx);
     gSPSegment((*gfx)++, 0x04, osVirtualToPhysical(sp48));
     modelRender_setPreDrawCallback((GenFunction_1)actor_predrawMethod,  (intptr_t)this);
-    modelRender_setPostDrawCallback((GenFunction_1)actor_postdrawMethod, (s32)marker);
+    modelRender_setPostDrawCallback((GenFunction_1)actor_postdrawMethod, (intptr_t)marker);  /* ARM64 port: was (s32), 64-bit ptr truncation */
     modelRender_draw(gfx, mtx, this->position, NULL, 4.5f, sp4C, marker_loadModelBin(marker));
     gDPSetTextureFilter((*gfx)++, G_TF_BILERP);
     gDPSetColorDither((*gfx)++, G_CD_MAGICSQ);

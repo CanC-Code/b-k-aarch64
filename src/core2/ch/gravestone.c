@@ -62,7 +62,7 @@ Actor *chgravestone_draw(ActorMarker *marker, Gfx **gfx, Mtx **mtx, Vtx **vtx) {
     modelRender_setAppendageVisibility(3, (intptr_t)this->velocity[1]);
     modelRender_setAppendageVisibility(4, local->unk0);
     modelRender_setPreDrawCallback( (GenFunction_1)actor_predrawMethod, (intptr_t)this);
-    modelRender_setPostDrawCallback((GenFunction_1)actor_postdrawMethod, (s32)marker);
+    modelRender_setPostDrawCallback((GenFunction_1)actor_postdrawMethod, (intptr_t)marker);  /* ARM64 port: was (s32), 64-bit ptr truncation */
     modelRender_draw(gfx, mtx, this->position, rotation, this->scale, D_80373008, func_803257B4(marker));
     return this;
 }
