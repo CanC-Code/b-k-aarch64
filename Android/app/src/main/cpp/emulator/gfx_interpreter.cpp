@@ -3589,7 +3589,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                     current_stride = 8;   /* Fix Y2: sub-DL is 8-byte packed, no payload */
                     static int s_jlog = 0;
                     if (s_jlog++ < 40) {
-                        __android_log_print(ANDROID_LOG_ERROR, "BKA-STRIDE",
+                        // [throttled] __android_log_print(ANDROID_LOG_ERROR, "BKA-STRIDE",
                             "GDL target=0x%08X b8_15=[%08X %08X] b24_31=[%08X %08X] b40_47=[%08X %08X] -> stride=%zu",
                             raw_addr,
                             *(const uint32_t*)(_p+8),  *(const uint32_t*)(_p+12),
@@ -3607,7 +3607,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                         static int s_scorelog = 0;
                         if (s_scorelog++ < 60) {
                             const uint8_t* _p = (const uint8_t*)dl_ptr;
-                            __android_log_print(ANDROID_LOG_ERROR, "BKA-STRIDE",
+                            // [throttled] __android_log_print(ANDROID_LOG_ERROR, "BKA-STRIDE",
                                 "GDL caller=%p target=0x%08X stride=%zu score=%d/8 first16=%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
                                 (void*)cur, raw_addr, current_stride, score,
                                 _p[0],_p[1],_p[2],_p[3],_p[4],_p[5],_p[6],_p[7],
@@ -3618,7 +3618,7 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                         static int s_refuse = 0;
                         if (s_refuse++ < 30) {
                             const uint8_t* _p = (const uint8_t*)dl_ptr;
-                            __android_log_print(ANDROID_LOG_ERROR, "BKA-STRIDE",
+                            // [throttled] __android_log_print(ANDROID_LOG_ERROR, "BKA-STRIDE",
                                 "GDL target=0x%08X REFUSED as data (score=%d/8) first16=%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
                                 raw_addr, score,
                                 _p[0],_p[1],_p[2],_p[3],_p[4],_p[5],_p[6],_p[7],
