@@ -466,6 +466,19 @@ void func_8032D510(Cube *cube, Gfx **gfx, Mtx **mtx, Vtx **vtx){
                 }//L8032D62C
             }
             else{//L8032D640
+                { static int s_pb = 0; if (s_pb++ < 8) {
+                    extern int bka_is_readable(void*);
+                    u32 *raw = (u32*)iProp;
+                    int rd = bka_is_readable(iProp);
+                    __android_log_print(ANDROID_LOG_ERROR, "BKA-PROP",
+                        "iProp=%p rd=%d cube=%p p2Ptr=%p p2Cnt=%d i=%d "
+                        "raw[0..3]=%08X %08X %08X %08X",
+                        (void*)iProp, rd, (void*)cube,
+                        (void*)cube->prop2Ptr, (int)cube->prop2Cnt,
+                        (int)i,
+                        rd ? raw[0] : 0, rd ? raw[1] : 0,
+                        rd ? raw[2] : 0, rd ? raw[3] : 0);
+                } }
                 position[0] = (f32)iProp->modelProp.position[0];
                 position[1] = (f32)iProp->modelProp.position[1];
                 position[2] = (f32)iProp->modelProp.position[2];
