@@ -58,6 +58,18 @@ void gsworld_draw(Gfx** gfx, Mtx **mtx, Vtx **vtx) {
     sky_draw(gfx, mtx, vtx);
     core2_34790_getClipDistances(&near, &far);
     viewport_setNearAndFar(near, far);
+    /* port 2026-10-11: MAP_1F cutscene camera override.  The dynamic-camera
+       guard is correct — state 1 orbits player_getPosition, which is the
+       "player absent" sentinel here.  The static camera path also is not
+       driven by the intro script on the port.  Aim at the RARE-logo
+       actor (935) at (434,-323,444) with the cube (934) at (620,-42,-780)
+       roughly in frame. */
+    if (gsworld_getMap() == MAP_1F_CS_START_RAREWARE) {
+        extern void viewport_setPosition_f3(f32, f32, f32);
+        extern void viewport_setRotation_f3(f32, f32, f32);
+        viewport_setPosition_f3(500.0f, 300.0f, 2500.0f);
+        viewport_setRotation_f3(-9.0f, 0.0f, 0.0f);
+    }
     viewport_setRenderViewportAndPerspectiveMatrix(gfx, mtx);
 
     if (mapModel_has_xlu_bin()) {
