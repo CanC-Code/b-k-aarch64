@@ -69,11 +69,9 @@ void gsworld_draw(Gfx** gfx, Mtx **mtx, Vtx **vtx) {
         extern void viewport_setRotation_f3(f32, f32, f32);
         /* pull in closer, aim at the RARE actor's center.  Actor 935
            is at (434,-323,444); camera on the Z axis looking -Z. */
-        /* port 2026-10-11: extreme close-up test — camera at actor's X,
-           just above and in front, looking straight down -Z.  If the
-           RARE wordmark still renders small, the mesh itself is small
-           and the scale clamp is masking a deeper problem. */
-        viewport_setPosition_f3(434.0f, -323.0f, 900.0f);
+        /* port 2026-10-11: framed shot of the RARE logo.  Actor at
+           (434,-323,444).  Camera further back at the same height. */
+        viewport_setPosition_f3(434.0f, -323.0f, 2400.0f);
         viewport_setRotation_f3(0.0f, 0.0f, 0.0f);
     }
     viewport_setRenderViewportAndPerspectiveMatrix(gfx, mtx);
