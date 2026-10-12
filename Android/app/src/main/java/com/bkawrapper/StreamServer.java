@@ -1,10 +1,8 @@
 package com.bkawrapper;
 
-import android.graphics.Bitmap;
 import android.util.Log;
 
 import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -14,14 +12,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class StreamServer {
     private static final String TAG = "BKA-Stream";
-    private static final int W = 292, H = 216;
+    static final int W = 292, H = 216;
     private static final int PORT = 8080;
     private static final int FPS = 30;
-    private static final int JPEG_QUALITY = 75;
 
     private final ServerSocket server;
     private final AtomicBoolean running = new AtomicBoolean(true);
     private final int[] pixels = new int[W * H];
+    private final byte[] raw = new byte[W * H * 4];
 
     public StreamServer() throws IOException {
         server = new ServerSocket(PORT);
@@ -51,7 +49,7 @@ public class StreamServer {
         try (Socket sock = s) {
             sock.setTcpNoDelay(true);
             InputStream in = sock.getInputStream();
-            OutputStream out = new BufferedOutputStream(sock.getOutputStream(), 32768);
+            OutputStream out = new BufferedOutputStream(sock.getOutputStream(), 65536);
 
             String requestLine = readLine(in);
             if (requestLine == null) return;
@@ -60,19 +58,13 @@ public class StreamServer {
             String method = parts[0];
             String path = parts[1];
 
-            int contentLength = 0;
             String hdr;
-            while ((hdr = readLine(in)) != null && !hdr.isEmpty()) {
-                if (hdr.regionMatches(true, 0, "content-length:", 0, 15)) {
-                    try { contentLength = Integer.parseInt(hdr.substring(15).trim()); }
-                    catch (NumberFormatException ignored) {}
-                }
-            }
+            while ((hdr = readLine(in)) != null && !hdr.isEmpty()) { }
 
             if ("GET".equals(method) && (path.equals("/") || path.startsWith("/?"))) {
                 sendHtmlPage(out);
             } else if ("GET".equals(method) && path.startsWith("/stream")) {
-                sendMjpegStream(out);
+                sendRawStream(out);
             } else if ("GET".equals(method) && path.startsWith("/ping")) {
                 byte[] body = "pong".getBytes("UTF-8");
                 out.write(("HTTP/1.1 200 OK\r\nContent-Length: 4\r\nConnection: close\r\n\r\n").getBytes());
@@ -112,17 +104,15 @@ public class StreamServer {
         out.flush();
     }
 
-    private void sendMjpegStream(OutputStream out) throws IOException {
+    private void sendRawStream(OutputStream out) throws IOException {
         String hdr = "HTTP/1.1 200 OK\r\n"
-                + "Content-Type: multipart/x-mixed-replace; boundary=--bka\r\n"
+                + "Content-Type: application/octet-stream\r\n"
                 + "Cache-Control: no-cache\r\n"
                 + "Pragma: no-cache\r\n"
                 + "Connection: close\r\n\r\n";
         out.write(hdr.getBytes("UTF-8"));
         out.flush();
 
-        Bitmap bmp = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
-        ByteArrayOutputStream jpegBuf = new ByteArrayOutputStream(32768);
         long frameInterval = 1000L / FPS;
         long nextFrame = System.currentTimeMillis();
         int frame = 0;
@@ -139,21 +129,23 @@ public class StreamServer {
 
             try {
                 Native.fillArgb(pixels);
-                bmp.setPixels(pixels, 0, W, 0, 0, W, H);
-                jpegBuf.reset();
-                // PNG avoids Moto G Play libjpeg NEON crash in Bitmap.compress
-                bmp.compress(Bitmap.CompressFormat.PNG, 100, jpegBuf);
-                byte[] jpeg = jpegBuf.toByteArray();
-
-                String partHdr = "--bka\r\nContent-Type: image/png\r\nContent-Length: "
-                        + jpeg.length + "\r\n\r\n";
-                out.write(partHdr.getBytes("UTF-8"));
-                out.write(jpeg);
-                out.write("\r\n".getBytes("UTF-8"));
+                for (int i = 0; i < pixels.length; i++) {
+                    int p = pixels[i];
+                    raw[i*4]   = (byte)((p >> 16) & 0xFF);
+                    raw[i*4+1] = (byte)((p >> 8)  & 0xFF);
+                    raw[i*4+2] = (byte)( p        & 0xFF);
+                    raw[i*4+3] = (byte)((p >> 24) & 0xFF);
+                }
+                int len = raw.length;
+                out.write((len >>> 24) & 0xFF);
+                out.write((len >>> 16) & 0xFF);
+                out.write((len >>>  8) & 0xFF);
+                out.write( len         & 0xFF);
+                out.write(raw);
                 out.flush();
                 frame++;
                 if (frame == 1 || frame % 150 == 0) {
-                    Log.i(TAG, "stream frame " + frame + " (" + jpeg.length + " bytes)");
+                    Log.i(TAG, "raw frame " + frame);
                 }
             } catch (IOException e) {
                 Log.i(TAG, "stream closed after " + frame + " frames");
@@ -176,13 +168,28 @@ public class StreamServer {
         "</style>\n" +
         "</head>\n" +
         "<body>\n" +
-        "<img id='screen' src='/stream' alt='stream'>\n" +
-        "<div id='hud'>BKA streaming - streaming</div>\n" +
+        "<canvas id='screen'></canvas>\n" +
+        "<div id='hud'>BKA streaming</div>\n" +
         "<script>\n" +
-        "var img=document.getElementById('screen');\n" +
-        "var hud=document.getElementById('hud');\n" +
-        "img.onerror=function(){hud.textContent='stream error, retrying...';setTimeout(function(){img.src='/stream?'+Date.now();},1000);};\n" +
-        "window.addEventListener('load',function(){setTimeout(function(){hud.textContent='BKA streaming';},3000);});\n" +
+        "var W=" + W + ",H=" + H + ";\n" +
+        "var cv=document.getElementById('screen');\n" +
+        "cv.width=W;cv.height=H;\n" +
+        "var cx=cv.getContext('2d');\n" +
+        "var im=cx.createImageData(W,H);\n" +
+        "var buf=new Uint8Array(0);\n" +
+        "function tick(){\n" +
+        "fetch('/stream?'+Date.now()).then(function(r){\n" +
+        "var rd=r.body.getReader();var need=W*H*4;\n" +
+        "function pump(){rd.read().then(function(x){\n" +
+        "if(x.done)return;\n" +
+        "var nb=new Uint8Array(buf.length+x.value.length);\n" +
+        "nb.set(buf,0);nb.set(x.value,buf.length);buf=nb;\n" +
+        "while(buf.length>=need){im.data.set(buf.subarray(0,need));cx.putImageData(im,0,0);buf=buf.subarray(need);}\n" +
+        "pump();});}\n" +
+        "pump();\n" +
+        "}).catch(function(){setTimeout(tick,1000);});\n" +
+        "}\n" +
+        "tick();\n" +
         "</script>\n" +
         "</body>\n" +
         "</html>\n";
