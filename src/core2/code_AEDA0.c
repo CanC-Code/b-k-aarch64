@@ -347,7 +347,7 @@ void spriteRender_drawWithSegment(Gfx **gfx, Vtx **vtx, BKSprite *sprite, u32 fr
     for(sp1BC = 0; sp1BC < sw_fp_chunkCnt; sp1BC++){
         /* ARM64 port: log every iteration so we see the exact var_t2 that
            crashes at ldrh [var_t2+4].  Cap at 400 lines to avoid flooding. */
-        { static int s_lg = 0; if (s_lg++ < 400)
+        { static int s_lg = 0; if (s_lg++ < 5000)
             __android_log_print(ANDROID_LOG_ERROR, "BKA_IT",
                 "IT frame=%u c=%d vt=%p sprite_end=%p cnt=%d",
                 frame, sp1BC, (void*)var_t2, (void*)sprite_end, (int)sw_fp_chunkCnt); }
