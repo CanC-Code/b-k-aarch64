@@ -3859,7 +3859,7 @@ default:
             g_bka_frame_gen++;
             return;
         }
-        if (unknown_opcode_run >= 64) {  /* ARM64 port: was 8; sub-DL pop resets counter, threshold was too low to ever accumulate */
+        if (unknown_opcode_run >= 8) {
             if (s_rspCallCount <= 30 || (s_rspCallCount % 50) == 0) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "TASK-SUMMARY #%d cmds=%zu tris=%d depth=%d end=DRIFT",
