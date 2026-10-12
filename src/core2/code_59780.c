@@ -91,6 +91,9 @@ Actor *func_802E0738(ActorMarker *marker, Gfx **gfx, Mtx **mtx, Vtx **vtx){
     Actor *this;
 
     this = marker_getActorAndRotation(marker, &rotation);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-SCALE",
+        "draw   id=%d actor=%p scale=%.6f",
+        (int)this->marker->modelId, (void*)this, (double)this->scale);
     __android_log_print(ANDROID_LOG_ERROR, "BKA-ACTOR2",
         "draw entry: modelId=%d pos=(%.0f %.0f %.0f) scale=%.2f",
         (int)this->marker->modelId,
@@ -141,6 +144,11 @@ void func_802E07E0(Actor *this) {
         func_802C7478(this);
     }
     func_80361EE0(this);
+    if (this->marker->modelId == 934 || this->marker->modelId == 935)
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-SCALE",
+            "update id=%d actor=%p scale=%.6f",
+            (int)this->marker->modelId, (void*)this,
+            (double)this->scale);
 }
 
 void chFireSparkle_update(Actor *this) {

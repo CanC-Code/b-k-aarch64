@@ -813,6 +813,11 @@ Actor *actor_new(s32 position[3], s32 yaw, ActorInfo* actorInfo, u32 flags){
     suLastBaddie->unkF4_30 = 0;
     suLastBaddie->unkF4_29 = 0;
     suLastBaddie->scale = 1.0f;
+    if (actorInfo->actorId == 934 || actorInfo->actorId == 935)
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-SCALE",
+            "spawn  id=%d actor=%p scale=%.6f",
+            (int)actorInfo->actorId, (void*)suLastBaddie,
+            (double)suLastBaddie->scale);
     suLastBaddie->unk124_7 = 0;
     suLastBaddie->unk124_6 = 1;
     suLastBaddie->modelCacheIndex = actorInfo->actorId;
