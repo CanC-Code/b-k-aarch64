@@ -760,7 +760,7 @@ static void RDP_FetchTexel(int tile, uint32_t s, uint32_t t, uint8_t* outRGBA) {
         uint8_t b = s_rdp.tmem[byteAddr];
         uint32_t idx = (bitInWord & 4u) ? (b & 0xFu) : (b >> 4);
         if (tdesc.format == 2) {
-            uint32_t palWord = 256u + (uint32_t)tdesc.palette * 16u + (idx >> 2);
+            uint32_t palWord = 256u + (uint32_t)tdesc.palette * 4u + (idx >> 2);
             uint32_t palByte = (palWord & 0x1FFu) * 8u + ((idx & 3u) * 2u);
             if (palByte + 1 >= 4096) { outRGBA[0]=outRGBA[1]=outRGBA[2]=outRGBA[3]=0; return; }
             uint16_t p = ((uint16_t)s_rdp.tmem[palByte] << 8) | s_rdp.tmem[palByte+1];
@@ -777,7 +777,7 @@ static void RDP_FetchTexel(int tile, uint32_t s, uint32_t t, uint8_t* outRGBA) {
     case 1: {
         uint8_t b = s_rdp.tmem[byteAddr];
         if (tdesc.format == 2) {
-            uint32_t palWord = 256u + (uint32_t)tdesc.palette * 256u + (b >> 2);
+            uint32_t palWord = 256u + (uint32_t)tdesc.palette * 64u + (b >> 2);
             uint32_t palByte = (palWord & 0x1FFu) * 8u + ((b & 3u) * 2u);
             if (palByte + 1 >= 4096) { outRGBA[0]=outRGBA[1]=outRGBA[2]=outRGBA[3]=0; return; }
             uint16_t p = ((uint16_t)s_rdp.tmem[palByte] << 8) | s_rdp.tmem[palByte+1];
