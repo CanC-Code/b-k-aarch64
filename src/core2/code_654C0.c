@@ -165,7 +165,10 @@ BKVertexList *vtxList_clone(BKVertexList *this) {
        modelbin_getVtxList can still return a bogus non-NULL ptr for
        those bins because the mask only strips the top byte. Bound
        count so a garbage value cannot blow up malloc/memcpy. */
-    if (this->count <= 0 || (u32)this->count > 0x10000) {
+    /* port 2026-10-11: tighten to 1024 — 65536 is way above any real
+       vtx list and let garbage counts through.  Also validate the
+       source range is readable end-to-end (was the memcpy overrun). */
+    if (this->count <= 0 || (u32)this->count > 1024) {
         static int s_bad = 0;
         if (s_bad++ < 5)
             __android_log_print(ANDROID_LOG_ERROR, "BKA-VTXCL",
@@ -173,8 +176,19 @@ BKVertexList *vtxList_clone(BKVertexList *this) {
                 (unsigned)this->count, (void*)this);
         return NULL;
     }
-    
     list_size = sizeof(BKVertexList) + this->count * sizeof(Vtx);
+    { extern int bka_is_readable(void*);
+      if (!bka_is_readable(this) ||
+          !bka_is_readable((u8*)this + list_size - 1)) {
+          static int s_ur = 0;
+          if (s_ur++ < 5)
+              __android_log_print(ANDROID_LOG_ERROR, "BKA-VTXCL",
+                  "rejecting unreadable vtx range this=%p size=%u",
+                  (void*)this, (unsigned)list_size);
+          return NULL;
+      }
+    }
+    
     new_ptr = (BKVertexList *) malloc(list_size);
     { static int s_v=0;
       if (s_v++ < 8)
