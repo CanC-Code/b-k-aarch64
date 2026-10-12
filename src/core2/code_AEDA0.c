@@ -268,14 +268,10 @@ void spriteRender_drawWithSegment(Gfx **gfx, Vtx **vtx, BKSprite *sprite, u32 fr
         pixel_size_nibbles = 1;
     } else if (sprite->type & SPRITE_TYPE_CI8) {
         pixel_size_nibbles = 2;
-    } else if (sprite->type & SPRITE_TYPE_I4){
-        pixel_size_nibbles = 1;   /* ARM64 port: I4 is 4-bit = 1 nibble */
-    } else if (sprite->type & SPRITE_TYPE_IA4){
-        pixel_size_nibbles = 2;   /* ARM64 port: IA4 is 8-bit = 2 nibbles */
     } else if (sprite->type & SPRITE_TYPE_I8){
         pixel_size_nibbles = 2;
     } else if (sprite->type & SPRITE_TYPE_IA8){
-        pixel_size_nibbles = 4;   /* ARM64 port: IA8 is 16-bit = 4 nibbles, was 2 (half stride) */
+        pixel_size_nibbles = 2;
     } else if (sprite->type & SPRITE_TYPE_RGBA16) {
         pixel_size_nibbles = 4;
     } else if (sprite->type & SPRITE_TYPE_RGBA32){
