@@ -3218,6 +3218,8 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0x70: // Unknown
                 break;
 
+            case 0xF8: break;   /* G_SETFOGCOLOR - no-op */
+            case 0xF9: break;   /* G_SETBLENDCOLOR - no-op */
             case 0xF7: Cmd_SetFillColor(c); break;
             case 0xFA: Cmd_SetPrimColor(c); break;
             case 0xFB: Cmd_SetEnvColor(c); break;
@@ -3859,7 +3861,7 @@ default:
             g_bka_frame_gen++;
             return;
         }
-        if (unknown_opcode_run >= 8) {
+        if (unknown_opcode_run >= 64) {  /* ARM64 port: was 8; F3DEX1 emits valid opcodes missing from this switch, spurious bails */
             if (s_rspCallCount <= 30 || (s_rspCallCount % 50) == 0) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "TASK-SUMMARY #%d cmds=%zu tris=%d depth=%d end=DRIFT",
