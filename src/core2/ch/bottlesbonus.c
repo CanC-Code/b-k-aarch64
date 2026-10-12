@@ -175,7 +175,7 @@ Actor *chBottlesBonus_draw(ActorMarker *marker, Gfx **gfx, Mtx **mtx, Vtx **vtx)
     
     gDPSetTextureFilter((*gfx)++, G_TF_POINT);
     gSPSegment((*gfx)++, 0x04, osVirtualToPhysical(sp50));
-    modelRender_setPreDrawCallback((GenFunction_1)actor_predrawMethod, (s32)sp6C);
+    modelRender_setPreDrawCallback((GenFunction_1)actor_predrawMethod, (intptr_t)sp6C);  /* ARM64 port: was (s32), ptr truncation */
     modelRender_setPostDrawCallback((GenFunction_1)actor_postdrawMethod, (intptr_t)marker);  /* ARM64 port: was (s32), 64-bit ptr truncation */
 
     modelRender_draw(gfx, mtx, sp60, NULL, D_80368250, sp54, marker_loadModelBin(marker));

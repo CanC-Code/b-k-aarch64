@@ -35,7 +35,7 @@ Actor *func_802DF160(Gfx **gfx, Mtx **mtx, Vtx **vtx) {
     gDPSetTextureFilter((*gfx)++, G_TF_POINT);
     gSPSegment((*gfx)++, 0x04, osVirtualToPhysical(sp38));
     modelRender_setPreDrawCallback((GenFunction_1)actor_predrawMethod, (intptr_t)this);
-    modelRender_setPostDrawCallback((GenFunction_1)actor_postdrawMethod, (s32)D_8037E000);
+    modelRender_setPostDrawCallback((GenFunction_1)actor_postdrawMethod, (intptr_t)D_8037E000);  /* ARM64 port: was (s32), ptr truncation */
     modelRender_draw(gfx, mtx, &D_80368360, NULL, 1.0f, NULL, marker_loadModelBin(D_8037E000));
     gDPSetTextureFilter((*gfx)++, G_TF_BILERP);
     return this;

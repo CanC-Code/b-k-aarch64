@@ -214,7 +214,7 @@ Actor *actor_draw(ActorMarker *marker, Gfx **gfx, Mtx **mtx, Vtx **vtx) {
 
     this = marker_getActorAndRotation(marker, sp3C);
     modelRender_setPreDrawCallback((GenFunction_1)actor_predrawMethod, (intptr_t)this);
-    modelRender_setPostDrawCallback((GenFunction_1)actor_postdrawMethod, (s32)marker);
+    modelRender_setPostDrawCallback((GenFunction_1)actor_postdrawMethod, (intptr_t)marker);  /* ARM64 port: was (s32) */
     modelRender_draw(gfx, mtx, this->position, sp3C, this->scale, (this->unk104 != NULL) ? D_8036E580 : NULL, func_803257B4(marker));
     return this;
 }
@@ -336,7 +336,7 @@ Actor *actor_drawFullDepth(ActorMarker *marker, Gfx **gfx, Mtx **mtx, Vtx **vtx)
     this = marker_getActorAndRotation(marker, rotation);
     modelRender_setDepthMode(MODEL_RENDER_DEPTH_FULL);
     modelRender_setPreDrawCallback((GenFunction_1)actor_predrawMethod, (intptr_t)this);
-    modelRender_setPostDrawCallback((GenFunction_1)actor_postdrawMethod, (s32)marker);
+    modelRender_setPostDrawCallback((GenFunction_1)actor_postdrawMethod, (intptr_t)marker);  /* ARM64 port: was (s32) */
     modelRender_draw(gfx, mtx, this->position, rotation, this->scale, (this->unk104 != NULL) ?  D_8036E580 : NULL, func_803257B4(marker));
     return this;
 }
