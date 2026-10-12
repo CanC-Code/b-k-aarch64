@@ -473,12 +473,24 @@ void func_8032D510(Cube *cube, Gfx **gfx, Mtx **mtx, Vtx **vtx){
                     rotation[0] = 0.0f;
                     rotation[1] = (f32)((s32)iProp->modelProp.yaw*2);
                     rotation[2] = (f32)((s32)iProp->modelProp.roll*2);
+                    { static int s_mp = 0; if (s_mp++ < 8)
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA-MPDRAW",
+                            "iProp=%p modelId=0x%X scale=%d pos=(%.0f %.0f %.0f)",
+                            (void*)iProp, (unsigned)iProp->modelProp.modelId,
+                            (int)iProp->modelProp.scale,
+                            position[0], position[1], position[2]); }
                     propModelList_drawModel(gfx, mtx, vtx, 
                         position, rotation, (f32)iProp->modelProp.scale/100.0,
                         iProp->modelProp.modelId, cube
                     );
                 }
                 else{//L8032D72C
+                    { static int s_sp = 0; if (s_sp++ < 8)
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA-SPDRAW",
+                            "iProp=%p spriteId=0x%X scale=%d pos=(%.0f %.0f %.0f)",
+                            (void*)iProp, (unsigned)iProp->spriteProp.spriteId,
+                            (int)iProp->spriteProp.scale,
+                            position[0], position[1], position[2]); }
                     propModelList_drawSprite( gfx, mtx, vtx, 
                         position, (f32)iProp->spriteProp.scale/100.0, iProp->spriteProp.spriteId, cube, 
                         iProp->spriteProp.rgb_remove_red, iProp->spriteProp.rgb_remove_green, iProp->spriteProp.rgb_remove_blue,
