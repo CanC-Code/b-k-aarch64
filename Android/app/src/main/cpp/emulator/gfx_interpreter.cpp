@@ -3985,6 +3985,14 @@ default:
             {
                 static int s_drift_dump = 0;
                 if (s_drift_dump++ < 100) {   /* ARM64 port 2026-10-12: was 4 */
+                    { FILE* bf = fopen("/data/data/com.bkawrapper/files/bka_next.bin", "ab");
+                      if (bf) {
+                          const uint8_t* np = (const uint8_t*)(cur + current_stride);
+                          fprintf(bf, "NEXT cur=%p stride=%zu\n", (void*)cur, current_stride);
+                          fwrite(np, 1, 64, bf);
+                          fprintf(bf, "\n===\n");
+                          fclose(bf);
+                      } }
                     __android_log_print(ANDROID_LOG_ERROR, "BKA-DRIFT",
                         "DRIFT-SUMMARY cur=%p depth=%d dlBase=%p stride=%zu",
                         (void*)cur, depth, (void*)s_dl_base, current_stride);
