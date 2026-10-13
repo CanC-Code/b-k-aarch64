@@ -97,6 +97,20 @@ if 'int32_t Mtx_t' not in text:
         text = text[:m.start()] + 'typedef int32_t Mtx_t[4][4];  /* arm64: N64 Mtx is 64 bytes */' + text[m.end():]
         print("Mtx_t patched")
 
+# 3. Patch gSetImage to register the full 64-bit source pointer.
+import re as _re
+if 'bka_add_addr_mapping_c((unsigned int)(i), (void *)(i))' not in text:
+    _gset_pat = _re.compile(r'(#define[ \t]+gSetImage\(pkt,[^\n]*\n\{[ \t]*\\\n)')
+    def _gset_repl(m):
+        return m.group(1) + '\tbka_add_addr_mapping_c((unsigned int)(i), (void *)(i)); \\\n'
+    text, _gset_n = _gset_pat.subn(_gset_repl, text, count=1)
+    if _gset_n == 0:
+        sys.stderr.write('WARN: gSetImage anchor not matched\n')
+    else:
+        print('patched gSetImage')
+else:
+    print('gSetImage already patched')
+
 with open(PATH, 'w') as f:
     f.write(text)
 
