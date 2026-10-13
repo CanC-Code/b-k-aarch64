@@ -1298,7 +1298,25 @@ static void Cmd_SetTImg(GfxCommand cmd) {
                   cmd.w1, (unsigned long)s_rdp.segmentBase[2],
                   bka_lookup_addr_by_low32(cmd.w1));
       } }
-    uint8_t* resolved = (uint8_t*)bka_lookup_addr_by_low32(cmd.w1);
+    uint8_t* resolved = nullptr;
+    {
+        uint8_t  seg = (cmd.w1 >> 24) & 0x0F;
+        uintptr_t segBase = s_rdp.segmentBase[seg];
+        /* ARM64 port 2026-10-12: only use low32-map for host-pointer
+           addresses (nibble 8-F).  Segment-encoded addresses (0-7) MUST
+           go through the segment table — otherwise a stale mapping for
+           key 0x02000260 (registered by the gbi.h gDma macro from an
+           unrelated string) shadows the correct segment resolution, and
+           LoadTLUT/LoadBlock read ASCII debug strings as texture data. */
+        if (seg < 8 && segBase != 0) {
+            uint32_t off = cmd.w1 & 0x00FFFFFF;
+            uint32_t combined = (uint32_t)(segBase + off);
+            resolved = RDP_TranslateAddr(combined);
+        }
+    }
+    if (!resolved) {
+        resolved = (uint8_t*)bka_lookup_addr_by_low32(cmd.w1);
+    }
     if (!resolved) {
         uint8_t  seg = (cmd.w1 >> 24) & 0x0F;
         uintptr_t segBase = s_rdp.segmentBase[seg];
