@@ -125,9 +125,9 @@ void func_80347FC0(Gfx **gfx, BKSprite *sprite, s32 frame, s32 tmem, s32 rtile, 
 
 void func_80348044(Gfx **gfx, BKSprite* sprite, s32 frame, s32 tmem, s32 rtile, s32 uls, s32 ult, s32 cms, s32 cmt, s32 *width, s32 *height, s32 *frame_width, s32 *frame_height, s32 *texture_x, s32 *texture_y, s32 *textureCount) {
     BKSpriteFrame *sprite_frame;
-    s32 palette_addr;
+    intptr_t palette_addr;
     BKSpriteTextureBlock *texture_block;
-    s32 timg;
+    intptr_t timg;
     s32 sp144;
     s32 var_a0;
     s32 chunk_count;
@@ -144,7 +144,7 @@ void func_80348044(Gfx **gfx, BKSprite* sprite, s32 frame, s32 tmem, s32 rtile, 
     (*textureCount)--;
     chunk_count = (*textureCount);
     if (sprite->type & SPRITE_TYPE_CI4) {
-        for(palette_addr = (s32)(sprite_frame + 1); palette_addr % 8; palette_addr++);
+        for(palette_addr = (intptr_t)(sprite_frame + 1); palette_addr % 8; palette_addr++);
         gDPSetTextureLUT((*gfx)++, G_TT_RGBA16);
         gDPLoadTLUT_pal16((*gfx)++, 0, palette_addr);
         spriteRenderHasPalette = TRUE;
@@ -154,7 +154,7 @@ void func_80348044(Gfx **gfx, BKSprite* sprite, s32 frame, s32 tmem, s32 rtile, 
         D_80386098 = D_8038607C = 0;
     } else if (sprite->type & SPRITE_TYPE_CI8) {
         gDPPipelineMode((*gfx)++, G_PM_1PRIMITIVE);
-        for(palette_addr = (s32)(sprite_frame + 1); palette_addr % 8; palette_addr++);
+        for(palette_addr = (intptr_t)(sprite_frame + 1); palette_addr % 8; palette_addr++);
         spriteRender1PrimMode = spriteRenderHasPalette = TRUE;
         D_80386074 = NULL;
         D_8038607C = 0;

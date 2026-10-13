@@ -254,7 +254,7 @@ s32 func_802E51A4(char *str, s32 arg1, s32 start, u32 flags) {
 }
 
 void func_802E533C(struct5DBC0_1s *arg0, char arg1, s32 *arg2, s32 *arg3, Gfx **gfx) {
-    s32 timg;
+    intptr_t timg;
     BKSpriteTextureBlock *chunk;
 
     if (arg1 == ' ') {
@@ -266,7 +266,7 @@ void func_802E533C(struct5DBC0_1s *arg0, char arg1, s32 *arg2, s32 *arg3, Gfx **
         }
     } else{
         chunk = func_802E4D5C(arg0->unkE, arg1);
-        timg = (s32)(chunk + 1);
+        timg = (intptr_t)(chunk + 1);
         while ((timg % 8)) {
             timg++;
         }
