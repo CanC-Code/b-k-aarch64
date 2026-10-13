@@ -1488,7 +1488,7 @@ static void Cmd_LoadBlock(GfxCommand cmd) {
     uint32_t sl = (cmd.w0 >> 12) & 0xFFF, tl = cmd.w0 & 0xFFF;
     uint32_t sh = (cmd.w1 >> 12) & 0xFFF, th = cmd.w1 & 0xFFF;
     t.sl = sl; t.tl = tl; t.sh = sh; t.th = th;
-    { static int s_lb = 0; if (s_lb++ < 20) __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADBLK", "ENTRY tile=%u w0=%08X w1=%08X sl=%u tl=%u sh=%u th=%u tmemAddr=%u line=%u texAddr=%p", tile, cmd.w0, cmd.w1, sl, tl, sh, th, t.tmemAddr, t.line, (void*)s_rdp.texAddr); }
+    { static int s_lb = 0; if (s_lb++ < 2000) __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADBLK", "ENTRY tile=%u w0=%08X w1=%08X sl=%u tl=%u sh=%u th=%u tmemAddr=%u line=%u texAddr=%p", tile, cmd.w0, cmd.w1, sl, tl, sh, th, t.tmemAddr, t.line, (void*)s_rdp.texAddr); }
 
     uint32_t texSizeBytes = (sh + 1) * 2;
     uint32_t tmemBase = t.tmemAddr * 8;
@@ -1498,7 +1498,7 @@ static void Cmd_LoadBlock(GfxCommand cmd) {
         texSizeBytes <= 4096 && tmemBase + texSizeBytes <= 4096) {
         memcpy(s_rdp.tmem + tmemBase, s_rdp.texAddr, texSizeBytes);
         static int s_lbcopy = 0;
-        if (s_lbcopy++ < 20) {
+        if (s_lbcopy++ < 2000) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADBLK",
                 "COPY tile=%u tmemBase=%u bytes=%u src0..7=%02X%02X%02X%02X %02X%02X%02X%02X tmem0..7=%02X%02X%02X%02X %02X%02X%02X%02X",
                 tile, tmemBase, texSizeBytes,
@@ -1509,7 +1509,7 @@ static void Cmd_LoadBlock(GfxCommand cmd) {
         }
     } else {
         static int s_lbskip = 0;
-        if (s_lbskip++ < 20) {
+        if (s_lbskip++ < 2000) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADBLK",
                 "SKIP tile=%u texAddr=%p bytes=%u tmemBase=%u",
                 tile, (void*)s_rdp.texAddr, texSizeBytes, tmemBase);
