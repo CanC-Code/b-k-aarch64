@@ -1284,8 +1284,14 @@ static void Cmd_SetTImg(GfxCommand cmd) {
        32-bit value and would otherwise return a heap-relative pointer
        into unrelated memory (the "all zeros LoadBlock source" bug).
        Only fall back to RDP_TranslateAddr for real physical N64 addrs. */
-    uint8_t* resolved = nullptr;
-    {
+    /* ARM64 port 2026-10-12: check low-32-bits mapping FIRST.  The port's
+       gbi.h macros register host pointers via bka_add_addr_mapping_c
+       keyed on the low 32 bits.  A SetTImg w1 frequently carries one of
+       those keys (e.g. 0x000C1626); resolving it via RDP_TranslateAddr
+       maps small offsets into gN64_RDRAM and reads debug strings
+       ("tweenInd") as texture data. */
+    uint8_t* resolved = (uint8_t*)bka_lookup_addr_by_low32(cmd.w1);
+    if (!resolved) {
         uint8_t  seg = (cmd.w1 >> 24) & 0x0F;
         uintptr_t segBase = s_rdp.segmentBase[seg];
         if (seg < 8 && segBase != 0) {
