@@ -1542,18 +1542,36 @@ static void Cmd_LoadBlock(GfxCommand cmd) {
     uint32_t tmemBase = t.tmemAddr * 8;
     t.line = (texSizeBytes + 7) / 8;
 
-    /* ARM64 port 2026-10-12: reject the bogus 2KB LoadBlock into TMEM
-       word 0.  It's a misparsed command whose SetTImg resolved to an
-       RDRAM offset full of ASCII ("ewPosX"), and its 2048-byte copy
-       overwrites the palette bank.  Real loads target the load tile at
-       tmemAddr=16 with sh<=127. */
-    if (texSizeBytes > 512 && tmemBase == 0) {
-        static int s_bad = 0;
-        if (s_bad++ < 5)
-            __android_log_print(ANDROID_LOG_WARN, "BKA-LOADBLK",
-                "REJECT bogus 2K load: texAddr=%p bytes=%u tmemBase=%u",
-                (void*)s_rdp.texAddr, texSizeBytes, tmemBase);
-        return;
+    /* ARM64 port 2026-10-13: scope the 2KB reject to ASCII-only.
+       The guard was added to filter a misparse whose SetTImg resolved
+       to a debug string ("ewPosX"); but it also rejects legitimate
+       LoadBlock from model bins (RARE badge, code_59780.c:112). */
+    if (texSizeBytes > 512 && tmemBase == 0 && s_rdp.texAddr) {
+        int ascii = 0;
+        for (int _i = 0; _i < 8; _i++) {
+            uint8_t _b = s_rdp.texAddr[_i];
+            if ((_b >= 0x20 && _b < 0x7F) || _b == 0) ascii++;
+        }
+        if (ascii >= 7) {
+            static int s_bad = 0;
+            if (s_bad++ < 10)
+                __android_log_print(ANDROID_LOG_WARN, "BKA-LOADBLK",
+                    "REJECT ASCII 2K load: texAddr=%p bytes=%u tmemBase=%u "
+                    "b0..7=%02X%02X%02X%02X%02X%02X%02X%02X",
+                    (void*)s_rdp.texAddr, texSizeBytes, tmemBase,
+                    s_rdp.texAddr[0],s_rdp.texAddr[1],s_rdp.texAddr[2],s_rdp.texAddr[3],
+                    s_rdp.texAddr[4],s_rdp.texAddr[5],s_rdp.texAddr[6],s_rdp.texAddr[7]);
+            return;
+        } else {
+            static int s_ok = 0;
+            if (s_ok++ < 20)
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADBLK",
+                    "ALLOW 2K load: texAddr=%p bytes=%u tmemBase=%u "
+                    "b0..7=%02X%02X%02X%02X%02X%02X%02X%02X",
+                    (void*)s_rdp.texAddr, texSizeBytes, tmemBase,
+                    s_rdp.texAddr[0],s_rdp.texAddr[1],s_rdp.texAddr[2],s_rdp.texAddr[3],
+                    s_rdp.texAddr[4],s_rdp.texAddr[5],s_rdp.texAddr[6],s_rdp.texAddr[7]);
+        }
     }
     if (s_rdp.texAddr && texSizeBytes > 0 &&
         texSizeBytes <= 4096 && tmemBase + texSizeBytes <= 4096) {
