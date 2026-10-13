@@ -3278,12 +3278,12 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xFC: Cmd_SetCombine(c); break;
             case 0xD7: Cmd_Texture(c); break;
             case 0xBB: Cmd_Texture(c); break;   // F3DEX (non-2) G_TEXTURE
-            case 0xF5: { static int s_op=0; if (s_op++<40) __android_log_print(ANDROID_LOG_ERROR, "BKA-TILEOP", "F5 SetTile w0=%08X w1=%08X", c.w0, c.w1); Cmd_SetTile(c); break; }
-            case 0xF0: { static int s_op=0; if (s_op++<40) __android_log_print(ANDROID_LOG_ERROR, "BKA-TILEOP", "F0 LoadTLUT w0=%08X w1=%08X", c.w0, c.w1); Cmd_LoadTLUT(c); break; }
-            case 0xF2: { static int s_op=0; if (s_op++<40) __android_log_print(ANDROID_LOG_ERROR, "BKA-TILEOP", "F2 SetTileSize w0=%08X w1=%08X", c.w0, c.w1); Cmd_SetTileSize(c); break; }
-            case 0xFD: { static int s_op=0; if (s_op++<40) __android_log_print(ANDROID_LOG_ERROR, "BKA-TILEOP", "FD SetTImg w0=%08X w1=%08X", c.w0, c.w1); Cmd_SetTImg(c); break; }
-            case 0xF3: { static int s_op=0; if (s_op++<40) __android_log_print(ANDROID_LOG_ERROR, "BKA-TILEOP", "F3 LoadBlock w0=%08X w1=%08X", c.w0, c.w1); Cmd_LoadBlock(c); break; }
-            case 0xF4: { static int s_op=0; if (s_op++<40) __android_log_print(ANDROID_LOG_ERROR, "BKA-TILEOP", "F4 LoadTile w0=%08X w1=%08X", c.w0, c.w1); Cmd_LoadTile(c); break; }
+            case 0xF5: { static int s_op=0; if (s_op++<4000) __android_log_print(ANDROID_LOG_ERROR, "BKA-TILEOP", "F5 SetTile w0=%08X w1=%08X", c.w0, c.w1); Cmd_SetTile(c); break; }
+            case 0xF0: { static int s_op=0; if (s_op++<4000) __android_log_print(ANDROID_LOG_ERROR, "BKA-TILEOP", "F0 LoadTLUT w0=%08X w1=%08X", c.w0, c.w1); Cmd_LoadTLUT(c); break; }
+            case 0xF2: { static int s_op=0; if (s_op++<4000) __android_log_print(ANDROID_LOG_ERROR, "BKA-TILEOP", "F2 SetTileSize w0=%08X w1=%08X", c.w0, c.w1); Cmd_SetTileSize(c); break; }
+            case 0xFD: { static int s_op=0; if (s_op++<4000) __android_log_print(ANDROID_LOG_ERROR, "BKA-TILEOP", "FD SetTImg w0=%08X w1=%08X", c.w0, c.w1); Cmd_SetTImg(c); break; }
+            case 0xF3: { static int s_op=0; if (s_op++<4000) __android_log_print(ANDROID_LOG_ERROR, "BKA-TILEOP", "F3 LoadBlock w0=%08X w1=%08X", c.w0, c.w1); Cmd_LoadBlock(c); break; }
+            case 0xF4: { static int s_op=0; if (s_op++<4000) __android_log_print(ANDROID_LOG_ERROR, "BKA-TILEOP", "F4 LoadTile w0=%08X w1=%08X", c.w0, c.w1); Cmd_LoadTile(c); break; }
             case 0xF6: Cmd_FillRect(c); break;
             case 0xE4: case 0xE5: Cmd_TexRect(c); break;
 
