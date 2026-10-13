@@ -1397,7 +1397,7 @@ static void Cmd_LoadTile(GfxCommand cmd) {
     uint32_t texSize = texWidth * texHeight * bpp;
     uint32_t lineWords = (texWidth * bpp + 7) / 8;
     
-    { static int s_lt = 0; if (s_lt++ < 20)
+    { static int s_lt = 0; if (s_lt++ < 2000)
         __android_log_print(ANDROID_LOG_ERROR, "BKA-LOAD",
             "LOADTILE #%d tile=%u sl=%u tl=%u sh=%u th=%u bpp=%u texAddr=%p texWidth=%u texSize=%u",
             s_lt, tile, sl, tl, sh, th, bpp, (void*)s_rdp.texAddr, s_rdp.texWidth, texSize); }
@@ -1452,7 +1452,7 @@ static void Cmd_LoadTLUT(GfxCommand cmd) {
     if (tmemBase >= 4096) tmemBase = 2048;
     if (!s_rdp.texAddr) {
         static int s_ltn = 0;
-        if (s_ltn++ < 10)
+        if (s_ltn++ < 2000)
             __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADTLUT",
                 "SKIP tile=%u tmem=%u count=%u texAddr=null",
                 tile, t.tmemAddr, count);
@@ -1470,7 +1470,7 @@ static void Cmd_LoadTLUT(GfxCommand cmd) {
             s_rdp.tmem[2064],s_rdp.tmem[2065],s_rdp.tmem[2066],s_rdp.tmem[2067],s_rdp.tmem[2068],s_rdp.tmem[2069],s_rdp.tmem[2070],s_rdp.tmem[2071],
             s_rdp.tmem[2072],s_rdp.tmem[2073],s_rdp.tmem[2074],s_rdp.tmem[2075],s_rdp.tmem[2076],s_rdp.tmem[2077],s_rdp.tmem[2078],s_rdp.tmem[2079]);
     }}
-    { static int s_lt = 0; if (s_lt++ < 20)
+    { static int s_lt = 0; if (s_lt++ < 2000)
         __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADTLUT",
             "ENTRY tile=%u tmem=%u tmemBase=%u count=%u bytes=%u texAddr=%p "
             "src0..7=%02X%02X%02X%02X%02X%02X%02X%02X "
