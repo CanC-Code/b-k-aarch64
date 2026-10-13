@@ -1314,6 +1314,38 @@ static void Cmd_SetTImg(GfxCommand cmd) {
     // and a resolvable image address. Reject anything else — the
     // walker is landing on non-command bytes and previously clobbered
     // s_rdp.texAddr with null, blocking LoadTile from ever running.
+    /* ARM64 port 2026-10-12: one-shot byte dump at both resolutions.
+       Determines which address holds real texture data. */
+    {
+        uint8_t seg = (cmd.w1 >> 24) & 0x0F;
+        uint32_t off = cmd.w1 & 0x00FFFFFF;
+        uintptr_t segBase = s_rdp.segmentBase[seg];
+        uint32_t combined = (uint32_t)(segBase + off);
+        uint8_t* direct = RDP_TranslateAddr(cmd.w1);
+        uint8_t* viaseg = RDP_TranslateAddr(combined);
+        static int s_bd = 0;
+        if (s_bd++ < 5) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-SETIMG-BD",
+                "SETIMG w1=%08X seg=%X off=%06X segBase=%08lX direct=%p viaseg=%p",
+                cmd.w1, seg, off, (unsigned long)segBase, (void*)direct, (void*)viaseg);
+            if (direct && bka_is_readable(direct)) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-SETIMG-BD",
+                    "direct[0..15]=%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+                    direct[0],direct[1],direct[2],direct[3],
+                    direct[4],direct[5],direct[6],direct[7],
+                    direct[8],direct[9],direct[10],direct[11],
+                    direct[12],direct[13],direct[14],direct[15]);
+            }
+            if (viaseg && bka_is_readable(viaseg)) {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-SETIMG-BD",
+                    "viaseg[0..15]=%02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+                    viaseg[0],viaseg[1],viaseg[2],viaseg[3],
+                    viaseg[4],viaseg[5],viaseg[6],viaseg[7],
+                    viaseg[8],viaseg[9],viaseg[10],viaseg[11],
+                    viaseg[12],viaseg[13],viaseg[14],viaseg[15]);
+            }
+        }
+    }
     { uint32_t _fmt = (cmd.w0 >> 21) & 0x7;
       if (_fmt > 5 || resolved == nullptr) {
           static int s_sr = 0; if (s_sr++ < 15)
