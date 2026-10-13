@@ -1432,7 +1432,7 @@ static void Cmd_LoadTile(GfxCommand cmd) {
             "LOADTILE #%d tile=%u sl=%u tl=%u sh=%u th=%u bpp=%u texAddr=%p texWidth=%u texSize=%u",
             s_lt, tile, sl, tl, sh, th, bpp, (void*)s_rdp.texAddr, s_rdp.texWidth, texSize); }
     if (s_rdp.texAddr && texSize <= 4096) {
-        { static int s_bd = 0; if (s_bd++ < 30)
+        { static int s_bd = 0; if (texSize == 512 && s_bd++ < 300)
             __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADTILE-BADGE",
                 "LT tile=%u sl=%u tl=%u sh=%u th=%u wh=%ux%u bpp=%u tmem=%u "
                 "src=%p b0..15=%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
