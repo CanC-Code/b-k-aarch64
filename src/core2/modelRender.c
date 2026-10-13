@@ -1,4 +1,5 @@
 #include <ultra64.h>
+#include <stdio.h>
 #include <math.h>
 #include "functions.h"
 #include "variables.h"
@@ -1221,6 +1222,19 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
     s32 alpha; 
     f32 tmp_f0;
     f32 padB8;
+
+    { static int _bka_dl_dumped = 0;
+      if (!_bka_dl_dumped && model_bin) {
+          _bka_dl_dumped = 1;
+          uint32_t _gfx_off = bswap32(model_bin->gfx_list_offset);
+          uint8_t *_gfx = (uint8_t*)model_bin + _gfx_off;
+          FILE *_f = fopen("/data/data/com.bkawrapper/files/bka_dl935.bin", "wb");
+          if (_f) { fwrite(_gfx, 1, 512, _f); fclose(_f); }
+          __android_log_print(ANDROID_LOG_ERROR, "BKA-DL935",
+              "bin=%p gfx_off=0x%X gfx=%p b0=%02X%02X%02X%02X%02X%02X%02X%02X",
+              (void*)model_bin, _gfx_off, (void*)_gfx,
+              _gfx[0],_gfx[1],_gfx[2],_gfx[3],_gfx[4],_gfx[5],_gfx[6],_gfx[7]);
+      } }
     
     //bka_mr_log("past function entry");
     if ((!model_bin && !sSecondaryModelData.model_id) || (model_bin && sSecondaryModelData.model_id)) {
