@@ -2,7 +2,7 @@
 #include "model.h"
 
 void *textureList_getDataPtr(BKTextureList *this) {
-    return (void *) &this->texture_infos[this->count];
+    return (void *) &this->texture_infos[__builtin_bswap16((u16)this->count)];
 }
 
 s32 textureInfo_getBitDepth(BKTextureInfo *this) {

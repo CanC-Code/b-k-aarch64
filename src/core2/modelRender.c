@@ -1426,11 +1426,11 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
                 "SEGSETUP-b100 vtx=%p vtx_phys=0x%08X tex=%p tex_phys=0x%08X",
                 (void*)&modelRendervertexList->vertices,
                 (unsigned)osVirtualToPhysical(&modelRendervertexList->vertices),
-                (void*)&modelRenderTextureList->texture_infos[modelRenderTextureList->count],
-                (unsigned)osVirtualToPhysical(&modelRenderTextureList->texture_infos[modelRenderTextureList->count]));
+                (void*)&modelRenderTextureList->texture_infos[__builtin_bswap16((u16)modelRenderTextureList->count)],
+                (unsigned)osVirtualToPhysical(&modelRenderTextureList->texture_infos[__builtin_bswap16((u16)modelRenderTextureList->count)]));
     }
     gSPSegment((*gfx)++, 0x01, osVirtualToPhysical(&modelRendervertexList->vertices));
-    gSPSegment((*gfx)++, 0x02, osVirtualToPhysical(&modelRenderTextureList->texture_infos[modelRenderTextureList->count]));
+    gSPSegment((*gfx)++, 0x02, osVirtualToPhysical(&modelRenderTextureList->texture_infos[__builtin_bswap16((u16)modelRenderTextureList->count)]));
 
     //segments 11 to 15 contain animated textures
     if(modelRenderAnimatedTexturesCacheId){
@@ -1439,7 +1439,7 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
         
         for(i_segment = 0; i_segment < 4; i_segment++){
             if(AnimTextureListCache_tryGetTextureOffset(modelRenderAnimatedTexturesCacheId, i_segment, &texture_offset))
-                gSPSegment((*gfx)++, 15 - i_segment, osVirtualToPhysical((u8*)&modelRenderTextureList->texture_infos[modelRenderTextureList->count] + texture_offset));
+                gSPSegment((*gfx)++, 15 - i_segment, osVirtualToPhysical((u8*)&modelRenderTextureList->texture_infos[__builtin_bswap16((u16)modelRenderTextureList->count)] + texture_offset));
         }
     }
 
