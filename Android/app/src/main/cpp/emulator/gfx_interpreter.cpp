@@ -3193,6 +3193,27 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xAF: // G_LOAD_UCODE - not needed for software RDP
             case 0xB3: // G_RDPHALF_2
             case 0xB5: // G_LINE3D
+            case 0xB8: {  /* ARM64 port 2026-10-12: G_ENDDL.  Missing from the
+                          * original switch, so sub-DLs never terminated and
+                          * the walker drifted past the real DL end into
+                          * adjacent heap (0x0006 0x0006 0x0007... counter
+                          * tables), accumulating 8 unknowns and bailing. */
+                if (depth > 0) {
+                    depth--;
+                    cur             = stack[depth].ptr;
+                    cur_end         = stack[depth].end;
+                    current_stride  = stack_stride[depth];
+                    s_dl_base       = stack_dl_base[depth];
+                    cur_dl_enc      = stack_enc[depth];
+                    unknown_opcode_run = 0;
+                    dl_cmds         = 0;
+                    zero_run        = 0;
+                    g_bka_task_pops++;
+                    continue;
+                }
+                /* top-level G_ENDDL: task walk is complete */
+                return;
+            }
             case 0xBD: // G_POPMTX - accepted, not implemented
             case 0x00:
             case 0xC0:
