@@ -1488,6 +1488,20 @@ static void Cmd_LoadTLUT(GfxCommand cmd) {
     }
     uint32_t bytes = (count + 1) * 2;
     if (bytes > 1024) bytes = 1024;
+    static int s_first = 0;
+    if (s_first++ == 0) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-LT1",
+            "FIRST LT: tile=%u tmem=%u tmemBase=%u count=%u texAddr=%p "
+            "segBase[0..3]=%08lX %08lX %08lX %08lX "
+            "bytes=%02X%02X%02X%02X%02X%02X%02X%02X",
+            tile, t.tmemAddr, tmemBase, count, (void*)s_rdp.texAddr,
+            (unsigned long)s_rdp.segmentBase[0],
+            (unsigned long)s_rdp.segmentBase[1],
+            (unsigned long)s_rdp.segmentBase[2],
+            (unsigned long)s_rdp.segmentBase[3],
+            s_rdp.texAddr[0],s_rdp.texAddr[1],s_rdp.texAddr[2],s_rdp.texAddr[3],
+            s_rdp.texAddr[4],s_rdp.texAddr[5],s_rdp.texAddr[6],s_rdp.texAddr[7]);
+    }
     memcpy(s_rdp.tmem + tmemBase, s_rdp.texAddr, bytes);
     { static int s_tdmp = 0; if (s_tdmp++ < 8) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA-TLUTDUMP",
