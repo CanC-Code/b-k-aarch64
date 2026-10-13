@@ -1412,7 +1412,9 @@ static void Cmd_SetTImg(GfxCommand cmd) {
 }
 
 static void Cmd_LoadTile(GfxCommand cmd) {
-    uint32_t tile = (cmd.w0 >> 24) & 0x7;
+    /* ARM64 port 2026-10-13: LoadTile tile is in w1 bits 24-26, not w0.
+       Reading w0 gives the opcode byte (0xF2) masked to 2. */
+    uint32_t tile = (cmd.w1 >> 24) & 0x7;
     if (tile >= 8) return;
     auto& t = s_rdp.tiles[tile];
     uint32_t sl = (cmd.w0 >> 12) & 0xFFF, tl = cmd.w0 & 0xFFF;
