@@ -1278,16 +1278,28 @@ static void Cmd_SetTImg(GfxCommand cmd) {
     // SETIMG address: some DLs emit pre-resolved physical addresses, some
     // emit segment-relative. Direct translate handles the first; if it
     // returns null, combine with the segment base and retry.
-    uint8_t* resolved = RDP_TranslateAddr(cmd.w1);
-    if (!resolved) {
+    /* ARM64 port 2026-10-12: try segment-relative resolution FIRST.
+       A segment-encoded address (top nibble 0-7, non-zero segment base)
+       must go through the segment table; RDP_TranslateAddr accepts any
+       32-bit value and would otherwise return a heap-relative pointer
+       into unrelated memory (the "all zeros LoadBlock source" bug).
+       Only fall back to RDP_TranslateAddr for real physical N64 addrs. */
+    uint8_t* resolved = nullptr;
+    {
         uint8_t  seg = (cmd.w1 >> 24) & 0x0F;
-        uint32_t off = cmd.w1 & 0x00FFFFFF;
-        uint32_t combined = (uint32_t)(s_rdp.segmentBase[seg] + off);
-        resolved = RDP_TranslateAddr(combined);
+        uintptr_t segBase = s_rdp.segmentBase[seg];
+        if (seg < 8 && segBase != 0) {
+            uint32_t off = cmd.w1 & 0x00FFFFFF;
+            uint32_t combined = (uint32_t)(segBase + off);
+            resolved = RDP_TranslateAddr(combined);
+            if (!resolved) resolved = (uint8_t*)bka_lookup_addr_by_low32(combined);
+        }
+    }
+    if (!resolved) {
+        resolved = RDP_TranslateAddr(cmd.w1);
         static int s_fb = 0; if (s_fb++ < 10)
             __android_log_print(ANDROID_LOG_ERROR, "BKA-SETIMG",
-                "FALLBACK seg=%X off=%06X combined=%08X -> %p",
-                seg, off, combined, (void*)resolved);
+                "FALLBACK direct w1=%08X -> %p", cmd.w1, (void*)resolved);
     }
     { uint8_t seg = (cmd.w1 >> 24) & 0x0F;
       uint32_t off = cmd.w1 & 0x00FFFFFF;
