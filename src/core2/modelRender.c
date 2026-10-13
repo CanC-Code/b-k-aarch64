@@ -1353,15 +1353,6 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
     if(model_bin == NULL){
         model_bin = assetcache_get(sSecondaryModelData.model_id);
     }
-    /* ARM64 port 2026-10-12: invalidate cached lists when the bin changes.
-       Otherwise the first model drawn in a frame (skybox) caches its
-       texture list, and every later model (badge) re-uses it — segment 2
-       then points at the wrong texture data for LoadBlock. */
-    if (modelRenderModelBin != model_bin) {
-        modelRenderDisplayList = NULL;
-        modelRenderTextureList = NULL;
-        modelRendervertexList  = NULL;
-    }
     modelRenderModelBin = model_bin;
     modelRenderDisplayList = modelRenderDisplayList ? modelRenderDisplayList : modelbin_getGfxList(modelRenderModelBin);
     modelRenderTextureList = modelRenderTextureList ? modelRenderTextureList : modelbin_getTextureList(modelRenderModelBin);
