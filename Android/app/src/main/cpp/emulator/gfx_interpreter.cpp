@@ -1430,6 +1430,17 @@ static void Cmd_LoadTile(GfxCommand cmd) {
             "LOADTILE #%d tile=%u sl=%u tl=%u sh=%u th=%u bpp=%u texAddr=%p texWidth=%u texSize=%u",
             s_lt, tile, sl, tl, sh, th, bpp, (void*)s_rdp.texAddr, s_rdp.texWidth, texSize); }
     if (s_rdp.texAddr && texSize <= 4096) {
+        { static int s_bd = 0; if (s_bd++ < 30)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADTILE-BADGE",
+                "LT tile=%u sl=%u tl=%u sh=%u th=%u wh=%ux%u bpp=%u tmem=%u "
+                "src=%p b0..15=%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+                tile, sl, tl, sh, th, texWidth, texHeight, bpp, t.tmemAddr,
+                (void*)s_rdp.texAddr,
+                s_rdp.texAddr[0],s_rdp.texAddr[1],s_rdp.texAddr[2],s_rdp.texAddr[3],
+                s_rdp.texAddr[4],s_rdp.texAddr[5],s_rdp.texAddr[6],s_rdp.texAddr[7],
+                s_rdp.texAddr[8],s_rdp.texAddr[9],s_rdp.texAddr[10],s_rdp.texAddr[11],
+                s_rdp.texAddr[12],s_rdp.texAddr[13],s_rdp.texAddr[14],s_rdp.texAddr[15]); }
+
         { static int s_lt2 = 0; if (s_lt2++ < 20) {
             uint32_t tmemBase = t.tmemAddr * 8;
             uint32_t srcLineStride = s_rdp.texWidth * bpp;
