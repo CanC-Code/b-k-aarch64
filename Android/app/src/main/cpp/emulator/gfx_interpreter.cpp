@@ -760,7 +760,7 @@ static void RDP_FetchTexel(int tile, uint32_t s, uint32_t t, uint8_t* outRGBA) {
         uint8_t b = s_rdp.tmem[byteAddr];
         uint32_t idx = (bitInWord & 4u) ? (b & 0xFu) : (b >> 4);
         if (tdesc.format == 2) {
-            uint32_t palWord = 256u + (uint32_t)tdesc.palette * 4u + (idx >> 2);
+            uint32_t palWord = 256u + (uint32_t)tdesc.palette * 16u + (idx >> 2);  /* F3DEX1: CI4 bank N at word 256+N*16 */
             uint32_t palByte = (palWord & 0x1FFu) * 8u + ((idx & 3u) * 2u);
             if (palByte + 1 >= 4096) { outRGBA[0]=outRGBA[1]=outRGBA[2]=outRGBA[3]=0; return; }
             uint16_t p = ((uint16_t)s_rdp.tmem[palByte] << 8) | s_rdp.tmem[palByte+1];
@@ -1401,8 +1401,16 @@ static void Cmd_LoadTLUT(GfxCommand cmd) {
     uint32_t count = (cmd.w1 >> 14) & 0x3FF;
     if (tile >= 8) return;
     auto& t = s_rdp.tiles[tile];
-    uint32_t tmemBase = t.tmemAddr * 8;
-    if (tmemBase < 2048) tmemBase = 2048;   // palette must live at word 256+
+    /* ARM64 port 2026-10-12: F3DEX1 convention — CI4 palette bank N
+       lives at TMEM word 256 + N*16.  The load tile's tmemAddr (usually
+       256) is not the bank address; the render tile's palette field picks
+       the bank.  Look at tile 0 (render tile) to find which bank to load
+       into, and write there.  Without this, sampler reads word 256+pal*16
+       while loader wrote word 256, and all CI4 palette lookups resolve to
+       zero (the black RARE logo interior). */
+    uint32_t render_pal = s_rdp.tiles[0].palette;
+    uint32_t bank_offset = (render_pal < 16) ? (render_pal * 16 * 8) : 0;
+    uint32_t tmemBase = 2048 + bank_offset;
     if (tmemBase >= 4096) tmemBase = 2048;
     if (!s_rdp.texAddr) {
         static int s_ltn = 0;
