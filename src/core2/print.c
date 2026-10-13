@@ -534,7 +534,7 @@ void _printbuffer_draw_letter(char letter, f32* xPtr, f32* yPtr, f32 scale, Gfx 
     static f32 left_margin;
 
     BKSpriteTextureBlock *letter_sprite;
-    s32 sp210;
+    intptr_t sp210;
     s32 letter_id;
     s32 valid_letter;
     s8 y_offset;
@@ -706,7 +706,7 @@ void _printbuffer_draw_letter(char letter, f32* xPtr, f32* yPtr, f32 scale, Gfx 
 
         x += (left_margin + (letter_width - letter_sprite->x) * 0.5);
         y -= letter_sprite->h*0.5;
-        sp210 = (s32)(letter_sprite + 1);
+        sp210 = (intptr_t)(letter_sprite + 1);
         while(sp210 % 8){
             sp210++;
         }

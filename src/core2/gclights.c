@@ -179,7 +179,7 @@ void lightingVectorList_fromFile(File *file_ptr) {
     f32 position[3];
     f32 fade_radii[2];
     s32 rgb[3];
-    s32 lighting_ptr;
+    intptr_t lighting_ptr;
     __lighting_freeAndInit();
     while(!file_isNextByteExpected(file_ptr, LIGHTING_LIST_END_INDICATOR)) {
         if( file_isNextByteExpected(file_ptr, LIGHTING_START_INDICATOR)
