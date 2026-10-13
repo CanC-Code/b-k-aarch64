@@ -3911,7 +3911,7 @@ default:
              * (ptr, w0, w1, op, enc) plus 32 raw bytes at each. */
             {
                 static int s_drift_dump = 0;
-                if (s_drift_dump++ < 4) {
+                if (s_drift_dump++ < 100) {   /* ARM64 port 2026-10-12: was 4 */
                     __android_log_print(ANDROID_LOG_ERROR, "BKA-DRIFT",
                         "DRIFT-SUMMARY cur=%p depth=%d dlBase=%p stride=%zu",
                         (void*)cur, depth, (void*)s_dl_base, current_stride);
