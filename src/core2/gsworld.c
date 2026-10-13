@@ -76,7 +76,7 @@ void gsworld_draw(Gfx** gfx, Mtx **mtx, Vtx **vtx) {
            which is fixed (14 (s32)->(intptr_t) callback truncations, commits
            8d6e251c..6aa61cec).  With it gone, the intro camera should follow
            the real cutscene path into the lair. */
-        /* viewport_setPosition_f3(434.0f, -323.0f, 1200.0f);  disabled */
+        viewport_setPosition_f3(434.0f, -323.0f, 1200.0f);  /* TEMP: re-enabled to see badge during texture debug */
         viewport_setRotation_f3(0.0f, 0.0f, 0.0f);
     }
     viewport_setRenderViewportAndPerspectiveMatrix(gfx, mtx);
