@@ -1408,12 +1408,11 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
         BKTextureInfo *i0 = &tl->texture_infos[0];
         __android_log_print(ANDROID_LOG_ERROR, "BKA-TEXLIST",
             "tl=%p count=%d infos0=%p infosN=%p "
-            "i0.w=%d i0.h=%d i0.type=%d i0.bits=%d i0.off=%d i0.tsize=%d "
+            "i0.type=%d i0.bits=%d i0.off=%d i0.tsize=%d "
             "i0.bytes0..7=%02X%02X%02X%02X%02X%02X%02X%02X",
             (void*)tl, (int)tl->count,
             (void*)&tl->texture_infos[0],
             (void*)&tl->texture_infos[tl->count],
-            (int)i0->w, (int)i0->h,
             (int)textureInfo_getType(i0),
             (int)textureInfo_getBitDepth(i0),
             (int)textureInfo_getOffset(i0),
