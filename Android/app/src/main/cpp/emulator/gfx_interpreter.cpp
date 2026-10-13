@@ -1290,6 +1290,14 @@ static void Cmd_SetTImg(GfxCommand cmd) {
        those keys (e.g. 0x000C1626); resolving it via RDP_TranslateAddr
        maps small offsets into gN64_RDRAM and reads debug strings
        ("tweenInd") as texture data. */
+    { uint8_t _s2 = (cmd.w1 >> 24) & 0x0F;
+      if (_s2 == 2) {
+          static int _s2c = 0; if (_s2c++ < 40)
+              __android_log_print(ANDROID_LOG_ERROR, "BKA-SEG2",
+                  "SETIMG seg2 w1=0x%08X segBase2=0x%08lX low32res=%p",
+                  cmd.w1, (unsigned long)s_rdp.segmentBase[2],
+                  bka_lookup_addr_by_low32(cmd.w1));
+      } }
     uint8_t* resolved = (uint8_t*)bka_lookup_addr_by_low32(cmd.w1);
     if (!resolved) {
         uint8_t  seg = (cmd.w1 >> 24) & 0x0F;
@@ -2130,6 +2138,11 @@ static void Cmd_MoveWord(GfxCommand cmd) {
             return;
         }
         s_rdp.segmentBase[segment] = (uintptr_t)a;
+        if (segment == 2) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-SEG2",
+                "SEG2 WRITE base=0x%08X (was 0x%08lX)",
+                data, (unsigned long)data);
+        }
 
         static int seg_log = 0;
         if (seg_log++ < 20) {
