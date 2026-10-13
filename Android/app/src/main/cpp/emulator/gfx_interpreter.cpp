@@ -1294,9 +1294,11 @@ static void Cmd_SetTImg(GfxCommand cmd) {
       if (_s2 == 2) {
           static int _s2c = 0; if (_s2c++ < 40)
               __android_log_print(ANDROID_LOG_ERROR, "BKA-SEG2",
-                  "SETIMG seg2 w1=0x%08X segBase2=0x%08lX low32res=%p",
+                  "SETIMG seg2 w1=0x%08X segBase2=0x%08lX low32res=%p segres=%p combined=0x%08X",
                   cmd.w1, (unsigned long)s_rdp.segmentBase[2],
-                  bka_lookup_addr_by_low32(cmd.w1));
+                  bka_lookup_addr_by_low32(cmd.w1),
+                  RDP_TranslateAddr((uint32_t)(s_rdp.segmentBase[2] + (cmd.w1 & 0xFFFFFF))),
+                  (uint32_t)(s_rdp.segmentBase[2] + (cmd.w1 & 0xFFFFFF)));
       } }
     uint8_t* resolved = nullptr;
     {
