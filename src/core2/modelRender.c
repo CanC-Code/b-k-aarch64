@@ -1223,6 +1223,45 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
     f32 tmp_f0;
     f32 padB8;
 
+    { static int _mb = 0; if (_mb++ < 2 && model_bin) {
+        u8 *_b = (u8*)model_bin;
+        u16 _tl_off = __builtin_bswap16((u16)model_bin->texture_list_offset);
+        u8 *_tl = _b + _tl_off;
+        s16 _cnt_raw = *(s16*)(_tl + 4);
+        s16 _cnt_be  = __builtin_bswap16((u16)_cnt_raw);
+        u8 *_data_at_be = _tl + 8 + (int)_cnt_be * 16;
+        u8 *_data_at_raw = _tl + 8 + (int)_cnt_raw * 16;
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-MBDUMP",
+            "bin=%p tl_off=0x%X tl=%p cnt_raw=%d cnt_be=%d "
+            "data_be=%p data_raw=%p",
+            (void*)_b, _tl_off, (void*)_tl, (int)_cnt_raw, (int)_cnt_be,
+            (void*)_data_at_be, (void*)_data_at_raw);
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-MBDUMP",
+            "bin[0..31]=%02X%02X%02X%02X%02X%02X%02X%02X"
+            "%02X%02X%02X%02X%02X%02X%02X%02X"
+            "%02X%02X%02X%02X%02X%02X%02X%02X"
+            "%02X%02X%02X%02X%02X%02X%02X%02X",
+            _b[0],_b[1],_b[2],_b[3],_b[4],_b[5],_b[6],_b[7],
+            _b[8],_b[9],_b[10],_b[11],_b[12],_b[13],_b[14],_b[15],
+            _b[16],_b[17],_b[18],_b[19],_b[20],_b[21],_b[22],_b[23],
+            _b[24],_b[25],_b[26],_b[27],_b[28],_b[29],_b[30],_b[31]);
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-MBDUMP",
+            "tl[0..31]=%02X%02X%02X%02X%02X%02X%02X%02X"
+            "%02X%02X%02X%02X%02X%02X%02X%02X"
+            "%02X%02X%02X%02X%02X%02X%02X%02X"
+            "%02X%02X%02X%02X%02X%02X%02X%02X",
+            _tl[0],_tl[1],_tl[2],_tl[3],_tl[4],_tl[5],_tl[6],_tl[7],
+            _tl[8],_tl[9],_tl[10],_tl[11],_tl[12],_tl[13],_tl[14],_tl[15],
+            _tl[16],_tl[17],_tl[18],_tl[19],_tl[20],_tl[21],_tl[22],_tl[23],
+            _tl[24],_tl[25],_tl[26],_tl[27],_tl[28],_tl[29],_tl[30],_tl[31]);
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-MBDUMP",
+            "data_be[0..15]=%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+            _data_at_be[0],_data_at_be[1],_data_at_be[2],_data_at_be[3],
+            _data_at_be[4],_data_at_be[5],_data_at_be[6],_data_at_be[7],
+            _data_at_be[8],_data_at_be[9],_data_at_be[10],_data_at_be[11],
+            _data_at_be[12],_data_at_be[13],_data_at_be[14],_data_at_be[15]);
+    } }
+
     { static int _bka_dl_dumped = 0;
       if (!_bka_dl_dumped && model_bin) {
           _bka_dl_dumped = 1;
