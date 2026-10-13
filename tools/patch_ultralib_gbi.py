@@ -100,6 +100,29 @@ if 'int32_t Mtx_t' not in text:
 with open(PATH, 'w') as f:
     f.write(text)
 
+# 4. Fix missing space after #define on LoadTextureBlock_4b family.
+#    These read as the invalid directive '#definegDPLoad...' and get
+#    silently discarded by the preprocessor, so the macros are undefined.
+for broken in ('#definegDPLoadTextureBlock_4b', '#definegDPLoadTextureBlock_4bS',
+               '#define_gDPLoadTextureBlock_4b',
+               '#definegsDPLoadTextureBlock_4b', '#definegsDPLoadTextureBlock_4bS',
+               '#define_gsDPLoadTextureBlock_4b'):
+    if broken in text:
+        fixed = '#define ' + broken[len('#define'):].lstrip()
+        text = text.replace(broken, fixed)
+        print("fixed:", broken, "->", fixed)
+
+# 4b. The non-4b variants may have the same issue
+for prefix in ('gDPLoadTextureBlock', 'gsDPLoadTextureBlock', '_gDPLoadTextureBlock'):
+    broken = '#define' + prefix + '('
+    if broken in text:
+        fixed = '#define ' + prefix + '('
+        text = text.replace(broken, fixed)
+        print("fixed:", broken, "->", fixed)
+
+with open(PATH, 'w') as f:
+    f.write(text)
+
 n_trace = text.count('bka_trace_ff_val(__bka_a)')
 n_log   = text.count('bka_log_gdma_ra((void*)')
 n_decl  = text.count('extern void bka_log_gdma_ra')
