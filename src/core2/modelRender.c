@@ -1215,7 +1215,7 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
           char _fn[128];
           snprintf(_fn, sizeof(_fn), "/data/data/com.bkawrapper/files/mb_%02d.bin", _idx);
           FILE *_f = fopen(_fn, "wb");
-          if (_f) { fwrite(model_bin, 1, 4096, _f); fclose(_f); }
+          if (_f) { fwrite(model_bin, 1, 24576, _f); fclose(_f); }
         }
       }
       __android_log_print(ANDROID_LOG_ERROR, "BKA-MR-ENTRY",
