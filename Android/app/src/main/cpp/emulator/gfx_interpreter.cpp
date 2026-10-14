@@ -1274,10 +1274,19 @@ static void Cmd_SetTileSize(GfxCommand cmd) {
     t.th = cmd.w1 & 0xFFF;
 }
 
-static uint32_t g_last_timg_w1 = 0;
-static uint8_t* g_last_timg_resolved = nullptr;
-
 static void Cmd_SetTImg(GfxCommand cmd) {
+    /* ARM64 port 2026-10-14: reject bogus SetTImg BEFORE it clobbers
+       s_rdp.texAddr. w1==0xFFFFFFFF is a walker-drift artifact: the
+       walker lost byte alignment and decoded non-command bytes as
+       SetTImg. Without this guard, a subsequent LoadTLUT reads from
+       the garbage address this command resolved to. */
+    if (cmd.w1 == 0xFFFFFFFFu) {
+        static int s_bogus = 0; if (s_bogus++ < 20)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-SETIMG-BOGUS",
+                "rejected w0=%08X w1=%08X", cmd.w0, cmd.w1);
+        s_rdp.texAddr = nullptr;
+        return;
+    }
     { static int s_r = 0; if (s_r++ < 60) {
         uint8_t _seg = (cmd.w1 >> 24) & 0x0F;
         if (_seg == 2) {
@@ -1459,8 +1468,6 @@ static void Cmd_SetTImg(GfxCommand cmd) {
     s_rdp.texFmt   = fmt;
     s_rdp.texSize  = siz;
     s_rdp.texWidth = wd;
-    g_last_timg_w1 = cmd.w1;
-    g_last_timg_resolved = resolved;
     s_rdp.texAddr  = resolved;
 }
 
@@ -1527,27 +1534,7 @@ static void Cmd_LoadTile(GfxCommand cmd) {
     }
 }
 
-static void Cmd_LoadTLUT(GfxCommand cmd) {    { static int _ltp = 0;
-      if (_ltp < 40 && g_bka_dl_cur) {
-        const uint8_t* p = g_bka_dl_cur;
-        __android_log_print(ANDROID_LOG_ERROR, "BKA-LTPREV",
-            "prev64=%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X"
-            "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X"
-            "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X"
-            "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X "
-            "texAddr=%p seg2=%08X",
-            p[-64],p[-63],p[-62],p[-61],p[-60],p[-59],p[-58],p[-57],
-            p[-56],p[-55],p[-54],p[-53],p[-52],p[-51],p[-50],p[-49],
-            p[-48],p[-47],p[-46],p[-45],p[-44],p[-43],p[-42],p[-41],
-            p[-40],p[-39],p[-38],p[-37],p[-36],p[-35],p[-34],p[-33],
-            p[-32],p[-31],p[-30],p[-29],p[-28],p[-27],p[-26],p[-25],
-            p[-24],p[-23],p[-22],p[-21],p[-20],p[-19],p[-18],p[-17],
-            p[-16],p[-15],p[-14],p[-13],p[-12],p[-11],p[-10],p[-9],
-            p[-8],p[-7],p[-6],p[-5],p[-4],p[-3],p[-2],p[-1],
-            (void*)s_rdp.texAddr, (unsigned)(s_rdp.segmentBase[2] & 0xFFFFFFFFu));
-        _ltp++;
-      } }
-
+static void Cmd_LoadTLUT(GfxCommand cmd) {
     { uint32_t _s2 = (uint32_t)s_rdp.segmentBase[2];
       if (_s2 == 0xB28625F0u || _s2 == 0xB553D480u || _s2 == 0xB27FB050u || _s2 == 0xB284E050u) {
           __android_log_print(ANDROID_LOG_ERROR, "BKA-LT-RARE",
@@ -1613,32 +1600,13 @@ static void Cmd_LoadTLUT(GfxCommand cmd) {    { static int _ltp = 0;
             s_rdp.tmem[2064],s_rdp.tmem[2065],s_rdp.tmem[2066],s_rdp.tmem[2067],s_rdp.tmem[2068],s_rdp.tmem[2069],s_rdp.tmem[2070],s_rdp.tmem[2071],
             s_rdp.tmem[2072],s_rdp.tmem[2073],s_rdp.tmem[2074],s_rdp.tmem[2075],s_rdp.tmem[2076],s_rdp.tmem[2077],s_rdp.tmem[2078],s_rdp.tmem[2079]);
     }}
-    { static int _ltf = 0;
-      if (_ltf < 20000) {
-        struct timespec _ts; clock_gettime(CLOCK_MONOTONIC, &_ts);
-        uint64_t _ms = (uint64_t)_ts.tv_sec * 1000ULL + (uint64_t)_ts.tv_nsec / 1000000ULL;
-        FILE* _f = fopen("/data/data/com.bkawrapper/files/lt_log.txt", _ltf == 0 ? "wb" : "ab");
-        if (_f) {
-          uint8_t* _p = s_rdp.texAddr;
-          fprintf(_f, "#%05d t=%llu tile=%u tmem=%u count=%u seg2=%08X texAddr=%p "
-              "b=%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X\n",
-              _ltf, (unsigned long long)_ms, tile, tmemBase, count,
-              (unsigned)(s_rdp.segmentBase[2] & 0xFFFFFFFFu), (void*)_p,
-              _p?_p[0]:0,_p?_p[1]:0,_p?_p[2]:0,_p?_p[3]:0,_p?_p[4]:0,_p?_p[5]:0,_p?_p[6]:0,_p?_p[7]:0,
-              _p?_p[8]:0,_p?_p[9]:0,_p?_p[10]:0,_p?_p[11]:0,_p?_p[12]:0,_p?_p[13]:0,_p?_p[14]:0,_p?_p[15]:0);
-          fclose(_f);
-        }
-        _ltf++;
-      } }
     { static int s_lt = 0; if (s_lt++ < 2000)
         __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADTLUT",
             "ENTRY tile=%u tmem=%u tmemBase=%u count=%u bytes=%u texAddr=%p "
             "src0..7=%02X%02X%02X%02X%02X%02X%02X%02X "
-            "lt_w1=%08X lt_res=%p "
             "tmem[%u..%u]=%02X%02X%02X%02X%02X%02X%02X%02X "
             "pal=%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X",
             tile, t.tmemAddr, tmemBase, count, bytes, (void*)s_rdp.texAddr,
-            g_last_timg_w1, (void*)g_last_timg_resolved,
             (unsigned long)s_rdp.segmentBase[2],
             s_rdp.texAddr[0], s_rdp.texAddr[1], s_rdp.texAddr[2], s_rdp.texAddr[3],
             s_rdp.texAddr[4], s_rdp.texAddr[5], s_rdp.texAddr[6], s_rdp.texAddr[7],
