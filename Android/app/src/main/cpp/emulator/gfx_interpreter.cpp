@@ -1417,12 +1417,26 @@ static void Cmd_SetTImg(GfxCommand cmd) {
             }
         }
     }
+    /* ARM64 port 2026-10-14: reject bogus SetTImg before it clobbers
+       s_rdp.texAddr. w1==0xFFFFFFFF is a drift artifact -- the walker
+       lost byte-alignment and decoded non-command bytes as SetTImg.
+       Without this, a subsequent LoadTLUT reads from garbage. */
+    if (cmd.w1 == 0xFFFFFFFFu || (cmd.w1 >> 24) == 0x0Fu) {
+        static int s_bogus = 0; if (s_bogus++ < 20)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-SETIMG-BOGUS",
+                "rejected w0=%08X w1=%08X", cmd.w0, cmd.w1);
+        s_rdp.texAddr = nullptr;
+        return;
+    }
     { uint32_t _fmt = (cmd.w0 >> 21) & 0x7;
       if (_fmt > 5 || resolved == nullptr) {
           static int s_sr = 0; if (s_sr++ < 15)
               __android_log_print(ANDROID_LOG_ERROR, "BKA-SETIMG",
                   "SKIP drift w0=%08X w1=%08X fmt=%u resolved=%p",
                   cmd.w0, cmd.w1, _fmt, (void*)resolved);
+          /* Clear texAddr so a later LoadTLUT/LoadBlock cannot read
+             from a stale pointer. */
+          s_rdp.texAddr = nullptr;
           return;
       } }
     uint32_t fmt = (cmd.w0 >> 21) & 0x7;
