@@ -121,7 +121,11 @@ static inline void bka_addr_map_insert(uint32_t key, void* ptr) {
 
 static inline void* bka_addr_map_lookup(uint32_t key) {
     if (key == 0) return nullptr;
-    for (size_t i = s_addrMapCount; i-- > 0; ) {
+    /* ARM64 port 2026-10-14: clamp walk to array size (ring wrap). */
+    size_t limit = s_addrMapCount < BKA_ADDR_MAP_SIZE
+                 ? s_addrMapCount : BKA_ADDR_MAP_SIZE;
+    for (size_t j = 0; j < limit; j++) {
+        size_t i = (s_addrMapCount - 1 - j) % BKA_ADDR_MAP_SIZE;
         if (s_addrMapFixed[i].key == key) {
             if (key == 0xFFF9153F || key == 0xFFFF153F) {
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -145,8 +149,18 @@ extern "C" void* bka_lookup_addr_by_low32(uint32_t low32);
 
 extern "C" void* bka_lookup_addr_by_low32(uint32_t low32) {
     // Search all registrations for one whose pointer low32 matches.
-    for (size_t i = s_addrMapCount; i-- > 0; ) {
-        if ((uint32_t)(uintptr_t)s_addrMapFixed[i].ptr == low32 && (uintptr_t)s_addrMapFixed[i].ptr != (uintptr_t)low32) {
+    // ARM64 port 2026-10-14: clamp walk to the array size. Once
+    // s_addrMapCount exceeds BKA_ADDR_MAP_SIZE (1M), the previous
+    // loop read s_addrMapFixed[i] out of bounds -- adjacent .bss
+    // memory (JVM/ART strings) was returned as a "match", which is
+    // how the RARE logo palette got 'setSelectedTabIndicator',
+    // 'preventLayout', and similar ART method names.
+    size_t limit = s_addrMapCount < BKA_ADDR_MAP_SIZE
+                 ? s_addrMapCount : BKA_ADDR_MAP_SIZE;
+    for (size_t j = 0; j < limit; j++) {
+        size_t i = (s_addrMapCount - 1 - j) % BKA_ADDR_MAP_SIZE;
+        if ((uint32_t)(uintptr_t)s_addrMapFixed[i].ptr == low32
+            && (uintptr_t)s_addrMapFixed[i].ptr != (uintptr_t)low32) {
             return s_addrMapFixed[i].ptr;
         }
     }
