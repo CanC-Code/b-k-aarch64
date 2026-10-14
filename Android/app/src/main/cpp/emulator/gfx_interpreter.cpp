@@ -1509,21 +1509,6 @@ static void Cmd_LoadTile(GfxCommand cmd) {
 }
 
 static void Cmd_LoadTLUT(GfxCommand cmd) {
-    { static int _ltf = 0;
-      if (_ltf < 300) {
-        FILE* _f = fopen("/data/data/com.bkawrapper/files/lt_log.txt", _ltf == 0 ? "wb" : "ab");
-        if (_f) {
-          uint8_t* _p = s_rdp.texAddr;
-          fprintf(_f, "#%03d tile=%u tmem=%u count=%u seg2=%08X texAddr=%p "
-              "b=%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X\n",
-              _ltf, tile, tmemBase, count,
-              (unsigned)(s_rdp.segmentBase[2] & 0xFFFFFFFFu), (void*)_p,
-              _p?_p[0]:0,_p?_p[1]:0,_p?_p[2]:0,_p?_p[3]:0,_p?_p[4]:0,_p?_p[5]:0,_p?_p[6]:0,_p?_p[7]:0,
-              _p?_p[8]:0,_p?_p[9]:0,_p?_p[10]:0,_p?_p[11]:0,_p?_p[12]:0,_p?_p[13]:0,_p?_p[14]:0,_p?_p[15]:0);
-          fclose(_f);
-        }
-        _ltf++;
-      } }
     { uint32_t _s2 = (uint32_t)s_rdp.segmentBase[2];
       if (_s2 == 0xB28625F0u || _s2 == 0xB553D480u || _s2 == 0xB27FB050u || _s2 == 0xB284E050u) {
           __android_log_print(ANDROID_LOG_ERROR, "BKA-LT-RARE",
