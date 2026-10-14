@@ -1328,16 +1328,26 @@ static void Cmd_SetTImg(GfxCommand cmd) {
            LoadTLUT/LoadBlock read ASCII debug strings as texture data. */
         if (seg < 8 && segBase != 0) {
             uint32_t off = cmd.w1 & 0x00FFFFFF;
-            uint32_t combined = (uint32_t)(segBase + off);
-            /* ARM64 port 2026-10-13: segment bases are stored as TRUNCATED
-               low-32 host pointers (see SEG2 WRITE base=0x79b530f840 ->
-               0xb530f840). The matching full pointer is in the low32 map.
-               RDP_TranslateAddr treats its arg as an N64 physical address
-               and returns a wrong-but-valid RDRAM pointer, so it must be
-               tried only as a fallback. This was producing ASCII palette
-               reads (Java/ART debug strings) at the RARE logo. */
-            resolved = (uint8_t*)bka_lookup_addr_by_low32(combined);
-            if (!resolved) resolved = RDP_TranslateAddr(combined);
+            /* ARM64 port 2026-10-14: resolve segBase to full pointer first.
+               segmentBase[] holds TRUNCATED low-32 host pointers (see
+               SEG2 WRITE base=0x79b28625f0 stored as 0xB28625F0). The
+               previous code did (uint32_t)(segBase + off) which loses the
+               high bits BEFORE the low32 map lookup -- so for offset 0x120
+               it looked up key 0xB2862710, which is never registered. The
+               correct answer is 0x79b28625F0 + 0x120 = 0x79b2862710.
+
+               Step 1: look up segBase itself via the low32 map to recover
+                       the full 64-bit pointer.
+               Step 2: add the offset in uintptr_t (no truncation). */
+            uint8_t* segBaseFull = (uint8_t*)bka_lookup_addr_by_low32((uint32_t)segBase);
+            if (segBaseFull) {
+                resolved = segBaseFull + off;
+            } else {
+                /* Not a registered host pointer. Treat as N64 physical. */
+                uint32_t combined = (uint32_t)(segBase + off);
+                resolved = RDP_TranslateAddr(combined);
+                if (!resolved) resolved = (uint8_t*)bka_lookup_addr_by_low32(combined);
+            }
         }
     }
     if (!resolved) {
