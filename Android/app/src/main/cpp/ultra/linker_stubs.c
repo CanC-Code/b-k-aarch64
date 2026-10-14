@@ -96,30 +96,7 @@ u32  osVirtualToPhysical(void *vaddr) {
     u32 key = (u32)(uintptr_t)vaddr;
     int call_no = s_osvtp_calls++;
     extern void bka_add_addr_mapping_c(uint32_t key, void *ptr);
-    /* ARM64 port 2026-10-14: only register host pointers that live in
-       an emulator region. Java/ART strings (e.g. "preventLayout",
-       "fset", "leAllTile") and .so rodata share the low32 space with
-       real RDRAM pointers and can shadow the correct entry. The RARE
-       logo palette was reading those strings as palette data because
-       an ART pointer with the same low32 was registered after the
-       legitimate RDRAM entry, and bka_lookup_addr_by_low32's most-
-       recent-first walk returned it. */
-    {
-        extern uint8_t* gN64_RDRAM;
-        extern uint8_t* gN64_ROM_Base;
-        uintptr_t p = (uintptr_t)vaddr;
-        uintptr_t rdram = (uintptr_t)gN64_RDRAM;
-        uintptr_t rom   = (uintptr_t)gN64_ROM_Base;
-        int in_emulator = 0;
-        if (rdram != 0 && p >= rdram && p < rdram + 0x04000000) in_emulator = 1;
-        if (rom   != 0 && p >= rom   && p < rom   + 0x04000000) in_emulator = 1;
-        /* N64 KSEG0 virtual addresses (game code passing 0x80xxxxxx
-           values) also need registration for the low32 map. */
-        if (p >= 0x80000000ULL && p < 0x80800000ULL) in_emulator = 1;
-        if (in_emulator) {
-            bka_add_addr_mapping_c(key, vaddr);
-        }
-    }
+    bka_add_addr_mapping_c(key, vaddr);
     if (key == 0xFFF9153F || key == 0xFFFF153F || key == 0xFFF9141F) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
             "MAPREG-HIT call#=%d key=0x%08X vaddr=%p", call_no, key, vaddr);
