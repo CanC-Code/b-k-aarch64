@@ -1274,6 +1274,9 @@ static void Cmd_SetTileSize(GfxCommand cmd) {
     t.th = cmd.w1 & 0xFFF;
 }
 
+static uint32_t g_last_timg_w1 = 0;
+static uint8_t* g_last_timg_resolved = nullptr;
+
 static void Cmd_SetTImg(GfxCommand cmd) {
     { static int s_r = 0; if (s_r++ < 60) {
         uint8_t _seg = (cmd.w1 >> 24) & 0x0F;
@@ -1442,6 +1445,8 @@ static void Cmd_SetTImg(GfxCommand cmd) {
     s_rdp.texFmt   = fmt;
     s_rdp.texSize  = siz;
     s_rdp.texWidth = wd;
+    g_last_timg_w1 = cmd.w1;
+    g_last_timg_resolved = resolved;
     s_rdp.texAddr  = resolved;
 }
 
@@ -1615,9 +1620,11 @@ static void Cmd_LoadTLUT(GfxCommand cmd) {    { static int _ltp = 0;
         __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADTLUT",
             "ENTRY tile=%u tmem=%u tmemBase=%u count=%u bytes=%u texAddr=%p "
             "src0..7=%02X%02X%02X%02X%02X%02X%02X%02X "
+            "lt_w1=%08X lt_res=%p "
             "tmem[%u..%u]=%02X%02X%02X%02X%02X%02X%02X%02X "
             "pal=%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X",
             tile, t.tmemAddr, tmemBase, count, bytes, (void*)s_rdp.texAddr,
+            g_last_timg_w1, (void*)g_last_timg_resolved,
             (unsigned long)s_rdp.segmentBase[2],
             s_rdp.texAddr[0], s_rdp.texAddr[1], s_rdp.texAddr[2], s_rdp.texAddr[3],
             s_rdp.texAddr[4], s_rdp.texAddr[5], s_rdp.texAddr[6], s_rdp.texAddr[7],
