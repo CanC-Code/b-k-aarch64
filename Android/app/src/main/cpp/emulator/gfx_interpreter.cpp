@@ -1509,6 +1509,17 @@ static void Cmd_LoadTile(GfxCommand cmd) {
 }
 
 static void Cmd_LoadTLUT(GfxCommand cmd) {
+    { uint32_t _s2 = (uint32_t)s_rdp.segmentBase[2];
+      if (_s2 == 0xB28625F0u || _s2 == 0xB553D480u || _s2 == 0xB27FB050u || _s2 == 0xB284E050u) {
+          __android_log_print(ANDROID_LOG_ERROR, "BKA-LT-RARE",
+              "seg2=%08X texAddr=%p first16=%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+              _s2, (void*)s_rdp.texAddr,
+              s_rdp.texAddr[0], s_rdp.texAddr[1], s_rdp.texAddr[2], s_rdp.texAddr[3],
+              s_rdp.texAddr[4], s_rdp.texAddr[5], s_rdp.texAddr[6], s_rdp.texAddr[7],
+              s_rdp.texAddr[8], s_rdp.texAddr[9], s_rdp.texAddr[10], s_rdp.texAddr[11],
+              s_rdp.texAddr[12], s_rdp.texAddr[13], s_rdp.texAddr[14], s_rdp.texAddr[15]);
+      } }
+
     // F3DEX1 _gDPLoadTLUTCmd: w1[24:26]=tile, w1[14:23]=count.
     // Destination TMEM address comes from that tile's descriptor (set by the
     // preceding gDPSetTile). Standard G_TX_LOADTILE (7) is used for the
@@ -1567,7 +1578,6 @@ static void Cmd_LoadTLUT(GfxCommand cmd) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADTLUT",
             "ENTRY tile=%u tmem=%u tmemBase=%u count=%u bytes=%u texAddr=%p "
             "src0..7=%02X%02X%02X%02X%02X%02X%02X%02X "
-            "seg2=0x%08lX "
             "tmem[%u..%u]=%02X%02X%02X%02X%02X%02X%02X%02X "
             "pal=%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X",
             tile, t.tmemAddr, tmemBase, count, bytes, (void*)s_rdp.texAddr,
