@@ -1508,7 +1508,27 @@ static void Cmd_LoadTile(GfxCommand cmd) {
     }
 }
 
-static void Cmd_LoadTLUT(GfxCommand cmd) {
+static void Cmd_LoadTLUT(GfxCommand cmd) {    { static int _ltp = 0;
+      if (_ltp < 40 && g_bka_dl_cur) {
+        const uint8_t* p = g_bka_dl_cur;
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-LTPREV",
+            "prev64=%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X"
+            "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X"
+            "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X"
+            "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X "
+            "texAddr=%p seg2=%08X",
+            p[-64],p[-63],p[-62],p[-61],p[-60],p[-59],p[-58],p[-57],
+            p[-56],p[-55],p[-54],p[-53],p[-52],p[-51],p[-50],p[-49],
+            p[-48],p[-47],p[-46],p[-45],p[-44],p[-43],p[-42],p[-41],
+            p[-40],p[-39],p[-38],p[-37],p[-36],p[-35],p[-34],p[-33],
+            p[-32],p[-31],p[-30],p[-29],p[-28],p[-27],p[-26],p[-25],
+            p[-24],p[-23],p[-22],p[-21],p[-20],p[-19],p[-18],p[-17],
+            p[-16],p[-15],p[-14],p[-13],p[-12],p[-11],p[-10],p[-9],
+            p[-8],p[-7],p[-6],p[-5],p[-4],p[-3],p[-2],p[-1],
+            (void*)s_rdp.texAddr, (unsigned)(s_rdp.segmentBase[2] & 0xFFFFFFFFu));
+        _ltp++;
+      } }
+
     { uint32_t _s2 = (uint32_t)s_rdp.segmentBase[2];
       if (_s2 == 0xB28625F0u || _s2 == 0xB553D480u || _s2 == 0xB27FB050u || _s2 == 0xB284E050u) {
           __android_log_print(ANDROID_LOG_ERROR, "BKA-LT-RARE",
