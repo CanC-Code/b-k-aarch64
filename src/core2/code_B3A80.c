@@ -491,6 +491,28 @@ void *assetcache_get(enum asset_e assetId) {
         __android_log_print(ANDROID_LOG_INFO, "BKA-CORE", "assetcache_get: before bk_inflate assetId=%d", assetId);
         if (uncomp_size > 0) {
             rarezip_inflate(compressed_file, uncompressed_file);
+            if (assetId == 935) {
+                u8* u = (u8*)uncompressed_file;
+                u8* c = (u8*)compressed_file;
+                int nz_u = 0, nz_c = 0;
+                for (int _i = 0; _i < 4096; _i++) { if (u[_i]) nz_u++; }
+                for (int _i = 0; _i < 4096; _i++) { if (c[_i]) nz_c++; }
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-935-IN",
+                    "comp=%d uncomp=%d nz_u=%d/4096 nz_c=%d/4096",
+                    (int)comp_size, (int)uncomp_size, nz_u, nz_c);
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-935-IN",
+                    "u[0..31]=%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X"
+                    "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+                    u[0],u[1],u[2],u[3],u[4],u[5],u[6],u[7],u[8],u[9],u[10],u[11],u[12],u[13],u[14],u[15],
+                    u[16],u[17],u[18],u[19],u[20],u[21],u[22],u[23],u[24],u[25],u[26],u[27],u[28],u[29],u[30],u[31]);
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-935-IN",
+                    "u[0x80..0x9F]=%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X"
+                    "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+                    u[0x80],u[0x81],u[0x82],u[0x83],u[0x84],u[0x85],u[0x86],u[0x87],
+                    u[0x88],u[0x89],u[0x8A],u[0x8B],u[0x8C],u[0x8D],u[0x8E],u[0x8F],
+                    u[0x90],u[0x91],u[0x92],u[0x93],u[0x94],u[0x95],u[0x96],u[0x97],
+                    u[0x98],u[0x99],u[0x9A],u[0x9B],u[0x9C],u[0x9D],u[0x9E],u[0x9F]);
+            }
         } else {
             __android_log_print(ANDROID_LOG_ERROR, "BKA-CORE",
                 "assetcache_get: SKIPPING bk_inflate for assetId=%d (uncomp_size==0, bad header)", assetId);
