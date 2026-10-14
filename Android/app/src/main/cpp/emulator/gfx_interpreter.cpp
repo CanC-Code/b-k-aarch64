@@ -1553,7 +1553,12 @@ static void Cmd_LoadTLUT(GfxCommand cmd) {
     // (usually 256 words = byte 2048 for pal 0).
     uint32_t tile  = (cmd.w1 >> 24) & 0x7;
     uint32_t count = (cmd.w1 >> 14) & 0x3FF;
-    if (tile >= 8) return;
+    if (tile >= 8) {
+        static int s_badtile = 0; if (s_badtile++ < 20)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADTLUT-BAD",
+                "rejected w0=%08X w1=%08X tile=%u", cmd.w0, cmd.w1, tile);
+        return;
+    }
     auto& t = s_rdp.tiles[tile];
     /* ARM64 port 2026-10-12: F3DEX1 convention — CI4 palette bank N
        lives at TMEM word 256 + N*16.  The load tile's tmemAddr (usually
