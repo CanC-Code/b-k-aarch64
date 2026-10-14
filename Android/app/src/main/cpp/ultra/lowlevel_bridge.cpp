@@ -157,14 +157,26 @@ extern "C" void* bka_lookup_addr_by_low32(uint32_t low32) {
     // 'preventLayout', and similar ART method names.
     size_t limit = s_addrMapCount < BKA_ADDR_MAP_SIZE
                  ? s_addrMapCount : BKA_ADDR_MAP_SIZE;
+    /* ARM64 port 2026-10-14: prefer RDRAM-range matches. Two 64-bit
+       host pointers can share a low32 (game RDRAM mmap and a scratch
+       buffer or the ROM mmap). The game means the RDRAM one for
+       textures/segments; the ROM one for boot-time reads. Prioritize
+       RDRAM, then ROM, then anything else. Fall back to most-recent
+       match if no emulator-range candidate exists. */
+    uintptr_t rdram_lo = (uintptr_t)gN64_RDRAM;
+    uintptr_t rdram_hi = rdram_lo ? rdram_lo + 0x04000000 : 0;
+    uintptr_t rom_lo   = (uintptr_t)gN64_ROM_Base;
+    uintptr_t rom_hi   = rom_lo ? rom_lo + 0x04000000 : 0;
+    void* fallback = nullptr;
     for (size_t j = 0; j < limit; j++) {
         size_t i = (s_addrMapCount - 1 - j) % BKA_ADDR_MAP_SIZE;
-        if ((uint32_t)(uintptr_t)s_addrMapFixed[i].ptr == low32
-            && (uintptr_t)s_addrMapFixed[i].ptr != (uintptr_t)low32) {
-            return s_addrMapFixed[i].ptr;
-        }
+        uintptr_t p = (uintptr_t)s_addrMapFixed[i].ptr;
+        if ((uint32_t)p != low32 || p == (uintptr_t)low32) continue;
+        if (rdram_lo && p >= rdram_lo && p < rdram_hi) return s_addrMapFixed[i].ptr;
+        if (rom_lo   && p >= rom_lo   && p < rom_hi  ) return s_addrMapFixed[i].ptr;
+        if (!fallback) fallback = s_addrMapFixed[i].ptr;
     }
-    return nullptr;
+    return fallback;
 }
 
 extern "C" void* bka_lookup_addr_mapping(uint32_t low32) {
