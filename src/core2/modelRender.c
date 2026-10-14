@@ -1445,6 +1445,13 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
                 (unsigned)osVirtualToPhysical(&modelRenderTextureList->texture_infos[__builtin_bswap16((u16)modelRenderTextureList->count)]));
     }
     gSPSegment((*gfx)++, 0x01, osVirtualToPhysical(&modelRendervertexList->vertices));
+    { u16 _raw = (u16)modelRenderTextureList->count;
+      u16 _sw  = __builtin_bswap16(_raw);
+      __android_log_print(ANDROID_LOG_ERROR, "BKA-SEG2DIAG",
+          "tl=%p raw=0x%04X sw=%u base=%p vtx_l=%p",
+          (void*)modelRenderTextureList, _raw, (unsigned)_sw,
+          (void*)&modelRenderTextureList->texture_infos[_sw],
+          (void*)modelRendervertexList); }
     gSPSegment((*gfx)++, 0x02, osVirtualToPhysical(&modelRenderTextureList->texture_infos[__builtin_bswap16((u16)modelRenderTextureList->count)]));
 
     //segments 11 to 15 contain animated textures
