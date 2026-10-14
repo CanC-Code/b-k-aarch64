@@ -3330,7 +3330,17 @@ void RSP_ProcessGfxTask(OSTask* tp) {
         }
 
         // Fix L: top-level stride via multi-slot detector (once, not per loop)
-        current_stride = 16;   /* port recomp adds 8-byte physical-addr tag after each cmd */
+        /* ARM64 port 2026-10-14: only force 16-byte stride at the top level.
+           The outer DL built by the port's gbi macros is 16 bytes per command
+           (8 cmd + 8 relocation tag). Sub-DLs loaded from a BE model bin are
+           8-byte packed with no tag. The unconditional assignment here was
+           overwriting the 8-byte stride set when entering a sub-DL, so the
+           walker skipped every other command in the RARE logo's DL -- including
+           the palette SetTImg, causing LoadTLUT to read pixel bytes instead of
+           palette. Guard with depth==0. */
+        if (depth == 0) {
+            current_stride = 16;   /* port recomp adds 8-byte physical-addr tag after each cmd */
+        }
 
         if (total <= 100) {
             if (log_after_jump) jump_log_count++;
@@ -3474,9 +3484,9 @@ void RSP_ProcessGfxTask(OSTask* tp) {
             case 0xD7: Cmd_Texture(c); break;
             case 0xBB: Cmd_Texture(c); break;   // F3DEX (non-2) G_TEXTURE
             case 0xF5: { static int s_op=0; if (s_op++<4000) __android_log_print(ANDROID_LOG_ERROR, "BKA-TILEOP", "F5 SetTile w0=%08X w1=%08X", c.w0, c.w1); Cmd_SetTile(c); break; }
-            case 0xF0: { static int s_op=0; if (s_op++<4000) __android_log_print(ANDROID_LOG_ERROR, "BKA-TILEOP", "F0 LoadTLUT w0=%08X w1=%08X", c.w0, c.w1); Cmd_LoadTLUT(c); break; }
+            case 0xF0: { static int s_op=0; if (s_op++<4000) __android_log_print(ANDROID_LOG_ERROR, "BKA-TILEOP", "F0 LoadTLUT cur=%p stride=%zu depth=%d enc=%d w0=%08X w1=%08X", (void*)cur, current_stride, depth, cur_dl_enc, c.w0, c.w1); Cmd_LoadTLUT(c); break; }
             case 0xF2: { static int s_op=0; if (s_op++<4000) __android_log_print(ANDROID_LOG_ERROR, "BKA-TILEOP", "F2 LoadTile w0=%08X w1=%08X", c.w0, c.w1); /* ARM64 port 2026-10-13: F2 is LoadTile, not SetTileSize */ Cmd_LoadTile(c); break; }
-            case 0xFD: { static int s_op=0; if (s_op++<4000) __android_log_print(ANDROID_LOG_ERROR, "BKA-TILEOP", "FD SetTImg w0=%08X w1=%08X", c.w0, c.w1); Cmd_SetTImg(c); break; }
+            case 0xFD: { static int s_op=0; if (s_op++<4000) __android_log_print(ANDROID_LOG_ERROR, "BKA-TILEOP", "FD SetTImg cur=%p stride=%zu depth=%d enc=%d w0=%08X w1=%08X", (void*)cur, current_stride, depth, cur_dl_enc, c.w0, c.w1); Cmd_SetTImg(c); break; }
             case 0xF3: { static int s_op=0; if (s_op++<4000) __android_log_print(ANDROID_LOG_ERROR, "BKA-TILEOP", "F3 LoadBlock w0=%08X w1=%08X", c.w0, c.w1); Cmd_LoadBlock(c); break; }
             case 0xF4: { static int s_op=0; if (s_op++<4000) __android_log_print(ANDROID_LOG_ERROR, "BKA-TILEOP", "F4 SetTileSize w0=%08X w1=%08X", c.w0, c.w1); /* ARM64 port 2026-10-13: F4 is SetTileSize in F3DEX1 */ Cmd_SetTileSize(c); break; }
             case 0xF6: Cmd_FillRect(c); break;
