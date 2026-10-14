@@ -1275,6 +1275,22 @@ static void Cmd_SetTileSize(GfxCommand cmd) {
 }
 
 static void Cmd_SetTImg(GfxCommand cmd) {
+    { static int s_r = 0; if (s_r++ < 60) {
+        uint8_t _seg = (cmd.w1 >> 24) & 0x0F;
+        if (_seg == 2) {
+            uintptr_t _sb = s_rdp.segmentBase[2];
+            uint32_t _off = cmd.w1 & 0x00FFFFFF;
+            uint32_t _comb = (uint32_t)(_sb + _off);
+            uint8_t* _sgres = RDP_TranslateAddr(_comb);
+            void* _low = bka_lookup_addr_by_low32(cmd.w1);
+            void* _low2 = bka_lookup_addr_by_low32(_comb);
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-SEG2-RES",
+                "w1=%08X segBase=%016lX off=%06X comb=%08X "
+                "RDP(%08X)=%p low(w1)=%p low(comb)=%p",
+                cmd.w1, (unsigned long)_sb, _off, _comb,
+                _comb, (void*)_sgres, _low, _low2);
+        }
+    } }
     // SETIMG address: some DLs emit pre-resolved physical addresses, some
     // emit segment-relative. Direct translate handles the first; if it
     // returns null, combine with the segment base and retry.
