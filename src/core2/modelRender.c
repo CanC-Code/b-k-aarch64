@@ -1207,6 +1207,7 @@ static void bka_mr_log(const char *msg) {
 }
 
 BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation[3], f32 scale, f32*arg5, BKModelBin* model_bin) {
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-MR-ENTRY", "called model_bin=%p", (void*)model_bin);
     //bka_mr_log("ENTER");
     //bka_mr_log("modelRender_draw ENTER");
     /* modelRender_draw ENTER log disabled */
