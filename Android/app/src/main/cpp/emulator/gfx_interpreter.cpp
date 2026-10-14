@@ -1557,9 +1557,11 @@ static void Cmd_LoadTLUT(GfxCommand cmd) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADTLUT",
             "ENTRY tile=%u tmem=%u tmemBase=%u count=%u bytes=%u texAddr=%p "
             "src0..7=%02X%02X%02X%02X%02X%02X%02X%02X "
+            "seg2=0x%08lX "
             "tmem[%u..%u]=%02X%02X%02X%02X%02X%02X%02X%02X "
             "pal=%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X",
             tile, t.tmemAddr, tmemBase, count, bytes, (void*)s_rdp.texAddr,
+            (unsigned long)s_rdp.segmentBase[2],
             s_rdp.texAddr[0], s_rdp.texAddr[1], s_rdp.texAddr[2], s_rdp.texAddr[3],
             s_rdp.texAddr[4], s_rdp.texAddr[5], s_rdp.texAddr[6], s_rdp.texAddr[7],
             tmemBase, tmemBase+7,
