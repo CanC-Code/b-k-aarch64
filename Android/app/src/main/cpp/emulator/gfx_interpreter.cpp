@@ -1533,7 +1533,8 @@ static void Cmd_LoadTLUT(GfxCommand cmd) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADTLUT",
             "ENTRY tile=%u tmem=%u tmemBase=%u count=%u bytes=%u texAddr=%p "
             "src0..7=%02X%02X%02X%02X%02X%02X%02X%02X "
-            "tmem[%u..%u]=%02X%02X%02X%02X%02X%02X%02X%02X",
+            "tmem[%u..%u]=%02X%02X%02X%02X%02X%02X%02X%02X "
+            "pal=%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X",
             tile, t.tmemAddr, tmemBase, count, bytes, (void*)s_rdp.texAddr,
             s_rdp.texAddr[0], s_rdp.texAddr[1], s_rdp.texAddr[2], s_rdp.texAddr[3],
             s_rdp.texAddr[4], s_rdp.texAddr[5], s_rdp.texAddr[6], s_rdp.texAddr[7],
@@ -1541,28 +1542,24 @@ static void Cmd_LoadTLUT(GfxCommand cmd) {
             s_rdp.tmem[tmemBase+0], s_rdp.tmem[tmemBase+1],
             s_rdp.tmem[tmemBase+2], s_rdp.tmem[tmemBase+3],
             s_rdp.tmem[tmemBase+4], s_rdp.tmem[tmemBase+5],
-            s_rdp.tmem[tmemBase+6], s_rdp.tmem[tmemBase+7]); }
-    { static int s_ph = 0; if (s_ph++ < 30)
-        __android_log_print(ANDROID_LOG_ERROR, "BKA-PAL-HEX",
-            "tile=%u rendPal=%u bytes=16u16[0..7]=%04X%04X%04X%04X%04X%04X%04X%04X "
-            "u16[8..15]=%04X%04X%04X%04X%04X%04X%04X%04X",
-            tile, s_rdp.tiles[0].palette,
-            ((u16)s_rdp.tmem[tmemBase]<<8)|s_rdp.tmem[tmemBase+1],
-            ((u16)s_rdp.tmem[tmemBase+2]<<8)|s_rdp.tmem[tmemBase+3],
-            ((u16)s_rdp.tmem[tmemBase+4]<<8)|s_rdp.tmem[tmemBase+5],
-            ((u16)s_rdp.tmem[tmemBase+6]<<8)|s_rdp.tmem[tmemBase+7],
-            ((u16)s_rdp.tmem[tmemBase+8]<<8)|s_rdp.tmem[tmemBase+9],
-            ((u16)s_rdp.tmem[tmemBase+10]<<8)|s_rdp.tmem[tmemBase+11],
-            ((u16)s_rdp.tmem[tmemBase+12]<<8)|s_rdp.tmem[tmemBase+13],
-            ((u16)s_rdp.tmem[tmemBase+14]<<8)|s_rdp.tmem[tmemBase+15],
-            ((u16)s_rdp.tmem[tmemBase+16]<<8)|s_rdp.tmem[tmemBase+17],
-            ((u16)s_rdp.tmem[tmemBase+18]<<8)|s_rdp.tmem[tmemBase+19],
-            ((u16)s_rdp.tmem[tmemBase+20]<<8)|s_rdp.tmem[tmemBase+21],
-            ((u16)s_rdp.tmem[tmemBase+22]<<8)|s_rdp.tmem[tmemBase+23],
-            ((u16)s_rdp.tmem[tmemBase+24]<<8)|s_rdp.tmem[tmemBase+25],
-            ((u16)s_rdp.tmem[tmemBase+26]<<8)|s_rdp.tmem[tmemBase+27],
-            ((u16)s_rdp.tmem[tmemBase+28]<<8)|s_rdp.tmem[tmemBase+29],
-            ((u16)s_rdp.tmem[tmemBase+30]<<8)|s_rdp.tmem[tmemBase+31]); }
+            s_rdp.tmem[tmemBase+6], s_rdp.tmem[tmemBase+7],
+            ((u16)s_rdp.tmem[(tmemBase+ 0)&0xFFF]<<8)|s_rdp.tmem[(tmemBase+ 1)&0xFFF],
+            ((u16)s_rdp.tmem[(tmemBase+ 2)&0xFFF]<<8)|s_rdp.tmem[(tmemBase+ 3)&0xFFF],
+            ((u16)s_rdp.tmem[(tmemBase+ 4)&0xFFF]<<8)|s_rdp.tmem[(tmemBase+ 5)&0xFFF],
+            ((u16)s_rdp.tmem[(tmemBase+ 6)&0xFFF]<<8)|s_rdp.tmem[(tmemBase+ 7)&0xFFF],
+            ((u16)s_rdp.tmem[(tmemBase+ 8)&0xFFF]<<8)|s_rdp.tmem[(tmemBase+ 9)&0xFFF],
+            ((u16)s_rdp.tmem[(tmemBase+10)&0xFFF]<<8)|s_rdp.tmem[(tmemBase+11)&0xFFF],
+            ((u16)s_rdp.tmem[(tmemBase+12)&0xFFF]<<8)|s_rdp.tmem[(tmemBase+13)&0xFFF],
+            ((u16)s_rdp.tmem[(tmemBase+14)&0xFFF]<<8)|s_rdp.tmem[(tmemBase+15)&0xFFF],
+            ((u16)s_rdp.tmem[(tmemBase+16)&0xFFF]<<8)|s_rdp.tmem[(tmemBase+17)&0xFFF],
+            ((u16)s_rdp.tmem[(tmemBase+18)&0xFFF]<<8)|s_rdp.tmem[(tmemBase+19)&0xFFF],
+            ((u16)s_rdp.tmem[(tmemBase+20)&0xFFF]<<8)|s_rdp.tmem[(tmemBase+21)&0xFFF],
+            ((u16)s_rdp.tmem[(tmemBase+22)&0xFFF]<<8)|s_rdp.tmem[(tmemBase+23)&0xFFF],
+            ((u16)s_rdp.tmem[(tmemBase+24)&0xFFF]<<8)|s_rdp.tmem[(tmemBase+25)&0xFFF],
+            ((u16)s_rdp.tmem[(tmemBase+26)&0xFFF]<<8)|s_rdp.tmem[(tmemBase+27)&0xFFF],
+            ((u16)s_rdp.tmem[(tmemBase+28)&0xFFF]<<8)|s_rdp.tmem[(tmemBase+29)&0xFFF],
+            ((u16)s_rdp.tmem[(tmemBase+30)&0xFFF]<<8)|s_rdp.tmem[(tmemBase+31)&0xFFF]); }
+
 }
 
 static void Cmd_LoadBlock(GfxCommand cmd) {
