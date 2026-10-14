@@ -1383,6 +1383,18 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
         model_bin = assetcache_get(sSecondaryModelData.model_id);
     }
     modelRenderModelBin = model_bin;
+    /* ARM64 port 2026-10-14: invalidate cached lists when the model bin
+       changes. Previously the DL and texture-list pointers were set on
+       the first modelRender_draw call and never refreshed, so drawing
+       model 935 after 934 executed 934's DL against 935's segment bases.
+       Offsets resolved into unrelated memory, producing the wrong-address
+       LoadTLUT reads we have been chasing. */
+    if (modelRenderModelBin != model_bin) {
+        modelRenderModelBin = model_bin;
+        modelRenderDisplayList = NULL;
+        modelRenderTextureList = NULL;
+        modelRendervertexList = NULL;
+    }
     modelRenderDisplayList = modelRenderDisplayList ? modelRenderDisplayList : modelbin_getGfxList(modelRenderModelBin);
     modelRenderTextureList = modelRenderTextureList ? modelRenderTextureList : modelbin_getTextureList(modelRenderModelBin);
     modelRendervertexList = modelRendervertexList ? modelRendervertexList : modelbin_getVtxList(modelRenderModelBin);
