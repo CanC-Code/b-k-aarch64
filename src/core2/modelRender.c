@@ -1224,16 +1224,21 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
     f32 tmp_f0;
     f32 padB8;
 
-    { static int _mb_n = 0;
-      if (model_bin && _mb_n < 20) {
-        char _fn[96];
-        snprintf(_fn, sizeof(_fn),
-                 "/data/data/com.bkawrapper/files/mb_%02d.bin", _mb_n);
-        FILE *_f = fopen(_fn, "wb");
-        if (_f) { fwrite(model_bin, 1, 2048, _f); fclose(_f); }
-        __android_log_print(ANDROID_LOG_ERROR, "BKA-MBWRITE",
-            "wrote %s bin=%p mb_n=%d", _fn, (void*)model_bin, _mb_n);
-        _mb_n++;
+    { static BKModelBin* _seen[32] = {0}; static int _nseen = 0;
+      if (model_bin) {
+        int _found = 0;
+        for (int _i = 0; _i < _nseen; _i++)
+            if (_seen[_i] == model_bin) { _found = 1; break; }
+        if (!_found && _nseen < 32) {
+            _seen[_nseen++] = model_bin;
+            char _fn[128];
+            snprintf(_fn, sizeof(_fn),
+                     "/data/data/com.bkawrapper/files/mb_%p.bin", (void*)model_bin);
+            FILE *_f = fopen(_fn, "wb");
+            if (_f) { fwrite(model_bin, 1, 4096, _f); fclose(_f); }
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-MBWRITE",
+                "wrote %s bin=%p seen_n=%d", _fn, (void*)model_bin, _nseen);
+        }
       } }
 
     { static int _bka_dl_dumped = 0;
