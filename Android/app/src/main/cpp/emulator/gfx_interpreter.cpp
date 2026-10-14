@@ -1329,7 +1329,15 @@ static void Cmd_SetTImg(GfxCommand cmd) {
         if (seg < 8 && segBase != 0) {
             uint32_t off = cmd.w1 & 0x00FFFFFF;
             uint32_t combined = (uint32_t)(segBase + off);
-            resolved = RDP_TranslateAddr(combined);
+            /* ARM64 port 2026-10-13: segment bases are stored as TRUNCATED
+               low-32 host pointers (see SEG2 WRITE base=0x79b530f840 ->
+               0xb530f840). The matching full pointer is in the low32 map.
+               RDP_TranslateAddr treats its arg as an N64 physical address
+               and returns a wrong-but-valid RDRAM pointer, so it must be
+               tried only as a fallback. This was producing ASCII palette
+               reads (Java/ART debug strings) at the RARE logo. */
+            resolved = (uint8_t*)bka_lookup_addr_by_low32(combined);
+            if (!resolved) resolved = RDP_TranslateAddr(combined);
         }
     }
     if (!resolved) {
