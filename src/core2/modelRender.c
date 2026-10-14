@@ -1223,7 +1223,12 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
     f32 tmp_f0;
     f32 padB8;
 
-    { static int _mb = 0; if (_mb++ < 2 && model_bin) {
+    { static int _mb = 0;
+      if (_mb++ < 50)
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-MBDUMP",
+            "ENTER model_bin=%p secondary=%d mb_n=%d",
+            (void*)model_bin, (int)sSecondaryModelData.model_id, _mb);
+      if (model_bin && _mb <= 50) {
         u8 *_b = (u8*)model_bin;
         u16 _tl_off = __builtin_bswap16((u16)model_bin->texture_list_offset);
         u8 *_tl = _b + _tl_off;
