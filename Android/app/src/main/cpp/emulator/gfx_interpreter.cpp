@@ -332,6 +332,22 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
                     uint32_t phys = (uint32_t)(base - 0x80000000u) + off;
                     if (phys < 0x04000000u) return gN64_RDRAM + phys;
                 }
+                // Case D (port): gSPSegment(3, osVirtualToPhysical(host_ptr)) leaves the
+                // low-32 of a host pointer (>= 0x84000000) as the segment base.
+                if (seg == 3 && base >= 0x84000000u) {
+                    uintptr_t cand = 0;
+                    void* mapped = bka_lookup_addr_mapping((uint32_t)base);
+                    if (mapped) cand = (uintptr_t)mapped + off;
+                    else {
+                        uintptr_t g = 0x7900000000ULL | (uintptr_t)base;
+                        if (bka_is_readable((void*)g)) cand = g + off;
+                    }
+                    { static int s_s3 = 0; if (s_s3++ < 8)
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA-SEG3",
+                            "base=0x%08X off=0x%X mapped=%p cand=%p",
+                            (uint32_t)base, (unsigned)off, mapped, (void*)cand); }
+                    if (cand && bka_is_readable((void*)cand)) return (uint8_t*)cand;
+                }
             }
         }
     }
@@ -2646,6 +2662,10 @@ static void Cmd_FillRect(GfxCommand cmd) {
                 ulx, uly, lrx, lry,
                 s_rdp.fillR, s_rdp.fillG, s_rdp.fillB, color, (void*)fb);
     }
+    if (color != 0) { static int s_fc = 0; if (s_fc++ < 30)
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-FILLCOL",
+            "color=0x%04X rgb=(%d,%d,%d) rect=%d,%d-%d,%d",
+            color, s_rdp.fillR, s_rdp.fillG, s_rdp.fillB, ulx, uly, lrx, lry); }
     for (int32_t y = uly; y < lry; y++)
         for (int32_t x = ulx; x < lrx; x++)
             *(volatile uint16_t *)&fb[y * FB_WIDTH + x] = color;
