@@ -309,6 +309,19 @@ void gsworld_set(enum map_e map, s32 exit, bool reload) {
     if (map != MAP_1F_CS_START_RAREWARE) {
         LOG_BKA_INIT("func_8024F150"); func_8024F150();
     }
+    /* ARM64 port 2026-10-15: RARE logo exit.
+       The decompiled source has no exit for MAP_1F_CS_START_RAREWARE.
+       In the original N64 game the logo plays ~5.5s then transitions
+       to file select via a hardcoded cutscene timer. Schedule it here.
+       timedFuncQueue is already initialized at this point (func_802E4214
+       calls timedFuncQueue_init before func_802E38E8 -> gsworld_set).
+       transitionToMap(map, exit, transition) with transition=1 matches
+       the same call style as every other cutscene exit in the tree. */
+    if (map == MAP_1F_CS_START_RAREWARE) {
+        LOG_BKA_INIT("RARE logo exit scheduled");
+        timedFunc_set_3(5.5f, (GenFunction_3)transitionToMap,
+                        MAP_91_FILE_SELECT, 0, 1);
+    }
     LOG_BKA_INIT("complete");
 }
 
