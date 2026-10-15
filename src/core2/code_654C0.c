@@ -4,6 +4,9 @@
 #include "functions.h"
 #include "variables.h"
 
+/* port: model data stays big-endian in memory; read s16 fields byte-wise */
+#define BKA_BE16S(p) ((s16)((((const unsigned char*)(p))[0] << 8) | ((const unsigned char*)(p))[1]))
+
 
 struct {
     s32 unk0;
@@ -46,7 +49,7 @@ void vtxList_getBoundsTransformed(BKVertexList *this, f32 min[3], f32 max[3]) {
     f32 coord[3];
 
     start_vtx = this->vertices;
-    end_vtx = start_vtx + this->count;
+    end_vtx = start_vtx + BKA_BE16S(&this->count);
 
     min[0] = start_vtx->v.ob[0];
     min[1] = start_vtx->v.ob[1];
@@ -81,7 +84,7 @@ void vtxList_func_802EC680(BKVertexList *this, s32 arg1, f32 arg2[3], f32 arg3[3
     f32 coord[3];
 
     start_vtx = this->vertices;
-    end_vtx = start_vtx + this->count;
+    end_vtx = start_vtx + BKA_BE16S(&this->count);
 
     for (vtx = start_vtx; vtx < end_vtx; vtx++) {
         coord[0] = vtx->v.ob[0];
@@ -131,26 +134,26 @@ void vtxList_func_802EC680(BKVertexList *this, s32 arg1, f32 arg2[3], f32 arg3[3
 
 void vtxList_getVtxRange(BKVertexList *this, Vtx **begin_ptr, Vtx **end_ptr) {
     *begin_ptr = this->vertices;
-    *end_ptr = &(*begin_ptr)[this->count];
+    *end_ptr = &(*begin_ptr)[BKA_BE16S(&this->count)];
 }
 
 s32 vtxList_getVtxCount(BKVertexList *this) {
-    return this->count;
+    return BKA_BE16S(&this->count);
 }
 
 f32 vtxList_getGlobalNorm(BKVertexList *this) {
-    return this->global_norm;
+    return BKA_BE16S(&this->global_norm);
 }
 
 void vtxList_getCenterAndNorm(BKVertexList *this, f32 center[3], f32 *norm) {
-    center[0] = this->centerCoord[0];
-    center[1] = this->centerCoord[1];
-    center[2] = this->centerCoord[2];
-    *norm = this->local_norm; 
+    center[0] = BKA_BE16S(&this->centerCoord[0]);
+    center[1] = BKA_BE16S(&this->centerCoord[1]);
+    center[2] = BKA_BE16S(&this->centerCoord[2]);
+    *norm = BKA_BE16S(&this->local_norm); 
 }
 
 f32 vtxList_getLocalNorm(BKVertexList *this) {
-    return this->local_norm;
+    return BKA_BE16S(&this->local_norm);
 }
 
 void vtxList_free(BKVertexList *this) {
@@ -168,7 +171,7 @@ BKVertexList *vtxList_clone(BKVertexList *this) {
     /* port 2026-10-11: tighten to 1024 — 65536 is way above any real
        vtx list and let garbage counts through.  Also validate the
        source range is readable end-to-end (was the memcpy overrun). */
-    if (this->count <= 0 || (u32)this->count > 1024) {
+    if (BKA_BE16S(&this->count) <= 0 || (u32)BKA_BE16S(&this->count) > 1024) {
         static int s_bad = 0;
         if (s_bad < 5) { const unsigned char* b = (const unsigned char*)this;
             __android_log_print(ANDROID_LOG_ERROR, "BKA-VTXRAW",
@@ -178,10 +181,10 @@ BKVertexList *vtxList_clone(BKVertexList *this) {
         if (s_bad++ < 5)
             __android_log_print(ANDROID_LOG_ERROR, "BKA-VTXCL",
                 "rejecting vtxList count=%u this=%p",
-                (unsigned)this->count, (void*)this);
+                (unsigned)BKA_BE16S(&this->count), (void*)this);
         return NULL;
     }
-    list_size = sizeof(BKVertexList) + this->count * sizeof(Vtx);
+    list_size = sizeof(BKVertexList) + BKA_BE16S(&this->count) * sizeof(Vtx);
     { extern int bka_is_readable(void*);
       if (!bka_is_readable(this) ||
           !bka_is_readable((u8*)this + list_size - 1)) {
@@ -199,7 +202,7 @@ BKVertexList *vtxList_clone(BKVertexList *this) {
       if (s_v++ < 8)
           __android_log_print(ANDROID_LOG_ERROR, "BKA-VTXCL2",
               "this=%p count=%u sizeofBL=%zu sizeofVtx=%zu list_size=%u new_ptr=%p",
-              (void*)this, (unsigned)this->count,
+              (void*)this, (unsigned)BKA_BE16S(&this->count),
               sizeof(BKVertexList), sizeof(Vtx), (unsigned)list_size,
               (void*)new_ptr);
     }
@@ -212,7 +215,7 @@ void vtxList_copyColorsFrom(BKVertexList *this, BKVertexList *src) {
 
     src_ptr = src->vertices;
     dst_start_ptr = this->vertices;
-    dst_end_ptr = dst_start_ptr + this->count;
+    dst_end_ptr = dst_start_ptr + BKA_BE16S(&this->count);
 
     for (i_ptr = dst_start_ptr; i_ptr < dst_end_ptr; i_ptr++, src_ptr++) {
             i_ptr->v.cn[0] = src_ptr->v.cn[0];
@@ -229,7 +232,7 @@ void vtxList_tintColorsFrom(BKVertexList *this, s32 target_color[3], f32 intensi
     s32 i;
 
     dst_start_ptr = this->vertices;
-    dst_end_ptr = dst_start_ptr + this->count;
+    dst_end_ptr = dst_start_ptr + BKA_BE16S(&this->count);
 
     for (i_ptr = dst_start_ptr, src_ptr = src->vertices; i_ptr < dst_end_ptr; i_ptr++, src_ptr++){
         for (i = 0; i < 3; i++) {
@@ -291,7 +294,7 @@ void vtxList_randColors(BKVertexList *this) {
     s32 i;
 
     start_ptr = this->vertices;
-    end_ptr = start_ptr + this->count;
+    end_ptr = start_ptr + BKA_BE16S(&this->count);
     for (i_ptr = start_ptr; i_ptr < end_ptr; i_ptr++) {
         for (i = 0; i < 3; i++) {
             i_ptr->v.cn[i] = 0;
@@ -327,7 +330,7 @@ void vtxList_recolor(BKVertexList *this, s32 color[3]) {
     int i;
 
     start_ptr = this->vertices;
-    end_ptr = start_ptr + this->count;
+    end_ptr = start_ptr + BKA_BE16S(&this->count);
 
     for (i_ptr = start_ptr; i_ptr < end_ptr; i_ptr++) {
         for (i = 0; i < 3; i++) {
