@@ -656,26 +656,9 @@ static void Matrix_LoadFromN64(BKMatrix* out, const void* src) {
     const uint8_t* p = (const uint8_t*)src;
     for (int r = 0; r < 4; r++) {
         for (int c = 0; c < 4; c++) {
-            int idx       = r * 4 + c;
-            int word_idx  = idx >> 1;
-            int side      = idx & 1;   // 0 = high half, 1 = low half
-            const uint8_t* iw = p + word_idx * 4;
-            const uint8_t* fw = p + 32 + word_idx * 4;
-
-            uint32_t iw32 = (uint32_t)iw[0]        | ((uint32_t)iw[1] << 8)
-                          | ((uint32_t)iw[2] << 16) | ((uint32_t)iw[3] << 24);
-            uint32_t fw32 = (uint32_t)fw[0]        | ((uint32_t)fw[1] << 8)
-                          | ((uint32_t)fw[2] << 16) | ((uint32_t)fw[3] << 24);
-
-            int16_t  e_int;
-            uint16_t e_frac;
-            if (side == 0) {
-                e_int  = (int16_t)(iw32 >> 16);
-                e_frac = (uint16_t)(fw32 >> 16);
-            } else {
-                e_int  = (int16_t)(iw32 & 0xFFFF);
-                e_frac = (uint16_t)(fw32 & 0xFFFF);
-            }
+            int idx = r * 4 + c;
+            int16_t e_int = (int16_t)((p[idx * 2] << 8) | p[idx * 2 + 1]);
+            uint16_t e_frac = (uint16_t)((p[32 + idx * 2] << 8) | p[32 + idx * 2 + 1]);
             (*out)[r][c] = (float)e_int + (float)e_frac / 65536.0f;
         }
     }
@@ -1752,12 +1735,12 @@ static void Cmd_Vtx(GfxCommand cmd) {
         BKVertex* v = &s_rdp.dmem[v0 + i];
         bka_guard_write(v, sizeof(BKVertex), "Cmd_Vtx.dmem");
         { static int s_vtxwr = 0; if (s_vtxwr++ < 0) LOGV("VTXWR i=%u v=%p src=%p dmem=%p idx=%u", i, (void*)v, (void*)src, (void*)s_rdp.dmem, v0+i); }
-        v->x = read_int16(src + 0);
-        v->y = read_int16(src + 2);
-        v->z = read_int16(src + 4);
-        v->flag = (src[6] << 8) | src[7];
-        v->s = read_int16(src + 8);
-        v->t = read_int16(src + 10);
+        v->x = (int16_t)((src[0] << 8) | src[1]);
+        v->y = (int16_t)((src[2] << 8) | src[3]);
+        v->z = (int16_t)((src[4] << 8) | src[5]);
+        v->flag = (uint16_t)((src[6] << 8) | src[7]);
+        v->s = (int16_t)((src[8] << 8) | src[9]);
+        v->t = (int16_t)((src[10] << 8) | src[11]);
         v->r = src[12];
         v->g = src[13];
         v->b = src[14];
