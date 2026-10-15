@@ -1207,6 +1207,10 @@ static void bka_mr_log(const char *msg) {
 }
 
 BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation[3], f32 scale, f32*arg5, BKModelBin* model_bin) {
+    if (scale > 1000.0f) {
+        scale = scale / 32768.0f;
+    }
+
     { static BKModelBin* _seen[64] = {0}; static int _nseen = 0;
       int _idx = -1;
       if (model_bin) {
