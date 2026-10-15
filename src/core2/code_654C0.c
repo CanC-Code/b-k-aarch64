@@ -170,6 +170,11 @@ BKVertexList *vtxList_clone(BKVertexList *this) {
        source range is readable end-to-end (was the memcpy overrun). */
     if (this->count <= 0 || (u32)this->count > 1024) {
         static int s_bad = 0;
+        if (s_bad < 5) { const unsigned char* b = (const unsigned char*)this;
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-VTXRAW",
+                "%p: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X | %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+                (void*)b, b[0],b[1],b[2],b[3],b[4],b[5],b[6],b[7],b[8],b[9],b[10],b[11],b[12],b[13],b[14],b[15],
+                b[16],b[17],b[18],b[19],b[20],b[21],b[22],b[23],b[24],b[25],b[26],b[27],b[28],b[29],b[30],b[31]); }
         if (s_bad++ < 5)
             __android_log_print(ANDROID_LOG_ERROR, "BKA-VTXCL",
                 "rejecting vtxList count=%u this=%p",
