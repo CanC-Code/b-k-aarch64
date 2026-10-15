@@ -3921,7 +3921,14 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                                 _p[8],_p[9],_p[10],_p[11],_p[12],_p[13],_p[14],_p[15]);
                         }
                     }
-                    if (score < 7) {
+                    /* ARM64 port 2026-10-14: segment 3 is the render-mode table
+                       (see modelRender.c:1499-1525). Its top entries are
+                       SetOtherMode commands that bka_looks_like_dl scores low,
+                       so G_DLs targeting 03xxxxxx were being refused, and the
+                       combine mode was never applied. Whitelist segment-3
+                       targets -- nothing else in this port writes seg 3. */
+                    bool seg3_dl = ((raw_addr >> 24) & 0x0F) == 0x03;
+                    if (score < 7 && !seg3_dl) {
                         static int s_refuse = 0;
                         if (s_refuse++ < 30) {
                             const uint8_t* _p = (const uint8_t*)dl_ptr;
