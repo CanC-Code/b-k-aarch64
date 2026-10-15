@@ -82,6 +82,10 @@ ActorInfo D_80368570 = {
 
 /* .code */
 void func_802E0710(Actor *this){
+    /* ARM64 port 2026-10-15: the actor can outlive its marker during
+       cutscene transitions. Guard so a stale pre-draw callback doesn't
+       null-deref inside marker_loadModelBin(this->marker). */
+    if (!this || !this->marker) return;
     actor_predrawMethod(this);
     func_80361E9C(this);
 }
