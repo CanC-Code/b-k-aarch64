@@ -1572,14 +1572,9 @@ static void Cmd_LoadTLUT(GfxCommand cmd) {
        into, and write there.  Without this, sampler reads word 256+pal*16
        while loader wrote word 256, and all CI4 palette lookups resolve to
        zero (the black RARE logo interior). */
-    /* ARM64 port 2026-10-15: destination is the LoadTile tmemAddr.
-       The DL sets a distinct tmemAddr per palette (256, 320, 384, 448
-       words) and issues separate LoadTLUTs to fill banks 0..3. The
-       previous code ignored t.tmemAddr and always wrote to 2048 +
-       render_pal*128, so 3 of every 4 palette loads overwrote bank 0
-       and banks 1..3 kept stale data. Badge tiles using pal>0 then
-       sampled garbage. */
-    uint32_t tmemBase = (uint32_t)t.tmemAddr * 8;
+    uint32_t render_pal = s_rdp.tiles[0].palette;
+    uint32_t bank_offset = (render_pal < 16) ? (render_pal * 16 * 8) : 0;
+    uint32_t tmemBase = 2048 + bank_offset;
     if (tmemBase >= 4096) tmemBase = 2048;
     if (!s_rdp.texAddr) {
         static int s_ltn = 0;
