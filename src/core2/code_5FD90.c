@@ -348,7 +348,7 @@ BKCollisionTriangle *func_802E76B0(BKCollisionList *collisionList, BKVertexList 
     if (collisionList == NULL || vertexList == NULL) return NULL;
     bka_swap_collision_list(collisionList);
     result_collision = NULL;
-    temp_f20 = (f32) vertexList->global_norm;
+    temp_f20 = (f32) BKA_BE16S(&vertexList->global_norm);
     calculateBoundsAndDirection(startPoint, endPoint, min_bounds, max_bounds, direction_vector);
     for(i = 0; i < 3; i++){
         if ((max_bounds[i] <= -temp_f20) || (temp_f20 <= min_bounds[i])) {
@@ -476,7 +476,7 @@ BKCollisionTriangle *collisionList_func_802E805C(BKCollisionList *this, BKVertex
     int sp34;
     int i;
 
-    if(!func_802E74A0(arg2, vtxList->global_norm*scale, arg5, arg6)){
+    if(!func_802E74A0(arg2, BKA_BE16S(&vtxList->global_norm)*scale, arg5, arg6)){
         return 0;
     }
     else{
@@ -807,7 +807,7 @@ BKCollisionTriangle *func_802E9118(BKCollisionList * collision_list, BKVertexLis
     BKCollisionTriangle *sp3C;
     s32 i;
 
-    if (((f32)vtx_list->global_norm * arg4) <= (ml_vec3f_distance(arg6, arg2) - arg7)) {
+    if (((f32)BKA_BE16S(&vtx_list->global_norm) * arg4) <= (ml_vec3f_distance(arg6, arg2) - arg7)) {
         return 0;
     }
     mlMtxIdent();
@@ -1044,7 +1044,7 @@ BKCollisionTriangle *func_802E9DD8(BKCollisionList *collisionList, BKVertexList 
     s32 i;
 
     // check if (sphere around vtx's) <= ((distance between origins) - (radius of B))
-    if ((vtxList->global_norm * scaleA) <= (ml_vec3f_distance(posB, posA) - radB)) {
+    if ((BKA_BE16S(&vtxList->global_norm) * scaleA) <= (ml_vec3f_distance(posB, posA) - radB)) {
         return NULL;
     }
     mlMtxIdent();

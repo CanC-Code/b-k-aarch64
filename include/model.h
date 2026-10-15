@@ -234,6 +234,12 @@ typedef struct bk_vertex_list_s {
     Vtx vertices[];
 } BKVertexList;
 
+/* port: model data stays big-endian in memory; read s16 fields byte-wise */
+#ifndef BKA_BE16S
+#define BKA_BE16S(p) ((s16)((((const unsigned char*)(p))[0] << 8) | ((const unsigned char*)(p))[1]))
+#endif
+
+
 /* Unk14 Lists
  *
  */

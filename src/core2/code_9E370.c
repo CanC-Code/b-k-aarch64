@@ -199,8 +199,8 @@ BKModelBin *func_803257B4(ActorMarker *marker) {
     if ((actor->unk174 == 0.0f) || (actor->unk178 == 0.0f)) {
         model_bin = (BKModelBin *) assetcache_get(marker->modelId);
         vtx_list = modelbin_getVtxList_MACRO(model_bin);
-        actor->unk174 = (f32) vtx_list->local_norm * actor->scale;
-        actor->unk178 = (f32) vtx_list->global_norm * actor->scale;
+        actor->unk174 = (f32) BKA_BE16S(&vtx_list->local_norm) * actor->scale;
+        actor->unk178 = (f32) BKA_BE16S(&vtx_list->global_norm) * actor->scale;
         assetcache_release(model_bin);
     }
     modelRender_setSecondaryModel(marker->modelId, actor->unk174, actor->unk178);
