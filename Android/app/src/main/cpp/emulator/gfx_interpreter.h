@@ -1,3 +1,4 @@
+/* BKA_FORCE_REBUILD_v3_2026_10_14 */
 /* BKA_FORCE_REBUILD_2026_10_14 */
 #pragma once
 #include "n64_os_types_cpp.h"
