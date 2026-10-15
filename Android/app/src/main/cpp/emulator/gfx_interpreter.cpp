@@ -1,3 +1,4 @@
+/* BKA_FORCE_REBUILD_v4_2026_10_15 */
 #include <stdio.h>
 #include "gfx_interpreter.h"
 
