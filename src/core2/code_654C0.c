@@ -164,6 +164,14 @@ BKVertexList *vtxList_clone(BKVertexList *this) {
     BKVertexList *new_ptr;
     u32 list_size;
     if (this == NULL) return NULL;
+    { extern int bka_is_readable(void*);
+      if (!bka_is_readable(this)) {
+          static int s_nr = 0;
+          if (s_nr++ < 5)
+              __android_log_print(ANDROID_LOG_ERROR, "BKA-VTXCL",
+                  "unreadable this=%p", (void*)this);
+          return NULL;
+      } }
     /* cutscene actors carry pure Gfx geometry — no valid vtx list.
        modelbin_getVtxList can still return a bogus non-NULL ptr for
        those bins because the mask only strips the top byte. Bound
@@ -198,6 +206,7 @@ BKVertexList *vtxList_clone(BKVertexList *this) {
     }
     
     new_ptr = (BKVertexList *) malloc(list_size);
+    if (new_ptr == NULL) return NULL;
     { static int s_v=0;
       if (s_v++ < 8)
           __android_log_print(ANDROID_LOG_ERROR, "BKA-VTXCL2",
