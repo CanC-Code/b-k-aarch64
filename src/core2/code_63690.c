@@ -6,19 +6,20 @@ void *textureList_getDataPtr(BKTextureList *this) {
 }
 
 s32 textureInfo_getBitDepth(BKTextureInfo *this) {
-    if (this->type & BK_TEXTURE_INFO_TYPE_CI4_BIT) {
+    s16 _t = (s16)__builtin_bswap16((u16)this->type);
+    if (_t & BK_TEXTURE_INFO_TYPE_CI4_BIT) {
         return 4;
     }
 
-    if (this->type & BK_TEXTURE_INFO_TYPE_CI8_BIT) {
+    if (_t & BK_TEXTURE_INFO_TYPE_CI8_BIT) {
         return 8;
     }
 
-    if (this->type & BK_TEXTURE_INFO_TYPE_RGBA16_BIT) {
+    if (_t & BK_TEXTURE_INFO_TYPE_RGBA16_BIT) {
         return 16;
     }
 
-    if (this->type & BK_TEXTURE_INFO_TYPE_RGBA32_BIT) {
+    if (_t & BK_TEXTURE_INFO_TYPE_RGBA32_BIT) {
         return 32;
     }
 
@@ -26,7 +27,7 @@ s32 textureInfo_getBitDepth(BKTextureInfo *this) {
 }
 
 s32 textureInfo_getType(BKTextureInfo *this) {
-    return this->type;
+    return (s32)__builtin_bswap16((u16)this->type);
 }
 
 s32 textureInfo_getPaletteSize(BKTextureInfo *this) {
@@ -50,7 +51,7 @@ s32 textureInfo_getPaletteSize(BKTextureInfo *this) {
 }
 
 s32 textureInfo_getOffset(BKTextureInfo *this) {
-    return this->offset;
+    return (s32)__builtin_bswap32((u32)this->offset);
 }
 
 s32 textureInfo_getTextureSize(BKTextureInfo *this) {

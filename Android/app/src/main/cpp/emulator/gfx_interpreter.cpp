@@ -654,6 +654,29 @@ static void Matrix_LoadFromN64(BKMatrix* out, const void* src) {
     //   word 2 -> m10 (high), m11 (low)
     //   etc.
     const uint8_t* p = (const uint8_t*)src;
+    { static int n = 0; if (n++ < 12) {
+        auto be = [&](int k, float* o) {
+            int16_t a = (int16_t)((p[k*2] << 8) | p[k*2+1]);
+            uint16_t f = (uint16_t)((p[32+k*2] << 8) | p[32+k*2+1]);
+            *o = (float)a + (float)f / 65536.0f; };
+        auto ws = [&](int k, float* o) {
+            const uint8_t* iw = p + (k >> 1) * 4; const uint8_t* fw = p + 32 + (k >> 1) * 4;
+            int h = (k & 1) ? 0 : 2;
+            int16_t a = (int16_t)(iw[h] | (iw[h+1] << 8));
+            uint16_t f = (uint16_t)(fw[h] | (fw[h+1] << 8));
+            *o = (float)a + (float)f / 65536.0f; };
+        float b[16], w[16];
+        for (int k = 0; k < 16; k++) { be(k, &b[k]); ws(k, &w[k]); }
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-MTX",
+            "raw p0..7=%02X%02X%02X%02X %02X%02X%02X%02X p32..39=%02X%02X%02X%02X %02X%02X%02X%02X",
+            p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[32],p[33],p[34],p[35],p[36],p[37],p[38],p[39]);
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-MTX",
+            "BE  row0=%.3f %.3f %.3f %.3f col3=%.3f %.3f %.3f %.3f",
+            b[0],b[1],b[2],b[3], b[3],b[7],b[11],b[15]);
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-MTX",
+            "WSW row0=%.3f %.3f %.3f %.3f col3=%.3f %.3f %.3f %.3f",
+            w[0],w[1],w[2],w[3], w[3],w[7],w[11],w[15]);
+    } }
     for (int r = 0; r < 4; r++) {
         for (int c = 0; c < 4; c++) {
             int idx       = r * 4 + c;
@@ -1758,6 +1781,12 @@ static void Cmd_Vtx(GfxCommand cmd) {
         v->flag = (src[6] << 8) | src[7];
         v->s = read_int16(src + 8);
         v->t = read_int16(src + 10);
+        { static int nv = 0; if (nv++ < 8)
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-VTX",
+                "raw=%02X%02X %02X%02X %02X%02X | cur x=%d y=%d z=%d | BE x=%d y=%d z=%d",
+                src[0],src[1],src[2],src[3],src[4],src[5], (int)v->x,(int)v->y,(int)v->z,
+                (int)(int16_t)((src[0]<<8)|src[1]), (int)(int16_t)((src[2]<<8)|src[3]),
+                (int)(int16_t)((src[4]<<8)|src[5])); }
         v->r = src[12];
         v->g = src[13];
         v->b = src[14];
