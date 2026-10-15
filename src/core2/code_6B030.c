@@ -269,7 +269,13 @@ void func_802F2C78(Struct64s *arg0) {
         free(arg0);
         D_80368AB4 -= 1;
     }
-    if (D_80368AB4 == 0) {
+    /* ARM64 port 2026-10-15: disable asset cache teardown.
+       Crashes on the first map transition out of MAP_1F_CS_START_RAREWARE
+       (SIGSEGV in func_802F2C78+64 during gsworld_free). The RARE map
+       does not initialize D_80368AB0/AB4/AB8, so the D_80368AB4 == 0
+       branch fires against uninitialized state. Re-enable once the
+       ownership of these globals is understood. */
+    if (0 && D_80368AB4 == 0) {
         if(D_80368AB0 != NULL){
             for(var_s1 = 0; var_s1 < 2; var_s1++){
                 i_ptr = D_80368AB0 + var_s1;
