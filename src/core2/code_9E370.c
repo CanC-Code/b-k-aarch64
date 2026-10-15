@@ -427,8 +427,8 @@ void actorArray_free(void) {
     dustEmitter_empty(D_8036E56C);
     D_8036E56C = NULL;
     __android_log_print(ANDROID_LOG_ERROR, "BKA-AFREE",
-        "before f2c78: D_8036E570=%p D_80368AB0=%p D_80368AB4=%d",
-        D_8036E570, D_80368AB0, D_80368AB4);
+        "before f2c78: D_8036E570=%p",
+        D_8036E570);
     func_802F2C78(D_8036E570);
     D_8036E570 = NULL;
 }
