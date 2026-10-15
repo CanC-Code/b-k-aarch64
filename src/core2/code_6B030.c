@@ -261,6 +261,12 @@ void func_802F2C78(Struct64s *arg0) {
     s32 var_s1;
     Struct_core2_6B030_0 *i_ptr;
 
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-F2C78",
+        "enter arg0=%p unk0=%p unk4=%d",
+        arg0,
+        arg0 ? arg0->unk0 : NULL,
+        arg0 ? arg0->unk4 : -1);
+
 
     if (arg0 != NULL) {
         if (arg0->unk0 != NULL) {
