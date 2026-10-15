@@ -758,7 +758,7 @@ static void RDP_FetchTexel(int tile, uint32_t s, uint32_t t, uint8_t* outRGBA) {
     switch (tdesc.size & 3) {
     case 0: {
         uint8_t b = s_rdp.tmem[byteAddr];
-        uint32_t idx = (bitInWord & 4u) ? (b >> 4) : (b & 0xFu);
+        uint32_t idx = (bitInWord & 4u) ? (b & 0xFu) : (b >> 4);
         if (tdesc.format == 2) {
             uint32_t palWord = 256u + (uint32_t)tdesc.palette * 4u + (idx >> 2);  /* ARM64 port 2026-10-12: read from bank 0. LoadTLUT writes to 256 (tile[0].palette is unset at LoadTLUT time); sampler was reading bank 4 → mismatch of 512 bytes. */
             uint32_t palByte = (palWord & 0x1FFu) * 8u + ((idx & 3u) * 2u);
@@ -1472,63 +1472,28 @@ static void Cmd_SetTImg(GfxCommand cmd) {
 }
 
 static void Cmd_LoadTile(GfxCommand cmd) {
-    /* ARM64 port 2026-10-13: LoadTile tile is in w1 bits 24-26, not w0.
-       Reading w0 gives the opcode byte (0xF2) masked to 2. */
     uint32_t tile = (cmd.w1 >> 24) & 0x7;
     if (tile >= 8) return;
     auto& t = s_rdp.tiles[tile];
     uint32_t sl = (cmd.w0 >> 12) & 0xFFF, tl = cmd.w0 & 0xFFF;
     uint32_t sh = (cmd.w1 >> 12) & 0xFFF, th = cmd.w1 & 0xFFF;
     t.sl = sl; t.tl = tl; t.sh = sh; t.th = th;
-    
-    uint32_t bpp = RDP_BPP(t.size);
-    if (bpp == 0) bpp = 1;
-    uint32_t texWidth = (sh >> 2) + 1, texHeight = (th >> 2) + 1;
-    uint32_t texSize = texWidth * texHeight * bpp;
-    uint32_t lineWords = (texWidth * bpp + 7) / 8;
-    
-    { static int s_lt = 0; if (s_lt++ < 2000)
-        __android_log_print(ANDROID_LOG_ERROR, "BKA-LOAD",
-            "LOADTILE #%d tile=%u sl=%u tl=%u sh=%u th=%u bpp=%u texAddr=%p texWidth=%u texSize=%u",
-            s_lt, tile, sl, tl, sh, th, bpp, (void*)s_rdp.texAddr, s_rdp.texWidth, texSize); }
-    if (s_rdp.texAddr && texSize <= 4096) {
-        { static int s_bd = 0; if (texSize == 512 && s_bd++ < 300)
-            __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADTILE-BADGE",
-                "LT tile=%u sl=%u tl=%u sh=%u th=%u wh=%ux%u bpp=%u tmem=%u "
-                "src=%p b0..7=%02X%02X%02X%02X%02X%02X%02X%02X b64..71=%02X%02X%02X%02X%02X%02X%02X%02X b256..263=%02X%02X%02X%02X%02X%02X%02X%02X b504..511=%02X%02X%02X%02X%02X%02X%02X%02X",
-                tile, sl, tl, sh, th, texWidth, texHeight, bpp, t.tmemAddr,
-                (void*)s_rdp.texAddr,
-                s_rdp.texAddr[0],s_rdp.texAddr[1],s_rdp.texAddr[2],s_rdp.texAddr[3],
-                s_rdp.texAddr[4],s_rdp.texAddr[5],s_rdp.texAddr[6],s_rdp.texAddr[7],
-                s_rdp.texAddr[64],s_rdp.texAddr[65],s_rdp.texAddr[66],s_rdp.texAddr[67],
-                s_rdp.texAddr[68],s_rdp.texAddr[69],s_rdp.texAddr[70],s_rdp.texAddr[71],
-                s_rdp.texAddr[256],s_rdp.texAddr[257],s_rdp.texAddr[258],s_rdp.texAddr[259],
-                s_rdp.texAddr[260],s_rdp.texAddr[261],s_rdp.texAddr[262],s_rdp.texAddr[263],
-                s_rdp.texAddr[504],s_rdp.texAddr[505],s_rdp.texAddr[506],s_rdp.texAddr[507],
-                s_rdp.texAddr[508],s_rdp.texAddr[509],s_rdp.texAddr[510],s_rdp.texAddr[511]); }
 
-        { static int s_lt2 = 0; if (s_lt2++ < 20) {
-            uint32_t tmemBase = t.tmemAddr * 8;
-            uint32_t srcLineStride = s_rdp.texWidth * bpp;
-            uint32_t srcOff0 = tl * srcLineStride + sl * bpp;
-            __android_log_print(ANDROID_LOG_ERROR, "BKA-LOAD",
-                "LOADTILE-2 #%d tmemBase=%u lineWords=%u srcLineStride=%u srcOff0=%u src[0..7]=%02X%02X%02X%02X%02X%02X%02X%02X",
-                s_lt2, tmemBase, lineWords, srcLineStride, srcOff0,
-                s_rdp.texAddr ? s_rdp.texAddr[srcOff0+0] : 0,
-                s_rdp.texAddr ? s_rdp.texAddr[srcOff0+1] : 0,
-                s_rdp.texAddr ? s_rdp.texAddr[srcOff0+2] : 0,
-                s_rdp.texAddr ? s_rdp.texAddr[srcOff0+3] : 0,
-                s_rdp.texAddr ? s_rdp.texAddr[srcOff0+4] : 0,
-                s_rdp.texAddr ? s_rdp.texAddr[srcOff0+5] : 0,
-                s_rdp.texAddr ? s_rdp.texAddr[srcOff0+6] : 0,
-                s_rdp.texAddr ? s_rdp.texAddr[srcOff0+7] : 0); } }
+    uint32_t bppBits = 4u << (t.size & 3);
+    uint32_t texWidth = (sh >> 2) + 1, texHeight = (th >> 2) + 1;
+    uint32_t lineBytes = (texWidth * bppBits + 7) / 8;
+    uint32_t lineWords = (lineBytes + 7) / 8;
+    uint32_t texSize = lineBytes * texHeight;
+
+    if (s_rdp.texAddr && texSize <= 4096) {
         uint32_t tmemBase = t.tmemAddr * 8;
-        uint32_t srcLineStride = s_rdp.texWidth * bpp;
+        uint32_t srcLineStride = (s_rdp.texWidth * bppBits) / 8;
+        if (srcLineStride == 0) srcLineStride = 1;
         for (uint32_t row = 0; row < texHeight; row++) {
-            uint32_t srcOffset = (tl + row) * srcLineStride + sl * bpp;
+            uint32_t srcOffset = (tl + row) * srcLineStride + (sl * bppBits) / 8;
             uint32_t dstOffset = tmemBase + row * lineWords * 8;
-            if (dstOffset + lineWords * 8 <= 4096)
-                memcpy(s_rdp.tmem + dstOffset, s_rdp.texAddr + srcOffset, lineWords * 8);
+            if (dstOffset + lineBytes <= 4096)
+                memcpy(s_rdp.tmem + dstOffset, s_rdp.texAddr + srcOffset, lineBytes);
         }
         t.line = lineWords;
     }
@@ -1649,7 +1614,8 @@ static void Cmd_LoadBlock(GfxCommand cmd) {
     t.sl = sl; t.tl = tl; t.sh = sh; t.th = th;
     { static int s_lb = 0; if (s_lb++ < 2000) __android_log_print(ANDROID_LOG_ERROR, "BKA-LOADBLK", "ENTRY tile=%u w0=%08X w1=%08X sl=%u tl=%u sh=%u th=%u tmemAddr=%u line=%u texAddr=%p", tile, cmd.w0, cmd.w1, sl, tl, sh, th, t.tmemAddr, t.line, (void*)s_rdp.texAddr); }
 
-    uint32_t texSizeBytes = (sh + 1) * 2;
+    uint32_t texSizeBytes = ((sh + 1) * (4u << (t.size & 3))) / 8;
+    if (texSizeBytes == 0) texSizeBytes = 1;
     uint32_t tmemBase = t.tmemAddr * 8;
     t.line = (texSizeBytes + 7) / 8;
 
