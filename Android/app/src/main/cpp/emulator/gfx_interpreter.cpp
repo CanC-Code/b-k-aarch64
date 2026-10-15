@@ -758,7 +758,7 @@ static void RDP_FetchTexel(int tile, uint32_t s, uint32_t t, uint8_t* outRGBA) {
     switch (tdesc.size & 3) {
     case 0: {
         uint8_t b = s_rdp.tmem[byteAddr];
-        uint32_t idx = (bitInWord & 4u) ? (b & 0xFu) : (b >> 4);
+        uint32_t idx = (bitInWord & 4u) ? (b >> 4) : (b & 0xFu);
         if (tdesc.format == 2) {
             uint32_t palWord = 256u + (uint32_t)tdesc.palette * 4u + (idx >> 2);  /* ARM64 port 2026-10-12: read from bank 0. LoadTLUT writes to 256 (tile[0].palette is unset at LoadTLUT time); sampler was reading bank 4 → mismatch of 512 bytes. */
             uint32_t palByte = (palWord & 0x1FFu) * 8u + ((idx & 3u) * 2u);
