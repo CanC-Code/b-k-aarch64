@@ -429,7 +429,18 @@ void actorArray_free(void) {
     __android_log_print(ANDROID_LOG_ERROR, "BKA-AFREE",
         "before f2c78: D_8036E570=%p",
         D_8036E570);
-    func_802F2C78(D_8036E570);
+    /* ARM64 port 2026-10-15: guard teardown against truncated D_8036E570.
+       func_802F3364 (defrag) returns a 32-bit value that is sign-extended
+       to 64 bits; freeing it segfaults. Only call the destructor when
+       the pointer is a real host address (upper 32 bits set, as they are
+       for every malloc return in this port). Leaks one struct per map
+       transition until func_802F3364 is fixed. */
+    if (((uintptr_t)D_8036E570 >> 32) != 0) {
+        func_802F2C78(D_8036E570);
+    } else {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-AFREE",
+            "skip f2c78: D_8036E570 truncated");
+    }
     D_8036E570 = NULL;
 }
 
