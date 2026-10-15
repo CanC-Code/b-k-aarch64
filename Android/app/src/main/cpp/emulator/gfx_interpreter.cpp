@@ -3676,7 +3676,30 @@ void RSP_ProcessGfxTask(OSTask* tp) {
                  * registered in the address map, or inside RDRAM.  Any other
                  * target (e.g. an arbitrary heap page that happens to be
                  * mapped) means the walker has drifted into non-DL memory. */
-                void *dl_ptr = bka_lookup_addr_mapping(raw_addr);
+                /* ARM64 port 2026-10-15: resolve G_DL targets through segment table
+                   first. The render-mode G_DLs (0x03xxxxxx) target
+                   gSPSegment(3, ptr); the segment base stores a truncated
+                   low32 host pointer, so bka_lookup_addr_mapping(raw_addr)
+                   cannot find it. Combine with the segment base and look
+                   up the full pointer. Same fix pattern as Cmd_SetTImg. */
+                void *dl_ptr = NULL;
+                {
+                    uint8_t seg = (raw_addr >> 24) & 0x0F;
+                    if (seg < 8 && s_rdp.segmentBase[seg] != 0) {
+                        uint32_t combined = (uint32_t)(s_rdp.segmentBase[seg] + (raw_addr & 0x00FFFFFF));
+                        dl_ptr = bka_lookup_addr_by_low32(combined);
+                        if (!dl_ptr) {
+                            uint8_t* tmp = RDP_TranslateAddr(combined);
+                            if (tmp) {
+                                uintptr_t p  = (uintptr_t)tmp;
+                                uintptr_t r0 = (uintptr_t)gN64_RDRAM;
+                                uintptr_t r1 = r0 + 0x04000000;
+                                if (p >= r0 && p < r1) dl_ptr = tmp;
+                            }
+                        }
+                    }
+                }
+                if (!dl_ptr) dl_ptr = bka_lookup_addr_mapping(raw_addr);
                 if (!dl_ptr) { dl_ptr = bka_lookup_addr_by_low32(raw_addr); }
                 if (!dl_ptr) {
                     uint8_t* tmp = RDP_TranslateAddr(raw_addr);
