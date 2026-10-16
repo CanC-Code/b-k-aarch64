@@ -20,6 +20,19 @@ u32 sprite_getUnk4(BKSprite *this) {
 }
 
 s32 sprite_getFrameCount(BKSprite *this) {
+    /* ARM64 port 2026-10-15: host-range guard on sprite_getFrameCount.
+       particleEmitter_update passes this->sprite_1C after only a NULL
+       check. On the N64-logo map that field holds a non-NULL truncated
+       32-bit pointer (sign-extended), crashing at +8 on the frameCnt
+       load. Return 0 for pointers outside the port's host mmap range
+       0x7000000000-0x8000000000. Same class of fix as sMapSavestates[],
+       D_8036E570, D_80371E70[] and the func_80342038 guard. */
+    uintptr_t v = (uintptr_t)this;
+    if (this == NULL || v < 0x7000000000ULL || v >= 0x8000000000ULL) {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-SPRITE",
+            "sprite_getFrameCount: bad ptr %p", (void*)this);
+        return 0;
+    }
     return (s16)__builtin_bswap16((u16)this->frameCnt);
 }
 
