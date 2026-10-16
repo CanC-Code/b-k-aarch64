@@ -738,6 +738,20 @@ Actor **actorArray_findJiggyActors(void) {
 
     s32 var_a1;
 
+    /* ARM64 port 2026-10-15: jiggy scan null-guard.
+       The reference decomp dereferences suBaddieActorArray->data before
+       checking for NULL in the for condition. On the original N64 that
+       was safe because the actor array was always reallocated before
+       this ran. Our port's map-transition path (func_802E3E7C ->
+       jiggylist_map_actors -> this) runs on the frame right after
+       actorArray_free set suBaddieActorArray = NULL, before the
+       reallocation for the new map. Return an empty (NULL-terminated)
+       list in that case; the caller's loop body then no-ops. */
+    if (suBaddieActorArray == NULL) {
+        suBaddieJiggyArray[0] = NULL;
+        return suBaddieJiggyArray;
+    }
+
     begin = suBaddieActorArray->data;
     for(i_actor = begin, var_a1 = 0; (suBaddieActorArray != NULL) && ((i_actor - begin) < suBaddieActorArray->cnt); i_actor++){
         if ((i_actor->modelCacheIndex == ACTOR_46_JIGGY) && !i_actor->despawn_flag) {
