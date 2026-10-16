@@ -833,6 +833,16 @@ BKCollisionTriangle *func_802E9118(BKCollisionList * collision_list, BKVertexLis
 }
 
 BKCollisionTriangle *func_802E92AC(BKCollisionList *collisionList, BKVertexList *vertexList, f32 position[3], f32 radius, f32 arg4[3], s32 flagFilter) {
+    /* ARM64 port 2026-10-16: host-range guard on collision args.
+       Map 2 passes a stale non-NULL collision list or vertex list
+       left over from a prior map. Reject and return NULL. */
+    {
+        uintptr_t c = (uintptr_t)collisionList;
+        uintptr_t v = (uintptr_t)vertexList;
+        if (c == 0 || c < 0x7000000000ULL || c >= 0x8000000000ULL) return NULL;
+        if (v == 0 || v < 0x7000000000ULL || v >= 0x8000000000ULL) return NULL;
+    }
+
     BKCollisionGeometry **start_geo;
     BKCollisionGeometry **i_geo;
     BKCollisionGeometry **end_geo;

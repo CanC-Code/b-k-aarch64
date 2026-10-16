@@ -200,7 +200,14 @@ void _anctrl_start(AnimCtrl * this, char *file, s32 line){
        Map 2 spawns actors whose animation asset has not loaded yet;
        anim_getIndex dereferences this->animation->index and crashes
        at +8. Bail out; the actor will simply not animate this frame. */
-    if (this == NULL || this->animation == NULL) return;
+    /* ARM64 port 2026-10-16: host-range check on animation.
+       Map 2 spawns actors whose animation pointer is non-NULL but
+       stale (freed between maps). Test against the host mmap range. */
+    if (this == NULL) return;
+    {
+        uintptr_t a = (uintptr_t)this->animation;
+        if (a < 0x7000000000ULL || a >= 0x8000000000ULL) return;
+    }
     if(this->smooth_transition && anim_getIndex(this->animation) != 0){
         anim_resetSmooth(this->animation);
         anim_setIndex(this->animation, this->index);
