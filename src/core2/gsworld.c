@@ -319,8 +319,22 @@ void gsworld_set(enum map_e map, s32 exit, bool reload) {
        the same call style as every other cutscene exit in the tree. */
     if (map == MAP_1F_CS_START_RAREWARE) {
         LOG_BKA_INIT("RARE logo exit scheduled");
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-RAREEXIT",
+            "scheduling transitionToMap(MAP_91_FILE_SELECT) in 5.5s");
         timedFunc_set_3(5.5f, (GenFunction_3)transitionToMap,
                         MAP_91_FILE_SELECT, 0, 1);
+    }
+    if (map == MAP_1E_CS_START_NINTENDO) {
+        /* ARM64 port 2026-10-15: N64-logo exit schedule.
+           Same pattern as the RARE exit above. The decomp has no
+           transition out of MAP_1E; the retail game plays the logo
+           then transitions to RARE. 5s matches the N64 logo's
+           animation length in the reference. */
+        LOG_BKA_INIT("N64 logo exit scheduled");
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-N64EXIT",
+            "scheduling transitionToMap(MAP_1F_CS_START_RAREWARE) in 5.0s");
+        timedFunc_set_3(5.0f, (GenFunction_3)transitionToMap,
+                        MAP_1F_CS_START_RAREWARE, 0, 1);
     }
     LOG_BKA_INIT("complete");
 }

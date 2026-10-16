@@ -99,7 +99,11 @@ enum map_e getSpecialBootMap(void){
 }
 
 enum map_e getDefaultBootMap(void){
-    return MAP_1F_CS_START_RAREWARE;
+    /* ARM64 port 2026-10-15: restore the retail boot sequence.
+       The decomp-project default is RARE (0x1F), skipping the
+       Nintendo 64 logo map. Retail boots to the N64 logo, which
+       transitions to RARE, which transitions to file select. */
+    return MAP_1E_CS_START_NINTENDO;
 }
 
 void func_8023DBAC(void){
