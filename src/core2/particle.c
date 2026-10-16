@@ -158,6 +158,16 @@ void __particleEmitter_drawOnPass(ParticleEmitter *this, Gfx **gfx, Mtx **mtx, V
     f32 scale[3];
     Particle *iPtr;
 
+    /* ARM64 port 2026-10-15: skip emitter draw on cutscene.
+       Same stale-emitter issue as particleEmitter_update above. */
+    {
+        extern s32 map_getLevel(u32);
+        extern u32 gsworld_getMap(void);
+        if (map_getLevel(gsworld_getMap()) == 13 /* LEVEL_D_CUTSCENE */) {
+            return;
+        }
+    }
+
     if(reinterpret_cast(u32, draw_pass) != (this->draw_mode & 0x4) != 0)
         return;
 
@@ -621,6 +631,19 @@ void particleEmitter_update(ParticleEmitter *this){
                 (void*)this->pList_start_124, (void*)this->pList_end_128);
             return;
         }
+    }
+
+    /* ARM64 port 2026-10-15: skip emitter update on cutscene.
+       On MAP_1E_CS_START_NINTENDO the emitters hold stale pList
+       pointers left over from a previous map's allocation. They pass
+       a host-range check but don't point at a real particle array, so
+       particleEmitter_update crashes at +36 (bad this) or +344 (bad
+       memcpy source). Cutscene particle physics isn't required for
+       rendering the logo; skip it entirely on LEVEL_D_CUTSCENE. */
+    extern s32 map_getLevel(u32);
+    extern u32 gsworld_getMap(void);
+    if (map_getLevel(gsworld_getMap()) == 13 /* LEVEL_D_CUTSCENE */) {
+        return;
     }
 
     if(partEmitMgrEnable){
