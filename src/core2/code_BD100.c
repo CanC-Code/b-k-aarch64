@@ -147,7 +147,12 @@ void func_80344424(BKSpriteDisplayData *arg0, s32 frame, bool mirrored, f32 posi
     }
     mlMtxApply(*mtx);
     gSPMatrix((*gfx)++, (*mtx)++, G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    temp_a3 = (BKSpriteFrameDisplayData *)((s32)arg0 + sizeof(BKSpriteDisplayData) + frame*sizeof(BKSpriteFrameDisplayData));
+    /* ARM64 port 2026-10-15: 64-bit pointer arithmetic.
+       Original code did ((s32)arg0 + ...) which truncates the host
+       pointer to 32 bits and sign-extends it back. On ARM64 the
+       subsequent temp_a3->vtx deref faults at 0xffffffffXXXXXXXX.
+       Use intptr_t so the full 64-bit pointer is preserved. */
+    temp_a3 = (BKSpriteFrameDisplayData *)((intptr_t)arg0 + sizeof(BKSpriteDisplayData) + frame*sizeof(BKSpriteFrameDisplayData));
     gSPSegment((*gfx)++, 1, osVirtualToPhysical(temp_a3->vtx));
     gSPDisplayList((*gfx)++, temp_a3->gfx);
     gSPPopMatrix((*gfx)++, G_MTX_MODELVIEW);
@@ -194,7 +199,12 @@ void func_80344720(BKSpriteDisplayData *arg0, s32 frame, bool mirrored, f32 posi
     mlMtxScale_xyz((mirrored) ? -scale[0] : scale[0], scale[1], scale[2]);
     mlMtxApply(*mtx);
     gSPMatrix((*gfx)++, (*mtx)++, G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    temp_a3 = (BKSpriteFrameDisplayData *)((s32)arg0 + sizeof(BKSpriteDisplayData) + frame*sizeof(BKSpriteFrameDisplayData));
+    /* ARM64 port 2026-10-15: 64-bit pointer arithmetic.
+       Original code did ((s32)arg0 + ...) which truncates the host
+       pointer to 32 bits and sign-extends it back. On ARM64 the
+       subsequent temp_a3->vtx deref faults at 0xffffffffXXXXXXXX.
+       Use intptr_t so the full 64-bit pointer is preserved. */
+    temp_a3 = (BKSpriteFrameDisplayData *)((intptr_t)arg0 + sizeof(BKSpriteDisplayData) + frame*sizeof(BKSpriteFrameDisplayData));
     gSPSegment((*gfx)++, 1, osVirtualToPhysical(temp_a3->vtx));
     gSPDisplayList((*gfx)++, temp_a3->gfx);
     gSPPopMatrix((*gfx)++, G_MTX_MODELVIEW);
