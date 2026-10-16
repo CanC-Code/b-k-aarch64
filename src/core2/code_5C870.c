@@ -283,7 +283,7 @@ void func_802E3E7C(enum game_mode_e mode){
     mapSavestate_apply(map);
     D_8037E8E0.unk0 = prev_mode;
     game_setMode(mode, sp30);
-    jiggylist_map_actors();
+    if (map_getLevel(gsworld_getMap()) != LEVEL_D_CUTSCENE) { jiggylist_map_actors(); }
     func_80346CA8();
 }
 
