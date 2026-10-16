@@ -1950,13 +1950,16 @@ s32 codeA5BC0_getPositionAndSelectorOrRadius(NodeProp *arg0, s32 arg1[3]){
 // is used to set global timer time?
 void codeA5BC0_setNodePropUnkC(NodeProp *arg0, s32 arg1){
     // writes unkC_31 / unkC_22
-    *(s32*)((s32)arg0 + 0xC) = arg1;
+    /* ARM64 port 2026-10-15: 64-bit NodeProp ptr arithmetic.
+       Was (s32)arg0 + 0xC; truncates the host pointer. */
+    *(s32*)((intptr_t)arg0 + 0xC) = arg1;
 }
 
 // is used to retrieve global timer time?
 s32 codeA5BC0_getNodePropUnkC(NodeProp *arg0){
     // reads unkC_31 / unkC_22
-    return *(s32*)((s32)arg0 + 0xC);
+    /* ARM64 port 2026-10-15: 64-bit NodeProp ptr arithmetic. */
+    return *(s32*)((intptr_t)arg0 + 0xC);
 }
 
 void func_80330FCC(ActorMarker *marker, s32 arg1[3]){

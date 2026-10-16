@@ -100,6 +100,21 @@ void func_80344424(BKSpriteDisplayData *arg0, s32 frame, bool mirrored, f32 posi
     f32 sp60[3];
     f32 sp5C;
     f32 sp50[3];
+
+    /* ARM64 port 2026-10-15: reject bad arg0.
+       Callers pass this->unk34 from particle emitters. On the N64-logo
+       cutscene map that field is a non-NULL truncated 32-bit pointer
+       (0xffffffffXXXXXXXX). The subsequent arg0->sprite->unk8 deref at
+       +304 faults. Return early instead. Same class as the
+       sprite_getFrameCount guard. */
+    {
+        uintptr_t _v = (uintptr_t)arg0;
+        if (arg0 == NULL || _v < 0x7000000000ULL || _v >= 0x8000000000ULL) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-SPRITE",
+                "func_80344424: bad arg0=%p", (void*)arg0);
+            return;
+        }
+    }
     f32 temp_f0;
     f32 temp_f12;
     f32 var_f2_2;

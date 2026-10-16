@@ -142,8 +142,12 @@ void func_802F1934(Struct_Core2_6A4B0_2 * arg0, s32 arg1){
     func_802F18B8(arg0);
     arg0->tmem_raw_ptr = malloc(gFramebufferWidth*gFramebufferHeight*sizeof(u16) + 0x10);
     arg0->tmem_ptr = arg0->tmem_raw_ptr;
-    while(((s32)arg0->tmem_ptr & 0x10) == 0){
-        arg0->tmem_ptr = (u16*)((s32)arg0->tmem_ptr + 1);
+    /* ARM64 port 2026-10-15: 64-bit tmem_ptr arithmetic.
+       Was (s32)arg0->tmem_ptr + 1; the pointer was allocated via malloc
+       and lives in the host mmap range, so truncating it to 32 bits
+       corrupts the subsequent bkmemcpy64 destination. */
+    while(((intptr_t)arg0->tmem_ptr & 0x10) == 0){
+        arg0->tmem_ptr = (u16*)((intptr_t)arg0->tmem_ptr + 1);
     }
     bkmemcpy64(arg0->tmem_ptr, gFramebuffers[arg1], gFramebufferWidth*gFramebufferHeight*sizeof(u16));
     osWritebackDCacheAll();
