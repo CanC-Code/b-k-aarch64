@@ -354,6 +354,14 @@ void func_80341180(f32 arg0, s32 arg1, s32 arg2, f32 arg3[3], f32 arg4[3]){
 }
 
 void func_803411B0(void){
+    /* TEMPORARY: spline build disabled. Map 2 (Mumbo's Mountain)
+       spline data violates the graph-builder invariants in ways that
+       cannot be patched defensively; the reader (func_80307E1C /
+       func_80307EA8) needs a data-format fix. Skip the whole builder
+       so gameplay can proceed. Splines drive camera rails and path
+       animation; restore once the reader bug is understood. */
+    __android_log_print(ANDROID_LOG_WARN, "BKA-SPLINE", "func_803411B0 skipped (temporary)");
+    return;
     s32 spE4;
     s32 spE0;
     s32 a0;
