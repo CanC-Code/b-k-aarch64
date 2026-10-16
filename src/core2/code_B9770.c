@@ -1,4 +1,5 @@
 #include <ultra64.h>
+#include <android/log.h>
 #include "functions.h"
 #include "variables.h"
 
@@ -403,6 +404,19 @@ void func_803411B0(void){
 
     do {
         spE0 = func_80307EA8(1, spCC, &spC8, &spC4);
+
+        /* ARM64 port 2026-10-16: bounds-check spline index.
+           func_80307EA8 can return spE0 >= spE4 when map spline data
+           contains an out-of-range link. spD8 is malloc(spE4 * sizeof),
+           so writing (spD8+spE0) is an OOB heap write that corrupts
+           adjacent allocations and crashes ~1500 bytes later in the
+           graph walk. Skip the write and break to avoid spinning. */
+        if (spE0 >= spE4) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-SPLINE",
+                "OOB spline index %d >= %d, aborting spline build",
+                (int)spE0, (int)spE4);
+            break;
+        }
 
         if (spE0 >= 0) {
             (spD8+spE0)->unk0 = spC8;
