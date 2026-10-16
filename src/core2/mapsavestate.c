@@ -33,11 +33,27 @@ void mapSavestate_init(void) {
     }
 }
 
+/* ARM64 port 2026-10-15: every malloc/calloc/realloc return in this
+   port lands in the host mmap range 0x7000000000-0x7FFFFFFFFF. Slots
+   outside that range hold truncated 32-bit values (e.g. sign-extended
+   0xffffffffXXXXXXXX). Skip free() on those to avoid jemalloc tearing
+   the process down in je_large_dalloc during map transition. */
+static inline int host_mmap_range(const void *p) {
+    uintptr_t v = (uintptr_t)p;
+    return v >= 0x7000000000ULL && v < 0x8000000000ULL;
+}
+
 void mapSavestate_clearAll(void) {
     int i;
     for (i = 0; i < MAP_NUM_MAPS; i++) {
         if ((u32 *) sMapSavestates[i] != NULL) {
-            free((void*)sMapSavestates[i]);
+            if (host_mmap_range(sMapSavestates[i])) {
+                free((void*)sMapSavestates[i]);
+            } else {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-SAVE",
+                    "skip free: sMapSavestates[%d]=%p not a host pointer",
+                    i, (void*)sMapSavestates[i]);
+            }
             sMapSavestates[i] = NULL;
         }
     }
@@ -118,6 +134,12 @@ void mapSavestate_apply(enum map_e map) {
 
     cubeList_sort(FALSE);
     actors_applyFromSavestate(sMapSavestates[map], (ActorListSaveState *) (u32 *) sMapSavestates[map] + (4 * ((bit_position + 127) >> 7)));
-    free((void*)sMapSavestates[map]);
+    if (host_mmap_range(sMapSavestates[map])) {
+        free((void*)sMapSavestates[map]);
+    } else {
+        __android_log_print(ANDROID_LOG_ERROR, "BKA-SAVE",
+            "apply skip free: sMapSavestates[%d]=%p not a host pointer",
+            (int)map, (void*)sMapSavestates[map]);
+    }
     sMapSavestates[map] = NULL;
 }
