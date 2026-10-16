@@ -557,7 +557,7 @@ UNK_TYPE(s32) func_80309EB0(f32 arg0[3], f32 arg1, f32 arg2[3], s32 arg3) {
        model bins have loaded, so mapModel.collision_opa is NULL and
        func_802E92AC dereferences it. Return 0 (no collision) until
        the model load completes. */
-    if (mapModel.collision_opa == NULL && mapModel.collision_xlu == NULL) {
+    if (mapModel.collision_opa == NULL || mapModel.model_bin_opa == NULL) {
         return 0;
     }
 
