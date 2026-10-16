@@ -190,7 +190,7 @@ void gsworld_free(void) {
     ncCameraNodeList_free();
     pem_freeDependencies();
     pem_freeAll();
-    partEmitMgr_free();
+    if (map_getLevel(sGsWorldData.map) != LEVEL_D_CUTSCENE) { partEmitMgr_free(); }
     func_802F7CE0();
     func_8031F9E0();
     func_80323100();
