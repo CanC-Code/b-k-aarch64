@@ -196,6 +196,11 @@ void __anctrl_gotoStart(AnimCtrl *this){
 }
 
 void _anctrl_start(AnimCtrl * this, char *file, s32 line){
+    /* ARM64 port 2026-10-16: _anctrl_start NULL animation guard.
+       Map 2 spawns actors whose animation asset has not loaded yet;
+       anim_getIndex dereferences this->animation->index and crashes
+       at +8. Bail out; the actor will simply not animate this frame. */
+    if (this == NULL || this->animation == NULL) return;
     if(this->smooth_transition && anim_getIndex(this->animation) != 0){
         anim_resetSmooth(this->animation);
         anim_setIndex(this->animation, this->index);
