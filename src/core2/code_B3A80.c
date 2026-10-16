@@ -432,6 +432,8 @@ void *assetcache_get(enum asset_e assetId) {
      * codeB3A80_getSprite -> func_80344A1C -> spriteRender_drawWithSegment
      * and faults at spriteRender_drawWithSegment+2140 (ldrh from a bad
      * base, at the cutscene sprite-draw path). */
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CACHE-DIAG",
+        "assetId=%d i=%d assetCacheLength=%d hit=%d", (int)assetId, (int)i, (int)assetCacheLength, (int)(i < assetCacheLength));
     if (i == 0x96)
         return NULL;
 
