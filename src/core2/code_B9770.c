@@ -430,7 +430,11 @@ void func_803411B0(void){
     for (spE0 = 1; spE0 < spE4; spE0++) {
         (spD8+spE0)->unk8_15 = 0;
 
-        if ((spD8+spE0)->unk0 >= spE4 || (spD8+spE0)->unk0 == -1) {
+        /* ARM64 port 2026-10-16: clamp any negative unk0, not just -1.
+           Map 2 spline data can produce unk0 < -1, which survives the
+           original == -1 check and later becomes a negative index into
+           spD8 in the graph walks, faulting at func_803411B0+1928. */
+        if ((spD8+spE0)->unk0 >= spE4 || (spD8+spE0)->unk0 < 0) {
             (spD8+spE0)->unk0 = 0;
         }
     }
