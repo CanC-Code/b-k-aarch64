@@ -5,9 +5,10 @@
 #include "bool.h"
 
 static inline u32 bswap32(u32 v) { return __builtin_bswap32(v); }
-#ifndef BKA_SWAP16
+
+/* Big-endian 16-bit read helper. A macro, not a function, to avoid
+   name collision with per-file static inline bswap16 definitions. */
 #define BKA_SWAP16(v) ((u16)__builtin_bswap16((u16)(v)))
-#endif
 
 /* Model header
  * Contains offsets relative to the start of the file to the various sections

@@ -901,19 +901,19 @@ BKCollisionTriangle *func_802E92AC(BKCollisionList *collisionList, BKVertexList 
     /* func_802E92AC BE swap: fields in BKCollisionList / BKCollisionGeometry /
        BKCollisionTriangle are stored big-endian on disk. Native reads give
        garbage counts and offsets. Swap every read. */
-    geo_cnt_be = bswap16(collisionList->unk10);
+    geo_cnt_be = (s16)BKA_SWAP16(collisionList->unk10);
     for(i_geo = start_geo; i_geo < end_geo; i_geo++){
 
         //iterate over each triangle in collision geometry
-        start_tri = (BKCollisionTriangle *)((BKCollisionGeometry *)(collisionList + 1) + geo_cnt_be) + bswap16((*i_geo)->start_tri_index);
-        end_tri = start_tri + bswap16((*i_geo)->tri_count);
+        start_tri = (BKCollisionTriangle *)((BKCollisionGeometry *)(collisionList + 1) + geo_cnt_be) + (s16)BKA_SWAP16((*i_geo)->start_tri_index);
+        end_tri = start_tri + (s16)BKA_SWAP16((*i_geo)->tri_count);
         for(i_tri = start_tri; i_tri < end_tri; i_tri++){
             //filter tri
-            if (!(bswap32(i_tri->flags) & flagFilter)){
+            if (!((s32)__builtin_bswap32((u32)i_tri->flags) & flagFilter)){
 
                 //get tri coords
                 for(i = 0; i < 3; i++){
-                    i_vtx = &vtx_pool[bswap16(i_tri->unk0[i])];
+                    i_vtx = &vtx_pool[(s16)BKA_SWAP16(i_tri->unk0[i])];
                     tri_vtx_coord[i][0] = i_vtx->v.ob[0];
                     tri_vtx_coord[i][1] = i_vtx->v.ob[1];
                     tri_vtx_coord[i][2] = i_vtx->v.ob[2];
