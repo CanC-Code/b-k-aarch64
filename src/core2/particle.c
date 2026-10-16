@@ -1,4 +1,5 @@
 #include <ultra64.h>
+#include <android/log.h>
 #include "core1/core1.h"
 #include "functions.h"
 #include "variables.h"
@@ -608,6 +609,20 @@ void particleEmitter_update(ParticleEmitter *this){
     f32 sp6C[3];
     f32 sp68;
     
+    /* ARM64 port 2026-10-15: reject bad particle-list bounds. */
+    {
+        uintptr_t _s = (uintptr_t)this->pList_start_124;
+        uintptr_t _e = (uintptr_t)this->pList_end_128;
+        if ((_s != 0 && (_s < 0x7000000000ULL || _s >= 0x8000000000ULL)) ||
+            (_e != 0 && (_e < 0x7000000000ULL || _e >= 0x8000000000ULL)) ||
+            _e < _s) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-SPRITE",
+                "particleEmitter_update: bad bounds start=%p end=%p",
+                (void*)this->pList_start_124, (void*)this->pList_end_128);
+            return;
+        }
+    }
+
     if(partEmitMgrEnable){
         for(particle = this->pList_start_124; particle < this->pList_end_128;){//L802F005C
             particle->age_48 += tick;
