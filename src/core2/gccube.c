@@ -1353,11 +1353,25 @@ Actor * func_803055E0(enum actor_e arg0, s32 position[3], s32 yaw, s32 arg3, s32
             actor->unk44_14 = func_80341C78(position);
         }
         if(!(actor->unk44_14  < 0)){
-            sp28[0] = (f32)position[0];
-            sp28[1] = (f32)position[1];
-            sp28[2] = (f32)position[2];
-            actor->unk48 = func_803243D0(func_80342038(actor->unk44_14), sp28);
-            actor->marker->unk2C_2 = TRUE;
+            /* ARM64 port 2026-10-15: skip f243D0 when f42038 returns NULL.
+               func_80342038(x) returns D_80371E70[x], which can be NULL
+               if the slot was never populated. func_803243D0 ->
+               func_8032358C dereferences the pointer without a null
+               check (same latent bug in the reference). On the N64-logo
+               map's 1280-slot cube grid this path is exercised and
+               crashes on the first deref. Skip and leave unk48 = 0. */
+            struct56s *s56 = func_80342038(actor->unk44_14);
+            if (s56 != NULL) {
+                sp28[0] = (f32)position[0];
+                sp28[1] = (f32)position[1];
+                sp28[2] = (f32)position[2];
+                actor->unk48 = func_803243D0(s56, sp28);
+                actor->marker->unk2C_2 = TRUE;
+            } else {
+                __android_log_print(ANDROID_LOG_ERROR, "BKA-GCCUBE",
+                    "f42038(%d) NULL for actor id=0x%X, skipping f243D0",
+                    (int)actor->unk44_14, (int)arg0);
+            }
         }
     }
     return actor;
