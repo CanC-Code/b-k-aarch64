@@ -94,6 +94,7 @@ Actor *func_802E0738(ActorMarker *marker, Gfx **gfx, Mtx **mtx, Vtx **vtx){
     f32 rotation[3];
     Actor *this;
 
+    if (marker == NULL || (uintptr_t)marker < 0x7000000000ULL || (uintptr_t)marker >= 0x8000000000ULL) { __android_log_print(ANDROID_LOG_ERROR, "BKA-ACTOR2", "func_802E0738: bad marker %p", (void*)marker); return NULL; }
     this = marker_getActorAndRotation(marker, &rotation);
     __android_log_print(ANDROID_LOG_ERROR, "BKA-SCALE",
         "draw   id=%d actor=%p scale=%.6f",
