@@ -431,15 +431,18 @@ void actorArray_free(void) {
         D_8036E570);
     /* ARM64 port 2026-10-15: guard teardown against truncated D_8036E570.
        func_802F3364 (defrag) returns a 32-bit value that is sign-extended
-       to 64 bits; freeing it segfaults. Only call the destructor when
-       the pointer is a real host address (upper 32 bits set, as they are
-       for every malloc return in this port). Leaks one struct per map
-       transition until func_802F3364 is fixed. */
-    if (((uintptr_t)D_8036E570 >> 32) != 0) {
+       to 64 bits (0xffffffffe1d4ace0). free() on that address segfaults.
+       The correct test is: is the value within the host mmap range
+       0x7000000000-0x7FFFFFFFFF, where all malloc/asset allocations live.
+       The first attempt (upper-32-bits != 0) was wrong: a sign-extended
+       32-bit value has upper bits 0xFFFFFFFF, which passed the check. */
+    if ((uintptr_t)D_8036E570 >= 0x7000000000ULL &&
+        (uintptr_t)D_8036E570 <  0x8000000000ULL) {
         func_802F2C78(D_8036E570);
     } else {
         __android_log_print(ANDROID_LOG_ERROR, "BKA-AFREE",
-            "skip f2c78: D_8036E570 truncated");
+            "skip f2c78: D_8036E570=%p not a host pointer",
+            D_8036E570);
     }
     D_8036E570 = NULL;
 }
