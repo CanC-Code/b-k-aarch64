@@ -1,4 +1,5 @@
 #include <ultra64.h>
+#include <android/log.h>
 #include "functions.h"
 
 /* Map Savestates 
