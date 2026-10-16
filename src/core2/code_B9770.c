@@ -394,7 +394,7 @@ void func_803411B0(void){
         return;
     }
 
-    spD8 = (Struct_glspline_803411B0 *) malloc(spE4 * sizeof(Struct_glspline_803411B0));
+    spD8 = (Struct_glspline_803411B0 *) malloc(spE4 * sizeof(Struct_glspline_803411B0)); if (spD8 == NULL) return;
 
     for (spE0 = 0; spE0 < spE4; spE0++) {
         (spD8 + spE0)->unk0 = -1;
@@ -468,7 +468,7 @@ void func_803411B0(void){
                 (spD8+var_s5)->unk8_14 = 0;
             }
 
-            for (var_s5 = spE0; (spD8+var_s5)->unk0 != 0 && !(spD8+var_s5)->unk8_14; var_s5 = (spD8+var_s5)->unk0) {
+            for (var_s5 = spE0; (spD8+var_s5)->unk0 > 0 && (spD8+var_s5)->unk0 < spE4 && !(spD8+var_s5)->unk8_14; var_s5 = (spD8+var_s5)->unk0) {
                 (spD8+var_s5)->unk8_14 = 1;
                 tmp = (spD8+var_s5)->unk8_13 == 0 ? 1 : 0;
                 var_s7 += tmp;
@@ -489,6 +489,7 @@ void func_803411B0(void){
             var_s2 = spA8->unk0;
 
             for (; var_s2 != 0; a0 = (spD8+a0)->unk0) {
+                if (a0 <= 0 || a0 >= spE4) break;
                 if (0);
                 if ((spD8+a0)->unk8_13 == 1) {
                     temp_v0_16 = func_803080C8(a0);
@@ -521,6 +522,7 @@ void func_803411B0(void){
             a0 = var_s7;
 
             for (var_s5 = spE0; a0 != 0; var_s5 = (spD8 + var_s5)->unk0) {
+                if (var_s5 < 0 || var_s5 >= spE4) break;
                 if (!(spD8 + var_s5)->unk8_13) {
                     spA4[var_fp + 2] = (spD8 + var_s5)->unk2[0];
                     spA4[var_fp + 3] = (spD8 + var_s5)->unk2[1];
