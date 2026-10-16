@@ -5,6 +5,9 @@
 #include "bool.h"
 
 static inline u32 bswap32(u32 v) { return __builtin_bswap32(v); }
+#ifndef BKA_SWAP16
+#define BKA_SWAP16(v) ((u16)__builtin_bswap16((u16)(v)))
+#endif
 
 /* Model header
  * Contains offsets relative to the start of the file to the various sections
