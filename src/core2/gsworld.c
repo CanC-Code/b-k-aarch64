@@ -103,8 +103,8 @@ void gsworld_draw(Gfx** gfx, Mtx **mtx, Vtx **vtx) {
     // func_802F2ED0(func_8032994C(), gfx, mtx, vtx);
         }
         if (!game_is_frozen()) {
-            if (map_getLevel(sGsWorldData.map) != LEVEL_D_CUTSCENE) { partEmitMgr_drawPass0(gfx, mtx, vtx); }
-            if (map_getLevel(sGsWorldData.map) != LEVEL_D_CUTSCENE) { partEmitMgr_drawPass1(gfx, mtx, vtx); }
+            partEmitMgr_drawPass0(gfx, mtx, vtx);
+        }
         if (!game_is_frozen()) {
             mapModel_xlu_draw(gfx, mtx, vtx);
         }
@@ -404,7 +404,7 @@ s32 gsworld_update(void) {
         func_8034C9D4();
         propModelList_flush(1);
         sky_update();
-        if (map_getLevel(sGsWorldData.map) != LEVEL_D_CUTSCENE) { partEmitMgr_update(); }
+        partEmitMgr_update();
         func_8034F918();
         func_80350250();
         #if ANTI_TAMPER
