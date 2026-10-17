@@ -70,3 +70,43 @@ static void bka_swap_mesh_list(u8 *bin, s32 off, s32 bin_size) {
         mesh = (BKMesh *)&mesh->vertices[vc];
     }
 }
+
+/* Swap a BKCollisionList in place at offset `off` inside `bin`.
+ * Layout after header: BKCollisionGeometry[geo_cnt], then
+ * BKCollisionTriangle[tri_cnt]. */
+static void bka_swap_coll_list(u8 *bin, s32 off, s32 bin_size) {
+    if (off <= 0 || off + (s32)sizeof(BKCollisionList) > bin_size) return;
+    BKCollisionList *c = (BKCollisionList *)(bin + off);
+    c->unk0[0] = (s16)SW16(c->unk0[0]);
+    c->unk0[1] = (s16)SW16(c->unk0[1]);
+    c->unk0[2] = (s16)SW16(c->unk0[2]);
+    c->unk6[0] = (s16)SW16(c->unk6[0]);
+    c->unk6[1] = (s16)SW16(c->unk6[1]);
+    c->unk6[2] = (s16)SW16(c->unk6[2]);
+    c->unkC   = (s16)SW16(c->unkC);
+    c->unkE   = (s16)SW16(c->unkE);
+    c->unk10  = (s16)SW16(c->unk10);
+    c->unk12  = (s16)SW16(c->unk12);
+    c->unk14  = (s16)SW16(c->unk14);
+
+    s32 geo_cnt = c->unk10;
+    if (geo_cnt < 0 || geo_cnt > 0x4000) return;
+    BKCollisionGeometry *geos = (BKCollisionGeometry *)(c + 1);
+    if ((u8*)geos - bin + geo_cnt * (s32)sizeof(BKCollisionGeometry) > bin_size) return;
+    for (s32 i = 0; i < geo_cnt; i++) {
+        geos[i].start_tri_index = (s16)SW16(geos[i].start_tri_index);
+        geos[i].tri_count       = (s16)SW16(geos[i].tri_count);
+    }
+
+    s32 tri_cnt = c->unk14;
+    if (tri_cnt < 0 || tri_cnt > 0x20000) return;
+    BKCollisionTriangle *tris = (BKCollisionTriangle *)(geos + geo_cnt);
+    if ((u8*)tris - bin + tri_cnt * (s32)sizeof(BKCollisionTriangle) > bin_size) return;
+    for (s32 i = 0; i < tri_cnt; i++) {
+        tris[i].unk0[0] = (s16)SW16(tris[i].unk0[0]);
+        tris[i].unk0[1] = (s16)SW16(tris[i].unk0[1]);
+        tris[i].unk0[2] = (s16)SW16(tris[i].unk0[2]);
+        tris[i].unk6    = (s16)SW16(tris[i].unk6);
+        tris[i].flags   = (s32)SW32(tris[i].flags);
+    }
+}
