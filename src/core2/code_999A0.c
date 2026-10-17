@@ -19,7 +19,7 @@ typedef struct {
 
 /* .bss */
 struct {
-    Struct_core2_999A0_0 unk0[0x8];
+    Struct_core2_999A0_0 unk0[0x20];
     Struct_core2_999A0_0 *unk80;
     void *unk84;
 }D_80383230;
