@@ -1741,7 +1741,8 @@ BKVertexList *modelbin_getVtxList(BKModelBin *this) {
        mesh_list_offset and animated_texture_list_offset).  Reading
        it raw yielded 0xc0110000 instead of 0x000011c0, producing a
        bogus host pointer ~3 GB past the bin.  Byteswap before use. */
-    u32 off = this->vtx_list_offset;
+    /* B6.step3 restored: flag is 0, header still BE, must swap on read. */
+    u32 off = (u32)__builtin_bswap32((u32)this->vtx_list_offset);
     if (off == 0) return NULL;
     this = (BKModelBin*)((uintptr_t)this & 0x00FFFFFFFFFFFFFFUL);
     BKVertexList *result = (BKVertexList *)((uintptr_t)this + off);
