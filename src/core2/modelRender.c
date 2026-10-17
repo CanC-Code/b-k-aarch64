@@ -1,3 +1,5 @@
+/* B6.step4: modelbin_getVtxList bswap stripped (header native after modelbin_byteswap_inplace). */
+/* B6.step3: modelbin_get* function-form bswap stripped (bin header native after modelbin_byteswap_inplace). */
 #include <ultra64.h>
 #include <stdio.h>
 #include <math.h>
@@ -1739,7 +1741,7 @@ BKVertexList *modelbin_getVtxList(BKModelBin *this) {
        mesh_list_offset and animated_texture_list_offset).  Reading
        it raw yielded 0xc0110000 instead of 0x000011c0, producing a
        bogus host pointer ~3 GB past the bin.  Byteswap before use. */
-    u32 off = __builtin_bswap32((u32)this->vtx_list_offset);
+    u32 off = this->vtx_list_offset;
     if (off == 0) return NULL;
     this = (BKModelBin*)((uintptr_t)this & 0x00FFFFFFFFFFFFFFUL);
     BKVertexList *result = (BKVertexList *)((uintptr_t)this + off);
