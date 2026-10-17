@@ -47,7 +47,13 @@ static void bka_swap_vtx_list(u8 *bin, s32 off, s32 bin_size) {
     v->count          = (s16)SW16(v->count);
     v->global_norm    = (s16)SW16(v->global_norm);
     s32 cnt = v->count;
-    if (cnt < 0 || cnt > 0x10000) return;
+    if (cnt < 0) return;
+    if (off + (s32)sizeof(BKVertexList) + cnt * (s32)sizeof(Vtx) > bin_size) {
+        __android_log_print(ANDROID_LOG_ERROR, BKA_SWAP_TAG,
+            "B6.step5: vtx list off=%d cnt=%d would overflow bin_size=%d, skip",
+            off, cnt, bin_size);
+        return;
+    }
     for (s32 i = 0; i < cnt; i++) {
         Vtx *x = &v->vertices[i];
         x->v.ob[0] = (s16)SW16(x->v.ob[0]);
@@ -72,7 +78,13 @@ static void bka_swap_mesh_list(u8 *bin, s32 off, s32 bin_size) {
         mesh->uid       = (s16)SW16(mesh->uid);
         mesh->vtx_count = (s16)SW16(mesh->vtx_count);
         s32 vc = mesh->vtx_count;
-        if (vc < 0 || vc > 0x2000) return;
+        if (vc < 0) return;
+        if ((u8*)mesh - bin + (s32)sizeof(BKMesh) + vc * (s32)sizeof(s16) > bin_size) {
+            __android_log_print(ANDROID_LOG_ERROR, BKA_SWAP_TAG,
+                "B6.step5: mesh vtx_count=%d would overflow bin_size=%d, skip",
+                vc, bin_size);
+            return;
+        }
         for (s32 j = 0; j < vc; j++) {
             mesh->vertices[j] = (s16)SW16(mesh->vertices[j]);
         }
@@ -108,9 +120,14 @@ static void bka_swap_coll_list(u8 *bin, s32 off, s32 bin_size) {
     }
 
     s32 tri_cnt = c->unk14;
-    if (tri_cnt < 0 || tri_cnt > 0x20000) return;
+    if (tri_cnt < 0) return;
     BKCollisionTriangle *tris = (BKCollisionTriangle *)(geos + geo_cnt);
-    if ((u8*)tris - bin + tri_cnt * (s32)sizeof(BKCollisionTriangle) > bin_size) return;
+    if ((u8*)tris - bin + tri_cnt * (s32)sizeof(BKCollisionTriangle) > bin_size) {
+        __android_log_print(ANDROID_LOG_ERROR, BKA_SWAP_TAG,
+            "B6.step5: tri_cnt=%d would overflow bin_size=%d, skip",
+            tri_cnt, bin_size);
+        return;
+    }
     for (s32 i = 0; i < tri_cnt; i++) {
         tris[i].unk0[0] = (s16)SW16(tris[i].unk0[0]);
         tris[i].unk0[1] = (s16)SW16(tris[i].unk0[1]);

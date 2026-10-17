@@ -22,6 +22,8 @@ Vtx *vtxList_getVertices(BKVertexList *this) {
 }
 
 void vtxList_getBounds_s32(BKVertexList *this, s32 min[3], s32 max[3]) {
+    /* B6.step6: NULL guard — mapModel_getCubeBounds can pass NULL when the bin has no vtx_list_offset. */
+    if (this == NULL) { min[0]=min[1]=min[2]=-1; max[0]=max[1]=max[2]=1; return; }
     /* ROM vertex list data is big-endian.  The port reads raw bytes at
        load and swaps on read (same convention as __bka_fixNodePropEndian
        and the bswap32 in the modelbin_get*List macros in model.h). */
@@ -35,6 +37,7 @@ void vtxList_getBounds_s32(BKVertexList *this, s32 min[3], s32 max[3]) {
 }
 
 void vtxList_getBounds_f32(BKVertexList *this, f32 min[3], f32 max[3]) {
+    if (this == NULL) { min[0]=min[1]=min[2]=-1.0f; max[0]=max[1]=max[2]=1.0f; return; }
     min[0] = (f32)(s16)this->minCoord[0];
     min[1] = (f32)(s16)this->minCoord[1];
     min[2] = (f32)(s16)this->minCoord[2];
