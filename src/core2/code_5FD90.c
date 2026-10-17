@@ -112,7 +112,7 @@ void func_802E70FC(BKCollisionList *collision_list, s32 min[3], s32 max[3], BKCo
     s32 i;
     s32 x, y, z;
 
-    if (CSW16(collision_list->unk12) == 0) {
+    if (collision_list->unk12 == 0) {
         D_8037E910.unk190 = &D_8037E910.unk0[0];
         *(D_8037E910.unk190++) = (s32)collision_list + sizeof(BKCollisionList);
         *begin_geo_ptr = &D_8037E910.unk0[0];
@@ -121,33 +121,33 @@ void func_802E70FC(BKCollisionList *collision_list, s32 min[3], s32 max[3], BKCo
     else{
         for(i = 0 ;  i < 3; i++){
             if (min[i] >= 0) {
-                sp3C[i] = (s32) min[i] / CSW16(collision_list->unk12);
+                sp3C[i] = (s32) min[i] / collision_list->unk12;
             } else {
-                sp3C[i] = ((s32) min[i] / CSW16(collision_list->unk12)) - 1;
+                sp3C[i] = ((s32) min[i] / collision_list->unk12) - 1;
             }
 
             if (max[i] >= 0) {
-                sp30[i] = (s32) max[i] / CSW16(collision_list->unk12);
+                sp30[i] = (s32) max[i] / collision_list->unk12;
             } else {
-                sp30[i] = ((s32) max[i] / CSW16(collision_list->unk12)) - 1;
+                sp30[i] = ((s32) max[i] / collision_list->unk12) - 1;
             }
 
-            if (sp3C[i] < CSW16(collision_list->unk0[i])) {
-                sp3C[i] = CSW16(collision_list->unk0[i]);
+            if (sp3C[i] < collision_list->unk0[i]) {
+                sp3C[i] = collision_list->unk0[i];
             }
-            if (CSW16(collision_list->unk6[i]) < sp3C[i]) {
-                sp3C[i] = CSW16(collision_list->unk6[i]);
-            }
-
-            if (sp30[i] < CSW16(collision_list->unk0[i])) {
-                sp30[i] = CSW16(collision_list->unk0[i]);
-            }
-            if (CSW16(collision_list->unk6[i]) < sp30[i]) {
-                sp30[i] = CSW16(collision_list->unk6[i]);
+            if (collision_list->unk6[i] < sp3C[i]) {
+                sp3C[i] = collision_list->unk6[i];
             }
 
-            sp3C[i] -= CSW16(collision_list->unk0[i]);
-            sp30[i] -= CSW16(collision_list->unk0[i]);
+            if (sp30[i] < collision_list->unk0[i]) {
+                sp30[i] = collision_list->unk0[i];
+            }
+            if (collision_list->unk6[i] < sp30[i]) {
+                sp30[i] = collision_list->unk6[i];
+            }
+
+            sp3C[i] -= collision_list->unk0[i];
+            sp30[i] -= collision_list->unk0[i];
         }
 
         D_8037E910.unk190 = &D_8037E910.unk0[0];
@@ -155,7 +155,7 @@ void func_802E70FC(BKCollisionList *collision_list, s32 min[3], s32 max[3], BKCo
         for(z = sp3C[2]; z <= sp30[2]; z++){
             for(y = sp3C[1]; y <= sp30[1]; y++){
                 for(x = sp3C[0]; x <= sp30[0]; x++){
-                    *(D_8037E910.unk190++) = ((CSW16(collision_list->unkE) * z) + (BKCollisionGeometry *)(collision_list + 1))  + x + (y * CSW16(collision_list->unkC));
+                    *(D_8037E910.unk190++) = ((collision_list->unkE * z) + (BKCollisionGeometry *)(collision_list + 1))  + x + (y * collision_list->unkC);
                 }
             }
         }
