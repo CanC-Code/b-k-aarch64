@@ -96,7 +96,7 @@ void collisionList_getIntersecting(BKCollisionList *collision_list, f32 arg1[3],
         for(z = sp3C[2]; z <= sp30[2]; z++){
             for(y = sp3C[1]; y <= sp30[1]; y++){
                 for(x = sp3C[0]; x <= sp30[0]; x++){
-                    *(D_8037E910.unk190++) = ((CSW16(collision_list->unkE) * z) + (BKCollisionGeometry *)(collision_list + 1))  + x + (y * CSW16(collision_list->unkC));
+                    if (D_8037E910.unk190 < &D_8037E910.unk0[100]) { *(D_8037E910.unk190++) = ((CSW16(collision_list->unkE) * z) + (BKCollisionGeometry *)(collision_list + 1))  + x + (y * CSW16(collision_list->unkC)); }
                 }
             }
         }
