@@ -543,6 +543,17 @@ void *assetcache_get(enum asset_e assetId) {
         }
     }
 
+    /* BKA_LOADTIME_SWAP call site: one-time BE->LE swap for model bins,
+       before the buffer is cached. Guarded by magic so this is a no-op
+       for non-model-bin assets (sprites, textures, sounds, etc).
+       No-op at BKA_LOADTIME_SWAP=0; active after B6 flips it. */
+    if (uncompressed_file != NULL && *(u32*)uncompressed_file == 0x0B000000u) {
+        s32 bin_size = (assetSectionRomMetaList[assetId].compFlag & 0x0001)
+            ? (s32)assetCacheCurrentSize
+            : (s32)comp_size;
+        modelbin_byteswap_inplace((BKModelBin *)uncompressed_file, bin_size);
+    }
+
     if (assetCacheLength >= g_assetCacheCapacity - 1) {
         u32 new_cap = g_assetCacheCapacity * 2;
         assetCachePtrList = (void**)realloc(assetCachePtrList, new_cap * sizeof(void*));

@@ -18,6 +18,15 @@
 #include "model.h"
 
 #define BKA_SWAP_TAG "BKA-SWAP"
+
+/* B5: the call site lands in code_B3A80.c (assetcache_get) but the flag
+   stays 0. With flag 0, modelbin_byteswap_inplace returns immediately.
+   Flip to 1 in B6, in the same commit that strips the per-site bswap16 /
+   bswap32 calls from the 18 files in swap-files.txt. Otherwise the two
+   swap conventions conflict and existing sites double-swap. */
+#ifndef BKA_LOADTIME_SWAP
+#define BKA_LOADTIME_SWAP 0
+#endif
 #define SW16(v) ((u16)__builtin_bswap16((u16)(v)))
 #define SW32(v) ((u32)__builtin_bswap32((u32)(v)))
 
@@ -122,6 +131,7 @@ static void bka_swap_coll_list(u8 *bin, s32 off, s32 bin_size) {
  * Others (geo cmds, textures, animation, unk14, camera) are covered by
  * their own per-site swaps or will be added in follow-up commits. */
 void modelbin_byteswap_inplace(BKModelBin *bin, s32 bin_size) {
+    if (!BKA_LOADTIME_SWAP) return;
     if (!bin || bin_size < (s32)sizeof(BKModelBin)) return;
 
     u32 magic_native = bin->magic_number;
