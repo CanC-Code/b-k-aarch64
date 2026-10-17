@@ -443,17 +443,18 @@ BKVertexList *modelbin_getVtxList(BKModelBin *this);
 BKCameraAreaList *modelbin_getCameraAreaList(BKModelBin *this);
 void modelbin_byteswap_inplace(BKModelBin *bin, s32 bin_size);
 
-#define modelbin_getGeoCmdList_MACRO(this)          ((BKGeoCmd *)            (((u8 *) (this)) + bswap32((((BKModelBin *) (this))->geo_list_offset))))
-#define modelbin_getTextureList_MACRO(this)         ((BKTextureList *)       (((u8 *) (this)) + (s32)__builtin_bswap16((u16)(((BKModelBin *) (this))->texture_list_offset))))
-#define modelbin_getGfxList_MACRO(this)             ((BKGfxList *)           (((u8 *) (this)) + bswap32((((BKModelBin *) (this))->gfx_list_offset))))
-#define modelbin_getVtxList_MACRO(this)             ((BKVertexList *)        (((u8 *) (this)) + bswap32((((BKModelBin *) (this))->vtx_list_offset))))
-#define modelbin_getUnk14List_MACRO(this)           ((BKModelUnk14List *)    (((u8 *) (this)) + bswap32((((BKModelBin *) (this))->unk14_list_offset))))
-#define modelbin_getAnimationList_MACRO(this)       ((BKAnimationList *)     (((u8 *) (this)) + bswap32((((BKModelBin *) (this))->animation_list_offset))))
-#define modelbin_getCollisionList_MACRO(this)       ((BKCollisionList *)     (((u8 *) (this)) + bswap32((((BKModelBin *) (this))->collision_list_offset))))
-#define modelbin_getCameraAreaList_MACRO(this)      ((BKCameraAreaList *)    (((u8 *) (this)) + bswap32((((BKModelBin *) (this))->camera_area_list_offset))))
-#define modelbin_getMeshList_MACRO(this)            ((BKMeshList *)          (((u8 *) (this)) + bswap32((((BKModelBin *) (this))->mesh_list_offset))))
-#define modelbin_getAnimVerticesList_MACRO(this)    ((BKAnimVerticesList *)  (((u8 *) (this)) + bswap32((((BKModelBin *) (this))->anim_vertices_list_offset))))
-#define modelbin_getAnimTextureList_MACRO(this)     ((BKAnimTextureList *)   (((u8 *) (this)) + bswap32((((BKModelBin *) (this))->animated_texture_list_offset))))
+/* BKA_LOADTIME_SWAP is 1: header offsets are native after modelbin_byteswap_inplace. */
+#define modelbin_getGeoCmdList_MACRO(this)          ((BKGeoCmd *)            (((u8 *) (this)) + (((BKModelBin *) (this))->geo_list_offset)))
+#define modelbin_getTextureList_MACRO(this)         ((BKTextureList *)       (((u8 *) (this)) + (s32)(((BKModelBin *) (this))->texture_list_offset)))
+#define modelbin_getGfxList_MACRO(this)             ((BKGfxList *)           (((u8 *) (this)) + (((BKModelBin *) (this))->gfx_list_offset)))
+#define modelbin_getVtxList_MACRO(this)             ((BKVertexList *)        (((u8 *) (this)) + (((BKModelBin *) (this))->vtx_list_offset)))
+#define modelbin_getUnk14List_MACRO(this)           ((BKModelUnk14List *)    (((u8 *) (this)) + (((BKModelBin *) (this))->unk14_list_offset)))
+#define modelbin_getAnimationList_MACRO(this)       ((BKAnimationList *)     (((u8 *) (this)) + (((BKModelBin *) (this))->animation_list_offset)))
+#define modelbin_getCollisionList_MACRO(this)       ((BKCollisionList *)     (((u8 *) (this)) + (((BKModelBin *) (this))->collision_list_offset)))
+#define modelbin_getCameraAreaList_MACRO(this)      ((BKCameraAreaList *)    (((u8 *) (this)) + (((BKModelBin *) (this))->camera_area_list_offset)))
+#define modelbin_getMeshList_MACRO(this)            ((BKMeshList *)          (((u8 *) (this)) + (((BKModelBin *) (this))->mesh_list_offset)))
+#define modelbin_getAnimVerticesList_MACRO(this)    ((BKAnimVerticesList *)  (((u8 *) (this)) + (((BKModelBin *) (this))->anim_vertices_list_offset)))
+#define modelbin_getAnimTextureList_MACRO(this)     ((BKAnimTextureList *)   (((u8 *) (this)) + (((BKModelBin *) (this))->animated_texture_list_offset)))
 
 void model_copyFramebufferToTextures(BKModelBin *this);
 
