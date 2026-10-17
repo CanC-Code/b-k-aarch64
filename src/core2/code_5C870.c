@@ -283,7 +283,14 @@ void func_802E3E7C(enum game_mode_e mode){
     mapSavestate_apply(map);
     D_8037E8E0.unk0 = prev_mode;
     game_setMode(mode, sp30);
-    if (map_getLevel(gsworld_getMap()) != LEVEL_D_CUTSCENE) { jiggylist_map_actors(); }
+    /* ARM64 port 2026-10-17: skip jiggylist on file select.
+       MAP_91_FILE_SELECT is LEVEL_B_SPIRAL_MOUNTAIN (same level as
+       actual Spiral Mountain gameplay), so the level check alone
+       doesn't exclude it. File select has no jiggy actors. */
+    if (gsworld_getMap() != MAP_91_FILE_SELECT &&
+        map_getLevel(gsworld_getMap()) != LEVEL_D_CUTSCENE) {
+        jiggylist_map_actors();
+    }
     func_80346CA8();
 }
 

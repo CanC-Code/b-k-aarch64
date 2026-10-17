@@ -177,7 +177,15 @@ void jiggylist_map_actors(void) {
     jiggy_actors = actorArray_findJiggyActors();
     for(s_jiggylist_current_index = 0; jiggy_actors[s_jiggylist_current_index] != NULL; s_jiggylist_current_index++){
         if(!jiggy_actors[s_jiggylist_current_index]->unk44_2){
-            jiggylist_list[chjiggy_getJiggyId(jiggy_actors[s_jiggylist_current_index]) - 1].unk10.marker = jiggy_actors[s_jiggylist_current_index]->marker;
+            /* ARM64 port 2026-10-17: bounds-check jid. Non-jiggy actors
+               (or garbage reads on BE data) can return 0 from
+               chjiggy_getJiggyId, writing to jiggylist_list[-1]. */
+            {
+                s32 jid = (s32)chjiggy_getJiggyId(jiggy_actors[s_jiggylist_current_index]);
+                if (jid >= 1 && jid <= (s32)(sizeof(jiggylist_list) / sizeof(jiggylist_list[0]))) {
+                    jiggylist_list[jid - 1].unk10.marker = jiggy_actors[s_jiggylist_current_index]->marker;
+                }
+            }
         }
     }
 }
