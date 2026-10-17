@@ -89,6 +89,7 @@ void func_80320B24(Method_Core2_999A0_0 arg0, Method_Core2_999A0_1 arg1, Method_
 }
 
 void func_80320B44(Method_Core2_999A0_0 arg0, Method_Core2_999A0_1 arg1, Method_Core2_999A0_2 arg2, Method_Core2_999A0_3 arg3){
+    if (D_80383230.unk80 >= &D_80383230.unk0[0x20]) { __android_log_print(ANDROID_LOG_ERROR, "BKA-COLL", "Collision registry overflow!"); return; }
     D_80383230.unk80->unk0 = arg0;
     D_80383230.unk80->unk4 = arg1;
     D_80383230.unk80->unk8 = arg2;
@@ -111,6 +112,7 @@ BKCollisionTriangle *func_80320B98(f32 arg0[3], f32 arg1[3], f32 arg2[3], u32 fl
     var_s7 = NULL;
     D_80383230.unk84 = NULL;
     for(var_s0 = &D_80383230.unk0[0]; var_s0 < D_80383230.unk80; var_s0++){
+            if (var_s0 >= &D_80383230.unk0[0x20]) { __android_log_print(ANDROID_LOG_ERROR, "BKA-COLL", "Collision registry iteration overflow!"); break; }
         if (var_s0->unk0 != NULL) {
             temp_v0_2 = var_s0->unk0(arg0, arg1, arg2, flags);
             if (temp_v0_2 != NULL) {
@@ -134,6 +136,7 @@ BKCollisionTriangle *func_80320C94(f32 arg0[3], f32 arg1[3], f32 arg2, f32 arg3[
     var_s7 = NULL;
     D_80383230.unk84 = NULL;
     for(var_s0 = &D_80383230.unk0[0]; var_s0 < D_80383230.unk80; var_s0++){
+            if (var_s0 >= &D_80383230.unk0[0x20]) { __android_log_print(ANDROID_LOG_ERROR, "BKA-COLL", "Collision registry iteration overflow!"); break; }
         if (var_s0->unk4 != NULL) {
             temp_v0_2 = var_s0->unk4(arg0, arg1, arg2, arg3, arg4, arg5);
             if (temp_v0_2 != 0) {
@@ -157,6 +160,7 @@ BKCollisionTriangle *func_80320DB0(f32 arg0[3], f32 arg1, f32 arg2[3], u32 arg3)
     var_s7 = NULL;
     D_80383230.unk84 = NULL;
     for(var_s0 = &D_80383230.unk0[0]; var_s0 < D_80383230.unk80; var_s0++){
+            if (var_s0 >= &D_80383230.unk0[0x20]) { __android_log_print(ANDROID_LOG_ERROR, "BKA-COLL", "Collision registry iteration overflow!"); break; }
         if (var_s0->unk8 != NULL) {
             temp_v0_2 = var_s0->unk8(arg0, arg1, arg2, arg3);
             if (temp_v0_2 != NULL) {
