@@ -25,7 +25,7 @@
    bswap32 calls from the 18 files in swap-files.txt. Otherwise the two
    swap conventions conflict and existing sites double-swap. */
 #ifndef BKA_LOADTIME_SWAP
-#define BKA_LOADTIME_SWAP 1
+#define BKA_LOADTIME_SWAP 0
 #endif
 #define SW16(v) ((u16)__builtin_bswap16((u16)(v)))
 #define SW32(v) ((u32)__builtin_bswap32((u32)(v)))
