@@ -49,3 +49,24 @@ static void bka_swap_vtx_list(u8 *bin, s32 off, s32 bin_size) {
         /* cn are bytes; no swap */
     }
 }
+
+/* Swap a BKMeshList in place at offset `off` inside `bin`. */
+static void bka_swap_mesh_list(u8 *bin, s32 off, s32 bin_size) {
+    if (off <= 0 || off + (s32)sizeof(BKMeshList) > bin_size) return;
+    BKMeshList *m = (BKMeshList *)(bin + off);
+    m->count = (s16)SW16(m->count);
+    s32 cnt = m->count;
+    if (cnt < 0 || cnt > 0x4000) return;
+    BKMesh *mesh = m->data;
+    for (s32 i = 0; i < cnt; i++) {
+        if ((u8*)mesh - bin + (s32)sizeof(BKMesh) > bin_size) return;
+        mesh->uid       = (s16)SW16(mesh->uid);
+        mesh->vtx_count = (s16)SW16(mesh->vtx_count);
+        s32 vc = mesh->vtx_count;
+        if (vc < 0 || vc > 0x2000) return;
+        for (s32 j = 0; j < vc; j++) {
+            mesh->vertices[j] = (s16)SW16(mesh->vertices[j]);
+        }
+        mesh = (BKMesh *)&mesh->vertices[vc];
+    }
+}
