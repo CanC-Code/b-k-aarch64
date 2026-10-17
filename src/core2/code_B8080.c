@@ -5,6 +5,7 @@ static inline s16 bswap16(s16 v) { return (s16)__builtin_bswap16((u16)v); }
 #include <android/log.h>
 #include "functions.h"
 #include "variables.h"
+#include "model.h"
 
 //performs operation "fn" for every vtx in every mesh of a model
 void model_transformMeshes(BKModel *this, bk_model_transform_func_s fn, s32 transform_func_arg) {
@@ -83,15 +84,18 @@ void model_getMeshCoordRange(BKModel *this, s32 mesh_id, s16 min[3], s16 max[3])
     if (mesh == NULL) return;
     
     mesh_begin = mesh->vertices;
-    mesh_end = mesh_begin + mesh->vtx_count;
+    /* model_getMeshCoordRange BE swap: BKMeshList/BKVertexList are
+       raw ROM data, still big-endian. Swap every read. */
+    mesh_end = mesh_begin + (s16)BKA_SWAP16(mesh->vtx_count);
     for(phi_t4 = mesh_begin; phi_t4 < mesh_end; phi_t4++){
-        i_vtx = &vtx_pool[*phi_t4];
+        i_vtx = &vtx_pool[(s16)BKA_SWAP16(*phi_t4)];
         for(i = 0; i < 3; i++){
+            s16 coord = (s16)BKA_SWAP16(i_vtx->v.ob[i]);
             if (phi_t4 == (s16*)(mesh + 1)) {
-                min[i] = max[i] = i_vtx->v.ob[i];
+                min[i] = max[i] = coord;
             } else {
-                min[i] = MIN(i_vtx->v.ob[i], min[i]);
-                max[i] = MAX(i_vtx->v.ob[i], max[i]);
+                min[i] = MIN(coord, min[i]);
+                max[i] = MAX(coord, max[i]);
             }
         }
     }
