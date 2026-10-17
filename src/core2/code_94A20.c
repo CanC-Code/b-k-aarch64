@@ -70,8 +70,8 @@ BKCollisionTriangle *func_8031BABC(f32 *arg0, f32 arg1, f32 arg2, u32 arg3, stru
         sp24 = func_80320B98(&sp34, &sp28, arg4->unk0, arg3);
     }
     if (sp24 != 0) {
-        arg4->flags = (s32) sp24->flags;
-        arg4->unk14 = (s16) sp24->unk6;
+        arg4->flags = (s32)__builtin_bswap32((u32)sp24->flags);
+        arg4->unk14 = (s16)BKA_SWAP16(sp24->unk6);
     } else {
         arg4->flags = 0;
         arg4->unk14 = (u16)0;
