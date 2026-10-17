@@ -110,3 +110,71 @@ static void bka_swap_coll_list(u8 *bin, s32 off, s32 bin_size) {
         tris[i].flags   = (s32)SW32(tris[i].flags);
     }
 }
+
+/* Swap a loaded BKModelBin buffer in place, once, after asset load.
+ *
+ * Detects and skips already-swapped bins via the magic number:
+ *   - On LE host, raw BE bytes 00 00 00 0B read as 0x0B000000 (unswapped)
+ *   - After this function runs, magic_number reads 0x0000000B (swapped)
+ * Either the whole bin is native, or none of it is — never in between.
+ *
+ * Sub-lists handled here: BKVertexList, BKMeshList, BKCollisionList.
+ * Others (geo cmds, textures, animation, unk14, camera) are covered by
+ * their own per-site swaps or will be added in follow-up commits. */
+void modelbin_byteswap_inplace(BKModelBin *bin, s32 bin_size) {
+    if (!bin || bin_size < (s32)sizeof(BKModelBin)) return;
+
+    u32 magic_native = bin->magic_number;
+    if (magic_native == 0x0000000Bu) return;  /* already swapped */
+    if (magic_native != 0x0B000000u) {
+        __android_log_print(ANDROID_LOG_WARN, BKA_SWAP_TAG,
+            "not a model bin, magic=0x%08X", magic_native);
+        return;
+    }
+
+    /* Save header offsets before swapping the header in place. */
+    s32 geo_off     = (s32)SW32(bin->geo_list_offset);
+    s32 vtx_off     = (s32)SW32(bin->vtx_list_offset);
+    s32 mesh_off    = (s32)SW32(bin->mesh_list_offset);
+    s32 coll_off    = (s32)SW32(bin->collision_list_offset);
+    s32 anim_off    = (s32)SW32(bin->animation_list_offset);
+    s32 gfx_off     = (s32)SW32(bin->gfx_list_offset);
+    s32 unk14_off   = (s32)SW32(bin->unk14_list_offset);
+    s32 cam_off     = (s32)SW32(bin->camera_area_list_offset);
+    s32 animvtx_off = (s32)SW32(bin->anim_vertices_list_offset);
+    s32 animtex_off = (s32)SW32(bin->animated_texture_list_offset);
+    s32 tex_len     = (s32)SW16((u16)bin->texture_list_offset);
+    s16 geo_type    = (s16)SW16((u16)bin->geo_type);
+
+    /* Swap header in place. */
+    bin->magic_number                 = 0x0000000B;
+    bin->geo_list_offset              = geo_off;
+    bin->texture_list_offset          = (s16)tex_len;
+    bin->geo_type                     = geo_type;
+    bin->gfx_list_offset              = gfx_off;
+    bin->vtx_list_offset              = vtx_off;
+    bin->unk14_list_offset            = unk14_off;
+    bin->animation_list_offset        = anim_off;
+    bin->collision_list_offset        = coll_off;
+    bin->camera_area_list_offset      = cam_off;
+    bin->mesh_list_offset             = mesh_off;
+    bin->anim_vertices_list_offset    = animvtx_off;
+    bin->animated_texture_list_offset = animtex_off;
+    bin->unk30                        = (u16)SW16(bin->unk30);
+    bin->vertex_count                 = (u16)SW16(bin->vertex_count);
+    {
+        u32 fbits;
+        __builtin_memcpy(&fbits, &bin->unk34, 4);
+        fbits = SW32(fbits);
+        __builtin_memcpy(&bin->unk34, &fbits, 4);
+    }
+
+    /* Dispatch to per-sublist helpers. */
+    bka_swap_vtx_list(bin, vtx_off, bin_size);
+    bka_swap_mesh_list(bin, mesh_off, bin_size);
+    bka_swap_coll_list(bin, coll_off, bin_size);
+
+    __android_log_print(ANDROID_LOG_INFO, BKA_SWAP_TAG,
+        "swapped bin=%p vtx_off=%d mesh_off=%d coll_off=%d",
+        (void*)bin, vtx_off, mesh_off, coll_off);
+}
