@@ -603,7 +603,10 @@ enum asset_e mapModel_getOpaModelId(void){
     return mapModel.description->opa_model_id;
 }
 
+extern void bka_swap_collision_list_reset(void);
+
 void func_8030A078(void) {
+    bka_swap_collision_list_reset();
     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX", "func_8030A078 ENTER");
     BKMeshList *sp24;
     MapModelDescription *description;

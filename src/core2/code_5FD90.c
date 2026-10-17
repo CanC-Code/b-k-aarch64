@@ -254,6 +254,8 @@ void calculateBoundsAndDirection(f32 startPoint[3], f32 endPoint[3], s32 minBoun
 static uintptr_t s_bka_coll_swapped[4096];
 static int s_bka_coll_swapped_count = 0;
 
+void bka_swap_collision_list_reset(void) { s_bka_coll_swapped_count = 0; }
+
 static int bka_coll_already_swapped(uintptr_t p) {
     for (int i = 0; i < s_bka_coll_swapped_count; i++)
         if (s_bka_coll_swapped[i] == p) return 1;
