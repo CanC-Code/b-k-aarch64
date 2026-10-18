@@ -137,11 +137,9 @@ f32 func_802BB938(f32 arg0[3], f32 arg1[3]) {
 
     __android_log_print(ANDROID_LOG_ERROR, "BKA-LR", "before_gctrans lr_now=%p lr_in=%p", __builtin_return_address(0), _bka_lr_in);
     __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "before gctransition_active"); if (canary != 0xDEADBEEFCAFEBABEULL) __android_log_print(ANDROID_LOG_ERROR, "BKA-CANARY", "BAD before gctrans: %llx", canary);
-    typedef int (*gta_fn_t)(void);
-    static gta_fn_t _gta_direct = &gctransition_active;
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "about to call gctransition_active direct=%p", (void*)_gta_direct);
-    int _gta = _gta_direct();
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "gta=%d sp=%p lr_after=%p lr_in=%p", _gta, __builtin_frame_address(0), __builtin_return_address(0), _bka_lr_in);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "SKIPPING gctransition_active (diagnostic)");
+    int _gta = 0;
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "gta forced=%d lr_after=%p lr_in=%p", _gta, __builtin_return_address(0), _bka_lr_in);
     if (_gta) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "about to ml_min_f");
         phi_f20 = ml_min_f(phi_f20, gctransition_8030BD88() * 0.8);
