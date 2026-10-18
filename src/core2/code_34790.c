@@ -108,44 +108,27 @@ bool func_802BB884(f32 arg0[3], f32 *arg1) {
 
 
 f32 func_802BB938(f32 arg0[3], f32 arg1[3]) {
-    void *_bka_lr_in = __builtin_return_address(0);
-    volatile unsigned long long canary = 0xDEADBEEFCAFEBABEULL;
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "enter 802BB938");
     f32 sp3C;
     f32 phi_f20;
     f32 phi_f12;
     f32 phi_f14;
 
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "before 802BBEA4");
     phi_f14 = func_802BBEA4(arg0, arg1, 350.0f, 1, 0x800000);
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "after 802BBEA4"); if (canary != 0xDEADBEEFCAFEBABEULL) __android_log_print(ANDROID_LOG_ERROR, "BKA-CANARY", "BAD after 802BBEA4: %llx", canary);
-    phi_f12 = (D_8037D8D0.unk31) ? 25.0f : 10.0f;
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "after 802BBEA4"); if (canary != 0xDEADBEEFCAFEBABEULL)    phi_f12 = (D_8037D8D0.unk31) ? 25.0f : 10.0f;
     phi_f20 = ml_max_f(phi_f12, phi_f14* 0.8 - 15.0);
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "before 802BAC58");
     func_802BAC58();
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "after 802BAC58"); if (canary != 0xDEADBEEFCAFEBABEULL) __android_log_print(ANDROID_LOG_ERROR, "BKA-CANARY", "BAD after 802BAC58: %llx", canary);
-
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "before 802BB884");
-    if (func_802BB884(arg0, &sp3C)) {
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "after 802BAC58"); if (canary != 0xDEADBEEFCAFEBABEULL)    if (func_802BB884(arg0, &sp3C)) {
         phi_f20 = ml_min_f(phi_f20, ml_map_f(sp3C, 90.0f, 450.0f, 20.0f, 240.0f));
     }
 
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "after 802BB884 block"); if (canary != 0xDEADBEEFCAFEBABEULL) __android_log_print(ANDROID_LOG_ERROR, "BKA-CANARY", "BAD after 802BB884 block: %llx", canary);
-    if (65.0 < phi_f20 && func_802BAC1C()) {
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "after 802BB884 block"); if (canary != 0xDEADBEEFCAFEBABEULL)    if (65.0 < phi_f20 && func_802BAC1C()) {
         phi_f20 = 65.0f;
     }
 
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-LR", "before_gctrans lr_now=%p lr_in=%p", __builtin_return_address(0), _bka_lr_in);
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "before gctransition_active"); if (canary != 0xDEADBEEFCAFEBABEULL) __android_log_print(ANDROID_LOG_ERROR, "BKA-CANARY", "BAD before gctrans: %llx", canary);
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "SKIPPING gctransition_active (diagnostic)");
-    int _gta = 0;
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "gta forced=%d lr_after=%p lr_in=%p", _gta, __builtin_return_address(0), _bka_lr_in);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "before gctransition_active"); if (canary != 0xDEADBEEFCAFEBABEULL)    int _gta = !gctransition_done();
     if (_gta) {
-        __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "about to ml_min_f");
         phi_f20 = ml_min_f(phi_f20, gctransition_8030BD88() * 0.8);
-        __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "after ml_min_f");
     }
-    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "before return sp=%p", __builtin_frame_address(0));
     return phi_f20;
 }
 
