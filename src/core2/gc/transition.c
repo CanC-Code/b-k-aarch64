@@ -387,7 +387,10 @@ int gctransition_done(void){
 }
 
 int gctransition_active(void){
-    return s_current_transition.state != TRANSITION_STATE_0_NONE;
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-GTA", "entered gctransition_active");
+    int _v = s_current_transition.state != TRANSITION_STATE_0_NONE;
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-GTA", "returning %d", _v);
+    return _v;
 }
 
 int gctransition_8030BDC0(void){
