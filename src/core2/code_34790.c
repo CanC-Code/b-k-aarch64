@@ -108,27 +108,36 @@ bool func_802BB884(f32 arg0[3], f32 *arg1) {
 
 
 f32 func_802BB938(f32 arg0[3], f32 arg1[3]) {
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "enter 802BB938");
     f32 sp3C;
     f32 phi_f20;
     f32 phi_f12;
     f32 phi_f14;
 
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "before 802BBEA4");
     phi_f14 = func_802BBEA4(arg0, arg1, 350.0f, 1, 0x800000);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "after 802BBEA4");
     phi_f12 = (D_8037D8D0.unk31) ? 25.0f : 10.0f;
     phi_f20 = ml_max_f(phi_f12, phi_f14* 0.8 - 15.0);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "before 802BAC58");
     func_802BAC58();
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "after 802BAC58");
 
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "before 802BB884");
     if (func_802BB884(arg0, &sp3C)) {
         phi_f20 = ml_min_f(phi_f20, ml_map_f(sp3C, 90.0f, 450.0f, 20.0f, 240.0f));
     }
 
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "after 802BB884 block");
     if (65.0 < phi_f20 && func_802BAC1C()) {
         phi_f20 = 65.0f;
     }
 
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "before gctransition_active");
     if (gctransition_active()) {
         phi_f20 = ml_min_f(phi_f20, gctransition_8030BD88() * 0.8);
     }
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "before return phi_f20");
     return phi_f20;
 }
 
