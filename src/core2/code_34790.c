@@ -108,6 +108,7 @@ bool func_802BB884(f32 arg0[3], f32 *arg1) {
 
 
 f32 func_802BB938(f32 arg0[3], f32 arg1[3]) {
+    void *_bka_lr_in = __builtin_return_address(0);
     volatile unsigned long long canary = 0xDEADBEEFCAFEBABEULL;
     __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "enter 802BB938");
     f32 sp3C;
@@ -134,12 +135,13 @@ f32 func_802BB938(f32 arg0[3], f32 arg1[3]) {
         phi_f20 = 65.0f;
     }
 
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-LR", "before_gctrans lr_now=%p lr_in=%p", __builtin_return_address(0), _bka_lr_in);
     __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "before gctransition_active"); if (canary != 0xDEADBEEFCAFEBABEULL) __android_log_print(ANDROID_LOG_ERROR, "BKA-CANARY", "BAD before gctrans: %llx", canary);
     if (gctransition_active()) {
         phi_f20 = ml_min_f(phi_f20, gctransition_8030BD88() * 0.8);
     }
     __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "before return phi_f20");
-    return phi_f20;
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CAM", "before return phi_f20"); return phi_f20;
 }
 
 void func_802BBA84(void) {
