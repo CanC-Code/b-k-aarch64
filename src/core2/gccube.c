@@ -690,11 +690,11 @@ BKCollisionTriangle* __code7AF80_func_80303AF0(f32 position[3], f32 radius, f32 
 void func_80303C54(Cube *cube, ActorMarker *marker, f32 arg2, s32 arg3, s32 *arg4, s32 *arg5) {
     ActorProp *phi_s0;
 
-    if(cube->prop2Cnt == 0)
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-CUBE", "prop2Cnt=%d", cube->prop2Cnt); if(cube->prop2Cnt == 0)
         return;
 
     *arg4 = 0;
-    while (*arg4 != -1){
+    int _bka_guard = 0; while (*arg4 != -1){ if (++_bka_guard > 0x20) { __android_log_print(ANDROID_LOG_ERROR, "BKA-CUBE", "while guard arg4=%d arg5=%d", *arg4, *arg5); break; }
         phi_s0 = func_803322F0(cube, marker, arg2, arg3, arg4);
         if (phi_s0 != NULL) {
             if (phi_s0->isActorProp && phi_s0->marker->unk58 != NULL) {
@@ -703,7 +703,7 @@ void func_80303C54(Cube *cube, ActorMarker *marker, f32 arg2, s32 arg3, s32 *arg
                 }
             }
             if (phi_s0 != NULL) {
-                D_803820B8[*arg5] = phi_s0;
+                if (*arg5 < 0x20) { D_803820B8[*arg5] = phi_s0; } else { __android_log_print(ANDROID_LOG_ERROR, "BKA-CUBE", "arg5 overflow=%d", *arg5); return; }
                 *arg5 += 1;
             }
         }
@@ -733,7 +733,7 @@ void func_80303D78(ActorMarker *marker, f32 arg1, UNK_TYPE(s32) arg2) {
         }
     }
     func_80303C54(sCubeList.unk40, marker, arg1, arg2, &D_8038213C, &sp5C);
-    D_803820B8[sp5C] = 0;
+    if (sp5C < 0x20) { D_803820B8[sp5C] = 0; } else { __android_log_print(ANDROID_LOG_ERROR, "BKA-CUBE", "sp5C overflow at end=%d", sp5C); }
 }
 
 void func_80303F38(void){
