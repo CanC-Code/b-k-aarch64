@@ -442,6 +442,14 @@ void func_80302C94(Gfx **gfx, Mtx **mtx, Vtx **vtx) {
             sp38[i] = vp_cube_indices[i] + 4;
         }
     }
+    for(i = 0; i < 3; i++){
+        if(vp_cube_indices[i] < 0) vp_cube_indices[i] = 0;
+        if(vp_cube_indices[i] >= sCubeList.width[i]) vp_cube_indices[i] = sCubeList.width[i] - 1;
+        if(sp44[i] < 0) sp44[i] = 0;
+        if(sp44[i] > vp_cube_indices[i]) sp44[i] = vp_cube_indices[i];
+        if(sp38[i] < vp_cube_indices[i]) sp38[i] = vp_cube_indices[i];
+        if(sp38[i] >= sCubeList.width[i]) sp38[i] = sCubeList.width[i] - 1;
+    }
     if (sCubeList.unk3C != NULL) {
         func_8032D510(sCubeList.unk3C, gfx, mtx, vtx);
     }
