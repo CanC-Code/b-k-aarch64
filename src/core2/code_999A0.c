@@ -90,6 +90,9 @@ void func_80320B24(Method_Core2_999A0_0 arg0, Method_Core2_999A0_1 arg1, Method_
 }
 
 void func_80320B44(Method_Core2_999A0_0 arg0, Method_Core2_999A0_1 arg1, Method_Core2_999A0_2 arg2, Method_Core2_999A0_3 arg3){
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-REG", "func_80320B44 called: unk80=%p base=%p arg0=%p arg1=%p arg2=%p arg3=%p",
+        (void*)D_80383230.unk80, (void*)&D_80383230.unk0[0],
+        (void*)arg0, (void*)arg1, (void*)arg2, (void*)arg3);
     if (D_80383230.unk80 >= &D_80383230.unk0[0x20]) { __android_log_print(ANDROID_LOG_ERROR, "BKA-COLL", "Collision registry overflow!"); return; }
     D_80383230.unk80->unk0 = arg0;
     D_80383230.unk80->unk4 = arg1;
