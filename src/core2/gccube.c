@@ -263,7 +263,18 @@ void func_80301F50(Gfx **gfx, Mtx **mtx, Vtx **vtx, s32 arg3[3], s32 arg4[3], s3
 }
 u8 D_80381FE8[0x50];
 
+#define BKA_CUBE_OOB(fp) ((fp) < sCubeList.cubes || (fp) >= sCubeList.cubes + sCubeList.cubeCnt)
+#define BKA_CUBE_CHECK(fp, tag) do { if (BKA_CUBE_OOB(fp)) { __android_log_print(ANDROID_LOG_ERROR, "BKA-RENDER", "OOB " tag " fp=%p cubes=%p end=%p cnt=%d", (void*)(fp), (void*)sCubeList.cubes, (void*)(sCubeList.cubes+sCubeList.cubeCnt), sCubeList.cubeCnt); return; } } while(0)
 void func_80302634(Gfx **gfx, Mtx **mtx, Vtx **vtx, s32 arg3[3], s32 arg4[3], s32 arg5[3]) {
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-RENDER",
+        "entry arg3=[%d,%d,%d] arg4=[%d,%d,%d] arg5=[%d,%d,%d]",
+        arg3[0],arg3[1],arg3[2], arg4[0],arg4[1],arg4[2], arg5[0],arg5[1],arg5[2]);
+    __android_log_print(ANDROID_LOG_ERROR, "BKA-RENDER",
+        "cubelist width=[%d,%d,%d] min=[%d,%d,%d] stride=[%d,%d,%d] cnt=%d cubes=%p",
+        sCubeList.width[0],sCubeList.width[1],sCubeList.width[2],
+        sCubeList.min[0],sCubeList.min[1],sCubeList.min[2],
+        sCubeList.stride[0],sCubeList.stride[1],sCubeList.stride[2],
+        sCubeList.cubeCnt, (void*)sCubeList.cubes);
     s32 sp54;
     s32 sp50;
     s32 var_s1;
@@ -278,6 +289,7 @@ void func_80302634(Gfx **gfx, Mtx **mtx, Vtx **vtx, s32 arg3[3], s32 arg4[3], s3
         var_s0 = sp44 + sp54*sCubeList.stride[1];
         for(sp54 = arg4[2]; sp54 < arg3[2]; sp54++) {
             var_fp = var_s0 + arg4[0];
+            BKA_CUBE_CHECK(var_fp, "loop1_start");
             for(var_s1 = arg4[0]; var_s1 < arg3[0]; var_s1++) {
                 if ((var_fp->prop2Cnt != 0) && viewport_cube_isInFrustum2(var_fp) != 0) {
                     __7AF80_func_80301F10(var_fp, gfx, mtx, vtx);
@@ -286,6 +298,7 @@ void func_80302634(Gfx **gfx, Mtx **mtx, Vtx **vtx, s32 arg3[3], s32 arg4[3], s3
             }
 
             var_fp = var_s0 + arg5[0];
+            BKA_CUBE_CHECK(var_fp, "loop2_start");
             for(var_s1 = arg5[0]; var_s1 >= arg3[0]; var_s1--) {
                 if ((var_fp->prop2Cnt != 0) && viewport_cube_isInFrustum2(var_fp) != 0) {
                     __7AF80_func_80301F10(var_fp, gfx, mtx, vtx);
@@ -299,6 +312,7 @@ void func_80302634(Gfx **gfx, Mtx **mtx, Vtx **vtx, s32 arg3[3], s32 arg4[3], s3
         var_s0 = sp44 + sp54*sCubeList.stride[1];
         for(sp54 = arg5[2]; sp54 >= arg3[2]; sp54--) {
             var_fp = var_s0 + arg4[0];
+            BKA_CUBE_CHECK(var_fp, "loop3_start");
             for(var_s1 = arg4[0]; var_s1 < arg3[0]; var_s1++) {
                 if ((var_fp->prop2Cnt != 0) && viewport_cube_isInFrustum2(var_fp) != 0) {
                     __7AF80_func_80301F10(var_fp, gfx, mtx, vtx);
@@ -307,6 +321,7 @@ void func_80302634(Gfx **gfx, Mtx **mtx, Vtx **vtx, s32 arg3[3], s32 arg4[3], s3
             }
 
             var_fp = var_s0 + arg5[0];
+            BKA_CUBE_CHECK(var_fp, "loop4_start");
             for(var_s1 = arg5[0]; var_s1 >= arg3[0]; var_s1--) {
                 if ((var_fp->prop2Cnt != 0) && viewport_cube_isInFrustum2(var_fp) != 0) {
                     __7AF80_func_80301F10(var_fp, gfx, mtx, vtx);
